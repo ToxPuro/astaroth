@@ -14,15 +14,34 @@ u_dot_grad(Field3 f, Matrix m,real3 v){
 	return res;
 }
 
-u_dot_grad_scl_alt(a,b,c,d){
-	fatal_error_message(true,"u_dot_grad_scl_alt: Not implemented")
+u_dot_grad(Matrix m,real3 v){
+  return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
+}
+
+u_dot_grad_alt(Field f,real3 gradf,real3 uu,int advec_type){
+	suppress_unused_warning(f)
+	if(advec_type == 0)
+	{
+		return dot(uu,gradf)
+	}
+	fatal_error_message(true,"u_dot_grad_alt: Upwinding and Kurganov-Tadmor not yet implemented")
 	return 0.0
 }
-u_dot_grad_mat(k,c,uu)
+u_dot_grad_mat(k,AcTensor c,real3 uu)
 {
-	fatal_error_message(true,"u_dot_grad_mat: Not implemented")
-	Matrix res
-	return res
+        Matrix res
+        res[0][0] = c[0][0][0]*uu.x + c[0][0][1]*uu.y + c[0][0][2]*uu.z
+        res[0][1] = c[0][1][0]*uu.x + c[0][1][1]*uu.y + c[0][1][2]*uu.z
+        res[0][2] = c[0][2][0]*uu.x + c[0][2][1]*uu.y + c[0][2][2]*uu.z
+
+        res[1][0] = c[1][0][0]*uu.x + c[1][0][1]*uu.y + c[1][0][2]*uu.z
+        res[1][1] = c[1][1][0]*uu.x + c[1][1][1]*uu.y + c[1][1][2]*uu.z
+        res[1][2] = c[1][2][0]*uu.x + c[1][2][1]*uu.y + c[1][2][2]*uu.z
+
+        res[2][0] = c[2][0][0]*uu.x + c[2][0][1]*uu.y + c[2][0][2]*uu.z
+        res[2][1] = c[2][1][0]*uu.x + c[2][1][1]*uu.y + c[2][1][2]*uu.z
+        res[2][2] = c[2][2][0]*uu.x + c[2][2][1]*uu.y + c[2][2][2]*uu.z
+        return res
 }
 u_dot_grad_mat_upwd(k,c,uu)
 {
@@ -43,7 +62,7 @@ gradient_tensor(Field3 v) {
 }
 
 elemental gradient_upwd(Field s) {
-    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
+    return real3(derx_upwd(s), dery_upwd(s), derz_upwd(s))
 }
 
 
@@ -68,12 +87,27 @@ elemental gradient5(Field s) {
 
 
 elemental gradient6_upwd(s) {
-    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
+    return real3(derx_upwd(s), dery_upwd(s), derz_upwd(s))
 }
 
 
 divergence(Field3 v) {
     g = derx(v.x) + dery(v.y) + derz(v.z)
+
+
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	   g += AC_INV_R*(v.x*2.0 + AC_COT*v.y);
+    }
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    g +=AC_INV_CYL_R*v.x
+    }
+    return g
+}
+
+divergence_2nd(Field3 v) {
+    g = derx_2nd(v.x) + dery_2nd(v.y) + derz_2nd(v.z)
 
 
     if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
@@ -336,11 +370,11 @@ del6_masked(Field s, int mask)
 	return x + y + z
 }
 
-del6_upwd_masked(real3 velo, Field s, int mask)
+del_upwd_masked(real3 velo, Field s, int mask)
 {
-        x = mask == 1 ? 0.0 : abs(velo.x*der6x_upwd(s))
-        y = mask == 2 ? 0.0 : abs(velo.y*der6y_upwd(s))
-        z = mask == 3 ? 0.0 : abs(velo.z*der6z_upwd(s))
+        x = mask == 1 ? 0.0 : abs(velo.x*derx_upwd(s))
+        y = mask == 2 ? 0.0 : abs(velo.y*dery_upwd(s))
+        z = mask == 3 ? 0.0 : abs(velo.z*derz_upwd(s))
         return x + y + z
 }
 
@@ -362,7 +396,7 @@ elemental ugrad_upw(Field3 field, real3 velo){
 		      dot(velo,gradient(field.z)) - dot(abs(velo),gradient_upwd(field.z)))
 }
 
-del6_upwd(real3 velo,Field field)
+del_upwd(real3 velo,Field field)
 {
 
 	real3 res = abs(velo)*gradient_upwd(field)
@@ -378,7 +412,7 @@ del6_upwd(real3 velo,Field field)
 	return sum(res)
 }
 
-del6_upwd(real3 velo, Field3 field) {
+del_upwd(real3 velo, Field3 field) {
         return real3( dot(abs(velo),gradient_upwd(field.x)),
                       dot(abs(velo),gradient_upwd(field.y)),
                       dot(abs(velo),gradient_upwd(field.z)))
@@ -442,6 +476,10 @@ laplace_2nd_neighbours(Field s) {
 
 laplace_central_coeff() {
     return derxx_central_coeff() + deryy_central_coeff() + derzz_central_coeff()
+}
+
+laplace_central_coeff_extended() {
+    return derxx_central_coeff_extended() + deryy_central_coeff_extended() + derzz_central_coeff_extended()
 }
 
 laplace_2nd_central_coeff() {
@@ -624,3 +662,33 @@ curlcurl(Field3 v)
 {
 	return gradient_of_divergence(v) - laplace(v)
 }
+
+#ifdef AC_GENERAL_DERIVS_H
+laplace_extended(Field s) {
+    del2f = derxx_extended(s) + deryy_extended(s) + derzz_extended(s)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    del2f += derx_extended(s)*AC_INV_CYL_R_extended
+    }
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    del2f += 2*derx_extended(s)*AC_INV_R_extended
+	    del2f += dery_extended(s)*AC_INV_R_extended*AC_COT_extended
+    }
+    return del2f
+}
+
+laplace_neighbours_extended(Field s) {
+    del2f = derxx_neighbours_extended(s) + deryy_neighbours_extended(s) + derzz_neighbours_extended(s)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    del2f += derx_extended(s)*AC_INV_CYL_R_extended
+    }
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    del2f += 2*derx_extended(s)*AC_INV_R_extended
+	    del2f += dery_extended(s)*AC_INV_R_extended*AC_COT_extended
+    }
+    return del2f
+}
+#endif

@@ -34,6 +34,8 @@ FUNC_DEFINE(AcResult, acDeviceLoadScalarUniform,(const Device device, const Stre
 FUNC_DEFINE(AcResult, acDevicePrintProfiles,(const Device device));
 FUNC_DEFINE(AcResult, acDeviceFFTR2C,(const Device device, const Field src, const ComplexField dst));
 FUNC_DEFINE(AcResult, acDeviceFFTC2R,(const Device device, const ComplexField src, const Field dst));
+FUNC_DEFINE(AcResult, acDeviceFFTC2RXY,(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers));
+FUNC_DEFINE(AcResult, acDeviceFFTR2CXY,(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers));
 FUNC_DEFINE(AcResult, acDeviceFFTR2Planar,(const Device device, const Field src, const Field real_dst, const Field imag_dst));
 
 /** */

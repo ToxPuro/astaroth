@@ -80,7 +80,8 @@ typedef enum {
   NODE_HOSTDEFINE          = (1 << 18),
   NODE_ASSIGNMENT          = (1 << 19),
   NODE_INPUT               = (1 << 20),
-  NODE_DEF                 = (1 << 21) | NODE_BEGIN_SCOPE,
+  NODE_DEF_BASE            = (1 << 21),
+  NODE_DEF                 = NODE_DEF_BASE | NODE_BEGIN_SCOPE,
   NODE_STRUCT_INITIALIZER  = (1 << 22),
   NODE_ARRAY_ACCESS        = (1 << 23),
   NODE_STATEMENT_LIST_HEAD = (1 << 24),
@@ -88,6 +89,7 @@ typedef enum {
   NODE_FUNCTION_CALL       = (1 << 26),
   NODE_DFUNCTION_ID        = (1 << 27),
   NODE_ASSIGN_LIST         = (1 << 28 | NODE_GLOBAL), 
+  NODE_GLOBAL_DECLARATION  = (NODE_GLOBAL | NODE_DECLARATION),
   NODE_NO_OUT              = (1 << 29),
   NODE_STRUCT_EXPRESSION   = (1 << 30),
   NODE_FUNCTION            = NODE_DFUNCTION | NODE_KFUNCTION,
@@ -99,6 +101,43 @@ typedef enum {
   NODE_TERNARY_EXPRESSION  = (NODE_TERNARY+ NODE_EXPRESSION),
   NODE_ANY                 = ~0,
 } NodeType;
+
+static __attribute__((unused)) const char*
+node_type_to_str(const NodeType type)
+{
+	if(type == NODE_UNKNOWN) return "unknown";
+	if(type == NODE_PRIMARY_EXPRESSION) return "primary_expression";
+	if(type == NODE_DFUNCTION) return "dfunction";
+	if(type == NODE_KFUNCTION) return "global";
+	if(type == NODE_BINARY) return "binary";
+	if(type == NODE_BEGIN_SCOPE) return "begin_scope";
+	if(type == NODE_DECLARATION) return "declaration";
+	if(type == NODE_TSPEC) return "tspec";
+	if(type == NODE_TQUAL) return "tqual";
+	if(type == NODE_STENCIL) return "stencil";
+	if(type == NODE_EXPRESSION) return "expression";
+	if(type == NODE_VARIABLE) return "variable";
+	if(type == NODE_VARIABLE_ID) return "variable_id";
+	if(type == NODE_ARRAY_INITIALIZER) return "array_initializer";
+	if(type == NODE_DCONST) return "dconst";
+	if(type == NODE_TERNARY) return "ternary";
+	if(type == NODE_MEMBER_ID) return "member_id";
+	if(type == NODE_HOSTDEFINE) return "hostdefine";
+	if(type == NODE_ASSIGNMENT) return "assignment";
+	if(type == NODE_INPUT) return "input";
+	if(type == NODE_DEF) return "def";
+	if(type == NODE_STRUCT_INITIALIZER) return "struct_initializer";
+	if(type == NODE_ARRAY_ACCESS) return "array_access";
+	if(type == NODE_STATEMENT_LIST_HEAD) return "statement_list_head";
+	if(type == NODE_IF) return "if";
+	if(type == NODE_FUNCTION_CALL) return "function_call";
+	if(type == NODE_DFUNCTION_ID) return "dfunction_id";
+	if(type == NODE_ASSIGN_LIST) return "assign_list";
+	if(type == NODE_NO_OUT) return "no_out";
+	if(type == NODE_STRUCT_EXPRESSION) return "struct_expression";
+	if(type == NODE_ANY) return "any";
+	return "unknown";
+}
 
 typedef struct astnode_s {
   int id;
@@ -404,7 +443,7 @@ get_node_by_buffer_exclude_node(const char* test, const ASTNode* node, const AST
   assert(node);
   ASTNode* res = NULL;
   if(node->id == exclude->id) return res;
-  if (node->buffer && !strcmp(test,node->buffer))
+  if (node->buffer && test == node->buffer)
     res = (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer_exclude_node(test, node->lhs,exclude);
@@ -419,7 +458,7 @@ get_node_by_buffer(const char* test, const ASTNode* node)
   assert(node);
 
   ASTNode* res = NULL;
-  if (node->buffer && !strcmp(test,node->buffer))
+  if (node->buffer && test == node->buffer)
     res = (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer(test, node->lhs);
@@ -433,7 +472,7 @@ get_node_by_buffer_and_type(const char* test, const NodeType type, const ASTNode
   assert(node);
 
   ASTNode* res = NULL;
-  if (node->buffer && node->type & type && !strcmp(test,node->buffer))
+  if (node->buffer && node->type & type && test == node->buffer)
     res =  (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer_and_type(test, type, node->lhs);
@@ -448,7 +487,7 @@ get_node_by_buffer_and_token(const char* test, const int token, const ASTNode* n
   assert(node);
 
   ASTNode* res = NULL;
-  if (node->buffer && !strcmp(test,node->buffer) && node->token == token)
+  if (node->buffer && test == node->buffer && node->token == token)
     res =  (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer_and_token(test, token, node->lhs);
@@ -735,6 +774,18 @@ get_node_in_list(const ASTNode* list_head, int index)
 	}
 	return last_elem ? list_head->lhs : list_head->rhs;
 }
+static __attribute__((unused)) void
+change_qualifier(const ASTNode* node, const char* old_qualifier, const char* new_qualifier)
+{
+	if(node->lhs)
+		change_qualifier(node->lhs,old_qualifier,new_qualifier);
+	if(node->rhs)
+		change_qualifier(node->rhs,old_qualifier,new_qualifier);
+	if(node->type & NODE_TQUAL && node->lhs->buffer == old_qualifier)
+	{
+		node->lhs->buffer = new_qualifier;
+	}
+}
 static inline bool has_qualifier(const ASTNode* node, const char* qualifier)
 {
 	bool res = false;
@@ -743,7 +794,7 @@ static inline bool has_qualifier(const ASTNode* node, const char* qualifier)
 	if(node->rhs)
 		res |= has_qualifier(node->rhs,qualifier);
 	if(node->type & NODE_TQUAL)
-		res |= !strcmp(node->lhs->buffer,qualifier);
+		res |= node->lhs->buffer == qualifier;
 	return res;
 }
 
@@ -797,7 +848,7 @@ push_node(node_vec* dst, const ASTNode* src)
 {
 	if(dst->capacity == 0)
 	{
-		dst->capacity++;
+		dst->capacity = 4;
 		dst->data = malloc(sizeof(ASTNode*)*dst->capacity);
 	}
 	dst->data[dst->size] = src;
@@ -826,6 +877,8 @@ build_list_node(const node_vec nodes, const char* separator)
 	}
 	return list_head;
 }
+
+
 static inline const ASTNode*
 get_node(const NodeType type, const ASTNode* node)
 {

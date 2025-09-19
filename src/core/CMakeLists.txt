@@ -1,8 +1,6 @@
 ## Astaroth Core
 if(RUNTIME_COMPILATION)
-   
-  add_library(astaroth_core update_params.cc decomposition.cc logging.c helpers/helpers.cc)
-  target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl acc_runtime_compiler)
+  add_library(astaroth_core_obj OBJECT empty.cc)
 else()
   #TP: It is not that important that these are as efficient as possible
   #    so can speed up compilation by setting their optimization level to 0
@@ -16,8 +14,9 @@ else()
   )
 
   set_source_files_properties(stencil_accesses.cpp PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1)
-  add_library(astaroth_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp update_params.cc logging.c helpers/helpers.cc)
-  target_link_libraries(astaroth_core PUBLIC static_kernels)
+  add_library(astaroth_core_obj OBJECT device.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp analysis_helpers.cc)
+  target_link_libraries(astaroth_core_obj PUBLIC acc-runtime-headers)
+  target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src/core/kernels)
   
   
   # JP: disabled due to being error-prone, verbose, and not using modern CMake practices
@@ -83,11 +82,15 @@ else()
   #     )
   # endif()
 endif()
-target_include_directories(astaroth_core PUBLIC ${AC_BASE_PATH}/include)
-if (MPI_ENABLED)
-    set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
-    find_package(MPI REQUIRED COMPONENTS C)
-    target_link_libraries(astaroth_core PUBLIC MPI::MPI_C)
+target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include)
+ac_link_mpi(astaroth_core_obj)
+
+add_library(astaroth_core empty.cc)
+target_link_libraries(astaroth_core PUBLIC astaroth_core_obj)
+if (NOT RUNTIME_COMPILATION)
+	target_link_libraries(astaroth_core PUBLIC static_kernels)
+else()
+	target_link_libraries(astaroth_core PUBLIC acc_runtime_compiler acc-runtime-headers dl)
 endif()
 
 if (USE_HIP)
@@ -107,6 +110,8 @@ if (USE_HIP)
          )
      endif()
 else()
-    target_link_libraries(astaroth_core PUBLIC CUDA::cudart_static)
+    if (USE_CUDA)
+    	target_link_libraries(astaroth_core PUBLIC CUDA::cudart_static)
+    endif()
 endif()
-target_link_libraries(astaroth_core PUBLIC ac_cuda_wrappers)
+target_link_libraries(astaroth_core PUBLIC ac_decomposition ac_update_params ac_cuda_wrappers astaroth_helpers)

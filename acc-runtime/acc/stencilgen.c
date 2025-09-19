@@ -390,11 +390,72 @@ gen_kernel_block_loops(const int curr_kernel)
 	"#include \"kernel_user_non_scalar_constants.h\"\n"
 	"#include \"kernel_user_builtin_non_scalar_constants.h\"\n"
 	 );
-#if AC_USE_HIP
-   printf("[[maybe_unused]] constexpr size_t warp_size = rocprim__warpSize();");
-#else
-   printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
-#endif
+  if (AC_CPU_BUILD)
+  {
+	  if(is_raytracing_kernel(curr_kernel))
+	  {
+		if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1}))
+		{
+		  printf(
+			 "for(int threadIdx_z = end.z-start.z-1; threadIdx_z >= 0; --threadIdx_z){"
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,+1}))
+		{
+		  printf(
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0}))
+		{
+		  printf(
+			 "for(int threadIdx_y = end.y-start.y-1; threadIdx_y >= 0; --threadIdx_y){"
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,+1,0}))
+		{
+		  printf(
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0}))
+		{
+		  printf(
+		         "for(int threadIdx_x = end.x-start.x-1; threadIdx_x >= 0; --threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){+1,0,0}))
+		{
+		  printf(
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+		}
+	  }
+	  else
+	  {
+		  printf("for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+	  }
+	  printf("[[maybe_unused]] const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z};");
+  	  printf("const dim3 current_block_idx = blockIdx;");
+	  return;
+  }
+  if(AC_USE_HIP) printf("[[maybe_unused]] constexpr size_t warp_size = rocprim__warpSize();");
+  else           printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
   if(kernel_calls_reduce[curr_kernel] && (kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS))
   {
 		for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
@@ -433,7 +494,7 @@ gen_kernel_block_loops(const int curr_kernel)
 	#endif
 
 	{
-		if(kernel_has_block_loops(curr_kernel))
+		if(kernel_has_block_loops(curr_kernel) && !AC_CPU_BUILD)
 	    		printf("[[maybe_unused]] constexpr size_t warp_leader_id  = 0;");
 	    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
 	    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
@@ -484,12 +545,16 @@ gen_kernel_block_loops(const int curr_kernel)
 	printf("[[maybe_unused]] const int last_block_idx_z = (vba.block_factor.z < calculated_end_z ? vba.block_factor.z : calculated_end_z) -1;");
 
   	printf("for(int current_block_idx_x = 0; current_block_idx_x < vba.block_factor.x; ++current_block_idx_x) {");
-	for(int i = 0; i < NUM_PROFILES; ++i)
+        if(reduce_sum_real_x_called[curr_kernel])
 	{
-		if(!reduced_profiles[curr_kernel][i]) continue;
-		if(prof_types[i] == PROFILE_X)
-			printf("AcReal %s_reduce_output = 0.0;",profile_names[i]);
+		for(int i = 0; i < NUM_PROFILES; ++i)
+		{
+			if(!reduced_profiles[curr_kernel][i]) continue;
+			if(prof_types[i] == PROFILE_X)
+				printf("AcReal %s_reduce_output = 0.0;",profile_names[i]);
+		}
 	}
+
 	for(int i = 0; i < NUM_PROFILES; ++i)
 	{
 		if(!reduced_profiles[curr_kernel][i]) continue;
@@ -549,9 +614,9 @@ void
 gen_kernel_common_prefix()
 { 
   printf("const int3 tid = (int3){"
-         "threadIdx.x + current_block_idx.x * blockDim.x,"
-         "threadIdx.y + current_block_idx.y * blockDim.y,"
-         "threadIdx.z + current_block_idx.z * blockDim.z,"
+         "static_cast<int>(threadIdx.x + current_block_idx.x * blockDim.x),"
+         "static_cast<int>(threadIdx.y + current_block_idx.y * blockDim.y),"
+         "static_cast<int>(threadIdx.z + current_block_idx.z * blockDim.z),"
          "};");
   printf("const int3 vertexIdx = (int3){"
          "tid.x + start.x,"
@@ -568,9 +633,9 @@ gen_kernel_common_prefix()
 
     printf(
         "const int3 localCompdomainVertexIdx = (int3){"
-        "threadIdx.x + current_block_idx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
-        "threadIdx.y + current_block_idx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
-        "threadIdx.z + current_block_idx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2,"
+        "static_cast<int>(threadIdx.x + current_block_idx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2),"
+        "static_cast<int>(threadIdx.y + current_block_idx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2),"
+        "static_cast<int>(threadIdx.z + current_block_idx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2),"
         "};");
   printf("const int local_compdomain_idx = "
          "LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx);");
@@ -776,9 +841,9 @@ gen_profile_funcs(const int kernel)
   {
     if(kernel_has_block_loops(kernel))
     	printf("[[maybe_unused]] const int3 profileReduceOutputVertexIdx= (int3){"
-    	       "threadIdx.x + blockIdx.x * blockDim.x,"
-    	       "threadIdx.y + blockIdx.y * blockDim.y,"
-    	       "threadIdx.z + blockIdx.z * blockDim.z,"
+    	       "static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x),"
+    	       "static_cast<int>(threadIdx.y + blockIdx.y * blockDim.y),"
+    	       "static_cast<int>(threadIdx.z + blockIdx.z * blockDim.z),"
     	       "};");    
     else
     	printf("[[maybe_unused]] const int3& profileReduceOutputVertexIdx = vertexIdx;");
@@ -788,6 +853,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_X,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x] += val;");
+	printf("};");
     }
     else
     {
@@ -811,6 +882,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_Y,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.y] += val;");
+	printf("};");
     }
     else
     {
@@ -846,6 +923,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_Z,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.z] += val;");
+	printf("};");
     }
     else
     {
@@ -883,6 +966,12 @@ gen_profile_funcs(const int kernel)
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y] += val;");
+	printf("};");
+    }
     else
     {
     	printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
@@ -908,6 +997,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_YX,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x] += val;");
+	printf("};");
     }
     else
     {
@@ -935,6 +1030,12 @@ gen_profile_funcs(const int kernel)
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z] += val;");
+	printf("};");
+    }
     else
     {
     	printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
@@ -961,6 +1062,12 @@ gen_profile_funcs(const int kernel)
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x] += val;");
+	printf("};");
+    }
     else
     {
     	printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
@@ -986,6 +1093,12 @@ gen_profile_funcs(const int kernel)
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z] += val;");
+	printf("};");
+    }
     else
     {
 	    printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal& val, const Profile& output)"
@@ -1002,6 +1115,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_ZY,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y] += val;");
+	printf("};");
     }
     else
     {
@@ -1069,6 +1188,10 @@ void
 gen_kernel_write_funcs(const int curr_kernel)
 {
 
+    printf("const auto AC_INTERNAL_write_vtxbuf_complex __attribute__((unused)) = [&](const ComplexField& handle, const int& x, const int& y, const int& z, const AcComplex& value){");
+    printf("vba.complex_in[handle][DEVICE_VTXBUF_IDX(x,y,z)] = value;");
+    printf("};");
+
     printf("const auto AC_INTERNAL_read_vtxbuf __attribute__((unused)) = [&](const Field& handle, const int& x, const int& y, const int& z) {");
     printf("switch (handle) {");
     if(written_fields_disjoint_from_read(curr_kernel))
@@ -1091,6 +1214,11 @@ gen_kernel_write_funcs(const int curr_kernel)
     }
     printf("}");
     printf("};");
+
+    printf("[[maybe_unused]] const auto AC_INTERNAL_read_vtxbuf_complex __attribute__((unused)) = [&](const ComplexField& handle, const int& x, const int& y, const int& z) {");
+    printf("return vba.complex_in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))];");
+    printf("};");
+
 
     printf("[[maybe_unused]] const auto AC_INTERNAL_read_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z) {");
     printf("return (AcReal3){");
@@ -1224,7 +1352,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 		{
   	      		const int field = get_original_index(field_remappings,original_field);
 			printf("case %s: {",field_names[field]);
-			if(is_x_raytrace_kernel(curr_kernel))
+			if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
 			{
 				printf("shared_mem_for_rays[(threadIdx.y) + shared_mem_z_stride*(threadIdx.z) + f%s_ray_index + shared_mem_x_stride + shared_mem_x_offset] = value;",field_names[original_field]);
 			}
@@ -1285,6 +1413,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("AC_INTERNAL_write_vtxbuf(handle.y,x,y,z,value.y);");
 	printf("AC_INTERNAL_write_vtxbuf(handle.z,x,y,z,value.z);");
     	printf("};");
+
 
     	printf("const auto AC_INTERNAL_write_vtxbuf4 __attribute__((unused)) = [&](const Field4& handle, const int& x, const int& y, const int& z, const AcReal4& value){");
 	printf("AC_INTERNAL_write_vtxbuf(handle.x,x,y,z,value.x);");
@@ -1508,6 +1637,7 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
 void
 populate_shared_mem_for_rays(const int curr_kernel)
 {
+	if(AC_CPU_BUILD) return;
 	if(is_x_raytrace_kernel(curr_kernel))
 	{
 		populate_shared_mem_for_x_rays(curr_kernel);
@@ -1521,7 +1651,7 @@ populate_shared_mem_for_rays(const int curr_kernel)
 void
 gen_kernel_prefix(const int curr_kernel)
 {
-  gen_raytracing_prefix(curr_kernel);
+  if(!AC_CPU_BUILD) gen_raytracing_prefix(curr_kernel);
   gen_kernel_block_loops(curr_kernel);
   gen_kernel_common_prefix();
   gen_profile_funcs(curr_kernel);
@@ -1626,6 +1756,16 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 void
 print_output_reduce_res(const char* define_name, const ReduceOp op, const int curr_kernel)
 {
+	if(AC_CPU_BUILD)
+	{
+		if(op == REDUCE_SUM)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][0] += val;",define_name);
+		if(op == REDUCE_MIN)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][0] = min(val,d_symbol_reduce_scratchpads_%s[(int)output][0]);",define_name,define_name);
+		if(op == REDUCE_MAX)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][0] = max(val,d_symbol_reduce_scratchpads_%s[(int)output][0]);",define_name,define_name);
+		return;
+	}
 	if(kernel_has_block_loops(curr_kernel))
 	{
 		printf("if(lane_id == warp_leader_id) {");
@@ -1666,7 +1806,7 @@ print_reduce_func(const char* datatype, const char* define_name, const char* enu
 		return;
 	}
         printf("[[maybe_unused]] const auto reduce_%s_%s __attribute__((unused)) = [&](%s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
-	if(kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS)
+	if((kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS) && !AC_CPU_BUILD)
 	{
 		printf("switch(output) {");
 		for(size_t i = 0; i < n_elems; ++i)
@@ -1687,7 +1827,7 @@ print_reduce_func(const char* datatype, const char* define_name, const char* enu
 	}
 	else
 	{
-		print_reduce_ops(op, define_name);
+		if(!AC_CPU_BUILD) print_reduce_ops(op, define_name);
 		print_output_reduce_res(define_name,op,curr_kernel);
 	}
 	printf("};");
@@ -1705,7 +1845,7 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 {
   if(kernel_calls_reduce[curr_kernel] )
   {
-    if(!kernel_has_block_loops(curr_kernel))
+    if(!kernel_has_block_loops(curr_kernel) && !AC_CPU_BUILD)
     {
 	if(!BUFFERED_REDUCTIONS)
 	{
@@ -1742,7 +1882,9 @@ gen_return_if_oob(const int curr_kernel)
 			       "&& vertexIdx.y >= VAL(AC_nmin).y && vertexIdx.y < VAL(AC_nlocal_max).y\n"
 			       "&& vertexIdx.z >= VAL(AC_nmin).z && vertexIdx.z < VAL(AC_nlocal_max).z;\n"
 		     );
-	       printf("if(inside_computational_domain) return;");
+	       printf("if(inside_computational_domain) %s;",
+			       AC_CPU_BUILD ? "continue" : "return"
+			       );
        }
        if(is_raytracing_kernel(curr_kernel))
        {
@@ -1764,7 +1906,7 @@ gen_return_if_oob(const int curr_kernel)
        {
        		printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        }
-       if(kernel_calls_reduce[curr_kernel] )
+       if(kernel_calls_reduce[curr_kernel] && !AC_CPU_BUILD)
        {
 		const char* type = kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS ? "" : "[[maybe_unused]] const auto";
 #if AC_USE_HIP
@@ -2235,11 +2377,11 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
 		fprintf(stderr,"Cannot not use stencils together with raytracing!!\n");
 	}
    }
-   if(is_x_raytrace_kernel(curr_kernel))
+   if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
    {
 	printf("shared_mem_for_rays[threadIdx.y + shared_mem_z_stride*(threadIdx.z) + f%s_ray_index + shared_mem_x_offset + shared_mem_x_stride]",field_names[original_field]);
    }
-   else if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)
+   else if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS && !AC_CPU_BUILD)
    {
 	printf("shared_mem_for_rays[threadIdx.x + blockDim.x*(threadIdx.y) + f%s_ray_index + shared_mem_z_offset + shared_mem_z_stride]",field_names[original_field]);
    }
@@ -2373,18 +2515,18 @@ gen_kernel_body(const int curr_kernel)
           }
         }
       }
-      if(is_x_raytrace_kernel(curr_kernel))
+      if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
       {
       	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
       	{
       	  const int original_field = get_original_index(field_remappings,field);
       	  for(int ray = 0; ray < NUM_RAYS; ++ray)
       	  {
-      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(incoming_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_incoming_r%s = shared_mem_for_rays[(threadIdx.y-(%d)) + shared_mem_z_stride*(threadIdx.z-(%d)) + f%s_ray_index + shared_mem_x_offset];", field_names[original_field], ray_names[ray],ray_directions[ray].y, ray_directions[ray].z,field_names[original_field]);
       	  	}
-      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(outgoing_ray_value_accessed[curr_kernel][field][ray])
       	  	{
 
       	  	   printf("const auto f%s_outgoing_r%s = shared_mem_for_rays[(threadIdx.y+(%d)) + blockDim.y*(threadIdx.z+(%d)) + f%s_ray_index + shared_mem_x_offset + 2*shared_mem_x_stride];", field_names[original_field], ray_names[ray],ray_directions[ray].y, ray_directions[ray].z,field_names[original_field]);
@@ -2399,11 +2541,11 @@ gen_kernel_body(const int curr_kernel)
       	  const int original_field = get_original_index(field_remappings,field);
       	  for(int ray = 0; ray < NUM_RAYS; ++ray)
       	  {
-      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(incoming_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_incoming_r%s = shared_mem_for_rays[(threadIdx.x-(%d)) + blockDim.x*(threadIdx.y-(%d)) + f%s_ray_index + shared_mem_z_offset];", field_names[original_field], ray_names[ray],ray_directions[ray].x, ray_directions[ray].y,field_names[original_field]);
       	  	}
-      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(outgoing_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_outgoing_r%s = shared_mem_for_rays[(threadIdx.x+(%d)) + blockDim.x*(threadIdx.y+(%d)) + f%s_ray_index + shared_mem_z_offset + 2*shared_mem_z_stride];", field_names[original_field], ray_names[ray],ray_directions[ray].x, ray_directions[ray].y,field_names[original_field]);
       	  	}
@@ -2417,7 +2559,7 @@ gen_kernel_body(const int curr_kernel)
       	  const int original_field = get_original_index(field_remappings,field);
       	  for(int ray = 0; ray < NUM_RAYS; ++ray)
       	  {
-      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(incoming_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_incoming_r%s = ", field_names[original_field], ray_names[ray]);
       	  	   printf("(");
@@ -2434,7 +2576,7 @@ gen_kernel_body(const int curr_kernel)
       	  	   printf(")");
       	  	   printf(";");
       	  	}
-      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(outgoing_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_outgoing_r%s = ", field_names[original_field], ray_names[ray]);
       	  	   printf("(");

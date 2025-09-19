@@ -349,7 +349,13 @@ ac_compute_z(AcMeshInfo& config, const AcRealArrayParam param, const std::functi
 AcResult
 ac_compute_inv_sin_theta(AcMeshInfo* dst)
 {
-	return ac_compute_y(*dst,AC_inv_sin_theta,ac_map_inv_sin_theta);
+	ac_compute_y(*dst,AC_inv_sin_theta,ac_map_inv_sin_theta);
+	auto& config = *dst;
+	if(config[AC_left_extended_halo].y + config[AC_right_extended_halo].y == 0)
+	{
+		config.real_arrays[AC_inv_sin_theta_extended] = config[AC_inv_sin_theta];
+	}
+	return AC_SUCCESS;
 }
 
 AcResult
@@ -391,7 +397,13 @@ ac_compute_cos_phi(AcMeshInfo* dst)
 AcResult
 ac_compute_cot_theta(AcMeshInfo* dst)
 {
-	return ac_compute_y(*dst,AC_cot_theta,ac_map_cot_theta);
+	ac_compute_y(*dst,AC_cot_theta,ac_map_cot_theta);
+	auto& config = *dst;
+	if(config[AC_left_extended_halo].y + config[AC_right_extended_halo].y == 0)
+	{
+		config.real_arrays[AC_cot_theta_extended] = config[AC_cot_theta];
+	}
+	return AC_SUCCESS;
 }
 
 AcReal3
@@ -405,67 +417,145 @@ ac_get_power_mapping(const AcReal xi_scaled,const AcReal exponent)
 	};
 }
 
-AcResult
-ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
+typedef struct
 {
-	  AcMeshInfo& config = *dst;
-          const AcReal last_x = ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x;
-          const AcReal first_x = ac_grid_position((int3){0,0,0},config).x;
-	  const AcReal a = (pow(last_x,exponent)-pow(first_x,exponent))/config[AC_ngrid].x;
-	  const AcReal b = 0.5*(config[AC_ngrid].x - (pow(last_x,exponent)+pow(first_x,exponent))/a);
+	std::vector<AcReal> value;
+	std::vector<AcReal> prim;
+	std::vector<AcReal> prim2;
+} AcGridMappingFunction;
 
-	  std::vector<int> xi{};
-          for(int x = 0; x < config[AC_mlocal].x; ++x)
-	  {
-		  xi.push_back(x-NGHOST);
-	  }
-	  std::vector<AcReal> g{};
-	  std::vector<AcReal> gder1{};
-	  std::vector<AcReal> gder2{};
-          for(int x = 0; x < config[AC_mlocal].x; ++x)
-	  {
-		  const AcReal3 g_res = ac_get_power_mapping(a*(xi[x]-b),exponent);
-		  g.push_back(g_res.x);
-		  gder1.push_back(g_res.y);
-		  gder2.push_back(g_res.z);
+AcGridMappingFunction
+ac_compute_power_law_mapping_x( 
+				const AcReal exponent,
+				const AcReal first_x,
+				const AcReal last_x,
+				const int ngrid,
+				const int n_points,
+				const int left_extension,
+				const int right_extension
+			      )
+{
+	  const AcReal a = (pow(last_x,exponent)-pow(first_x,exponent))/ngrid;
+	  const AcReal b = 0.5*(ngrid - (pow(last_x,exponent)+pow(first_x,exponent))/a);
 
-	  }
 	  const AcReal g1lo = ac_get_power_mapping(a*(0-b),exponent).x;
-	  const AcReal g1up = ac_get_power_mapping(a*(config[AC_ngrid].x-b),exponent).x;
+	  const AcReal g1up = ac_get_power_mapping(a*(ngrid-b),exponent).x;
 
 	  std::vector<AcReal> x_arr{};
 	  std::vector<AcReal> x_prim{};
 	  std::vector<AcReal> x_prim2{};
 	  //For visualizing the mapping function and its derivatives
 	  /**
-	  FILE* fp = fopen("x.dat","w");
+	  const char* name = left_extension != 0 ? "x_ext.dat" : "x.dat";
+	  FILE* fp = fopen(name,"w");
 	  fprintf(fp,"x,dx,dx2\n");
 	  **/
-          for(int x = 0; x < config[AC_mlocal].x; ++x)
+
+	  const AcReal len = last_x - first_x;
+          for(int x = -left_extension; x < n_points+right_extension; ++x)
 	  {
-		x_arr.push_back(config[AC_first_gridpoint].x + config[AC_len].x*(g[x]-g1lo)/(g1up-g1lo));
-		x_prim.push_back(config[AC_len].x*(gder1[x]*a)/(g1up-g1lo));
-		x_prim2.push_back(config[AC_len].x*(gder2[x]*a*a)/(g1up-g1lo));
-		/**
-		if(x >= NGHOST && x < config[AC_mlocal].x-NGHOST)
-		{
-			fprintf(fp,"%7e,%7e,%7e\n",x_arr[x],x_prim[x],x_prim2[x]);
-		}
-		**/
+		const int xi = x-NGHOST;
+		const AcReal3 g_res = ac_get_power_mapping(a*(xi-b),exponent);
+
+		const AcReal g     = g_res.x;
+		const AcReal gder1 = g_res.y;
+		const AcReal gder2 = g_res.z;
+		
+		const auto x_local       = first_x + len*(g-g1lo)/(g1up-g1lo);
+		const auto x_prim_local  = len*(gder1*a)/(g1up-g1lo);
+		const auto x_prim2_local = len*(gder2*a*a)/(g1up-g1lo);
+		x_arr.push_back(x_local);
+		x_prim.push_back(x_prim_local);
+		x_prim2.push_back(x_prim2_local);
+		//fprintf(fp,"%7e,%7e,%7e\n",x_local,x_prim_local,x_prim2_local);
 	  }
 	  //fclose(fp);
+	  return (AcGridMappingFunction)
+	  {
+		x_arr,x_prim,x_prim2
+	  };
+}
+
+
+AcResult
+ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
+{
+	  AcMeshInfo& config = *dst;
+	  const auto coordinate = ac_compute_power_law_mapping_x(
+			  exponent,
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  0,
+			  0
+			  );
+	  AcReal* inv_r = (AcReal*)malloc(sizeof(AcReal)*config[AC_nlocal].x);
+	  AcReal* r = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* inv_mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* mapping_tilde = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
           for(int x = 0; x < config[AC_mlocal].x; ++x)
 	  {
-		  inv_mapping_der[x] = 1.0/x_prim[x];
-		  mapping_der[x] =     x_prim[x];
-		  mapping_tilde[x] =   -x_prim2[x]/(x_prim[x]*x_prim[x]);
+		r[x] = coordinate.value[x];
+		if(NGHOST <= x && x < config[AC_nlocal].x + NGHOST)
+		{
+			if(r[x] == 0.0)
+				inv_r[x-NGHOST] = 0.0;
+			else
+				inv_r[x-NGHOST] = 1.0/r[x];
+		}
+	  }
+          for(int x = 0; x < config[AC_mlocal].x; ++x)
+	  {
+		  inv_mapping_der[x] = 1.0/coordinate.prim[x];
+		  mapping_der[x] =     coordinate.prim[x];
+		  mapping_tilde[x] =   -coordinate.prim2[x]/(coordinate.prim[x]*coordinate.prim[x]);
 	  }
 	  config[AC_inv_mapping_func_derivative_x] = inv_mapping_der;
 	  config[AC_mapping_func_derivative_x] = mapping_der;
 	  config[AC_mapping_func_tilde_x] = mapping_tilde;
+	  config[AC_r] = r;
+	  config[AC_inv_r] = inv_r;
+
+	  const auto extended_coordinate = ac_compute_power_law_mapping_x(
+			  exponent,
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  config[AC_left_extended_halo].x,
+			  config[AC_right_extended_halo].x
+			  );
+
+	  AcReal* inv_r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_nlocal].x);
+	  AcReal* r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* inv_mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* mapping_tilde_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+          for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
+	  {
+		r_ext[x] = extended_coordinate.value[x];
+		if(NGHOST <= x && x < config[AC_extended_nlocal].x + NGHOST)
+		{
+			if(r_ext[x] == 0.0)
+				inv_r_ext[x-NGHOST] = 0.0;
+			else
+				inv_r_ext[x-NGHOST] = 1.0/r_ext[x];
+		}
+	  }
+          for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
+	  {
+		  inv_mapping_der_ext[x] = 1.0/extended_coordinate.prim[x];
+		  mapping_der_ext[x] =     extended_coordinate.prim[x];
+		  mapping_tilde_ext[x] =   -extended_coordinate.prim2[x]/(extended_coordinate.prim[x]*extended_coordinate.prim[x]);
+	  }
+
+	  config[AC_inv_mapping_func_derivative_x_extended] = inv_mapping_der_ext;
+	  config[AC_mapping_func_derivative_x_extended] = mapping_der_ext;
+	  config[AC_mapping_func_tilde_x_extended] = mapping_tilde_ext;
+	  config[AC_r_extended] = r_ext;
+	  config[AC_inv_r_extended] = inv_r_ext;
 	  return AC_SUCCESS;
 }
 

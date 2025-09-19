@@ -6,6 +6,7 @@
 #include "ntuple.h"
 #include "pointer.h"
 #include "type_conversion.h"
+#include <tuple>
 
 namespace ac {
 

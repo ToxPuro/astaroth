@@ -25,13 +25,17 @@
  *
  */
 #pragma once
-#include "datatypes.h"
+#include <stddef.h>
+#include "host_datatypes.h"
 #include <stdbool.h>
 #include <stdint.h> // SIZE_MAX
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include "device_headers.h"
+#ifdef __cplusplus
+#include "astaroth_cuda_wrappers.h"
+#endif
 
 /*
  * =============================================================================
@@ -146,9 +150,9 @@ cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 
 #define ERRCHK_CUDA_KERNEL()                                                   \
   {                                                                            \
-    ERRCHK_CUDA(cudaPeekAtLastError());                                        \
-    ERRCHK_CUDA(cudaDeviceSynchronize());                                      \
-    ERRCHK_CUDA(cudaPeekAtLastError());                                        \
+    ERRCHK_CUDA(acPeekAtLastError());                                        \
+    ERRCHK_CUDA(acDeviceSynchronize());                                      \
+    ERRCHK_CUDA(acPeekAtLastError());                                        \
   }
 #endif
 
@@ -159,8 +163,8 @@ cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 
 #define ERRCHK_CUDA_KERNEL_ALWAYS()                                            \
   {                                                                            \
-    ERRCHK_CUDA_ALWAYS(cudaPeekAtLastError());                                 \
-    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());                               \
+    ERRCHK_CUDA_ALWAYS(acPeekAtLastError());                                 \
+    ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());                               \
   }
 
 #define WARNCHK_CUDA_ALWAYS(params)                                            \

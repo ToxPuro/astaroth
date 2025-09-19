@@ -187,13 +187,7 @@ enum Characters
 > Note: Whenever possible one should prefer using enums compared e.g. named integers, since using enums gives the DSL compile more information which it can use to perform optimizations.
 
 ##### Built-in enums
-The following enums are built-in to Astaroth
-enum AC_COORDINATE_SYSTEM
-{
-	AC_CARTESIAN_COORDINATES,
-	AC_SPHERICAL_COORDINATES,
-	AC_CYLINDRICAL_COORDINATES
-}
+[See here](https://toxpuro.github.io/astaroth/typedefs_8h.html)
 ### Type qualifiers
 
 * `const` Effectively the same as C++ constexpr i.e. a compile-time constant.
@@ -231,8 +225,8 @@ Additionally the DSL compiler can infer which `Fields` can be `dead` if you also
 **Important** requires that all conditionals are known at compile-time (or when loading Astaroth if using runtime compilation).
 
 * `input`
-Designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
-> Note: At the moment, mostly useful for `ComputeSteps`
+Designed for variables that are input parameters to Kernels, but should not be allocated/loaded to the GPU. Or for control variables that should only live on the host. (Renaming the qualifier to `host` is under consideration.) 
+> Note: At the moment, can be used only via `ComputeSteps`. See the section describing `ComputeSteps` for example usage.
 * `output`
 At the moment, restricted to `real` and `int` scalar quantities resulting from reductions across the whole subdomain.
 > Note: implicitly allocates memory on the GPU to perform reductions.
@@ -386,15 +380,20 @@ Kernels are functions visible outside of the DSL code, called by the host.
 Calling kernels is the only way to execute DSL code.
 
 > Note: Kernels can not be called from other kernels.
-> Note: Array input parameters are not supported
+> Note: Array input parameters of known sizes are not supported
 > Note: The types of the input parameters have to be declared.
 > Note: There are different ways to pass input parameters to kernels through API functions.
 
 ```
-Kernel func3(input param) {
+Kernel func3(type param) {
+
+}
+
+Kernel func4(type[] ptr) {
 
 }
 ```
+> Note: In the example of func4 the input param `ptr` is functionally a pointer to GPU allocated memory. The correctness of the pointer is not checked by Astaroth and is responsibility of the user.
 
 ### Stencils
 Stencils are functions that take in a `Field` input parameter and have an unique syntax and semantics. 
@@ -528,67 +527,9 @@ real AC_REAL_MAX // Either DBL_MAX or FLT_MAX base on precision of `real`
 real AC_REAL_MIN // Either DBL_MIN or FLT_MIN base on precision of `real`
 real AC_REAL_EPSILON // Either DBL_EPSILON or FLT_EPSILON base on precision of `real`
 ```
-### Built-in dconsts
+### Built-in variables
 
-```
-uniform spacings of the grid:
-real3 AC_ds
-and their inverses:
-real3 AC_inv_ds
-and powers of these:
-real3 AC_ds_2
-real3 AC_ds_3
-real3 AC_ds_4
-real3 AC_ds_5
-real3 AC_ds_6
-
-real3 AC_inv_ds_2
-real3 AC_inv_ds_3
-real3 AC_inv_ds_4
-real3 AC_inv_ds_5
-real3 AC_inv_ds_6
-
-The smallest of the three spacings and its powers
-real AC_dsmin
-real AC_dsmin_2
-
-Subdomain size (not incl. halos)
-int3 AC_nlocal
-Subdomain size (incl. halos)
-int3 AC_mlocal
-Domain size (not incl. halos)
-int3 AC_ngrid
-Domain size (incl. halos)
-int3 AC_mgrid
-Products of the domain sizes (xy, xz, yz, xyz)
-AcDimProducts AC_nlocal_products
-AcDimProducts AC_mlocal_products
-AcDimProducts AC_ngrid_products
-AcDimProducts AC_mgrid_products
-First point in the computational subdomain/domain (also the ghost zone sizes)
-int3 AC_nmin
-Last point in the computational subdomain
-int3 AC_nlocal_max
-Last point in the computational domain
-int3 AC_ngrid_max
-The coordinate system used (default cartesian)
-AC_COORDINATE_SYSTEM  AC_coordinate_system
-Multi-GPU parameters
-int3 AC_domain_decomposition //How the domain is decomposed to multiple GPUs
-int3 AC_domain_coordinates   //Local coordinate of the current device in the grid of GPUs
-int3 AC_multigpu_offset      //AC_domain_coordinates*int3(AC_nx,AC_ny_AC_nz)
-Library config parameters (explained in the library documentation)
-Not meaningful for DSL
-int AC_proc_mapping_strategy
-int AC_decompose_strategy
-int AC_MPI_comm_strategy
-int AC_MPI_comm_strategy
-bool AC_host_has_row_memory_order
-Coordinate vectors of a Lagrangian grid (need LAGRANGIAN_GRID=ON)
-Field COORDS_X
-Field COORDS_Y
-Field COORDS_Z
-```
+[See built-in variables here](https://toxpuro.github.io/astaroth/variables_8h.html)
 
 ## Advanced features
 If OPTIMIZE_FIELDS=ON, the DSL compiler will identify unused `Fields` and will not allocate them on the GPU.

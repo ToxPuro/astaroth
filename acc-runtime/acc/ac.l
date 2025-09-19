@@ -12,6 +12,7 @@ S [\s]
 #include <ctype.h>
 #include <stdbool.h>
 struct hashmap_s string_intern_hashmap;
+const char* binary_op_val = NULL;
 #include <hash.h>
 #include "vecs.h"
 %}
@@ -128,11 +129,15 @@ void strip_whitespace(char *str) {
 
 struct[[:space:]]{L}({L}|{D})* {
 					char* name = strdup(yytext);
-					remove_substring(name,"struct");
-					remove_substring(name,"typedef");
+					//skip struct
+					name += 6;
 					strip_whitespace(name);
-					push(&struct_names, intern(name));
-					push(&struct_datatype_names,intern(name));
+					if(!str_vec_contains(struct_names,intern(name)))
+					{
+						push(&struct_names, intern(name));
+						push(&struct_datatype_names,intern(name));
+					}
+					yytext = name;
 					return STRUCT_NAME;
 				}
 typedef[[:space:]]{L}({L}|{D})*[[:space:]]struct[[:space:]]{L}({L}|{D})* {
@@ -140,25 +145,37 @@ typedef[[:space:]]{L}({L}|{D})*[[:space:]]struct[[:space:]]{L}({L}|{D})* {
 					char* datatype_name = strtok(NULL," ");
 					strtok(NULL, " ");
 					const char* dsl_name = strtok(NULL, " ");
-					push(&struct_names,intern(dsl_name));
-					push(&struct_datatype_names,intern(datatype_name));
+					if(!str_vec_contains(struct_names,intern(dsl_name)))
+					{
+						push(&struct_names,intern(dsl_name));
+						push(&struct_datatype_names,intern(datatype_name));
+					}
 					yytext = datatype_name;
 					return STRUCT_NAME;
 				}
 enum[[:space:]]{L}({L}|{D})* {
 				char* name = strdup(yytext);
-				remove_substring(name,"enum");
-				remove_substring(name,"typedef");
+				//skip enum
+				name += 4;
 				strip_whitespace(name);
-				push(&enum_names, intern(name));
+				if(!str_vec_contains(enum_names,intern(name)))
+				{
+					push(&enum_names, intern(name));
+				}	
+				yytext = name;
 				return ENUM_NAME;
 			}
 typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 				char* name = strdup(yytext);
-				remove_substring(name,"enum");
+				//skip enum
+				name += 4;
 				remove_substring(name,"typedef");
 				strip_whitespace(name);
-				push(&enum_names, intern(name));
+				if(!str_vec_contains(enum_names,intern(name)))
+				{
+					push(&enum_names, intern(name));
+				}
+				yytext = name;
 				return ENUM_NAME;
 			}
 
@@ -194,9 +211,15 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
 [+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
 (<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
-[/*|%^]                   { return BINARY_OP; }      /* Operators */
-(&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
-(==)|(>=)|(<=)|(!=)|(^=)  { return BINARY_OP; }    /* Operators */
+(&&)		          { return AND; }
+(\|\|)			  { return OR; }
+(<<)		          { return SHIFT_LEFT; }
+(>>)		          { return SHIFT_RIGHT; }
+(==)		          { return EQ; }
+(>=)                        { return GEQ; }
+(<=)                        { return LEQ; }
+(!=)                        { return NEQ; }
+(%)                        { return MOD; }
 [-+*/:;=\[\]{}(),\.|&!<>]   { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*([eE][-+]?{D}+)   { return REALNUMBER; }

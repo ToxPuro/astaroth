@@ -121,14 +121,14 @@ write(Profile<ZY> dst, real src)
 	write_profile_zy(dst,src)
 }
 
-inline write(Field[] dst, real[] src)
+write(Field[] dst, real[] src)
 {
 	for i in 0:size(dst)
 	{
 		write(dst[i],src[i])
 	}
 }
-inline write(Field3[] dst, real3[] src)
+write(Field3[] dst, real3[] src)
 {
 	for i in 0:size(dst)
 	{
@@ -503,6 +503,12 @@ alog10(real a)
 {
 	return log10(a)
 }
+
+alog(real a)
+{
+	return log(a)
+}
+
 
 //inline any(b) {return b.x || b.y || b.z}
 //inline all(b) {return b.x && b.y && b.z}

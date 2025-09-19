@@ -101,15 +101,75 @@ operator*(const AcComplex& a, const AcComplex& b)
 static HOST_DEVICE_INLINE AcComplex
 operator/(const AcComplex& a, const AcComplex& b)
 {
-  const AcReal divisor = a.y*a.y + b.y*b.y;
+  const AcReal divisor = b.x*b.x + b.y*b.y;
   return (AcComplex){(a.x*b.x + a.y*b.y)/(divisor),(a.y*b.x - a.x*b.y)/(divisor)};
 }
+
+static HOST_DEVICE_INLINE AcComplex
+operator/(const AcReal& a, const AcComplex& b)
+{
+  const AcReal divisor = b.x*b.x + b.y*b.y;
+  return (AcComplex){(a*b.x)/(divisor),(-a*b.y)/(divisor)};
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator/(const AcComplex& a, const AcReal& b)
+{
+	return
+	(AcComplex)
+	{
+		a.x/b,
+		a.y/b
+	};
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator-(const AcReal& a, const AcComplex& b)
+{
+  return (AcComplex)
+  {
+	  a-b.x,
+	  -b.y
+  };
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator+(const AcReal& a, const AcComplex& b)
+{
+  return (AcComplex)
+  {
+	  b.x+a,
+	  b.y
+  };
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator-(const AcComplex& a, const AcReal& b)
+{
+  return (AcComplex)
+  {
+	  a.x-b,
+	  a.y
+  };
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator+(const AcComplex& a, const AcReal& b)
+{
+  return (AcComplex)
+  {
+	  a.x+b,
+	  a.y
+  };
+}
+
+
 static HOST_DEVICE_INLINE AcComplex
 sqrt(const AcComplex& a)
 {
 	const AcReal r = sqrt(a.x*a.x + a.y*a.y);
 	const AcReal y_sign = (a.y < AcReal(0.0)) ? AcReal(-1.0) : AcReal(1.0);
-  	return (AcComplex){sqrt(r + a.x)/2,y_sign * sqrt(r-a.x)/2};
+  	return (AcComplex){sqrt((r + a.x)*AcReal(0.5)),y_sign * sqrt((r-a.x)*AcReal(0.5))};
 }
 
 typedef struct uint3_64 {
@@ -140,12 +200,7 @@ sum(const T& a, const T& b)
   return a + b;
 }
 
-template <class T>
-static HOST_DEVICE_INLINE const T
-max(const T& a, const T& b)
-{
-  return a > b ? a : b;
-}
+#include "math_utils_base.h"
 
 
 template <class T>
@@ -156,12 +211,6 @@ max(const T& a, const T& b, const T& c)
 	return (tmp > c) ? tmp : c;
 }
 
-template <class T>
-static HOST_DEVICE_INLINE const T
-min(const T& a, const T& b)
-{
-  return a < b ? a : b;
-}
 
 template <class T>
 static HOST_DEVICE_INLINE const T
@@ -177,11 +226,6 @@ max(const int3& a, const int3& b)
   return (int3){max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)};
 }
 
-static inline const Volume
-max(const Volume& a, const Volume& b)
-{
-  return (Volume){max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)};
-}
 
 
 static inline const int3
@@ -190,11 +234,6 @@ min(const int3& a, const int3& b)
   return (int3){min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
 }
 
-static inline const Volume
-min(const Volume& a, const Volume& b)
-{
-  return (Volume){min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
-}
 
 template <class T>
 static inline const T
@@ -364,10 +403,23 @@ operator/(const uint3_64& a, const int3& b)
   return (uint3_64){a.x / as_size_t(b.x), a.y / as_size_t(b.y), a.z / as_size_t(b.z)};
 }
 
+
 static inline uint3_64
 operator/(const Volume& a, const uint3_64& b)
 {
   return (uint3_64){a.x / b.x, a.y / b.y, a.z / b.z};
+}
+
+static inline uint3_64
+operator+(const uint3_64& a, const Volume& b)
+{
+  return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static inline uint3_64
+operator+(const Volume& a, const uint3_64& b)
+{
+  return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
 static inline uint3_64
@@ -383,48 +435,6 @@ operator==(const uint3_64& a, const uint3_64& b)
 }
 
 
-/*
- * lume
- */
-template <class T>
-static Volume
-TO_VOLUME(const T a, const char* file, const int line)
-{
-  INDIRECT_ERRCHK_ALWAYS(a.x >= 0,file,line);
-  INDIRECT_ERRCHK_ALWAYS(a.y >= 0,file,line);
-  INDIRECT_ERRCHK_ALWAYS(a.z >= 0,file,line);
-  return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
-}
-static Volume UNUSED
-TO_VOLUME(const dim3 a, const char* , const int)
-{
-  return (Volume){a.x, a.y, a.z};
-}
-
-static Volume UNUSED
-TO_VOLUME(const size3_t a, const char* , const int)
-{
-  return (Volume){a.x, a.y, a.z};
-}
-template <typename T>
-static HOST_DEVICE_INLINE Volume 
-operator*(const Volume& a, const T& b)
-{
-  return (Volume){a.x / b, a.y / b, a.z / b};
-}
-
-#define to_volume(a) TO_VOLUME(a, __FILE__, __LINE__)
-
-static inline dim3
-to_dim3(const Volume v)
-{
-  return (dim3)
-  {
-	(unsigned int)v.x,
-	(unsigned int)v.y,
-	(unsigned int)v.z
-  };
-}
 
 static HOST_DEVICE_INLINE bool 
 operator==(const dim3& a, const dim3& b)
@@ -634,6 +644,26 @@ operator*(const AcReal& v, const AcMatrix& m)
 }
 
 static HOST_DEVICE_INLINE AcMatrix
+operator/(const AcMatrix& m, const AcReal& v)
+{
+  AcMatrix out;
+
+  out.data[0][0] = m.data[0][0] / v;
+  out.data[0][1] = m.data[0][1] / v;
+  out.data[0][2] = m.data[0][2] / v;
+
+  out.data[1][0] = m.data[1][0] / v;
+  out.data[1][1] = m.data[1][1] / v;
+  out.data[1][2] = m.data[1][2] / v;
+
+  out.data[2][0] = m.data[2][0] / v;
+  out.data[2][1] = m.data[2][1] / v;
+  out.data[2][2] = m.data[2][2] / v;
+
+  return out;
+}
+
+static HOST_DEVICE_INLINE AcMatrix
 operator+(const AcMatrix& a, const AcMatrix& b)
 {
   AcMatrix out;
@@ -681,6 +711,28 @@ operator*(AcReal3 v, const AcMatrix& m)
         AC_dot(m.col(1), v),
         AC_dot(m.col(2), v),
     };
+}
+
+
+static HOST_DEVICE_INLINE AcMatrix
+operator*(AcMatrix a, const AcMatrix& b)
+{
+  AcMatrix out;
+
+  out.data[0][0] = AC_dot(a.row(0),b.col(0));
+  out.data[0][1] = AC_dot(a.row(0),b.col(1));
+  out.data[0][2] = AC_dot(a.row(0),b.col(2));
+
+  out.data[1][0] = AC_dot(a.row(1),b.col(0));
+  out.data[1][1] = AC_dot(a.row(1),b.col(1));
+  out.data[1][2] = AC_dot(a.row(1),b.col(2));
+
+  out.data[2][0] = AC_dot(a.row(2),b.col(0));
+  out.data[2][1] = AC_dot(a.row(2),b.col(1));
+  out.data[2][2] = AC_dot(a.row(2),b.col(2));
+
+  return out;
+
 }
 
 /**
@@ -760,43 +812,6 @@ AC_dot(const AcArray<T,N>& a, const AcArray<T,N>& b)
 }
 **/
 static HOST_INLINE Volume
-operator-(const Volume& a, const Volume& b)
-{
-	int3 res = 
-	{
-		(int)a.x - (int)b.x,
-		(int)a.y - (int)b.y,
-		(int)a.z - (int)b.z
-	};
-
-	return to_volume(res);
-}
-static HOST_INLINE Volume
-operator*(const Volume& a, const int& b)
-{
-	ERRCHK_ALWAYS(b >= 0);
-	return
-	{
-		a.x*(size_t)b,
-		a.y*(size_t)b,
-		a.z*(size_t)b
-	};
-
-}
-
-static HOST_INLINE Volume
-operator*(const int& a, const Volume& b)
-{
-	ERRCHK_ALWAYS(a >= 0);
-	return
-	{
-		b.x*(size_t)a,
-		b.y*(size_t)a,
-		b.z*(size_t)a
-	};
-
-}
-static HOST_INLINE Volume
 operator*(const int3& a, const Volume& b)
 {
 	ERRCHK_ALWAYS(a.x >= 0);
@@ -870,7 +885,7 @@ operator-=(Volume& a, const Volume& b)
 	return a;
 }
 
-static HOST_INLINE bool
+static HOST_DEVICE_INLINE bool
 operator==(const Volume& a, const Volume& b)
 {
 	return 
@@ -1013,5 +1028,29 @@ AC_get_array_len(const Field (&arr)[N])
 	return N;
 }
 
+static HOST_INLINE int3
+to_int3(const uint3_64 a)
+{
+	return 
+	(int3)
+	{
+		(int)a.x,
+		(int)a.y,
+		(int)a.z
+	};
+}
+
 
 #include "generated_comp_funcs.h"
+
+static HOST_DEVICE_INLINE bool
+operator==(const AcMeshDims& a, const AcMeshDims& b)
+{
+	return
+		a.n0 == b.n0 &&
+		a.n1 == b.n1 &&
+		a.m0 == b.m0 &&
+		a.m1 == b.m1 &&
+		a.nn == b.nn &&
+		a.reduction_tile == b.reduction_tile;
+}

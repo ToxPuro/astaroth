@@ -69,6 +69,11 @@
 #define cudaFree hipFree
 #define cudaGetDevice hipGetDevice
 #define cudaDevAttrCooperativeLaunch hipDeviceAttributeCooperativeLaunch 
+#define cudaDevAttrClockRate hipDeviceAttributeClockRate
+#define cudaDevAttrMemoryClockRate hipDeviceAttributeMemoryClockRate
+#define cudaDevAttrSingleToDoublePrecisionPerfRatio hipDeviceAttributeSingleToDoublePrecisionPerfRatio 
+#define cudaDevAttrComputeMode hipDeviceAttributeComputeMode
+#define cudaDeviceAttr hipDeviceAttribute_t 
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount
 #define cudaLaunchCooperativeKernel hipLaunchCooperativeKernel
@@ -104,4 +109,6 @@
 #define curand_init hiprand_init
 #define curand_uniform hiprand_uniform
 #define curand_uniform_double hiprand_uniform_double
+#define cudaDriverGetVersion  hipDriverGetVersion
+#define cudaRuntimeGetVersion hipRuntimeGetVersion
 

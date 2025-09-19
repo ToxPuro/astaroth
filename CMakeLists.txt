@@ -54,6 +54,7 @@ option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF
 option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astaroth" OFF)
 option(PROFILING_ENABLED "Whether to enable profiling and link to the vendor profiling libraries" ON)
 option(FFT_ENABLED "Whether to enable FFT" OFF)
+option(CPU_BUILD "To build CPU-only build" OFF)
 
 ## Project-wide compilation flags
 # -Werror TODO read
@@ -86,6 +87,21 @@ else()
 	add_definitions(-DPROFILING_ENABLED=0)
 endif()
 
+#TP: If CPU_BUILD is explicitly asked for it takes presedence over env variable.
+#    The command line argument should anyways always takes presedence but the CMake code
+#    for it seems unnecessary ugly/verbose so implemented the more important case for now
+    
+if (NOT CPU_BUILD AND DEFINED ENV{AC_CPU_BUILD})
+	set(CPU_BUILD $ENV{AC_CPU_BUILD})
+	message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
+endif()
+
+if(CPU_BUILD)
+	add_definitions(-DAC_CPU_BUILD=1)
+else()
+	add_definitions(-DAC_CPU_BUILD=0)
+endif()
+
 if(NOT SUPPRESS_COMPILER_WARNINGS)
 add_compile_options(# C/CXX/CUDA/HIP
                     # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
@@ -102,10 +118,13 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 endif()
 
+
+set(USE_CUDA OFF)
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)
-if (NOT USE_HIP AND CUDAToolkit_FOUND)
+if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
+    set(USE_CUDA ON)
     message(STATUS "CUDA found")
     enable_language(CUDA)
     add_compile_options(-DDEVICE_ENABLED)
@@ -118,7 +137,7 @@ if (NOT USE_HIP AND CUDAToolkit_FOUND)
     	set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
     endif()
     message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
-elseif (USE_HIP OR HIP_FOUND)
+elseif (NOT CPU_BUILD AND (USE_HIP OR HIP_FOUND))
     set(USE_HIP ON)
     message(STATUS "HIP found")
     enable_language(HIP)
@@ -132,6 +151,7 @@ elseif (USE_HIP OR HIP_FOUND)
     	set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
     endif()
     message(STATUS "Enabled HIP architectures (Astaroth): " ${CMAKE_HIP_ARCHITECTURES})
+    set(HIP_BUILD ON)
 else()
     message(ERROR "Did not find CUDA or HIP")
 endif()
@@ -155,6 +175,16 @@ if (MPI_ENABLED)
 else()
     add_definitions(-DAC_MPI_ENABLED=0)
 endif ()
+
+function(ac_link_mpi target)
+  if(CMAKE_CXX_COMPILER MATCHES "mpic\\+\\+$")
+  elseif (MPI_ENABLED)
+      set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
+      find_package(MPI REQUIRED COMPONENTS C)
+      target_link_libraries(${target} PUBLIC MPI::MPI_C)
+  endif()
+endfunction()
+
 if (FFT_ENABLED)
 	add_definitions(-DAC_FFT_ENABLED=1)
 else()
@@ -196,9 +226,11 @@ if (INCLUDE_3RD_PARTIES)
 endif()
 
 # Astaroth modules
+add_subdirectory(src/core/helpers)
+add_subdirectory(src/core/decomposition)
+add_subdirectory(src/core/update_params)
 add_subdirectory(src/core/cuda_wrappers)
 add_subdirectory(acc-runtime)
-add_subdirectory(src/core/helpers)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
 
@@ -219,9 +251,6 @@ endif()
 
 ## Have this as a separate option when no other "samples" aree needed.
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
-if(FFT_ENABLED AND NOT USE_HIP)
-	add_subdirectory(test/fft-shift-test)
-endif()
 if (BUILD_STANDALONE AND NOT BUILD_TESTS)
     add_subdirectory(samples/standalone_mpi)
 endif()
@@ -241,7 +270,9 @@ if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     add_subdirectory(samples/mpi-io)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
-    add_subdirectory(samples/microbenchmark)
+    if (NOT CPU_BUILD)
+    	add_subdirectory(samples/microbenchmark)
+    endif()
     #add_subdirectory(samples/stress)
 
     
@@ -284,6 +315,9 @@ if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
 endif()
 
 if (MPI_ENABLED AND BUILD_ACM)
+    if (CPU_BUILD)
+      set(HOST_ONLY_MODE ON)
+    endif()
     add_subdirectory(acc-comm)
 endif()
 

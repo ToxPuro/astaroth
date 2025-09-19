@@ -145,7 +145,7 @@ main(int argc, char* argv[])
     ac_MPI_Finalize();
     fflush(stdout);
 
-    return EXIT_SUCCESS;
+    return !success;
 }
 
 #else

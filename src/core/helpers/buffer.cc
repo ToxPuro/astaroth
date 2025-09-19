@@ -1,6 +1,10 @@
-#include "acc_runtime.h"
+#include "host_datatypes.h"
+#include "transpose.h"
+#include "reindex.h"
 #include "ac_helpers.h"
-#include "ac_buffer.h"
+#include "astaroth_cuda_wrappers.h"
+#include "errchk.h"
+
 AcShape
 acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims)
 {
@@ -25,16 +29,16 @@ acGetReductionShape(const AcProfileType type, const AcMeshDims dims)
 	{
 		return
 		{
-			order_size.x - 2*NGHOST,
-			order_size.y - 2*NGHOST,
-			order_size.z - (type != PROFILE_Z)*2*NGHOST,
+			order_size.x - 2*dims.n0.x,
+			order_size.y - 2*dims.n0.y,
+			order_size.z - (type != PROFILE_Z)*2*dims.n0.z,
 			order_size.w
 		};
 	}
 	else if(type & TWO_DIMENSIONAL_PROFILE)
 		return
 		{
-			order_size.x - 2*NGHOST,
+			order_size.x - 2*dims.n0.x,
 			order_size.y,
 			order_size.z,
 			order_size.w
@@ -48,7 +52,7 @@ acBufferCreate(const AcShape shape, const bool on_device)
     AcBuffer buffer    = {.data = NULL, .count = acShapeSize(shape), .on_device = on_device, .shape = shape};
     const size_t bytes = sizeof(buffer.data[0]) * buffer.count;
     if (buffer.on_device) {
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));
+        ERRCHK_CUDA_ALWAYS(acMalloc((void**)&buffer.data, bytes));
     }
     else {
         buffer.data = (AcReal*)malloc(bytes);
@@ -62,7 +66,7 @@ acBufferDestroy(AcBuffer* buffer)
 {
     if (buffer->on_device)
     {
-        ERRCHK_CUDA_ALWAYS(cudaFree(buffer->data));
+        ERRCHK_CUDA_ALWAYS(acFree(buffer->data));
     }
     else
         free(buffer->data);
@@ -88,7 +92,7 @@ acBufferMigrate(const AcBuffer in, AcBuffer* out)
     }
 
     ERRCHK_ALWAYS(in.count == out->count);
-    ERRCHK_CUDA_ALWAYS(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
+    ERRCHK_CUDA_ALWAYS(acMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
     return AC_SUCCESS;
 }
 
@@ -134,6 +138,7 @@ acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaS
     	acReindex(stream,buffer_in.data, in_offset, in_shape, dst.data, out_offset , dst.shape, block_shape);
 	return dst;
 }
+
 AcBuffer
 acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order)
 {

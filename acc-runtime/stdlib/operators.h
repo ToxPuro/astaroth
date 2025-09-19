@@ -16,7 +16,7 @@ gradient_tensor(Field3 v) {
 }
 
 elemental gradient_upwd(Field s) {
-    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
+    return real3(derx_upwd(s), dery_upwd(s), derz_upwd(s))
 }
 
 
@@ -37,11 +37,6 @@ elemental gradient4(Field s) {
 
 elemental gradient5(Field s) {
     return real3(der5x(s), der5y(s), der5z(s))
-}
-
-
-elemental gradient6_upwd(s) {
-    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
 }
 
 
@@ -99,13 +94,13 @@ elemental ugrad_upw(Field3 field, real3 velo){
 		      dot(velo,gradient(field.z)) - dot(abs(velo),gradient_upwd(field.z)))
 }
 
-del6_upwd(real3 velo,Field field)
+del_upwd(real3 velo,Field field)
 {
 
         return dot(abs(velo),gradient_upwd(field))
 }
 
-del6_upwd(real3 velo, Field3 field) {
+del_upwd(real3 velo, Field3 field) {
         return real3( dot(abs(velo),gradient_upwd(field.x)),
                       dot(abs(velo),gradient_upwd(field.y)),
                       dot(abs(velo),gradient_upwd(field.z)))

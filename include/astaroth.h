@@ -199,6 +199,7 @@ FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
 
 
 FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
+FUNC_DEFINE(KernelAnalysisInfo, acAnalysisGetKernelInfoSingle,(const AcMeshInfo info, const AcKernel kernel));
 FUNC_DEFINE(AcResult, acAnalysisCheckForDSLErrors,(const AcMeshInfo info));
 	
 
@@ -475,7 +476,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	sprintf(original_runtime_astaroth_path,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 	kernelsLibHandle=acLoadRunTime(stream,info);
 	static int counter = 0;
-	const char* runtime_astaroth_path = acLibraryVersion(original_runtime_astaroth_path,counter,info);
+	const char* runtime_astaroth_path = acLibraryVersion(original_runtime_astaroth_path,counter,info.comm);
 	++counter;
  	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW | RTLD_LOCAL);
 	if (!handle)
@@ -536,7 +537,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	*(void**)(&BASE_FUNC_NAME(acComputeWithParams)) = dlsym(handle,"acComputeWithParams");
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
 	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
-	*(void**)(&BASE_FUNC_NAME(acReduceInRayDirection)) = dlsym(handle,"acReduceInRayDirection");
+	*(void**)(&BASE_FUNC_NAME(acScan)) = dlsym(handle,"acScan");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraph)) = dlsym(handle,"acGridBuildTaskGraph");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)) = dlsym(handle,"acGridBuildTaskGraphWithBounds");
 	LOAD_DSYM(acGridDestroyTaskGraph,stream);
@@ -545,6 +546,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	*(void**)(&BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)) = dlsym(handle,"acGetOptimizedDSLTaskGraph");
 	LOAD_DSYM(acGetDSLTaskGraphWithBounds,stream);
 	LOAD_DSYM(acGetOptimizedDSLTaskGraphWithBounds,stream);
+	LOAD_DSYM(acGetComputeStepsBCs,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousCollective,stream);
 	LOAD_DSYM(acGridGetDefaultTaskGraph,stream);
@@ -727,14 +729,6 @@ AcResult acHostInitProfileToValue(const long double value, const size_t profile_
 AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
                                   const size_t profile_count);
 
-/*
- * =============================================================================
- * AcBuffer
- * =============================================================================
- */
-
-#include "ac_buffer.h"
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -752,11 +746,19 @@ acHostCreateVertexBuffer(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
 	return acHostCreateVertexBufferVariable(info,vtxbuf);
 }
+
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
    #include "user_builtin_non_scalar_constants.h"
-   const Volume n0 = acGetMinNN(info);
+   const int3 halos = acGetFieldHalos(info,vtxbuf);
+   const Volume n0 = 
+          (Volume)
+          {
+                  as_size_t(halos.x),
+                  as_size_t(halos.y),
+                  as_size_t(halos.z)
+          };
    const Volume m1 = 
 	   (Volume){
 		as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].x),
@@ -859,21 +861,17 @@ acDeviceFinishReduce(Device device, const cudaStream_t stream, float* result,con
 }
 #endif
 
-#if AC_RUNTIME_COMPILATION
-
+static UNUSED AcBuffer
+acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
+{
+	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
+}
 
 #if AC_MPI_ENABLED
-
-static UNUSED AcTaskGraph* 
-acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
-{
-	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
-}
-#endif
 static UNUSED AcTaskGraph*
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
-	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false);
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false,acGetComputeStepsBCs(graph));
 }
 
 static UNUSED AcTaskGraph* 
@@ -882,21 +880,40 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_impos
 	return acGetOptimizedDSLTaskGraphWithBounds(graph,
 			acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice())),
 			acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice())),
-			globally_imposed_bcs);
+			globally_imposed_bcs,
+			acGetComputeStepsBCs(graph)
+			);
 }
 
+static UNUSED AcTaskGraph* 
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs, const AcDSLTaskGraph bc_graph)
+{
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,
+			acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice())),
+			acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice())),
+			globally_imposed_bcs,
+			bc_graph
+			);
+}
+#endif
+
+#if AC_RUNTIME_COMPILATION
+#if AC_MPI_ENABLED
+static UNUSED AcTaskGraph* 
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+{
+	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
+}
+#endif
+#endif
+
+#if AC_MPI_ENABLED
 static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {
 	return acGridInitBase(mesh);
 }
-static UNUSED AcBuffer
-acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
-{
-	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
-}
 #endif
-
 
 
 #define OVERLOAD_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
@@ -1077,13 +1094,13 @@ static inline acHaloExchange(std::vector<Field> fields, std::vector<facet_class_
 {
     const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
-static inline acReduceInRayDirection(std::vector<Field> fields, const int3 ray_direction)
+static inline acScan(std::vector<Field> fields, const int3 ray_direction)
 {
-    return BASE_FUNC_NAME(acReduceInRayDirection)(fields.data(), fields.size(),ray_direction);
+    return BASE_FUNC_NAME(acScan)(fields.data(), fields.size(),ray_direction);
 }
 
 AcTaskDefinition
@@ -1092,7 +1109,7 @@ static inline acHaloExchange(std::vector<Field> fields, const Volume start, cons
 
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1100,7 +1117,7 @@ static inline acHaloExchange(std::vector<Field> fields, const Volume start, cons
 {
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1110,7 +1127,7 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1120,7 +1137,7 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1128,13 +1145,19 @@ static inline acHaloExchange(std::vector<Field> fields, const Volume start, cons
 {
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
 static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const std::vector<facet_class_range> halo_types)
 {
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const std::vector<facet_class_range> halo_types, const Volume halo_size)
+{
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data(),halo_size);
 }
 
 AcTaskDefinition
@@ -1144,7 +1167,7 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1154,7 +1177,7 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,include_boundaries,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,include_boundaries,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 static inline

@@ -44,9 +44,8 @@ AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 
 #include "internal_device_funcs.h"
 #include "ac_helpers.h"
-#include "astaroth_utils.h"
+#include "astaroth_analysis_helpers.h"
 #include "grid_detail.h"
-#include "analysis_grid_helpers.h"
 
 #include <cassert>
 #include <memory>
@@ -55,9 +54,7 @@ AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 #include <vector>
 #include <cstring>
 
-#include "decomposition.h" //getPid and friends
 #include "errchk.h"
-#include "kernels/kernels.h" //AcRealPacked, ComputeKernel
 
 static int
 ac_pid()
@@ -121,18 +118,23 @@ get_max_halo_size(const Field fields[], const size_t num_fields)
     const auto info = ac_get_info();
     for(size_t field = 0; field < num_fields; ++field)
     {
-	max_halo_size.x = max(max_halo_size.x,as_size_t(info[vtxbuf_halos[fields[field]]].x));
-	max_halo_size.y = max(max_halo_size.y,as_size_t(info[vtxbuf_halos[fields[field]]].y));
-	max_halo_size.z = max(max_halo_size.z,as_size_t(info[vtxbuf_halos[fields[field]]].z));
+	const int3 halos = acGetFieldHalos(info,fields[field]);
+	max_halo_size.x = max(max_halo_size.x,as_size_t(halos.x));
+	max_halo_size.y = max(max_halo_size.y,as_size_t(halos.y));
+	max_halo_size.z = max(max_halo_size.z,as_size_t(halos.z));
     }
-    if((max_halo_size.x == 0 && !info[AC_dimension_inactive].x) || (max_halo_size.y == 0 && !info[AC_dimension_inactive].y) || (max_halo_size.z == 0 && !info[AC_dimension_inactive].z))
+    if(STENCIL_ORDER != 0 && 
+	(
+		(max_halo_size.x == 0 && !info[AC_dimension_inactive].x) || (max_halo_size.y == 0 && !info[AC_dimension_inactive].y) || (max_halo_size.z == 0 && !info[AC_dimension_inactive].z)
+	)
+      )
     {
 	fprintf(stderr,"In fields: ");
     	for(size_t field = 0; field < num_fields; ++field) fprintf(stderr,"%s,",field_names[fields[field]]);
 	fprintf(stderr,"Halo size: %ld,%ld,%ld\n",max_halo_size.x,max_halo_size.y,max_halo_size.z);
-    	ERRCHK_ALWAYS(max_halo_size.x > 0);
-    	ERRCHK_ALWAYS(max_halo_size.y > 0);
-    	ERRCHK_ALWAYS(max_halo_size.z > 0);
+    	ERRCHK_ALWAYS(STENCIL_ORDER == 0 || max_halo_size.x > 0);
+    	ERRCHK_ALWAYS(STENCIL_ORDER == 0 || max_halo_size.y > 0);
+    	ERRCHK_ALWAYS(STENCIL_ORDER == 0 || max_halo_size.z > 0);
     }
     return max_halo_size;
 }
@@ -242,16 +244,16 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 
 
 AcTaskDefinition
-acReduceInRayDirection(Field fields[], const size_t num_fields, const int3 ray_direction)
+acScan(Field fields[], const size_t num_fields, const int3 direction)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type      = TASKTYPE_RAY_REDUCE;
+    task_def.task_type      = TASKTYPE_SCAN;
     task_def.fields_in      = ptr_copy(fields,num_fields);
     task_def.num_fields_in  = num_fields;
     task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
     task_def.halo_sizes = get_max_halo_size(fields,num_fields);
-    task_def.ray_direction = ray_direction;
+    task_def.ray_direction = direction;
     task_def.sending   = true;
     task_def.receiving = true;
     return task_def;
@@ -281,7 +283,7 @@ acHaloExchange(Field fields[], const size_t num_fields)
 }
 
 AcTaskDefinition
-acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries, const facet_class_range halo_types[])
+acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries, const facet_class_range halo_types[], const Volume halo_size)
 {
     AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
     task_def.halo_types = ptr_copy(halo_types,num_fields);
@@ -292,6 +294,9 @@ acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume s
     task_def.receiving     = receiving;
     task_def.boundary      = boundary;
     task_def.include_boundaries = include_boundaries;
+    task_def.halo_sizes.x = min(task_def.halo_sizes.x,halo_size.x);
+    task_def.halo_sizes.y = min(task_def.halo_sizes.y,halo_size.y);
+    task_def.halo_sizes.z = min(task_def.halo_sizes.z,halo_size.z);
     task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
 
     return task_def;
@@ -561,6 +566,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
     switch (family) {
     	case RegionFamily::Exchange_output: //Fallthrough
     	case RegionFamily::Exchange_input : {
+    	    ERRCHK_ALWAYS(ghosts.x <= start.x);
+    	    ERRCHK_ALWAYS(ghosts.y <= start.y);
+    	    ERRCHK_ALWAYS(ghosts.z <= start.z);
 	    for(auto& field : mem_.fields)
 	    	if(vtxbuf_is_communicated[field]) memory.fields.push_back(field);
 	    break;
@@ -1031,8 +1039,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 			 const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const int max_facet_class
 			 )
     : Task(order_,
-           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class)},
-           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
+           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class)},
+           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out},max_facet_class),
@@ -1068,7 +1076,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 
     else if(max_facet_class == 3)
     {
-	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info);
+	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(),op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info);
 	if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X) && !dimension_inactive.x)
 	{
             output_region.dims.x += 2*NGHOST;
@@ -1096,7 +1104,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 	}
     }
 
-    const auto [left_radius,right_radius] = get_kernel_radius(op.kernel_enum,op.analysis_info);
+    const auto [left_radius,right_radius] = get_kernel_radius(acGridGetLocalMeshInfo(), op.kernel_enum,op.analysis_info);
     bool in_bounds    =    (int)output_region.position.x-(int)left_radius.x >= 0
     			|| (int)output_region.position.y-(int)left_radius.y >= 0
     			|| (int)output_region.position.z-(int)left_radius.z >= 0
@@ -1985,7 +1993,7 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 }
 
 // HaloExchangeTask
-MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
+MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
@@ -1994,6 +2002,32 @@ MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start
            op, device_, swap_offset_),
       reduce_buffers(input_regions[0].dims,  input_regions[0].memory.fields.size(),  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
 {
+    const auto sub_comms = acGridMPISubComms();
+    scan_comm = MPI_COMM_NULL;
+    if(op.ray_direction == (int3){1,0,0})
+    {
+	    scan_comm = sub_comms.x;
+    }
+    if(op.ray_direction == (int3){-1,0,0})
+    {
+	    scan_comm = sub_comms.reverse_x;
+    }
+    if(op.ray_direction == (int3){0,1,0})
+    {
+	    scan_comm = sub_comms.y;
+    }
+    if(op.ray_direction == (int3){0,-1,0})
+    {
+	    scan_comm = sub_comms.reverse_y;
+    }
+    if(op.ray_direction == (int3){0,0,1})
+    {
+	    scan_comm = sub_comms.z;
+    }
+    if(op.ray_direction == (int3){0,0,-1})
+    {
+	    scan_comm = sub_comms.reverse_z;
+    }
     // Create stream for packing/unpacking
     {
 	(void)grid_info;
@@ -2005,7 +2039,7 @@ MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start
     }
 }
 
-MPIReduceTask::~MPIReduceTask()
+MPIScanTask::~MPIScanTask()
 {
     auto msg = reduce_buffers.get_current_buffer();
     for(auto& request : msg->requests)
@@ -2021,23 +2055,23 @@ MPIReduceTask::~MPIReduceTask()
 }
 
 bool
-MPIReduceTask::test()
+MPIScanTask::test()
 {
-    switch (static_cast<MPIReduceTaskState>(state)) {
-    case MPIReduceTaskState::Packing: {
+    switch (static_cast<MPIScanTaskState>(state)) {
+    case MPIScanTaskState::Packing: {
         return poll_stream();
     }
-    case MPIReduceTaskState::Unpacking: {
+    case MPIScanTaskState::Unpacking: {
         return poll_stream();
     }
-    case MPIReduceTaskState::Communicating: {
+    case MPIScanTaskState::Communicating: {
         auto msg = reduce_buffers.get_current_buffer();
         int request_complete;
         ERRCHK_ALWAYS(MPI_Testall(msg->requests.size(), msg->requests.data(), &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
         return request_complete ? true : false;
     }
     default: {
-        ERROR("MPIReduceTask in an invalid state.");
+        ERROR("MPIScanTask in an invalid state.");
         return false;
     }
     }
@@ -2045,43 +2079,42 @@ MPIReduceTask::test()
 
 
 void
-MPIReduceTask::advance(const TraceFile* trace_file)
+MPIScanTask::advance(const TraceFile* trace_file)
 {
-    switch (static_cast<MPIReduceTaskState>(state)) {
-    case MPIReduceTaskState::Waiting:
+    switch (static_cast<MPIScanTaskState>(state)) {
+    case MPIScanTaskState::Waiting:
         trace_file->trace(this, "waiting", "packing");
         pack();
-        state = static_cast<int>(MPIReduceTaskState::Packing);
+        state = static_cast<int>(MPIScanTaskState::Packing);
         break;
-    case MPIReduceTaskState::Packing:
+    case MPIScanTaskState::Packing:
     {
         trace_file->trace(this, "packing", "communicating");
-        state = static_cast<int>(MPIReduceTaskState::Communicating);
+        state = static_cast<int>(MPIScanTaskState::Communicating);
 	communicate();
         break;
     }
-    case MPIReduceTaskState::Communicating:
+    case MPIScanTaskState::Communicating:
     {
         trace_file->trace(this, "communicating", "unpacking");
-        state = static_cast<int>(MPIReduceTaskState::Unpacking);
-	communicate();
+        state = static_cast<int>(MPIScanTaskState::Unpacking);
+	unpack();
         break;
     }
-    case MPIReduceTaskState::Unpacking:
+    case MPIScanTaskState::Unpacking:
     {
         trace_file->trace(this, "unpacking", "waiting");
-        state = static_cast<int>(MPIReduceTaskState::Waiting);
-	unpack();
+        state = static_cast<int>(MPIScanTaskState::Waiting);
         break;
     }
 
     default:
-        ERROR("MPIReduceTask in an invalid state.");
+        ERROR("MPIScanTask in an invalid state.");
     }
 }
 
 void
-MPIReduceTask::pack()
+MPIScanTask::pack()
 {
     auto msg = reduce_buffers.get_fresh_buffer();
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
@@ -2090,7 +2123,7 @@ MPIReduceTask::pack()
 }
 
 void
-MPIReduceTask::unpack()
+MPIScanTask::unpack()
 {
 
     auto msg = reduce_buffers.get_current_buffer();
@@ -2100,11 +2133,10 @@ MPIReduceTask::unpack()
 }
 
 void
-MPIReduceTask::communicate()
+MPIScanTask::communicate()
 {
    auto msg = reduce_buffers.get_current_buffer();
-   const auto sub_comms = acGridMPISubComms();
-   ERRCHK_ALWAYS(MPI_Iallreduce(MPI_IN_PLACE,&msg->data[0],msg->length,AC_REAL_MPI_TYPE,MPI_SUM,sub_comms.x, &msg->requests[0]) == MPI_SUCCESS);
+   ERRCHK_ALWAYS(MPI_Iexscan(MPI_IN_PLACE,&msg->data[0],msg->length,AC_REAL_MPI_TYPE,MPI_SUM,scan_comm,&msg->requests[0]) == MPI_SUCCESS);
 }
 
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
@@ -2193,28 +2225,34 @@ ReduceTask::reduce()
 	{
 		for(const auto& prof : input_regions[0].memory.profiles)
 		{
-		    auto reduce_buf = acDeviceGetProfileReduceBuffer(device,prof);
-		    auto dst        = acDeviceGetProfileBuffer(device,prof);
+		   auto reduce_buf = acDeviceGetProfileReduceBuffer(device,prof);
+		   auto dst        = acDeviceGetProfileBuffer(device,prof);
+		   if(AC_CPU_BUILD)
+		   {
+    		        const size_t bytes = reduce_buf.src.shape.x*reduce_buf.src.shape.y*reduce_buf.src.shape.z*sizeof(AcReal);
+		        memcpy(dst,reduce_buf.src.data,bytes);
+			continue;
+		   }
 		    if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == -1)
 		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst,
-					   stream,
-					   (Volume){0,0,0},
-					   (Volume){
-						NGHOST,
-					   	reduce_buf.src.shape.y,
-					   	reduce_buf.src.shape.z,
-						},
-					   (Volume){0,0,0},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						NGHOST
-					   }
-				    );
+		    	acReduceProfileWithBounds(prof,
+				   reduce_buf,
+				   dst,
+				   stream,
+				   (Volume){0,0,0},
+				   (Volume){
+					NGHOST,
+				   	reduce_buf.src.shape.y,
+				   	reduce_buf.src.shape.z,
+					},
+				   (Volume){0,0,0},
+				   (Volume)
+				   {
+				   	reduce_buf.transposed.shape.x,
+				   	reduce_buf.transposed.shape.y,
+					NGHOST
+				   }
+			    );
 		    }
 		    else if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == 0)
 		    {
@@ -2401,7 +2439,6 @@ ReduceTask::reduce()
 		    }
 		}
 	}
-
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
     	{
 	    const auto var    = reduce_outputs[i].variable;
@@ -2646,10 +2683,6 @@ BoundaryConditionTask::BoundaryConditionTask(
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)
 {
-    // TODO: the input regions for some of these will be weird, because they will depend on the
-    // ghost zone of other fields
-    //  This is not currently reflected
-
     // Create stream for boundary condition task
     {
         set_device(device);

@@ -27,10 +27,9 @@
 #include <vector>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
-#define NUM_INTEGRATION_STEPS (100)
 
 int
-main(void)
+main(int argc, char* argv[])
 {
     int retval    = 0;
     const int pid = 0;
@@ -41,7 +40,13 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    acSetLocalMeshDims(32, 32, 32, &info);
+    const size_t nx = argc >  1 ? (size_t)atoi(argv[1]) : 32;
+    const size_t ny = argc >  2 ? (size_t)atoi(argv[2]) : 32;
+    const size_t nz = argc >  3 ? (size_t)atoi(argv[3]) : 32;
+    const size_t NUM_INTEGRATION_STEPS = argc >  4 ? (size_t)atoi(argv[4]) : 100;
+    const long double max_ulp_error    = argc >  5 ? (long double)atoi(argv[5]) : 5;
+    acSetGridMeshDims(nx, ny, nz, &info);
+    acSetLocalMeshDims(nx, ny, nz, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
@@ -103,7 +108,7 @@ main(void)
             acHostIntegrateStep(model, dt);
 
         acHostMeshApplyPeriodicBounds(&model);
-        const AcResult res = acVerifyMesh("Integration", model, candidate);
+        const AcResult res = acVerifyMeshWithMaximumError("Integration", model, candidate,max_ulp_error);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);
@@ -137,7 +142,7 @@ main(void)
             error.maximum_magnitude = acHostReduceScal(model, RTYPE_MAX, v0);
             error.minimum_magnitude = acHostReduceScal(model, RTYPE_MIN, v0);
 
-            if (!acEvalError(rtype.name, error)) {
+            if (!acEvalErrorWithMaximumError(rtype.name, error, max_ulp_error)) {
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -165,7 +170,7 @@ main(void)
             error.maximum_magnitude = acHostReduceVec(model, RTYPE_MAX, v0, v1, v2);
             error.minimum_magnitude = acHostReduceVec(model, RTYPE_MIN, v0, v1, v1);
 
-            if (!acEvalError(rtype.name, error)) {
+            if (!acEvalErrorWithMaximumError(rtype.name, error, max_ulp_error)) {
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -193,7 +198,7 @@ main(void)
             error.maximum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MAX, v0, v1, v2, v3);
             error.minimum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MIN, v0, v1, v1, v3);
 
-            if (!acEvalError(rtype.name, error)) {
+            if (!acEvalErrorWithMaximumError(rtype.name, error, max_ulp_error)) {
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }

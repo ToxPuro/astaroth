@@ -22,6 +22,7 @@
 #include "kernels/kernels.h"
 #include "ac_helpers.h"
 #include "astaroth_cuda_wrappers.h"
+#include "ac_fft.h"
 
 #if AC_MPI_ENABLED
 static int ac_pid()
@@ -71,33 +72,39 @@ acDevicePrintInfo(const Device device)
     const int device_id = device->id;
 
     cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, device_id);
+    acGetDeviceProperties(&props, device_id);
     printf("--------------------------------------------------\n");
     printf("Device Number: %d\n", device_id);
     const size_t bus_id_max_len = 128;
     char bus_id[bus_id_max_len];
-    cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id);
+    acDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id);
     printf("  PCI bus ID: %s\n", bus_id);
     printf("    Device name: %s\n", props.name);
     printf("    Compute capability: %d.%d\n", props.major, props.minor);
 
     // Compute
+    int smClockRate{},memClockRate{};
+    ERRCHK_CUDA_ALWAYS(acDeviceGetAttribute(&smClockRate,cudaDevAttrClockRate,device_id));
+    ERRCHK_CUDA_ALWAYS(acDeviceGetAttribute(&memClockRate,cudaDevAttrMemoryClockRate,device_id));
     printf("  Compute\n");
-    printf("    Clock rate (GHz): %g\n", props.clockRate / 1e6); // KHz -> GHz
+    printf("    Clock rate (GHz): %g\n",  smClockRate / 1e6); // KHz -> GHz
     printf("    Stream processors: %d\n", props.multiProcessorCount);
 #if !AC_USE_HIP
-    printf("    SP to DP flops performance ratio: %d:1\n", props.singleToDoublePrecisionPerfRatio);
+    int single_to_double_perf_ratio{};
+    ERRCHK_CUDA_ALWAYS(acDeviceGetAttribute(&single_to_double_perf_ratio, cudaDevAttrSingleToDoublePrecisionPerfRatio, device_id));
+    printf("    SP to DP flops performance ratio: %d:1\n", single_to_double_perf_ratio);
 #endif
+    int computeMode;
+    ERRCHK_CUDA_ALWAYS(acDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, device_id));
     printf(
         "    Compute mode: %d\n",
-        (int)props
-            .computeMode); // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g7eb25f5413a962faad0956d92bae10d0
+        (int)computeMode); // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g7eb25f5413a962faad0956d92bae10d0
     // Memory
     printf("  Global memory\n");
-    printf("    Memory Clock Rate (MHz): %d\n", props.memoryClockRate / (1000));
+    printf("    Memory Clock Rate (MHz): %d\n", memClockRate / (1000));
     printf("    Memory Bus Width (bits): %d\n", props.memoryBusWidth);
     printf("    Peak Memory Bandwidth (GiB/s): %f\n",
-           2 * (props.memoryClockRate * 1e3) * props.memoryBusWidth / (8. * 1024. * 1024. * 1024.));
+           2 * (memClockRate * 1e3) * props.memoryBusWidth / (8. * 1024. * 1024. * 1024.));
     printf("    ECC enabled: %d\n", props.ECCEnabled);
 
     // Memory usage
@@ -202,14 +209,82 @@ acDeviceFFTR2C(const Device device, const Field src, const ComplexField dst)
 }
 
 AcResult
+acDeviceFFTR2CXY(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers)
+{
+
+	for(size_t z_offset = 0; z_offset < n_layers;  ++z_offset)
+	{
+		const Volume starting_point = 
+		{
+			acGetMinNN(device->local_config).x,
+			acGetMinNN(device->local_config).y,
+			z_starting_point + z_offset
+		};
+
+		const Volume subdomain_size =
+		{
+			acGetLocalNN(device->local_config).x,
+			acGetLocalNN(device->local_config).y,
+			1
+		};
+		acFFTForwardTransformR2C(
+				device->vba.on_device.in[src],
+				acGetLocalMM(device->local_config),	
+				subdomain_size,
+				starting_point,
+				device->vba.on_device.complex_in[dst]
+			);
+	}
+	return AC_SUCCESS;
+}
+
+AcResult
+acDeviceFFTC2RXY(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers)
+{
+
+	for(size_t z_offset = 0; z_offset < n_layers;  ++z_offset)
+	{
+		const Volume starting_point = 
+		{
+			acGetMinNN(device->local_config).x,
+			acGetMinNN(device->local_config).y,
+			z_starting_point + z_offset
+		};
+
+		const Volume subdomain_size =
+		{
+			acGetLocalNN(device->local_config).x,
+			acGetLocalNN(device->local_config).y,
+			1
+		};
+		acFFTBackwardTransformC2R(
+				device->vba.on_device.complex_in[src],
+				acGetLocalMM(device->local_config),	
+				subdomain_size,
+				starting_point,
+				device->vba.on_device.in[dst]
+			);
+
+	}
+	return AC_SUCCESS;
+}
+
+AcResult
 acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst, const Field imag_dst)
 {
+  	const auto input_real_dims  = acGetMeshDims(device->local_config,real_src);
+  	const auto input_imag_dims  = acGetMeshDims(device->local_config,imag_src);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(input_real_dims == input_imag_dims);
+	ERRCHK_ALWAYS(input_real_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_real_dims == output_imag_dims);
 	return acFFTForwardTransformPlanar(
 				device->vba.on_device.in[real_src],
 				device->vba.on_device.in[imag_src],
-				acGetLocalMM(device->local_config),	
-				acGetLocalNN(device->local_config),	
-				acGetMinNN(device->local_config),	
+				input_real_dims.m1,
+				input_real_dims.nn,
+				input_real_dims.n0,
 				device->vba.on_device.in[real_dst],
 				device->vba.on_device.in[imag_dst]
 			);
@@ -218,11 +293,17 @@ acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_sr
 AcResult
 acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, const Field imag_dst)
 {
+        
+  	const auto input_dims  = acGetMeshDims(device->local_config,src);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(input_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_dims == output_imag_dims);
 	return acFFTForwardTransformR2Planar(
 				device->vba.on_device.in[src],
-				acGetLocalMM(device->local_config),	
-				acGetLocalNN(device->local_config),	
-				acGetMinNN(device->local_config),	
+				input_dims.m1,	
+				input_dims.nn,	
+				input_dims.n0,
 				device->vba.on_device.in[real_dst],
 				device->vba.on_device.in[imag_dst]
 			);
@@ -500,67 +581,7 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 	}
 	return acDeviceLoadStencils(device, stream, stencils);
 }
-AcBoundary
-acDeviceStencilAccessesBoundaries(const Device device, const Stencil stencil)
-{
-	[[maybe_unused]] auto DCONST = [&](const auto& param)
-	{
-		return device->local_config[param];
-	};
-        #include "coeffs.h"
-	auto stencil_accesses_z_ghost_zone = [&]()
-	{
-	    bool res = false;
-	    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
-		  const bool dmid = (depth == (STENCIL_DEPTH-1)/2);
-	          res |= !dmid && (stencils[stencil][depth][height][width] != (AcReal)0.0);
-	        }
-	      }
-	    }
-	    return res;
-	};
-	auto stencil_accesses_y_ghost_zone = [&]()
-	{
-	  // Check which stencils are invalid for profiles
-	  // (computed in a new array to avoid side effects).
-	    bool res = false;
-	    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
-		  const bool hmid = (height == (STENCIL_HEIGHT-1)/2);
-	          res |= !hmid && (stencils[stencil][depth][height][width] != (AcReal)0.0);
-	        }
-	      }
-	    }
-	    return res;
-	};
 	
-	auto stencil_accesses_x_ghost_zone = [&]()
-	{
-	  // Check which stencils are invalid for profiles
-	  // (computed in a new array to avoid side effects).
-	    bool res = false;
-	    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
-		  const bool wmid = (width == (STENCIL_WIDTH-1)/2);
-	          res |= !wmid && (stencils[stencil][depth][height][width] != (AcReal)0.0);
-	        }
-	      }
-	    }
-	    return res;
-	};
-	int res = BOUNDARY_NONE;
-	if(stencil_accesses_x_ghost_zone())
-		res |= BOUNDARY_X;
-	if(stencil_accesses_y_ghost_zone())
-		res |= BOUNDARY_Y;
-	if(stencil_accesses_z_ghost_zone())
-		res |= BOUNDARY_Z;
-	return (AcBoundary)res;
-}
 
 
 void
@@ -574,6 +595,7 @@ acCopyFromInfo(const AcMeshInfo, AcMeshInfo, const int3){}
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
+    acCheckDeviceAvailability();
     // Check
     int count;
     acGetDeviceCount(&count);
@@ -641,6 +663,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     }
     acVerboseLogFromRootProc(ac_pid(),  "memusage after create streams= %f MBytes\n", acMemUsage()/1024.0);
 
+    if(!acRuntimeIsInitialized()) acRuntimeInit(device_config);
     // Memory
     // VBA in/out
     device->vba = acVBACreate(device_config);
@@ -756,7 +779,13 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
     const int3 dst            = src;
     const size_t device_num_vertices = acVertexBufferSize(device->local_config,vtxbuf_handle);
     const size_t host_num_vertices   = acVertexBufferSize(host_mesh.info,vtxbuf_handle);
-    ERRCHK_ALWAYS(device_num_vertices == host_num_vertices);
+    if(device_num_vertices != host_num_vertices)
+    {
+	fprintf(stderr,"Host dims: %d,%d,%d\n",host_mesh.info[AC_mlocal].x,host_mesh.info[AC_mlocal].y,host_mesh.info[AC_mlocal].z);
+	fprintf(stderr,"Device dims: %d,%d,%d\n",device->local_config[AC_mlocal].x,device->local_config[AC_mlocal].y,device->local_config[AC_mlocal].z);
+	fflush(stderr);
+    	ERRCHK_ALWAYS(device_num_vertices == host_num_vertices);
+    }
     return acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
                                        host_num_vertices);
 }

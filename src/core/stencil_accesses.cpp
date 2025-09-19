@@ -14,7 +14,6 @@ bool should_reduce_int[1000] = {false};
 
 #include <algorithm>
 
-#define DEVICE_INLINE
 #ifndef AC_IN_AC_LIBRARY
 #define AC_IN_AC_LIBRARY
 #endif
@@ -172,9 +171,10 @@ static int written_complex_fields[NUM_COMPLEX_FIELDS+1]{};
 static int read_complex_fields[NUM_COMPLEX_FIELDS+1]{};
 static int read_fields[NUM_ALL_FIELDS]{};
 static int field_has_stencil_op[NUM_ALL_FIELDS]{};
-static int read_profiles[NUM_PROFILES]{};
-static int reduced_profiles[NUM_PROFILES]{};
-static int written_profiles[NUM_PROFILES]{};
+static int field_has_ray_op[NUM_ALL_FIELDS]{};
+static int read_profiles[NUM_PROFILES+1]{};
+static int reduced_profiles[NUM_PROFILES+1]{};
+static int written_profiles[NUM_PROFILES+1]{};
 static int reduced_reals[NUM_REAL_OUTPUTS+1]{};
 static int reduced_ints[NUM_INT_OUTPUTS+1]{};
 #if AC_DOUBLE_PRECISION
@@ -199,14 +199,14 @@ AcReal
 output_value(const AcRealOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
-	return (AcReal){};
+	return (AcReal)1.0;
 }
 
 int
 output_value(const AcIntOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
-	return (int){};
+	return (int)1;
 }
 
 #if AC_DOUBLE_PRECISION
@@ -214,7 +214,7 @@ float
 output_value(const AcFloatOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_FLOAT_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
-	return (float){};
+	return (float)1.0;
 }
 #endif
 
@@ -535,15 +535,23 @@ acAnalysisLoadMeshInfo(const AcMeshInfo info)
 #include "dconst_decl.h"
 #include "rconst_decl.h"
 
-#include "dconst_arrays_decl.h"
-#include "gmem_arrays_accessed_decl.h"
+#include "arrays_accessed_decl.h"
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static DATATYPE ARR_NAME##return_var{}; \
-							    struct tmp_struct_##ARR_NAME {DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
+								                          DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
+							    }; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 
+#define DECLARE_DCONST_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static DATATYPE ARR_NAME##return_var{}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_d_##DEFINE_NAME##_arrays_##ARR_NAME {};
+
 #define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) static DATATYPE ARR_NAME##return_var{}; \
-							    struct tmp_struct_##ARR_NAME {DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
+								                          DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
+							    }; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
+#include "cpu_dconst_arrays_decl.h"
 #include "cpu_gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
@@ -570,6 +578,15 @@ mark_as_written(const Field& field, const int x, const int y, const int z)
 {
 	written_fields[field] |= 
 			index_at_boundary(x,y,z) ? AC_IN_BOUNDS_WRITE : AC_OUT_OF_BOUNDS_WRITE;
+}
+
+void
+mark_as_written(const ComplexField& field, const int x, const int y, const int z)
+{
+	(void)field;
+	(void)x;
+	(void)y;
+	(void)z;
 }
 void
 mark_as_written(const Field3& field, const int x, const int y, const int z)
@@ -620,7 +637,11 @@ AC_INTERNAL_write_vtxbuf4(const Field4& field, const int x, const int y, const i
 static int3 UNUSED
 ac_get_field_halos(const Field& field)
 {
-	return VAL(vtxbuf_halos[field]);
+	if(vtxbuf_compile_time_halos[field] != (int3){-1,-1,-1})
+	{
+		return vtxbuf_compile_time_halos[field];
+	}
+	return VAL(vtxbuf_run_time_halos[field]);
 }
 void
 write_base (const Field& field, const AcReal&)
@@ -689,7 +710,10 @@ AcReal
 AC_INTERNAL_read_vtxbuf(const Field& field, const int x, const int y, const int z)
 {
 	//TP: this is possible in case of input fields for kernels and when array syntax is translated to a call of this
-	if(field >= NUM_FIELDS) return AcReal(1.0);
+	if constexpr(NUM_FIELDS != NUM_ALL_FIELDS)
+	{
+		if(field >= NUM_FIELDS) return AcReal(1.0);
+	}
 	stencils_accessed[field][stencil_value_stencil] |= 
 							index_at_boundary(x,y,z) ? AC_IN_BOUNDS_READ : AC_OUT_OF_BOUNDS_READ;
 	return AcReal(1.0);
@@ -704,6 +728,17 @@ AC_INTERNAL_read_vtxbuf3(const Field3& field, const int x, const int y, const in
 		AC_INTERNAL_read_vtxbuf(field.y,x,y,z),
 		AC_INTERNAL_read_vtxbuf(field.z,x,y,z),
 	};
+}
+
+AcComplex
+AC_INTERNAL_read_vtxbuf_complex(const ComplexField&, const int, const int, const int)
+{
+	return (AcComplex){0.,0.};
+}
+
+void
+AC_INTERNAL_write_vtxbuf_complex(const ComplexField&, const int, const int, const int, const AcComplex)
+{
 }
 
 AcReal4
@@ -844,6 +879,7 @@ reset_info_arrays()
     memset(stencils_accessed, 0,sizeof(stencils_accessed));
     memset(read_fields,0, sizeof(read_fields));
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
+    memset(field_has_ray_op,0, sizeof(field_has_ray_op));
     memset(written_fields, 0,    sizeof(written_fields));
     memset(previous_accessed, 0, sizeof(previous_accessed));
     memset(incoming_ray_value_accessed, 0, sizeof(incoming_ray_value_accessed));
@@ -1131,6 +1167,7 @@ main(int argc, char* argv[])
   FILE* fp_fields_read = fopen("user_read_fields.bin","wb");
   FILE* fp_written_fields = fopen("user_written_fields.bin", "wb");
   FILE* fp_field_has_stencil_op    = fopen("user_field_has_stencil_op.bin","wb");
+  FILE* fp_field_has_ray_op    = fopen("user_field_has_ray_op.bin","wb");
   FILE* fp_field_has_previous_call = fopen("user_field_has_previous_call.bin","wb");
   FILE* fp_profiles_read = fopen("user_read_profiles.bin","wb");
   FILE* fp_profiles_reduced = fopen("user_reduced_profiles.bin","wb");
@@ -1145,7 +1182,7 @@ main(int argc, char* argv[])
   int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
   int  output_incoming_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
   int  output_outgoing_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
-  int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES]{};
+  int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES+1]{};
   int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS+1]{};
   int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS+1]{};
 #if AC_DOUBLE_PRECISION
@@ -1174,6 +1211,7 @@ main(int argc, char* argv[])
       {
       	output_incoming_ray_value_accessed[k][j][ray] = incoming_ray_value_accessed[j][ray];
       	output_outgoing_ray_value_accessed[k][j][ray] = outgoing_ray_value_accessed[j][ray];
+	field_has_ray_op[j] |= incoming_ray_value_accessed[j][ray] | incoming_ray_value_accessed[j][ray];
       }
       write_output[k][j] = written_fields[j];
     }
@@ -1211,6 +1249,7 @@ main(int argc, char* argv[])
 
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
     fwrite(field_has_stencil_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_stencil_op);
+    fwrite(field_has_ray_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_ray_op);
     fwrite(previous_accessed,sizeof(int), NUM_ALL_FIELDS,fp_field_has_previous_call);
     fwrite(written_fields,sizeof(int),NUM_ALL_FIELDS,fp_written_fields);
     fwrite(read_profiles   ,sizeof(int),NUM_PROFILES,fp_profiles_read);
@@ -1250,7 +1289,7 @@ main(int argc, char* argv[])
   fclose(fp);
 
 
-#include "gmem_arrays_output_accesses.h"
+#include "arrays_output_accesses.h"
   fprintf(stderr,"Generated stencil accesses\n");
   return EXIT_SUCCESS;
 }

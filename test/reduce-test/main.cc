@@ -104,7 +104,7 @@ main(int argc, char* argv[])
     auto test = [&](const bool all_ones_test)
     {
         acHostMeshApplyPeriodicBounds(&model);
-    	acGridLoadMesh(STREAM_DEFAULT, model);
+	acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
     	acGridSynchronizeStream(STREAM_ALL);
 
 
@@ -124,7 +124,7 @@ main(int argc, char* argv[])
 
     	acGridExecuteTaskGraph(graph,1);
     	acGridSynchronizeStream(STREAM_ALL);
-    	acGridStoreMesh(STREAM_DEFAULT,&candidate);
+	acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
 
 
     	const auto gpu_max_val = acDeviceGetOutput(acGridGetDevice(), AC_max_val);
@@ -914,7 +914,7 @@ main(int argc, char* argv[])
         fprintf(stderr, "REDUCTION_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
-    return EXIT_SUCCESS;
+    return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 #else

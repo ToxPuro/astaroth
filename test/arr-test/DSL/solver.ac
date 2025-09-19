@@ -2,10 +2,12 @@ auxiliary Field3 FIELD
 hostdefine STENCIL_ORDER (0)
 
 const int test_arr_size = 6;
+dconst int AC_runtime_value = 10
 gmem int AC_global_arr[AC_nlocal.x]
 dconst real AC_test_arr[test_arr_size];
 dconst real AC_test_arr_2[(2-1)*2+1];
 dconst int AC_test_int_arr[test_arr_size/2];
+dconst int AC_dconst_arr_that_has_to_change_to_gmem[AC_runtime_value]
 
 
 const int AC_nx_const = 2*9
@@ -23,6 +25,7 @@ gmem real AC_3d_reals[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z]
 gmem float AC_float_arr[AC_nlocal.x]
 gmem float AC_4d_float_arr_out[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z][3]
 gmem float AC_4d_float_arr[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z][3]
+gmem real AC_5d_real_arr[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z][3][3]
 
 dconst int AC_dconst_int
 
@@ -31,5 +34,6 @@ Kernel update()
 	write(FIELD_X,AC_test_int_arr[0]*(AC_test_arr[0] + AC_test_arr[3] + AC_test_arr_2[0])*AC_global_arr[vertexIdx.x-NGHOST]);
 	write(FIELD_Y,AC_test_int_arr[1]*(AC_test_arr[1] + AC_test_arr[4] + AC_test_arr_2[1] + AC_2d_reals[AC_dconst_int][vertexIdx.y - NGHOST] + AC_3d_reals[vertexIdx.x][vertexIdx.y][vertexIdx.z]));
 	write(FIELD_Z,AC_test_int_arr[2]*(AC_test_arr[2] + AC_test_arr[5] + AC_test_arr_2[2])*(real(AC_4d_float_arr[vertexIdx.x][vertexIdx.y][vertexIdx.z][0]) + real(AC_4d_float_arr[vertexIdx.x][vertexIdx.y][vertexIdx.z][1]) + real(AC_4d_float_arr[vertexIdx.x][vertexIdx.y][vertexIdx.z][2])));
-	AC_4d_float_arr_out[vertexIdx.x][vertexIdx.y][vertexIdx.z][0] = AC_test_arr[1]*real(AC_4d_float_arr_out[vertexIdx.x][vertexIdx.y][vertexIdx.z][0]);
+	AC_4d_float_arr_out[vertexIdx.x][vertexIdx.y][vertexIdx.z][0] = float(AC_test_arr[1]*real(AC_4d_float_arr_out[vertexIdx.x][vertexIdx.y][vertexIdx.z][0])
+									+ AC_5d_real_arr[vertexIdx.x][vertexIdx.y][vertexIdx.z][0][0])
 }

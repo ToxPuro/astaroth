@@ -72,3 +72,14 @@ precise_sqrt_dot2(real3 a)
 	b = dot(a_scaled,a_scaled)
 	return a_max*sqrt(b)
 }
+quintic_step(real x, real x0, real width, real shift)
+{
+	real xi = (x-x0)/(width+AC_REAL_MIN)-shift
+	xi = max(xi,-1.0)
+	xi = min(xi,1.0)
+        return 0.5 + xi*(0.9375 + (xi*xi)*(-0.625 + (xi*xi)*0.1875))
+}
+quintic_step(real x, real x0, real width)
+{
+	return quintic_step(x,x0,width,shift)
+}

@@ -7,6 +7,83 @@
 
 
 extern struct hashmap_s string_intern_hashmap;
+extern const char* binary_op_val;
+
+const char* INT_STR = NULL;
+const char* TEN_STR = NULL;
+const char* EXTERN_STR = NULL;
+const char* EMPTY_STR = NULL;
+const char* ZERO_STR = NULL;
+const char* REAL_ARR_STR = NULL;
+const char* INTRINSIC_STR = NULL;
+const char* CHAR_PTR_STR = NULL;
+const char* REAL_PTR_STR = NULL;
+const char* BOOL_PTR_STR = NULL;
+const char* FALSE_STR = NULL;
+const char* TRUE_STR = NULL;
+const char* REAL3_PTR_STR = NULL;
+const char* FIELD3_PTR_STR = NULL;
+const char* VTXBUF_PTR_STR = NULL;
+const char* FIELD_PTR_STR = NULL;
+const char* STENCIL_STR    = NULL;
+const char* MATRIX_STR   = NULL;
+const char* TENSOR_STR   = NULL;
+const char* REAL2_STR    = NULL;
+const char* REAL3_STR    = NULL;
+const char* INT3_STR     = NULL;
+const char* COMPLEX_STR = NULL;
+const char* AND_STR = NULL;
+const char* NEQ_STR = NULL;
+const char* EQ_STR = NULL;
+const char* EQUAL_STR = NULL;
+const char* DOT_STR = NULL;
+const char* LESS_STR = NULL;
+const char* GREATER_STR  = NULL;
+const char* MULT_STR = NULL;
+const char* MINUS_STR = NULL;
+const char* PLUS_STR = NULL;
+const char* DIV_STR = NULL;
+const char* LEQ_STR = NULL;
+const char* GEQ_STR = NULL;
+const char* MEQ_STR= NULL;
+const char* AEQ_STR= NULL;
+const char* MODEQ_STR= NULL;
+const char* MINUSEQ_STR= NULL;
+const char* DEQ_STR= NULL;
+const char* PERIODIC = NULL;
+const char* VALUE_STR      = NULL;
+const char* OUTPUT_VALUE_STR      = NULL;
+const char* DEAD_STR      = NULL;
+const char* AUXILIARY_STR      = NULL;
+const char* COMMUNICATED_STR      = NULL;
+const char* DEVICE_ONLY_STR       = NULL;
+const char* DIMS_STR = NULL;
+const char* HALO_STR = NULL;
+const char* FIELD_ORDER_STR = NULL;
+const char* OVERRIDE_STR = NULL;
+const char* CONST_STR = NULL;
+const char* CONSTEXPR_STR = NULL;
+const char* OUTPUT_STR = NULL;
+const char* INPUT_STR = NULL;
+const char* GLOBAL_STR = NULL;
+const char* GLOBAL_MEM_STR = NULL;
+const char* DYNAMIC_STR = NULL;
+const char* INLINE_STR = NULL;
+const char* UTILITY_STR = NULL;
+const char* ELEMENTAL_STR = NULL;
+const char* BOUNDCOND_STR = NULL;
+const char* FIXED_BOUNDARY_STR = NULL;
+const char* RAYTRACE_STR = NULL;
+const char* RUN_CONST_STR = NULL;
+const char* CONST_DIMS_STR = NULL;
+const char* DCONST_STR = NULL;
+const char* FIELD_STR      = NULL;
+const char* KERNEL_STR      = NULL;
+const char* FIELD3_STR      = NULL;
+const char* FIELD4_STR      = NULL;
+const char* PROFILE_STR      = NULL;
+const char* COMPLEX_FIELD_STR  = NULL;
+
 #include <hash.h>
 #include "ast.h"
 #include "codegen.h"
@@ -311,7 +388,7 @@ make_dir(const char* dirname)
 void
 reset_diff_files()
 {
-		const char* files[] = {"memcpy_from_gmem_arrays.h","memcpy_to_gmem_arrays.h","gmem_arrays_decl.h","array_info.h","taskgraph_enums.h"};
+		const char* files[] = {"memcpy_from_gmem_arrays_header.h","memcpy_to_gmem_arrays_header.h","memcpy_from_gmem_arrays.h","memcpy_to_gmem_arrays.h","gmem_arrays_decl.h","array_info.h","taskgraph_enums.h"};
           	for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
           	  FILE* fp = fopen(files[i], "w");
           	  fclose(fp);
@@ -334,7 +411,7 @@ reset_all_files()
           const char* files[] = {"user_constants.h","user_built-in_constants","kernel_reduce_outputs.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","output_decl.h","input_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h",
 		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h",
-		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","gmem_arrays_accessed_decl.h","gmem_arrays_output_accesses.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
+		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","arrays_accessed_decl.h","arrays_output_accesses.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","comp_info_access_operators.h","loaded_info_access_operators.h","scalar_info_access_operators.h","array_info_access_operators.h","param_info_access_operators.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_taskgraphs.h","user_loaders.h","user_loader_impls.h","call_all_user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
 		  "fields_info.h","profiles_info.h","is_comptime_param.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
@@ -372,6 +449,10 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	  const bool log = !(gen_extra_dfuncs || gen_bc_kernels);
           FILE* out = fopen(stage1, "w");
           assert(out);
+    	  const char* AC_HOME_PATH = getenv("AC_HOME");
+    	  if (AC_HOME_PATH != NULL) {
+	  	fprintf(out,"#define AC_HOME %s\n",AC_HOME_PATH);
+    	  }
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID %d\n",AC_LAGRANGIAN_GRID);
 	  fprintf(out,"#define TWO_D %d\n",TWO_D);
 	  fprintf(out,"#define AC_DOUBLE_PRECISION %d\n",AC_DOUBLE_PRECISION);
@@ -417,9 +498,20 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         if (!yyin)
             return EXIT_FAILURE;
 
+	
+	//TP: I lex the code now twice as a very hacky way to enable out of order struct definitions.
+	//    A better way would to take away the the struct logic out of the lexer and to a separate pass,
+	//    but this works for now.
+
+        while (yylex() != 0) {
+	}
+	rewind(yyin);
+
         int error = yyparse();
-        if (error)
-            return EXIT_FAILURE;
+        if (error) {
+		fprintf(stderr,"Parsing failed!\n");
+		return EXIT_FAILURE;
+	}
 
         fclose(yyin);
 	if(gen_extra_dfuncs)
@@ -495,6 +587,92 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         return EXIT_SUCCESS;
 }
+void
+populate_global_strings()
+{
+	VALUE_STR = intern("value");
+	OUTPUT_VALUE_STR = intern("output_value");
+
+	COMPLEX_STR= intern("AcComplex");
+	INT_STR = intern("int");
+	TEN_STR = intern("10");
+	REAL2_STR= intern("AcReal2");
+	REAL3_STR= intern("AcReal3");
+	REAL_ARR_STR = intern("AcRealArray");
+	INTRINSIC_STR = intern("intrinsic");
+
+	ZERO_STR = intern("0");
+	REAL_PTR_STR = intern("AcReal*");
+	BOOL_PTR_STR = intern("bool*");
+	TRUE_STR     = intern("true");
+	FALSE_STR     = intern("false");
+	REAL3_PTR_STR = intern("AcReal3*");
+	FIELD3_PTR_STR = intern("Field3*");
+	VTXBUF_PTR_STR = intern("VertexBufferHandle*");
+	FIELD_PTR_STR = intern("Field*");
+
+	MATRIX_STR = intern("AcMatrix");
+	TENSOR_STR = intern("AcTensor");
+	INT3_STR = intern("int3");
+	AND_STR = intern("&&");
+	NEQ_STR = intern("!=");
+	EQUAL_STR = intern("==");
+	EQ_STR = intern("=");
+
+	DOT_STR = intern("dot");
+
+	LESS_STR = intern("<");
+	GREATER_STR = intern(">");
+	LEQ_STR = intern("<=");
+	GEQ_STR = intern(">=");
+
+	MEQ_STR= intern("*=");
+	AEQ_STR= intern("+=");
+	MODEQ_STR = intern("%=");
+	MINUSEQ_STR= intern("-=");
+	DEQ_STR= intern("/=");
+	PERIODIC = intern("periodic");
+	
+	EXTERN_STR = intern("extern");
+	CHAR_PTR_STR = intern("char*");
+	EMPTY_STR = intern("\0");
+	DEAD_STR = intern("dead");
+	INLINE_STR = intern("inline");
+	UTILITY_STR = intern("utility");
+	BOUNDCOND_STR = intern("boundary_condition");
+	FIXED_BOUNDARY_STR = intern("fixed_boundary");
+	RAYTRACE_STR = intern("Raytrace");
+	ELEMENTAL_STR = intern("elemental");
+	AUXILIARY_STR = intern("auxiliary");
+	COMMUNICATED_STR = intern("communicated");
+	DEVICE_ONLY_STR = intern("device_only");
+	DIMS_STR = intern("dims");
+	HALO_STR = intern("halo");
+	FIELD_ORDER_STR = intern("field_order");
+	OVERRIDE_STR  = intern("override");
+	CONST_STR  = intern("const");
+	DCONST_STR = intern("dconst");
+	CONSTEXPR_STR = intern("constexpr");
+	GLOBAL_MEM_STR  = intern("gmem");
+	DYNAMIC_STR  = intern("dynamic");
+	OUTPUT_STR  = intern("output");
+	GLOBAL_STR  = intern("global");
+	INPUT_STR  = intern("input");
+	RUN_CONST_STR = intern("run_const");
+	CONST_DIMS_STR= intern("const_dims");
+	FIELD_STR = intern("Field");
+	STENCIL_STR = intern("Stencil");
+	KERNEL_STR = intern("Kernel");
+	FIELD3_STR = intern("Field3");
+	FIELD4_STR = intern("Field4");
+	PROFILE_STR = intern("Profile");
+	COMPLEX_FIELD_STR = intern("ComplexField");
+
+	MULT_STR = intern("*");
+	PLUS_STR = intern("+");
+	MINUS_STR = intern("-");
+	DIV_STR = intern("/");
+}
 
 int
 main(int argc, char** argv)
@@ -507,6 +685,7 @@ main(int argc, char** argv)
     RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-2]),"1"); 
     READ_OVERRIDES          = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-3]),"1"); 
     ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-4]),"1"); 
+
 
     if(argc == 2 || argc == 6)
     {
@@ -539,6 +718,7 @@ main(int argc, char** argv)
 
     const unsigned initial_size = 2000;
     hashmap_create(initial_size, &string_intern_hashmap);
+    populate_global_strings();
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_INPUT_PARAMS, false,false);
@@ -548,32 +728,47 @@ main(int argc, char** argv)
 }
 %}
 
-%token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE DEFAULT_INITIALIZER
-%token NON_RETURNING_FUNC_CALL
-%token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
-%token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
-%token BOOL INTRINSIC LONG_LONG LONG 
-%token KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
-%token FIXED_BOUNDARY
-%token PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
-%token HOSTDEFINE
-%token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
-%token STATEMENT_LIST_HEAD STATEMENT
-%token REAL3 INT3 FIRST
-%token RANGE IN_RANGE
-%token CONST_DIMS
-%token CAST BASIC_STATEMENT
-%token TEMPLATE BINARY UNARY PROGRAM
+%token  SELECTION_STATEMENT 
+%token  IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE DEFAULT_INITIALIZER
+%token  NON_RETURNING_FUNC_CALL
+%token  BINARY_OP IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
+%token  ASSIGNOP QUESTION UNARY_OP
+%token  SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
+%token  BOOL INTRINSIC LONG_LONG LONG 
+%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token  FIXED_BOUNDARY
+%token  PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
+%token  HOSTDEFINE
+%token  STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
+%token  STATEMENT_LIST_HEAD STATEMENT
+%token  REAL3 INT3 FIRST
+%token  RANGE IN_RANGE
+%token  CONST_DIMS
+%token  CAST BASIC_STATEMENT
+%token  TEMPLATE BINARY UNARY PROGRAM
 
-%nonassoc QUESTION
-%nonassoc '<'
-%nonassoc '>'
-%nonassoc ':'
+%left QUESTION
+%left BINARY_OP
+%left ':'
+%left EQ
+%left AND
+%left OR
+%left MOD
+%nonassoc SHIFT_LEFT
+%nonassoc SHIFT_RIGHT
+%left LEQ
+%left GEQ
+%left NEQ
+%left '<'
+%left '>'
+%left '|'
+%left '&'
+%left '%'
+%left '^'
 %left '-'
 %left '+'
-%left '&'
-%left BINARY_OP
+%left '*'
+%left '/'
 %%
 
 
@@ -596,7 +791,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
 				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
 	    const ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
-	    const char* type = combine_all_new(type_specifier);
             ASTNode* assignment = (ASTNode*)get_node(NODE_ASSIGNMENT, variable_definition);
 	
             if (get_node_by_token(FIELD, variable_definition)) {
@@ -604,10 +798,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
             else if (get_node_by_token(COMPLEX_FIELD, variable_definition)) {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            } 
-            else if (!strcmp(type,"Field3")) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
@@ -628,13 +818,13 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    else if (assignment)
 		process_global_assignment($$,variable_definition,declaration_list);
 
-	    else if(has_qualifier($$->rhs,"run_const") || has_qualifier($$->rhs,"output"))
+	    else if(has_qualifier($$->rhs,RUN_CONST_STR) || has_qualifier($$->rhs,OUTPUT_STR))
 	    {
 		//TP: we do this to enable array dimensions with run_const ints
-                if(has_qualifier($$->rhs,"run_const"))
+                if(has_qualifier($$->rhs,RUN_CONST_STR))
                 {
                         const char* spec = get_node(NODE_TSPEC,$$->rhs)->lhs->buffer;
-                        if(!strcmp(spec,"int"))
+                        if(spec == INT_STR)
                         {       
                                 ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,$$->rhs)->rhs;
                                 node_vec vars = get_nodes_in_list(def_list_head);
@@ -643,7 +833,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                                         ASTNode* elem = (ASTNode*) vars.data[i];
                                         const char* name = get_node_by_token(IDENTIFIER,elem)->buffer;
                                         push(&run_const_ints,name);
-                                        push(&run_const_int_values,intern("10"));
+                                        push(&run_const_int_values,TEN_STR);
                                 }
                                 free_node_vec(&vars);
                         }
@@ -792,7 +982,6 @@ steps_definition: computesteps steps_definition_call '{' function_call_list '}' 
 struct_definition:     struct_name'{' declarations '}' {
                         $$ = astnode_create(NODE_STRUCT_DEF,$1,$3);
 			char* tmp = strdup($$->lhs->buffer);
-			remove_substring(tmp,"struct");
 			strip_whitespace(tmp);
 			astnode_set_buffer(tmp,$$->lhs);
 			free(tmp);
@@ -801,7 +990,6 @@ struct_definition:     struct_name'{' declarations '}' {
 enum_definition: enum_name '{' declaration_list_trailing_allowed '}'{
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 			char* tmp = strdup($1->buffer);
-		        remove_substring(tmp,"enum");
 		        strip_whitespace(tmp);
 			astnode_set_buffer(tmp,$1);
 			free(tmp);
@@ -809,7 +997,6 @@ enum_definition: enum_name '{' declaration_list_trailing_allowed '}'{
 		| enum_name '{' assignment_list '}' {
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 			char* tmp = strdup($1->buffer);
-		        remove_substring(tmp,"enum");
 		        strip_whitespace(tmp);
 			astnode_set_buffer(tmp,$1);
 			free(tmp);
@@ -886,7 +1073,21 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dims '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | halo '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | field_order '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); 
-						const int res = eval_int($3,true,NULL);
+						int err = 0;
+						int res = eval_int($3,false,&err);
+						if(err)
+					        {	
+							
+							fprintf(stderr,"\n");
+							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
+								combine_all_new_with_whitespace($3));
+							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
+								combine_all_new_with_whitespace($3));
+							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
+								combine_all_new_with_whitespace($3));
+							fprintf(stderr,"\n");
+							res = -1;
+						}
 						set_buffers_empty($3);
 						astnode_set_buffer(itoa(res),$3);
 						$3->lhs = NULL;
@@ -926,14 +1127,6 @@ type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOW
  * =============================================================================
 */
 
-//Plus and minus have to be in the parser since based on context they are unary or binary ops
-binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("+", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("-", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '&'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("&", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '<'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("<", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '>'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(">", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         ;
 
 unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
         | '+'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
@@ -1016,6 +1209,9 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
 						$$->token = CAST;
 						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
+                  | '[' ']' { 
+				ASTNode* empty_list = astnode_create(NODE_UNKNOWN,NULL,NULL);
+				$$ = astnode_create(NODE_ARRAY_INITIALIZER, empty_list, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  | struct_initializer {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
                   | '(' expression ')' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL); astnode_set_prefix("(", $$); astnode_set_postfix(")", $$); }
 
@@ -1024,15 +1220,157 @@ unary_expression: postfix_expression          { $$ = astnode_create(NODE_EXPRESS
                 | unary_op postfix_expression { $$ = astnode_create(NODE_EXPRESSION, $1, $2);   $$->token = UNARY;}
                 ;
 
-binary_expression: binary_op unary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+//Plus and minus have to be in the parser since based on context they are unary or binary ops
+
+binary_expression: 
+		  expression '/' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("/",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs);
+					}
+		 | expression '*' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("*",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs); 
+					}
+		 
+		 | expression '+' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("+",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs);
+					}
+		 | expression '-' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("-",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs); 
+					}
+		| expression '<' expression { 
+				 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+								astnode_set_buffer("<",op);
+								op->token = BINARY_OP;
+				 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+												op, $3);
+				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+							}
+		| expression '|' expression { 
+				 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+								astnode_set_buffer("|",op);
+								op->token = BINARY_OP;
+				 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+												op, $3);
+				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+							}
+		| expression '>' expression { 
+				 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+								astnode_set_buffer(">",op);
+								op->token = BINARY_OP;
+				 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+												op, $3);
+				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+							}
+		| expression EQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("==",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression LEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("<=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression GEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer(">=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression NEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("!=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression AND expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("&&",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression OR expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("||",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression SHIFT_LEFT expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("<<",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression SHIFT_RIGHT expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer(">>",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression MOD expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("%",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression '&' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("&",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
                  ;
-
-
-choose: QUESTION expression ':' expression {$$ = astnode_create(NODE_UNKNOWN,$2,$4);  astnode_set_prefix("? ",$$->lhs);  astnode_set_prefix(": ",$$->rhs);}
-      ;
 expression: unary_expression             { $$ = astnode_create(NODE_EXPRESSION, $1, NULL); }
-	  | expression choose            { $$ = astnode_create(NODE_TERNARY_EXPRESSION,$1,$2); } 
-          | expression binary_expression { $$ = astnode_create(NODE_BINARY_EXPRESSION, $1, $2); $$->token = BINARY;}
+	  | expression QUESTION expression ':' expression           
+		{ 
+			ASTNode* cond = $1;
+			ASTNode* choose = $$ = astnode_create(NODE_UNKNOWN,$3,$5);
+			astnode_set_prefix("?",$$->lhs);
+			astnode_set_prefix(":",$$->rhs);
+			$$ = astnode_create(NODE_TERNARY_EXPRESSION,cond,choose); 
+		} 
+          | binary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
 
 
 expression_list: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
@@ -1040,8 +1378,8 @@ expression_list: expression                     { $$ = astnode_create(NODE_UNKNO
                ;
 
 expression_list_trailing_allowed: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-               | expression_list ',' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
-               | expression_list ',' {$$ = $1;}
+               | expression_list_trailing_allowed ',' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
+               | expression_list_trailing_allowed ',' {$$ = $1;}
                ;
 
 
@@ -1239,7 +1577,7 @@ compound_statement: '{' '}'                { $$ = astnode_create(NODE_BEGIN_SCOP
 					   }
                   ;
 
-selection_statement: if if_statement        { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+selection_statement: if if_statement        { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = SELECTION_STATEMENT; }
                    ;
 
 if_statement: expression if_root  {$$ = astnode_create(NODE_IF, $1, $2); astnode_set_prefix("(",$$); astnode_set_infix(")",$$); }
@@ -1358,7 +1696,7 @@ function_definition: declaration function_body {
 				exit(EXIT_FAILURE);
 			}
 
-			if(has_qualifier($$,"extern"))
+			if(has_qualifier($$,EXTERN_STR))
 			{
 				$$->type |= NODE_NO_OUT;
 			}
@@ -1441,7 +1779,16 @@ stencilpoint_list: stencilpoint                       { $$ = astnode_create(NODE
 stencil_body: '{' stencilpoint_list '}' { $$ = astnode_create(NODE_BEGIN_SCOPE, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("},", $$); }
             ;
 
-stencil_definition: declaration stencil_body { $$ = astnode_create(NODE_STENCIL, $1, $2); set_identifier_type(NODE_FUNCTION_ID, $$->lhs); 
+stencil_definition: declaration stencil_body { 
+			const ASTNode* tspec = get_node(NODE_TSPEC,$1);
+			const ASTNode* id = get_node_by_token(IDENTIFIER,$1);
+			if(!tspec)
+			{
+				fprintf(stderr,"Please put the Stencil specifier on %s!\n",id->buffer);
+				fprintf(stderr,"Please put the Stencil specifier on %s!\n",id->buffer);
+				fprintf(stderr,"Please put the Stencil specifier on %s!\n",id->buffer);
+			}
+		  	$$ = astnode_create(NODE_STENCIL, $1, $2); set_identifier_type(NODE_FUNCTION_ID, $$->lhs); 
 		  }
                   ;
 %%
@@ -1526,7 +1873,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 
 		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
 		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
-		if(!tqual || has_qualifier(variable_definition,"dconst") || has_qualifier(variable_definition,"run_const"))
+		if(!tqual || has_qualifier(variable_definition,DCONST_STR) || has_qualifier(variable_definition,RUN_CONST_STR))
 		{
 			
 			node_vec dims = VEC_INITIALIZER;
@@ -1534,15 +1881,33 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			for(size_t i = 0; i < dims.size; ++i)
 			{
 				ASTNode* elem = (ASTNode*) dims.data[i];
-				const int array_len = eval_int(elem,true,NULL);
-				set_buffers_empty(elem);
-				astnode_set_buffer(itoa(array_len),elem);
+				int err = 0;
+				const int array_len = eval_int(elem,false,&err);
+				if(err && has_qualifier(variable_definition,DCONST_STR)) 
+				{
+					const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
+					fprintf(stderr,"\n");
+					fprintf(stderr,"AC WARNING demoting array %s from dconst to gmem since the dimensions are not known at compile-time!\n",
+						name);
+					fprintf(stderr,"AC WARNING demoting array %s from dconst to gmem since the dimensions are not known at compile-time!\n",
+						name);
+					fprintf(stderr,"AC WARNING demoting array %s from dconst to gmem since the dimensions are not known at compile-time!\n",
+						name);
+					fprintf(stderr ,"\n");
+					change_qualifier(variable_definition,DCONST_STR,GLOBAL_MEM_STR);
+				}
+				else
+				{
+					set_buffers_empty(elem);
+					astnode_set_buffer(itoa(array_len),elem);
+				}
 			}
 			free_node_vec(&dims);
 		}
-		//else if gmem simply replace const ints with numeric values to enable differentation of the const declarations
+		//NOTE: important to have if here because we can potentially transform dconst --> gmem above
+		//if gmem simply replace const ints with numeric values to enable differentation of the const declarations
 		//and the array dims and also to notice easily if dims are known statically
-		else if(has_qualifier(variable_definition,"gmem"))
+		if(has_qualifier(variable_definition,GLOBAL_MEM_STR))
 		{
 			node_vec dims = VEC_INITIALIZER;
 			get_array_access_nodes(variable_definition,&dims);
@@ -1565,17 +1930,35 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			}
 			free_node_vec(&dims);
 		}	
+		if(has_qualifier(variable_definition,GLOBAL_MEM_STR) && has_qualifier(variable_definition,DCONST_STR))
+		{
+		        const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
+			fprintf(stderr,"AC FATAL ERROR: array %s has both gmem and dconst qualifiers which is not possible!\n",name);
+			exit(EXIT_FAILURE);
+		}
+		if(has_qualifier(variable_definition,GLOBAL_MEM_STR) && has_qualifier(variable_definition,RUN_CONST_STR))
+		{
+		        const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
+			fprintf(stderr,"AC FATAL ERROR: array %s has both gmem and run_const qualifiers which is not possible!\n",name);
+			exit(EXIT_FAILURE);
+		}
+		if(has_qualifier(variable_definition,DCONST_STR) && has_qualifier(variable_definition,RUN_CONST_STR))
+		{
+		        const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
+			fprintf(stderr,"AC FATAL ERROR: array %s has both dconst and run_const qualifiers which is not possible!\n",name);
+			exit(EXIT_FAILURE);
+		}
 }
 static void process_global_assignment(ASTNode* node,ASTNode* variable_definition, ASTNode* declaration_list)
 	    {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 
-		const bool is_const = has_qualifier(node->rhs,"const");
-		const bool is_run_const = has_qualifier(node->rhs,"run_const");
+		const bool is_const = has_qualifier(node->rhs,CONST_STR);
+		const bool is_run_const = has_qualifier(node->rhs,RUN_CONST_STR);
 		if(!is_const && !is_run_const) return;
 		const char* spec = get_node(NODE_TSPEC,node->rhs)->lhs->buffer;
-		if(!strcmp(spec,"int"))
+		if(spec == INT_STR)
 		{	
 
 			ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,node->rhs)->rhs;

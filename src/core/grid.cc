@@ -45,7 +45,7 @@
  */
 
 #include "astaroth.h"
-#include "astaroth_utils.h"
+#include "astaroth_analysis_helpers.h"
 #include "task.h"
 #include "ac_helpers.h"
 
@@ -56,9 +56,7 @@
 #include <vector>
 #include <stack>
 
-#include "analysis_grid_helpers.h"
-
-#include "decomposition.h" //getPid3D, morton3D
+#include "decomposition/decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
 #include "math_utils.h"
 #include "timer_hires.h"
@@ -344,9 +342,14 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 
     set_info_val(submesh_config,AC_nlocal,submesh_n);
     const int3 pid3d = getPid3D(global_config);
-    const int3 offset = pid3d*submesh_n;
+    const int3 offset =
+    (int3){
+	    (int)pid3d.x*submesh_n.x,
+	    (int)pid3d.y*submesh_n.y,
+	    (int)pid3d.z*submesh_n.z
+    };
     set_info_val(submesh_config,AC_multigpu_offset,offset);
-    submesh_config[AC_multigpu_offset] = pid3d*submesh_n;
+    submesh_config[AC_multigpu_offset] = offset;
     set_info_val(submesh_config,AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z});
     set_info_val(submesh_config,AC_domain_coordinates,pid3d);
     acHostUpdateParams(&submesh_config);
@@ -510,13 +513,40 @@ ac_yz_color()
     const int3 my_coordinates = grid.submesh.info[AC_domain_coordinates];
     return my_coordinates.x;
 }
+static MPI_Comm
+get_reversed_comm(const MPI_Comm comm)
+{
+	int rank, nprocs;
+	ERRCHK_ALWAYS(MPI_Comm_rank(comm, &rank) == MPI_SUCCESS);
+	ERRCHK_ALWAYS(MPI_Comm_size(comm, &nprocs) == MPI_SUCCESS);
 
+	int reverse_key = nprocs - 1 - rank;
+	MPI_Comm res;
+	ERRCHK_ALWAYS(MPI_Comm_split(comm, 0, reverse_key, &res) == MPI_SUCCESS);
+	return res;
+}
+
+static int
+get_comm_size(const MPI_Comm comm)
+{
+	int res;
+	ERRCHK_ALWAYS(MPI_Comm_size(comm, &res) == MPI_SUCCESS);
+	return res;
+}
 static void
 create_astaroth_sub_communicators()
 {
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_x_color(),ac_pid(),&astaroth_sub_comms.x) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_y_color(),ac_pid(),&astaroth_sub_comms.y) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_z_color(),ac_pid(),&astaroth_sub_comms.z) == MPI_SUCCESS);
+
+	ERRCHK_ALWAYS(get_comm_size(astaroth_sub_comms.x) == (int)grid.decomposition.x);
+	ERRCHK_ALWAYS(get_comm_size(astaroth_sub_comms.y) == (int)grid.decomposition.y);
+	ERRCHK_ALWAYS(get_comm_size(astaroth_sub_comms.z) == (int)grid.decomposition.z);
+
+	astaroth_sub_comms.reverse_x = get_reversed_comm(astaroth_sub_comms.x);
+	astaroth_sub_comms.reverse_y = get_reversed_comm(astaroth_sub_comms.y);
+	astaroth_sub_comms.reverse_z = get_reversed_comm(astaroth_sub_comms.z);
 
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_xy_color(),ac_pid(),&astaroth_sub_comms.xy) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_xz_color(),ac_pid(),&astaroth_sub_comms.xz) == MPI_SUCCESS);
@@ -640,15 +670,15 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 					      );
 				if(run_time)
 				{
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x && (BOUNDARY_X & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x && (BOUNDARY_X & stencil_accesses_boundaries(acGridGetLocalMeshInfo(),Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though X is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y && (BOUNDARY_Y & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y && (BOUNDARY_Y & stencil_accesses_boundaries(acGridGetLocalMeshInfo(),Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though Y is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z && (BOUNDARY_Z & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z && (BOUNDARY_Z & stencil_accesses_boundaries(acGridGetLocalMeshInfo(), Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though Z is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
@@ -673,7 +703,7 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
         MPI_Gather(&tpb_z,1,MPI_INT,z_dim,1,MPI_INT,0,astaroth_comm);
         MPI_Gather(&local_best.time,1,MPI_FLOAT,time_buffer,1,MPI_FLOAT,0,astaroth_comm);
 
-        dim3 first_tpb(x_dim[0],y_dim[0],z_dim[0]);
+        dim3 first_tpb{(unsigned int)x_dim[0],(unsigned int)y_dim[0],(unsigned int)z_dim[0]};
         AcAutotuneMeasurement res{time_buffer[0], first_tpb};
         if(ac_pid() == 0)
         {
@@ -682,7 +712,7 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
                         if(time_buffer[i]  < res.time)
                         {
                                 res.time = time_buffer[i];
-                                dim3 res_tpb(x_dim[i],y_dim[i],z_dim[i]);
+                                dim3 res_tpb{(unsigned int)x_dim[i],(unsigned int)y_dim[i],(unsigned int)z_dim[i]};
                                 res.tpb = res_tpb;
                         }
                 }
@@ -703,7 +733,7 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
                 MPI_Bcast(&x_res, 1, MPI_INT, 0, astaroth_comm);
                 MPI_Bcast(&y_res, 1, MPI_INT, 0, astaroth_comm);
                 MPI_Bcast(&z_res, 1, MPI_INT, 0, astaroth_comm);
-                res.tpb = dim3(x_res,y_res,z_res);
+                res.tpb = dim3{(unsigned int)x_res,(unsigned int)y_res,(unsigned int)z_res};
         }
         free(time_buffer);
         free(x_dim);
@@ -728,6 +758,7 @@ gen_postprocessing_metadata()
 AcResult
 acGridInitBase(const AcMesh user_mesh)
 {
+    acCheckDeviceAvailability();
     int mpi_has_been_initialized{};
     MPI_Initialized(&mpi_has_been_initialized);
     if(!mpi_has_been_initialized)
@@ -838,6 +869,11 @@ acGridInitBase(const AcMesh user_mesh)
 		    grid.decomposition.z
 		    );
 
+    if((int)(grid.decomposition.x*grid.decomposition.y*grid.decomposition.z) != (int)ac_nprocs())
+    {
+	    fatal("Astaroth was initialized with %d processes but decomposition is for %d processes!\n",(int)ac_nprocs(),(int)(grid.decomposition.x*grid.decomposition.y*grid.decomposition.z));
+    }
+
     // Configure
     grid.nn = acGetLocalNN(acDeviceGetLocalConfig(device));
     grid.mpi_tag_space_count = 0;
@@ -856,7 +892,7 @@ acGridInitBase(const AcMesh user_mesh)
     acVerboseLogFromRootProc(ac_pid(), "memusage after synchronize stream= %f MBytes\n", acMemUsage()/1024.0);
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
-    grid.kernel_analysis_info = get_kernel_analysis_info();
+    grid.kernel_analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
     if(ac_pid() == 0) acAnalysisCheckForDSLErrors(acGridGetLocalMeshInfo());	
     check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
 
@@ -928,6 +964,7 @@ acGridQuit(void)
     }
     acDeviceDestroy(&grid.device);
     compat_acDecompositionQuit();
+    acKernelsClean();
     acRuntimeQuit();
     // acDecompositionInfoDestroy(&grid.decomposition_info);
 
@@ -1859,8 +1896,8 @@ check_ops(const std::vector<AcTaskDefinition> ops)
         case TASKTYPE_REDUCE:
           task_graph_repr += "Reduce,";
 	  break;
-        case TASKTYPE_RAY_REDUCE:
-          task_graph_repr += "RayReduce,";
+        case TASKTYPE_SCAN:
+          task_graph_repr += "Scan,";
 	  break;
         case TASKTYPE_RAY_UPDATE:
           task_graph_repr += "RayUpdate,";
@@ -1945,7 +1982,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     std::vector<AcTaskDefinition> ops{};
     //TP: insert reduce tasks in between of tasks
     //If kernel A outputs P(profile or scalar to be reduced) then a reduce task reducing P should be inserted
-    const auto kernel_analysis_info = get_kernel_analysis_info();
+    const auto kernel_analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
     for(size_t i = 0; i < n_ops; ++i)
     {
 	    auto op = ops_in[i];
@@ -1982,7 +2019,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    kernels[i] = op.kernel_enum;
 	    }
     }
-    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos(kernels,kernel_analysis_info.data());
+    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos(acGridGetLocalMeshInfo(),kernels,kernel_analysis_info.data());
     for(size_t i = 0; i < ops.size(); ++i)
     {
 	    ops[i].computes_on_halos = BOUNDARY_NONE;
@@ -2071,10 +2108,10 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         //always remember to call the loader since otherwise might not be safe to execute taskgraph
         op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
 
-	const int3 old_tpb = acReadOptimTBConfig(op.kernel_enum,task->output_region.dims,to_volume(acGridGetLocalMeshInfo()[AC_thread_block_loop_factors]));
+	const int3 old_tpb = acGetOptimTPB(op.kernel_enum,task->output_region.position,task->output_region.position+task->output_region.dims);
         acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
         //acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
-        fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
+        fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
     	//make sure after autotuning that out is 0
 	if(old_tpb == (int3){-1,-1,-1})
 	{
@@ -2091,6 +2128,8 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
         auto op = ops[i];
 
+	ERRCHK_ALWAYS(to_int3(end_in) >= to_int3(start_in));
+	ERRCHK_ALWAYS(to_int3(op.end) >= to_int3(op.start));
         const Volume dims = 
 			    op.given_launch_bounds ?
 			    op.end-op.start :
@@ -2178,7 +2217,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
 		    else if(max_comp_facet_class == 3)
 		    {
-			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
+			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(),op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
 			if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
 				if(Region::tag_to_id(tag).x != 0) continue;
 			if(!(bc_dependencies & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
@@ -2194,7 +2233,20 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    if(Region::tag_to_facet_class(tag) > max_comp_facet_class) continue;
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries,max_comp_facet_class);
             	    graph->all_tasks.push_back(task);
+		    //TP: if we are writing to input try to be nice and swap buffers temporarily to try to write out output buffers instead
+            	    for (size_t buf = 0; buf < op.num_fields_out; buf++) {
+	    	        if(kernel_writes_to_input(op.kernel_enum,op.fields_out[buf],kernel_analysis_info.data()))
+	    	        {
+                		acDeviceSwapBuffer(grid.device, op.fields_out[buf]);
+	    	        }
+            	    }
 		    compute_task_poststep(op,task);
+            	    for (size_t buf = 0; buf < op.num_fields_out; buf++) {
+	    	        if(kernel_writes_to_input(op.kernel_enum,op.fields_out[buf],kernel_analysis_info.data()))
+	    	        {
+                		acDeviceSwapBuffer(grid.device, op.fields_out[buf]);
+	    	        }
+            	    }
             	}
 	    }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
@@ -2215,6 +2267,33 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    if(globally_imposed_bcs)
 	    {
 		    fatal("%s","Tried to generate taskgraph with globally imposed bcs and halo exchanges!\n");
+	    }
+	    if(op.halo_sizes.x > start.x)
+	    {
+	        fprintf(stderr,"Out of bounds in HaloExchange!\nStarts at %zu but has %zu ghost layers!"
+	        		,start.x
+	        		,op.halo_sizes.x
+	        		);
+	        fflush(stderr);
+	    	ERRCHK_ALWAYS(op.halo_sizes.x <= start.x);
+	    }
+	    if(op.halo_sizes.y > start.y)
+	    {
+	        fprintf(stderr,"Out of bounds in HaloExchange!\nStarts at %zu but has %zu ghost layers!"
+	        		,start.y
+	        		,op.halo_sizes.y
+	        		);
+	        fflush(stderr);
+	    	ERRCHK_ALWAYS(op.halo_sizes.y <= start.y);
+	    }
+	    if(op.halo_sizes.z > start.z)
+	    {
+	        fprintf(stderr,"Out of bounds in HaloExchange!\nStarts at %zu but has %zu ghost layers!"
+	        		,start.z
+	        		,op.halo_sizes.z
+	        		);
+	        fflush(stderr);
+	    	ERRCHK_ALWAYS(op.halo_sizes.z <= start.z);
 	    }
             acVerboseLogFromRootProc(rank, "Creating halo exchange tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
@@ -2245,14 +2324,14 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
             break;
         }
 
-        case TASKTYPE_RAY_REDUCE: {
-            acVerboseLogFromRootProc(rank, "Creating ray reduce tasks\n");
+        case TASKTYPE_SCAN: {
+            acVerboseLogFromRootProc(rank, "Creating scan tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
-            auto task = std::make_shared<MPIReduceTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
+            auto task = std::make_shared<MPIScanTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
                                                            device, swap_offset);
             graph->all_tasks.push_back(task);
 
-            acVerboseLogFromRootProc(rank, "Ray reduce tasks created\n");
+            acVerboseLogFromRootProc(rank, "Scan tasks created\n");
             grid.mpi_tag_space_count++;
             break;
         }
@@ -2321,7 +2400,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    }
                     acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                              tag);
-		    const bool shear_periodic = acGridGetLocalMeshInfo()[AC_shear] && (
+		    const bool shear_periodic = !acGridGetLocalMeshInfo()[AC_dimension_inactive].y && acGridGetLocalMeshInfo()[AC_shear] && (
 		    				   (id.x == -1 && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == 0)
 		    				|| (id.x == 1  && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == int(decomp.x-1))
 		    				);
@@ -2577,7 +2656,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         auto dim2 = t2->output_region.dims;
 
 	if(vol1 > vol2) return true;
-        if(vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.z > dim2.z)) return true;
+        if(vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.y > dim2.y || dim1.z > dim2.z)) return true;
 	//TP: these are somewhat arbitrary but the sorting function requires a well-defined order: otherwise seg faults
 	if(vol1 == vol2 && dim1 == dim2 && order1 < order2) return true;
 	if(vol1 == vol2 && dim1 == dim2 && order1 == order2 && tag1 < tag2) return true;

@@ -21,6 +21,8 @@
 #define AC_INDEX_ORDER(i,j,k,x,y,z) \
 	i + x*j + x*y*k
 
+#define DEVICE_INLINE __device__ __forceinline__
+
 #include <stdio.h>
 #include <stdbool.h>
 #include "device_headers.h"
@@ -29,20 +31,6 @@
 #include "errchk.h"
 
 #define AC_SIZE(arr) sizeof(arr)/sizeof(arr[0])
-#define ONE_DIMENSIONAL_PROFILE (1 << 20)
-#define TWO_DIMENSIONAL_PROFILE (1 << 21)
-typedef enum {
-	PROFILE_NONE = 0,
-	PROFILE_X  = (1 << 0) | ONE_DIMENSIONAL_PROFILE,
-	PROFILE_Y  = (1 << 1) | ONE_DIMENSIONAL_PROFILE,
-	PROFILE_Z  = (1 << 2) | ONE_DIMENSIONAL_PROFILE,
-	PROFILE_XY = (1 << 3) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_XZ = (1 << 4) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_YX = (1 << 5) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_YZ = (1 << 6) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_ZX = (1 << 7) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_ZY = (1 << 8) | TWO_DIMENSIONAL_PROFILE,
-} AcProfileType;
 
 
 
@@ -59,40 +47,6 @@ typedef enum {
   #include "user_built-in_constants.h"
   //#include "user_builtin_non_scalar_constants.h"
   #include "func_attributes.h"
-
-#ifdef __cplusplus
-
-
-#endif
-#define N_DIMS (3)
-#define X_ORDER_INT (0)
-#define Y_ORDER_INT (1)
-#define Z_ORDER_INT (2)
-
-typedef enum {
-	XYZ = X_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*Z_ORDER_INT,
-	XZY = X_ORDER_INT + N_DIMS*Z_ORDER_INT + N_DIMS*N_DIMS*Y_ORDER_INT,
-	YXZ = Y_ORDER_INT + N_DIMS*X_ORDER_INT + N_DIMS*N_DIMS*Z_ORDER_INT,
-	YZX = Y_ORDER_INT + N_DIMS*Z_ORDER_INT + N_DIMS*N_DIMS*X_ORDER_INT,
-	ZXY = Z_ORDER_INT + N_DIMS*X_ORDER_INT + N_DIMS*N_DIMS*Y_ORDER_INT,
-	ZYX = Z_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*X_ORDER_INT,
-} AcMeshOrder;
-
-
-typedef enum AcReduceOp
-{
-	NO_REDUCE,
-	REDUCE_MIN,
-	REDUCE_MAX,
-	REDUCE_SUM,
-} AcReduceOp;
-
-typedef struct {
-    size3_t n0, n1;
-    size3_t m0, m1;
-    size3_t nn;
-    size3_t reduction_tile;
-} AcMeshDims;
 
 static UNUSED void ac_library_not_yet_loaded()
 {
@@ -195,8 +149,6 @@ typedef struct
 #include "device_mesh_info_decl.h"
   } AcMeshInfoScalars;
 
-//TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm
-typedef struct AcCommunicator AcCommunicator;
 
   typedef struct AcMeshInfo{
 
@@ -222,8 +174,8 @@ typedef struct AcCommunicator AcCommunicator;
   } AcInputs;
 
 typedef struct {
-  AcReal* in[NUM_PROFILES];
-  AcReal* out[NUM_PROFILES];
+  AcReal* in[NUM_PROFILES+1];
+  AcReal* out[NUM_PROFILES+1];
 } ProfileBufferArray;
 
 
@@ -247,24 +199,9 @@ typedef struct {
 #endif
   } AcScratchpadStates;
 
-  typedef struct {
-    size_t x, y, z, w;
-  } AcShape;
 
-#ifndef AC_STENCIL_ACCESSES_MAIN
-  #include "ac_helpers.h"
-#endif
 
-  typedef struct AcBuffer{
-      AcReal* data;
-      size_t count;
-      bool on_device;
-      AcShape shape;
-#ifdef __cplusplus
-      const AcReal& operator[](const int index) {return data[index];}
-#endif
-  } AcBuffer;
-
+#include "ac_helpers.h"
 #include "scalar_reduce_buffer_defs.h"
 
   typedef struct 
@@ -291,41 +228,13 @@ typedef struct {
 #include "scalar_reduce_buffers_in_vba.h"
 
     AcScratchpadStates* scratchpad_states;
-    AcReduceBuffer profile_reduce_buffers[NUM_PROFILES];
+    AcReduceBuffer profile_reduce_buffers[NUM_PROFILES+1];
 
   } VertexBufferArray;
 
 
-  typedef struct
-  {
-	int read_fields[NUM_ALL_FIELDS];
-	int field_has_stencil_op[NUM_ALL_FIELDS];
-  	int stencils_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];
-  	int written_fields[NUM_ALL_FIELDS];
-	int read_profiles[NUM_PROFILES+1];
-	int reduced_profiles[NUM_PROFILES+1];
-	int written_profiles[NUM_PROFILES+1];
-  	int profile_has_stencil_op[NUM_PROFILES+1];
-	int ray_accessed[NUM_ALL_FIELDS][NUM_RAYS+1];
-	KernelReduceOutput reduce_inputs[NUM_OUTPUTS+1];
-	KernelReduceOutput reduce_outputs[NUM_OUTPUTS+1];
-	size_t n_reduce_inputs;
-	size_t n_reduce_outputs;
-  } KernelAnalysisInfo;
-
-
-  typedef AcShape AcIndex;
   
-
-  typedef struct
-  {
-  	bool larger_input;
-  	bool larger_output;
-  } acAnalysisBCInfo;
-
-
-
-
+#include "astaroth_analysis.h"
 #if AC_RUNTIME_COMPILATION
 
 #ifndef BASE_FUNC_NAME
@@ -359,6 +268,22 @@ typedef struct
         dim3 tpb;
 } AcAutotuneMeasurement;
 
+static UNUSED int3
+acGetFieldHalos(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+
+	if(     vtxbuf_compile_time_halos[vtxbuf].x != -1
+	     && vtxbuf_compile_time_halos[vtxbuf].y != -1
+	     && vtxbuf_compile_time_halos[vtxbuf].z != -1
+	  )
+	{
+		return vtxbuf_compile_time_halos[vtxbuf];
+	}
+	return info.int3_params[vtxbuf_run_time_halos[vtxbuf]];
+}
+
+#include "common_kernels.h"
+
 typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
   #ifdef __cplusplus
   extern "C" {
@@ -370,8 +295,6 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
    FUNC_DEFINE(AcResult, acInitializeRuntimeMPI,(const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
 #endif
 
-  FUNC_DEFINE(AcResult, acTransposeWithBounds,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream));
-  FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream));
   FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
@@ -379,17 +302,18 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(AcResult, acKernelFlushComplex,(const cudaStream_t stream, AcComplex* arr, const size_t n, const AcComplex value));
   FUNC_DEFINE(AcResult, acKernelFlushFloat,(const cudaStream_t stream, float* arr, const size_t n, const float value));
 
+  FUNC_DEFINE(AcResult, acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
   FUNC_DEFINE(size_t,acGetRealScratchpadSize,(const size_t i));
 
-  FUNC_DEFINE(AcMeshOrder, acGetMeshOrderForProfile,(const AcProfileType type));
   FUNC_DEFINE(size3_t, acGetProfileReduceScratchPadDims,(const int profile, const AcMeshDims dims));
 
-  FUNC_DEFINE(AcResult,acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
 
   FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfo config));
 
-  FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfo config));
+  FUNC_DEFINE(AcResult, acAllocateArrays ,(const AcMeshInfo config));
+  FUNC_DEFINE(AcResult, acUpdateArrays   ,(const AcMeshInfo config));
+  FUNC_DEFINE(AcResult, acFreeArrays     ,(const AcMeshInfo config));
 
   FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfo config));
 
@@ -398,12 +322,15 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(void, acRandQuit,(void));
 
   FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const Volume start, const Volume end, VertexBufferArray));
+  FUNC_DEFINE(AcResult, acLaunchKernelWithTPB,(AcKernel kernel, const cudaStream_t stream, const Volume start_volume, const Volume end_volume, VertexBufferArray vba, const dim3 tpb));
+  FUNC_DEFINE(AcResult, acLaunchKernelBase,(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream));
+
 
   FUNC_DEFINE(AcResult, acSetReduceOffset,(AcKernel func, const Volume start, const Volume end, VertexBufferArray));
 
   FUNC_DEFINE(AcResult, acBenchmarkKernel,(AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
 
-  FUNC_DEFINE(int3, acReadOptimTBConfig,(const AcKernel, const Volume dims, const Volume block_factors));
+  FUNC_DEFINE(int3, acGetOptimTPB,(const AcKernel, const Volume start, const Volume end));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   FUNC_DEFINE(AcResult, acLoadStencil,(const Stencil stencil, const cudaStream_t stream, const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
@@ -411,16 +338,6 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   FUNC_DEFINE(AcResult, acStoreStencil,(const Stencil stencil, const cudaStream_t stream, AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
-  FUNC_DEFINE(AcResult,acFFTBackwardTransformSymmetricC2R,(const AcComplex* transformed_in, const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer));
-
-  FUNC_DEFINE(AcResult,acFFTForwardTransformSymmetricR2C,(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in));
-
-  FUNC_DEFINE(AcResult,acFFTForwardTransformR2C,(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst));
-
-  FUNC_DEFINE(AcResult,acFFTForwardTransformPlanar,(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst));
-  FUNC_DEFINE(AcResult,acFFTForwardTransformR2Planar,(const AcReal* src,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst));
-
-  FUNC_DEFINE(AcResult, acFFTBackwardTransformC2R,(const AcComplex* transformed_in, const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
 #include "load_and_store_uniform_header.h"
@@ -434,6 +351,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
   FUNC_DEFINE(size_t,  acGetSmallestRealReduceScratchPadSizeBytes,());
+  FUNC_DEFINE(bool, acRuntimeIsInitialized,());
+  FUNC_DEFINE(AcResult, acRuntimeInit,(const AcMeshInfo config));
   FUNC_DEFINE(AcResult, acRuntimeQuit, ());
 
 #if AC_RUNTIME_COMPILATION
@@ -444,7 +363,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	char original_runtime_astaroth_runtime_path[40000];
 	sprintf(original_runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 	static int counter = 0;
-	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,info);
+	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,info.comm);
 	++counter;
  	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_LOCAL);
 	if(!handle)
@@ -456,6 +375,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	LOAD_DSYM(acKernelFlush,stream);
 	LOAD_DSYM(acVBAReset,stream);
 	LOAD_DSYM(acVBACreate,stream);
+	LOAD_DSYM(acAllocateArrays,stream);
 	LOAD_DSYM(acUpdateArrays,stream);
 	LOAD_DSYM(acVBADestroy,stream);
 	LOAD_DSYM(acRandInitAlt,stream);
@@ -483,7 +403,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	LOAD_DSYM(acGetKernelReduceScratchPadSize,stream)
 	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream)
 	LOAD_DSYM(acGetKernels,stream)
-	LOAD_DSYM(acReadOptimTBConfig,stream);
+	LOAD_DSYM(acGetOptimTPB,stream);
         LOAD_DSYM(acRuntimeQuit,stream);
 
 	return handle;
@@ -493,7 +413,25 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   #ifdef __cplusplus
   } // extern "C"
     //
-    //
+#if AC_RUNTIME_COMPILATION
+#else
+AcResult
+acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
+              const AcReal value);
+
+AcResult
+acKernelFlush(const cudaStream_t stream, int* arr, const size_t n,
+              const int value);
+AcResult
+acKernelFlush(const cudaStream_t stream, AcComplex* arr, const size_t n,
+              const AcComplex value);
+
+#if AC_DOUBLE_PRECISION
+AcResult
+acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
+              const float value);
+#endif
+#endif
 #ifndef AC_RUNTIME_SOURCE
 #include <type_traits>
 #include <string.h>
@@ -511,32 +449,8 @@ void acPBASwapBuffers(VertexBufferArray* vba);
 AcResult acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
 
 
-// Returns the number of elements contained within shape
-size_t acShapeSize(const AcShape shape);
 
-AcResult acReindex(const cudaStream_t stream, //
-                   const AcReal* in, const AcIndex in_offset,
-                   const AcIndex in_shape, //
-                   AcReal* out, const AcIndex out_offset,
-                   const AcIndex out_shape, const AcShape block_shape);
 
-AcResult acReindexCross(const cudaStream_t stream, //
-                        const VertexBufferArray vba, const AcIndex in_offset,
-                        const AcShape in_shape, //
-                        AcReal* out, const AcIndex out_offset,
-                        const AcShape out_shape, const AcShape block_shape);
-
-AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
-                           const size_t count, const size_t num_segments,
-                           AcReal* d_out, AcReal** tmp, size_t* tmp_size);
-
-FUNC_DEFINE(AcResult, acReduceReal,(const cudaStream_t stream, const AcReduceOp, AcRealScalarReduceBuffer, const size_t count));
-
-FUNC_DEFINE(AcResult, acReduceInt,(const cudaStream_t stream, const AcReduceOp, AcIntScalarReduceBuffer, const size_t count));
-
-#if AC_DOUBLE_PRECISION
-FUNC_DEFINE(AcResult, acReduceFloat,(const cudaStream_t stream, const AcReduceOp, AcFloatScalarReduceBuffer, const size_t count));
-#endif
 
 FUNC_DEFINE(AcResult, acLoadRealReduceRes,(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value));
 FUNC_DEFINE(AcResult, acLoadIntReduceRes,(cudaStream_t stream, const AcIntOutputParam param, const int* value));
@@ -546,35 +460,11 @@ FUNC_DEFINE(AcResult, acLoadFloatReduceRes,(cudaStream_t stream, const AcFloatOu
 #endif
 
 
-static UNUSED AcResult
-acReduce(const cudaStream_t stream, const AcReduceOp op, AcRealScalarReduceBuffer buffer, const size_t count)
-{
-	return acReduceReal(stream,op,buffer,count);
-}
+FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const AcMeshDims* dims));
 
-static UNUSED AcResult
-acReduce(const cudaStream_t stream, const AcReduceOp op, AcIntScalarReduceBuffer buffer, const size_t count)
-{
-	return acReduceInt(stream,op,buffer,count);
-}
+FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
 
-#if AC_DOUBLE_PRECISION
-static UNUSED AcResult
-acReduce(const cudaStream_t stream, const AcReduceOp op, AcFloatScalarReduceBuffer buffer, const size_t count)
-{
-	return acReduceFloat(stream,op,buffer,count);
-}
-#endif
-
-
-AcResult acMultiplyInplace(const AcReal value, const size_t count,
-                           AcReal* array);
-
-  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts));
-
-  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
-
-  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
+FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba, const AcMeshDims* dims));
 /**
  * Checks the mesh info for uninitialized values.
  * Returns 0 on succes and -1 on failure.
@@ -910,3 +800,28 @@ prof_size(const Profile prof, const size3_t counts)
 {
     return prof_count(prof,counts)*sizeof(AcReal);
 }
+
+AcReal**
+ac_allocate_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
+int**
+ac_allocate_scratchpad_int(const size_t i, const size_t new_bytes, const AcReduceOp state);
+float**
+ac_allocate_scratchpad_float(const size_t i, const size_t new_bytes, const AcReduceOp state);
+
+void
+ac_free_scratchpad_real(const size_t i);
+void
+ac_free_scratchpad_int(const size_t i);
+void
+ac_free_scratchpad_float(const size_t i);
+
+const size_t*
+ac_get_scratchpad_size_real(const size_t i);
+const size_t*
+ac_get_scratchpad_size_int(const size_t i);
+const size_t*
+ac_get_scratchpad_size_float(const size_t i);
+
+void
+ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
+

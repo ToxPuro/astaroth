@@ -175,10 +175,10 @@ const real rkf4_alpha_coeffs =[ 970286171893./4311952581923.,
                 2251764453980./15575788980749.,
                26877169314380./34165994151039., 0.0]
 
-rkf4_alpha(real f_alpha, real roc, int step_num, real dt) {
+rkf4_alpha(real f_beta, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
     fatal_error_message(AC_rk_order != 4, "Used rkf4_alpha but AC_rk_order is not 4!\n");
-    return f_alpha + rkf4_alpha_coeffs[step_num]*roc*dt
+    return f_beta + rkf4_alpha_coeffs[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_beta(real f_beta, real roc, int step_num, real dt) {
@@ -187,11 +187,11 @@ rkf4_beta(real f_beta, real roc, int step_num, real dt) {
     return f_beta + rkf4_beta_coeffs[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rkf4_alpha(real3 f_alpha, real3 roc, int step_num, real dt) {
+rkf4_alpha(real3 f_beta, real3 roc, int step_num, real dt) {
 	return real3(
-			rkf4_alpha(f_alpha.x,roc.x,step_num,dt),
-			rkf4_alpha(f_alpha.y,roc.y,step_num,dt),
-			rkf4_alpha(f_alpha.z,roc.z,step_num,dt)
+			rkf4_alpha(f_beta.x,roc.x,step_num,dt),
+			rkf4_alpha(f_beta.y,roc.y,step_num,dt),
+			rkf4_alpha(f_beta.z,roc.z,step_num,dt)
 		    )
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -235,13 +235,18 @@ rkf4_update(real df, int step_num, real dt, Field ERROR, Field BETA, Field F, re
   	{
   	      write(BETA,rkf4_beta(BETA,df,step_num,dt))
   	}
-  	//Until the last step the 'proper' registers hold the alpha updates
+  	//Until the last step the 'proper' registers holds alpha
   	//Except in the last one we overwrite them with the beta update
   	//No need to write the error out for the last substep
-  	if (step_num != 4)
-  	{
+	
+	if (step_num  == 0)
+	{
   	      write(F,rkf4_alpha(F,df,step_num,dt))
-
+  	      write(ERROR,error)
+	}
+	else if (step_num != 4)
+  	{
+  	      write(F,rkf4_alpha(BETA,df,step_num,dt))
   	      write(ERROR,error)
   	}
   	else
@@ -273,12 +278,17 @@ rkf4_update(real3 df, int step_num, real dt, Field3 ERROR, Field3 BETA, Field3 F
   	{
   	      write(BETA,rkf4_beta(BETA,df,step_num,dt))
   	}
-  	//Until the last step the 'proper' registers hold the alpha updates
+  	//Until the last step the 'proper' registers holds alpha
   	//Except in the last one we overwrite them with the beta update
   	//No need to write the error out for the last substep
-  	if (step_num != 4)
-  	{
+	if (step_num == 0)
+	{
   	      write(F,rkf4_alpha(F,df,step_num,dt))
+  	      write(ERROR,error)
+	}
+	else if (step_num != 4)
+  	{
+  	      write(F,rkf4_alpha(BETA,df,step_num,dt))
   	      write(ERROR,error)
   	}
   	else

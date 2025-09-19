@@ -18,7 +18,7 @@
 int
 main(int argc, char** argv)
 {
-    cudaProfilerStop();
+    acProfilerStop();
 
     fprintf(stderr,
             "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify> <salt>\n");
@@ -176,10 +176,10 @@ main(int argc, char** argv)
     }
 
     // Profile
-    cudaProfilerStart();
+    acProfilerStart();
     acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
     acDeviceSynchronizeStream(device, STREAM_ALL);
-    cudaProfilerStop();
+    acProfilerStop();
 
     // Free
     fclose(fp);

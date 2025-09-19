@@ -66,10 +66,32 @@ main(int argc, char* argv[])
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
 
-    const int nx = argc > 1 ? atoi(argv[1]) : 2*9;
-    const int ny = argc > 2 ? atoi(argv[2]) : 2*11;
-    const int nz = argc > 3 ? atoi(argv[3]) : 4*7;
+    const int left_halo_x = argc > 1 ? atoi(argv[1]) : 5;
+    const int left_halo_y = argc > 2 ? atoi(argv[2]) : 5;
+    const int left_halo_z = argc > 3 ? atoi(argv[3]) : 5;
 
+    const int right_halo_x = argc > 4 ? atoi(argv[4]) : 5;
+    const int right_halo_y = argc > 5 ? atoi(argv[5]) : 5;
+    const int right_halo_z = argc > 6 ? atoi(argv[6]) : 5;
+
+    const int nx = argc > 7 ? atoi(argv[7]) : 2*9;
+    const int ny = argc > 8 ? atoi(argv[8]) : 2*11;
+    const int nz = argc > 9 ? atoi(argv[9]) : 4*7;
+
+    acPushToConfig(info,AC_left_extended_halo, (int3){left_halo_x,left_halo_y,left_halo_z});
+    acPushToConfig(info,AC_right_extended_halo, (int3){right_halo_x,right_halo_y,right_halo_z});
+
+    printf("Left halo: %d,%d,%d\n"
+		    ,left_halo_x
+		    ,left_halo_y
+		    ,left_halo_z
+	   );
+
+    printf("Right halo: %d,%d,%d\n"
+		    ,right_halo_x
+		    ,right_halo_y
+		    ,right_halo_z
+	   );
     acPushToConfig(info,AC_proc_mapping_strategy, AC_PROC_MAPPING_STRATEGY_LINEAR);
     acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
     acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
@@ -88,8 +110,31 @@ main(int argc, char* argv[])
 
 
     acGridInit(info);
+    const auto init = acGetOptimizedDSLTaskGraph(initcond);
+    const auto add_graph = acGetOptimizedDSLTaskGraph(add_field);
+    const auto copy_graph = acGetOptimizedDSLTaskGraph(copy_normal_to_extended);
+    const auto copy_to_normal_graph = acGetOptimizedDSLTaskGraph(copy_extended_to_normal);
+    const auto derivx_graph = acGetOptimizedDSLTaskGraph(derivx);
+    const auto derivy_graph = acGetOptimizedDSLTaskGraph(derivy);
+    const auto derivz_graph = acGetOptimizedDSLTaskGraph(derivz);
+    const auto reduce_graph = acGetOptimizedDSLTaskGraph(reduce_extended);
+    const int3 launch_dims_int3 = 
+		    (int3)
+		    {
+		    	info[AC_nlocal].x/2,
+		    	info[AC_nlocal].y/2,
+		    	info[AC_nlocal].z/2
+		    };
+    const Volume launch_dims = to_volume(
+		    launch_dims_int3
+		    );
+
+    const Volume launch_start = to_volume(info[AC_nmin]);
+    const Volume launch_end = launch_dims + launch_start;
+
+    const auto add_sub_graph = acGetOptimizedDSLTaskGraph(add_field_normal , launch_start, launch_end);
     const auto extended_dims = acGetMeshDims(acGridGetLocalMeshInfo(),F_EXT);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
+    acGridExecuteTaskGraph(init,1);
 
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     auto IDX = [](const int x, const int y, const int z, const Field f)
@@ -98,7 +143,7 @@ main(int argc, char* argv[])
     };
 
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(add_field),1);
+    acGridExecuteTaskGraph(add_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -131,7 +176,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_normal_to_extended),1);
+    acGridExecuteTaskGraph(copy_graph,1);
     acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
@@ -142,7 +187,7 @@ main(int argc, char* argv[])
       {
     	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
-		if(i >= info[AC_extended_halo].x+ dims.n0.x && j >= info[AC_extended_halo].y+ dims.n0.y && k >= info[AC_extended_halo].z + dims.n0.z && i < dims.n1.x-info[AC_extended_halo].x && j < dims.n1.y-info[AC_extended_halo].y && k < dims.n1.z-info[AC_extended_halo].z)
+		if(i >= info[AC_left_extended_halo].x+ dims.n0.x && j >= info[AC_left_extended_halo].y+ dims.n0.y && k >= info[AC_left_extended_halo].z + dims.n0.z && i < dims.n1.x-info[AC_left_extended_halo].x && j < dims.n1.y-info[AC_left_extended_halo].y && k < dims.n1.z-info[AC_left_extended_halo].z)
 		{
 			const bool local_correct = candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)] == AC_F_INIT+10.0;
 			if(!local_correct) fprintf(stderr,"Inside F --> F_EXT Wrong at %ld,%ld,%ld: %14e,%14e\n",i,j,k,AC_F_INIT+10.0,candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]);
@@ -157,21 +202,7 @@ main(int argc, char* argv[])
 	}
       }
     }
-    const int3 launch_dims_int3 = 
-		    (int3)
-		    {
-		    	info[AC_nlocal].x/2,
-		    	info[AC_nlocal].y/2,
-		    	info[AC_nlocal].z/2
-		    };
-    const Volume launch_dims = to_volume(
-		    launch_dims_int3
-		    );
-
-    const Volume launch_start = to_volume(info[AC_nmin]);
-    const Volume launch_end = launch_dims + launch_start;
-
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(add_field_normal , launch_start, launch_end),1);
+    acGridExecuteTaskGraph(add_sub_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -186,7 +217,7 @@ main(int argc, char* argv[])
 		bool local_correct = candidate.vertex_buffer[F][IDX(i,j,k,F)] == AC_F_INIT+11.0;
 		if(i >= launch_end.x || j >= launch_end.y || k >= launch_end.z)
 		{
-			local_correct = candidate.vertex_buffer[F][IDX(i,j,k,F)] == 0.0;
+			local_correct = candidate.vertex_buffer[F][IDX(i,j,k,F)] == 10.0;
 		}
 		if(!local_correct) fprintf(stderr,"F left side/right side Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F][IDX(i,j,k,F)]);
 		f_correct &= local_correct;
@@ -194,7 +225,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_extended_to_normal),1);
+    acGridExecuteTaskGraph(copy_to_normal_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -210,8 +241,8 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivx_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -230,8 +261,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivy_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -250,8 +281,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivz_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -273,8 +304,8 @@ main(int argc, char* argv[])
 
     dims = extended_dims;
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivx_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -299,8 +330,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivy_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -325,8 +356,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivz_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -351,8 +382,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(reduce_extended),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(reduce_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     const AcReal sum = acDeviceGetOutput(acGridGetDevice(),F_EXT_SUM);

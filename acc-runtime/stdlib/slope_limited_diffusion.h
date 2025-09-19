@@ -1,3 +1,51 @@
+#if STENCIL_ORDER == 2
+get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
+{
+	suppress_unused_warning(f)
+	suppress_unused_warning(speed)
+	suppress_unused_warning(fdiff_limit)
+	suppress_unused_warning(h_slope_limited)
+	suppress_unused_warning(nlf)
+	suppress_unused_warning(ln_field)
+	fatal_error_message(true,"SLD requires STENCIL_ORDER >= 4")
+	return 0.0
+}
+get_slope_limited_divergence_and_average_fluxes(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
+{
+	suppress_unused_warning(f)
+	suppress_unused_warning(speed)
+	suppress_unused_warning(fdiff_limit)
+	suppress_unused_warning(h_slope_limited)
+	suppress_unused_warning(nlf)
+	fatal_error_message(true,"SLD requires STENCIL_ORDER >= 4")
+	real4 res
+	return res
+}
+get_slope_limited_divergence_and_heat(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
+{
+	suppress_unused_warning(f)
+	suppress_unused_warning(speed)
+	suppress_unused_warning(fdiff_limit)
+	suppress_unused_warning(h_slope_limited)
+	suppress_unused_warning(nlf)
+	suppress_unused_warning(lnrho)
+	fatal_error_message(true,"SLD requires STENCIL_ORDER >= 4")
+	real2 res
+	return res
+}
+get_slope_limited_all(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
+{
+	suppress_unused_warning(f)
+	suppress_unused_warning(speed)
+	suppress_unused_warning(fdiff_limit)
+	suppress_unused_warning(h_slope_limited)
+	suppress_unused_warning(nlf)
+	suppress_unused_warning(lnrho)
+	fatal_error_message(true,"SLD requires STENCIL_ORDER >= 4")
+	real5 res
+	return res
+}
+#else
 Stencil sld_diff_left_left
 {
 	[0][0][-2] = -1,
@@ -464,10 +512,6 @@ get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_lim
 	return div
 }
 
-get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
-{
-	return get_slope_limited_divergence(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false)
-}
 get_slope_limited_divergence_and_average_fluxes(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
 {
 	x_fluxes = get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
@@ -590,7 +634,7 @@ get_slope_limited_all(Field f, Field characteristic_speed, real fdiff_limit, rea
 		     )
 
 }
-
+#endif
 
 calculate_characteristic_speed(real w_uu, Field3 uu, real w_sound, real sound_speed, real w_alfven, real3 bb, real lnrho, real mu) 
 { 
@@ -603,4 +647,9 @@ calculate_characteristic_speed(real w_uu, Field3 uu, real w_sound, real sound_sp
 calculate_characteristic_speed(real w_uu, Field3 uu, real w_sound, real sound_speed) 
 { 
 	return w_uu*norm(uu) + w_sound*sound_speed
+}
+
+get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
+{
+	return get_slope_limited_divergence(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false)
 }

@@ -17,8 +17,6 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "kernels.h"
-
-#include "../buffer.cc"
 #include "acc_runtime.cu"
 
 static __global__ void
@@ -37,12 +35,19 @@ dummy_kernel(void)
 AcResult
 acKernelDummy(void)
 {
+    #if AC_CPU_BUILD
+    dummy_kernel();
+    #else
     dummy_kernel<<<1, 1>>>();
     ERRCHK_CUDA_KERNEL_ALWAYS();
+    #endif
     return AC_SUCCESS;
 }
 
+AcResult
+acKernelsClean()
+{
+	return acReduceClean();
+}
+
 #include "packing.cuh"
-#include "reductions.cuh"
-#include "volume_copy.cuh"
-//#include "pack_unpack.cuh"

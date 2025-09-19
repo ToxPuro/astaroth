@@ -1,6 +1,8 @@
 #if AC_MPI_ENABLED 
 
 #include "task.h"
+#include "astaroth_analysis_helpers.h"
+#include "astaroth_grid.h"
 
 #include <algorithm>
 #include <cstring> //memcpy
@@ -10,7 +12,6 @@
 #include <stack>
 
 
-#include "decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
 #include "math_utils.h"
 #include "timer_hires.h"
@@ -22,7 +23,6 @@ get_info()
 
 
 
-#include "analysis_grid_helpers.h"
 #include "taskgraph_kernels.h"
 #include "taskgraph_bc_handles.h"
 #include "taskgraph_kernel_bcs.h"
@@ -68,16 +68,16 @@ typedef struct
 } KernelFields;
 
 static KernelFields
-get_kernel_fields(const AcKernel kernel,const KernelAnalysisInfo* info)
+get_kernel_fields(const AcKernel kernel, const KernelAnalysisInfo info)
 {
 		KernelFields res{};
 		for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		{
-			bool in = info[kernel].read_fields[i]             || info[kernel].field_has_stencil_op[i] || kernel == BOUNDCOND_PERIODIC;
+			bool in = info.read_fields[i]             || info.field_has_stencil_op[i] || kernel == BOUNDCOND_PERIODIC;
 			for(int ray = 0; ray < NUM_RAYS; ++ray)
-				in |= info[kernel].ray_accessed[i][ray];
+				in |= info.ray_accessed[i][ray];
 			if(in)    res.in.push_back((Field)i);
-			if(info[kernel].written_fields[i]          || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
+			if(info.written_fields[i]          || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
 		}
 		return res;
 }
@@ -103,28 +103,28 @@ typedef struct
 } KernelOutputs;
 
 static KernelProfiles
-get_kernel_profiles(const AcKernel kernel,const KernelAnalysisInfo* info)
+get_kernel_profiles(const KernelAnalysisInfo info)
 {
 		KernelProfiles res{};
 		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
-			if(info[kernel].read_profiles[i] || info[kernel].profile_has_stencil_op[i])       res.in.push_back((Profile)i);
-			if(info[kernel].reduced_profiles[i])    res.reduce_out.push_back((Profile)i);
-			if(info[kernel].written_profiles[i])    res.write_out.push_back((Profile)i);
+			if(info.read_profiles[i] || info.profile_has_stencil_op[i])       res.in.push_back((Profile)i);
+			if(info.reduced_profiles[i])    res.reduce_out.push_back((Profile)i);
+			if(info.written_profiles[i])    res.write_out.push_back((Profile)i);
 		}
 		return res;
 }
 static KernelReduceOutputs
-get_kernel_reduce_outputs(const AcKernel kernel,const KernelAnalysisInfo* info)
+get_kernel_reduce_outputs(const KernelAnalysisInfo info)
 {
 	KernelReduceOutputs res{};
-	for(size_t i = 0; i < info[kernel].n_reduce_outputs; ++i)
+	for(size_t i = 0; i < info.n_reduce_outputs; ++i)
 	{
-		res.out.push_back(info[kernel].reduce_outputs[i]);
+		res.out.push_back(info.reduce_outputs[i]);
 	}
-	for(size_t i = 0; i < info[kernel].n_reduce_inputs; ++i)
+	for(size_t i = 0; i < info.n_reduce_inputs; ++i)
 	{
-		res.in.push_back(info[kernel].reduce_inputs[i]);
+		res.in.push_back(info.reduce_inputs[i]);
 	}
 	return res;
 }
@@ -132,17 +132,17 @@ static UNUSED std::vector<KernelFields>
 get_kernel_fields(const std::vector<AcKernel> kernels, const KernelAnalysisInfo* info)
 {
 		std::vector<KernelFields> res{};
-		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel,info));
+		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel,info[kernel]));
 		return res;
 }
 static KernelOutputs
-get_kernel_outputs(const AcKernel kernel,const KernelAnalysisInfo* info)
+get_kernel_outputs(const AcKernel kernel,const KernelAnalysisInfo info)
 {
 	return 
 	{
 		get_kernel_fields(kernel,info),
-		get_kernel_profiles(kernel,info),
-		get_kernel_reduce_outputs(kernel,info)
+		get_kernel_profiles(info),
+		get_kernel_reduce_outputs(info)
 	};
 }
 
@@ -185,9 +185,16 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 		return res;
 	};
 
+	//TP: push periodic bcs first to ensure they don't overwrite
+	//    bcs for facet classes > 1 when not all directions are periodic
 	for(size_t i = 0; i < bcs.size(); ++i)
 	{
-		if(no_incoming_edges(i)) vertices_under_work.push(i);
+		if(no_incoming_edges(i) && bcs[i].kernel == BOUNDCOND_PERIODIC) vertices_under_work.push(i);
+	}
+
+	for(size_t i = 0; i < bcs.size(); ++i)
+	{
+		if(no_incoming_edges(i) && bcs[i].kernel != BOUNDCOND_PERIODIC) vertices_under_work.push(i);
 	}
 	if(vertices_under_work.size() == 0)
 		fatal("Cannot continue: No bc that does not depend on others in %s\n",bc_name);
@@ -244,7 +251,7 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs,const KernelAnalysisI
 	std::array<std::vector<const char*>,6> bc_names{};
 	for(auto& bc : bcs)
 	{
-		auto fields = get_kernel_fields(bc.kernel,info);
+		auto fields = get_kernel_fields(bc.kernel,info[bc.kernel]);
 		for(auto& field: fields.out)
 		{
 			const auto boundaries = get_boundaries();
@@ -283,12 +290,14 @@ get_loader(const int graph, const int call_index)
 	return  DSLTaskGraphKernelLoaders[graph][call_index];
 }
 
+/**
 void
 call_all_user_loaders(ParamLoadingInfo p)
 {
 	#include "call_all_user_loaders.h"
 	AC_INTERNAL_empty_loader(p);
 }
+**/
 
 
 static std::vector<AcKernel>
@@ -299,15 +308,14 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
 	{
 		VertexBufferArray vba{};
-		auto loader = get_loader(graph,call_index);
+		const auto loader = get_loader(graph,call_index);
 		ParamLoadingInfo p = {&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
-		call_all_user_loaders(p);
     		loader(p);
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
-		const auto info = get_kernel_analysis_info();
+		const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),optimized_kernel);
 		if(filter_unnecessary_ones)
 		{
-			auto outputs = get_kernel_outputs(optimized_kernel,info.data());
+			auto outputs = get_kernel_outputs(optimized_kernel,info);
 			if(outputs.fields.out.size() == 0 && outputs.profiles.write_out.size() == 0 && outputs.profiles.reduce_out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
 			{
 				res.push_back(AC_NULL_KERNEL);
@@ -324,7 +332,7 @@ static std::vector<BoundCond>
 get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const KernelAnalysisInfo* info)
 {
 
-	std::vector<BoundCond> res{};
+	std::vector<BoundCond> tmp{};
 	const std::vector<AcKernel>   kernels    = optimized ?
 							get_optimized_kernels(bc_graph,false) :
 							DSLTaskGraphKernels[bc_graph];
@@ -334,20 +342,22 @@ get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const Kernel
 	for(size_t i = 0; i < kernels.size(); ++i)
 	{
 		auto bc_info = acAnalysisGetBCInfo(get_info(),kernels[i],boundaries[i]);
-		auto fields = get_kernel_fields(kernels[i],info);
-		res.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0,(int3){0,0,0}});
+		auto fields = get_kernel_fields(kernels[i],info[kernels[i]]);
+		tmp.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0,(int3){0,0,0}});
 	}
-	const bool bcs_overlap = bc_output_fields_overlap(res,info);
+	const bool bcs_overlap = bc_output_fields_overlap(tmp,info);
 	if(bcs_overlap)
 		fatal("Cannot continue: overlap in output fields in BCs of %s\n",taskgraph_names[bc_graph]);
-	auto topological_order = generate_topological_order(res,taskgraph_names[bc_graph]);
-	for(size_t i = 0; i < kernels.size(); ++i)
+	auto topological_order = generate_topological_order(tmp,taskgraph_names[bc_graph]);
+	if(topological_order.size() != tmp.size())
 	{
-		for(size_t j = 0; j < kernels.size(); ++j)
-		{
-			if (topological_order[j] == i)
-				res[i].topological_order = j;
-		}
+		fatal("Topological order is %zu long where we have %zu bcs!\n",topological_order.size(),tmp.size());
+	}
+	std::vector<BoundCond> res{};
+	for(size_t i = 0; i < topological_order.size(); ++i)
+	{
+		res.push_back(tmp[topological_order[i]]);
+		res[res.size()-1].topological_order = i;
 	}
 	return res;
 }
@@ -426,17 +436,12 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[bc_graph]);
 	std::vector<AcTaskDefinition> res{};
-	auto bcs = get_boundconds(bc_graph, optimized,get_kernel_analysis_info().data());
-	//TP: insert boundconds in topological order
-	for(size_t i = 0; i < bcs.size(); ++i)
+	auto bcs = get_boundconds(bc_graph, optimized,get_kernel_analysis_info(acGridGetLocalMeshInfo()).data());
+	for(const auto& bc : bcs)
 	{
-		for(auto& bc : bcs)
-			if(bc.topological_order == i)
-			{
-				std::vector<facet_class_range> halo_types{};
-				for(size_t j = 0; j < bc.out.size(); ++j) halo_types.push_back((facet_class_range){1,3});
-				res.push_back(gen_bc(stream,bc,halo_types));
-			}
+		std::vector<facet_class_range> halo_types{};
+		for(size_t j = 0; j < bc.out.size(); ++j) halo_types.push_back((facet_class_range){1,3});
+		res.push_back(gen_bc(stream,bc,halo_types));
 	}
 
 	if(!ac_pid()) fclose(stream);
@@ -586,6 +591,7 @@ gen_halo_exchange(
 		if(!ac_pid()) fprintf(stream, "Halo(");
 		log_fields(stream,output_fields);
 
+
 		log_launch_bounds(stream,output_fields,output_fields);
 		if(direction != (int3){0,0,0})
 		{
@@ -600,7 +606,7 @@ gen_halo_exchange(
 		if(!ac_pid()) fprintf(stream, ",%s",ac_boundary_to_str(boundary));
 		log_halo_types(halo_types,stream);
 		if(!ac_pid()) fprintf(stream, ")\n");
-		res.push_back(acHaloExchange(output_fields,start,end,direction,sending,receiving,boundary,halo_types));
+		res.push_back(acHaloExchange(output_fields,start,end,direction,sending,receiving,boundary,halo_types,(Volume){NGHOST,NGHOST,NGHOST}));
 		return res;
 }
 
@@ -796,7 +802,7 @@ gen_halo_exchange_and_boundconds(
 			bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
 			if(communicated) output_fields.push_back(field);
 		}
-		if(output_fields.size() == 0 || no_communication) return empty;
+		if(output_fields.size() == 0) return empty;
 
 		auto pop_same = [&](auto& src, const auto& info_arr, auto& dst)
 		{
@@ -854,8 +860,11 @@ gen_halo_exchange_and_boundconds(
 		};
 		std::vector<AcTaskDefinition> halo_exchanges{};
 		std::vector<AcTaskDefinition> bc_tasks{};
-		gen_comm_task(gen_halo_exchange,halo_exchanges);
-		gen_comm_task(gen_periodic_bcs,bc_tasks);
+		if(!no_communication)
+		{
+			gen_comm_task(gen_halo_exchange,halo_exchanges);
+			gen_comm_task(gen_periodic_bcs,bc_tasks);
+		}
 		if(before_kernel_call)
 		{
 			for(size_t region = 0; region < 27; ++region)
@@ -871,8 +880,8 @@ gen_halo_exchange_and_boundconds(
 			//One has to first update B on the boundary even though B is not actually used in the domain
 			std::array<std::vector<Field>,27> field_bcs_called{};
 
-			for(size_t i = 0; i < 27; ++i)
-				field_bcs_called[i] = communicated_fields;
+			for(size_t i = 0; i < 27; ++i) field_bcs_called[i] = communicated_fields;
+
 			{
                 		bool all_are_processed = false;
 				bool made_progress = true;
@@ -1030,10 +1039,10 @@ struct VectorHash {
         return seed;
     }
 };
-using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume>;
+using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume,bool>;
 struct KeyHash {
     std::size_t operator()(const KeyType &key) const {
-        const auto &[vec1, vec2,start,end] = key;
+        const auto &[vec1, vec2,start,end,bcs_everywhere] = key;
         std::size_t seed = 0;
         hash_combine(seed, VectorHash{}(vec1));
         hash_combine(seed, VectorHash{}(vec2));
@@ -1043,6 +1052,7 @@ struct KeyHash {
         hash_combine(seed, end.x);
         hash_combine(seed, end.y);
         hash_combine(seed, end.z);
+        hash_combine(seed, bcs_everywhere);
         return seed;
     }
 };
@@ -1062,7 +1072,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 	auto kernel_calls = optimized ?
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
-	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(kernel_calls,info);
+	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(acGridGetLocalMeshInfo(),kernel_calls,info);
 	int n_level_sets = 0;
 	std::array<int,MAX_TASKS> call_level_set{};
 	std::array<std::array<std::array<bool, NUM_VTXBUF_HANDLES>,27>,MAX_TASKS> field_needs_to_be_communicated_before_level_set{};
@@ -1118,7 +1128,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 									for(int z = min_z_id(); z <= max_z_id(); ++z)
 									{
 										const int index = id_to_arr_index(x,y,z);
-										const AcBoundary boundary = get_stencil_boundaries(Stencil(stencil));
+										const AcBoundary boundary = stencil_accesses_boundaries(acGridGetLocalMeshInfo(), Stencil(stencil));
 										if(x == 0 && y == 0 && z == 0) continue;
 										if(x == -1 && (boundary & BOUNDARY_X_BOT) == 0) continue;
 										if(x == +1 && (boundary & BOUNDARY_X_TOP) == 0) continue;
@@ -1130,7 +1140,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 									}
 								}
 							}
-							halo_types_level_set[j][n_level_sets] = max(halo_types_level_set[j][n_level_sets],get_stencil_halo_type(Stencil(stencil)));
+							halo_types_level_set[j][n_level_sets] = max(halo_types_level_set[j][n_level_sets],get_stencil_halo_type(acGridGetLocalMeshInfo(), Stencil(stencil)));
 						}
 					}
 					if(info[k].read_fields[j] && computes_across_halos)
@@ -1255,8 +1265,8 @@ level_set_has_overlap_in_input_and_output(const level_set& set, const KernelAnal
 	std::vector<Profile> out_profiles{};
 	for(const auto& call : set.calls)
 	{
-		auto fields   = get_kernel_fields(call.kernel,info);
-		auto profiles = get_kernel_profiles(call.kernel,info);
+		auto fields   = get_kernel_fields(call.kernel,info[call.kernel]);
+		auto profiles = get_kernel_profiles(info[call.kernel]);
 
 		for(const auto& field : fields.in)  
 		{
@@ -1394,12 +1404,12 @@ get_field_ray_directions(const std::vector<AcKernel> kernels,const KernelAnalysi
 
 
 std::vector<AcTaskDefinition>
-acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication)
+acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication, const AcDSLTaskGraph bc_graph)
 {
 	if(is_bc_taskgraph(graph))
 		return acGetDSLBCTaskGraphOps(graph,optimized);
-	const auto info = get_kernel_analysis_info();
-	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],optimized,info.data());
+	const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
+	const FieldBCs  field_boundconds = get_field_boundconds(bc_graph,optimized,info.data());
 	std::vector<AcTaskDefinition> res{};
 	auto level_sets = get_level_sets(graph,optimized,info.data());	
 
@@ -1471,7 +1481,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		std::vector<Field> input_fields_not_communicated{};
 		for(auto& call : current_level_set.calls)
 		{
-			auto fields = get_kernel_fields(call.kernel,info.data());
+			auto fields = get_kernel_fields(call.kernel,info.data()[call.kernel]);
 			for(auto& field : fields.in)
 			{
 				if(std::find(current_level_set.fields_communicated_before.begin(), current_level_set.fields_communicated_before.end(), field) == current_level_set.fields_communicated_before.end())
@@ -1548,16 +1558,17 @@ acGridClearTaskGraphCache()
 }
 
 AcTaskGraph*
-acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere)
+acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
 {
+	ERRCHK_ALWAYS(to_int3(end) >= to_int3(start));
 	auto optimized_kernels = get_optimized_kernels(graph,false);
-	auto optimized_bcs      = get_optimized_kernels(DSLTaskGraphBCs[graph],false);
-	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end);
+	auto optimized_bcs      = get_optimized_kernels(bc_graph,false);
+	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end,bcs_everywhere);
 	if(task_graphs.find(key) != task_graphs.end())
 		return task_graphs[key];
 
-	auto ops = acGetDSLTaskGraphOps(graph,true,bcs_everywhere);
-	auto res = acGridBuildTaskGraph(ops,start,end);
+	auto ops = acGetDSLTaskGraphOps(graph,true,bcs_everywhere,bc_graph);
+	auto res = acGridBuildTaskGraph(ops,start,end,bcs_everywhere);
 	task_graphs[key] = res;
 	return res;
 }
@@ -1568,14 +1579,15 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 	return acGetOptimizedDSLTaskGraphWithBounds(graph,
 			to_volume(get_info()[AC_nmin]),
 			to_volume(get_info()[AC_nlocal_max]),
-			false
+			false,
+			DSLTaskGraphBCs[graph]
 			);
 }
 
 AcTaskGraph*
 acGetDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
-	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false,false),start,end);
+	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false,false,DSLTaskGraphBCs[graph]),start,end);
 }
 
 AcTaskGraph*
@@ -1598,7 +1610,7 @@ gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream,
 			if(!ac_pid()) fprintf(stream, "%s,",get_name(elem));
 		if(!ac_pid()) fprintf(stream,"}");
 	};
-	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel,info);
+	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel,info[call.kernel]);
 	if(!ac_pid()) fprintf(stream,"%s(",kernel_names[call.kernel]);
 	log(fields.in);
 	if(!ac_pid()) fprintf(stream,",");
@@ -1646,4 +1658,11 @@ gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream,
 	const auto [start,end] = get_launch_bounds_from_fields(fields.in,fields.out);
 	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,start,end,onion_level,call.loader);
 }
+
+AcDSLTaskGraph 
+acGetComputeStepsBCs(const AcDSLTaskGraph graph)
+{
+	return DSLTaskGraphBCs[graph];
+}
+
 #endif // AC_MPI_ENABLED
