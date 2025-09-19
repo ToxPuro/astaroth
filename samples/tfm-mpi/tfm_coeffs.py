@@ -82,7 +82,8 @@ B22_y = []
 kz=1.0
 Bampl=1.0
 kf=5.0
-eta=5.0e-3
+#eta=5.0e-3
+eta=5.0
 
 # Defining z and trigonometric arrays
 dz=1./args.dims[2]
@@ -148,10 +149,15 @@ alp12zt = (cosz*emf21x+sinz*emf22x)/Bampl
 alp22zt = (cosz*emf21y+sinz*emf22y)/Bampl
 #
 #12-mar-25/MR: inverted signs
-eta12zt =  (sinz*emf11x-cosz*emf12x)/(kz*Bampl) #etanew12=eta11
-eta11zt = -(sinz*emf21x-cosz*emf22x)/(kz*Bampl) #etanew11=-eta12
-eta22zt =  (sinz*emf11y-cosz*emf12y)/(kz*Bampl) #etanew22=eta21
-eta21zt = -(sinz*emf21y-cosz*emf22y)/(kz*Bampl) #etanew21=-eta22
+#eta12zt =  (sinz*emf11x-cosz*emf12x)/(kz*Bampl) #etanew12=eta11
+#eta11zt = -(sinz*emf21x-cosz*emf22x)/(kz*Bampl) #etanew11=-eta12
+#eta22zt =  (sinz*emf11y-cosz*emf12y)/(kz*Bampl) #etanew22=eta21
+#eta21zt = -(sinz*emf21y-cosz*emf22y)/(kz*Bampl) #etanew21=-eta22
+#MJKL New from paper Eqs (14)
+eta12zt =  -(sinz*emf11x-cosz*emf12x)/(kz*Bampl)
+eta21zt =  -(sinz*emf21y-cosz*emf22y)/(kz*Bampl)
+eta22zt =  -(sinz*emf11y-cosz*emf12y)/(kz*Bampl)
+eta11zt =  -(sinz*emf21x-cosz*emf22x)/(kz*Bampl)
 
 #plt.contour(emf11x.T)
 #plt.show()
