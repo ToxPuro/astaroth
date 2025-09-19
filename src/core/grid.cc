@@ -2233,7 +2233,20 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    if(Region::tag_to_facet_class(tag) > max_comp_facet_class) continue;
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries,max_comp_facet_class);
             	    graph->all_tasks.push_back(task);
+		    //TP: if we are writing to input try to be nice and swap buffers temporarily to try to write out output buffers instead
+            	    for (size_t buf = 0; buf < op.num_fields_out; buf++) {
+	    	        if(kernel_writes_to_input(op.kernel_enum,op.fields_out[buf],kernel_analysis_info.data()))
+	    	        {
+                		acDeviceSwapBuffer(grid.device, op.fields_out[buf]);
+	    	        }
+            	    }
 		    compute_task_poststep(op,task);
+            	    for (size_t buf = 0; buf < op.num_fields_out; buf++) {
+	    	        if(kernel_writes_to_input(op.kernel_enum,op.fields_out[buf],kernel_analysis_info.data()))
+	    	        {
+                		acDeviceSwapBuffer(grid.device, op.fields_out[buf]);
+	    	        }
+            	    }
             	}
 	    }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
