@@ -1289,7 +1289,8 @@ getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, Vert
 int3
 acGetOptimTPB(const AcKernel kernel, const Volume start, const Volume end)
 {
-  const int3 dims = get_kernel_dims(kernel,to_int3(start),to_int3(end));
+  const int3 corrected_end = to_int3(get_kernel(kernel,start,end));
+  const int3 dims = get_kernel_dims(kernel,to_int3(start),corrected_end);
   for (auto c : tbconfigs)
     if (c.kernel == kernel && c.dims == dims)
 	return (int3)
