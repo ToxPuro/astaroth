@@ -50,7 +50,13 @@ acCheckDeviceAvailability(void)
     int runtime_version, max_runtime_version_supported_by_driver;
     ERRCHK_CUDA_ALWAYS(acDriverGetVersion(&max_runtime_version_supported_by_driver));
     ERRCHK_CUDA_ALWAYS(acRuntimeGetVersion(&runtime_version));
-    ERRCHK_ALWAYS(runtime_version <= max_runtime_version_supported_by_driver);
+    if(runtime_version > max_runtime_version_supported_by_driver)
+    {
+            fprintf(stderr,"AC error!: Reported maximum supported runtime by the driver was %d but used runtime is %d!!\n",max_runtime_version_supported_by_driver,runtime_version);
+            fprintf(stderr,"AC error!: Reported maximum supported runtime by the driver was %d but used runtime is %d!!\n",max_runtime_version_supported_by_driver,runtime_version);
+            fprintf(stderr,"AC error!: Reported maximum supported runtime by the driver was %d but used runtime is %d!!\n",max_runtime_version_supported_by_driver,runtime_version);
+            ERRCHK_ALWAYS(runtime_version <= max_runtime_version_supported_by_driver);
+    }
     int device_count; // Separate from num_devices to avoid side effects
     ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&device_count));
     if (device_count > 0)
