@@ -1145,7 +1145,6 @@ acApplyPostProcessingOp(const AcMeshInfo info, const AcReductionPostProcessingOp
     	    const Volume nn = acGetLocalNN(info);
     	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
     	    return sqrt(inv_n * result);
-    	    break;
     	}
         case AC_RADIAL_WINDOW_RMS: {
 	   ERROR("AC_RMS_RADIAL_WINDOW not implemented for acDeviceReduceVecScal\n");

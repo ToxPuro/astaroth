@@ -145,22 +145,82 @@ outgoing_ray_length(int3 direction)
 		   )
 }
 
-ac_ray_func(int3 direction, Field kappa_rho, Field srad, Field Q, Field tau)
+run_const real dtau_thresh_min = 1.6*pow(AC_REAL_EPSILON,0.25)
+run_const real dtau_thresh_max = -log(AC_REAL_MIN)
+
+ac_ray_func(int3 direction, Field kappa_rho, Field srad, Field Q, Field tau, real in_len, real out_len)
 {
-	in_len  = incoming_ray_length(direction)
-	out_len = outgoing_ray_length(direction)
 	dtau_m = sqrt(incoming_ray(kappa_rho,direction)*kappa_rho)*in_len
 	dtau_p = sqrt(outgoing_ray(kappa_rho,direction)*kappa_rho)*out_len
 
-	dSdtau_m = (srad - incoming_ray(srad,direction))*in_len
-	dSdtau_p = (outgoing_ray(srad,direction)- srad)*out_len
+	dtau_m = max(dtau_m,AC_REAL_EPSILON*5)
+	dtau_p = max(dtau_p,AC_REAL_EPSILON*5)
+
+	dSdtau_m = (srad - incoming_ray(srad,direction))/dtau_m
+	dSdtau_p = (outgoing_ray(srad,direction)- srad)/dtau_p
 
         Srad1st=(dSdtau_p*dtau_m+dSdtau_m*dtau_p)/(dtau_m+dtau_p)
         Srad2nd=2.0*(dSdtau_p-dSdtau_m)/(dtau_m+dtau_p)
-
+	
 	write(tau,incoming_ray(tau,direction)+dtau_m)
-        emdtau=exp(-dtau_m)
-        emdtau1=1.0-emdtau
-        emdtau2=emdtau*(1.0+dtau_m)-1.0
-	write(Q,incoming_ray(Q,direction)+emdtau-Srad1st*emdtau1-Srad2nd*emdtau2)
+        real emdtau	
+        real emdtau1
+        real emdtau2
+	if(dtau_m > dtau_thresh_max)
+	{
+        	emdtau=0.0
+        	emdtau1=1.0
+        	emdtau2=-1.0
+	}
+	else if(dtau_m < dtau_thresh_min)
+	{
+		emdtau1=dtau_m*(1.0-0.5*dtau_m*(1.0-dtau_m/3.0))
+		emdtau=1-emdtau1	
+		emdtau2=-(dtau_m*dtau_m)*(0.5-dtau_m/3.0)
+	}
+	else
+	{
+        	emdtau=exp(-dtau_m)
+        	emdtau1=1.0-emdtau
+        	emdtau2=emdtau*(1.0+dtau_m)-1.0
+	}
+	const Q_res = incoming_ray(Q,direction)*emdtau-Srad1st*emdtau1-Srad2nd*emdtau2
+	write(Q,Q_res)
+}
+
+ac_ray_func(int3 direction, Field kappa_rho, Field srad, Field Q, Field tau)
+{
+	ac_ray_func(direction,kappa_rho,srad,Q,tau,incoming_ray_length(direction),outgoing_ray_length(direction))
+}
+
+get_incoming_boundary_ray_point(int3 direction)
+{
+        const int steps_x = (direction.x > 0) ? vertexIdx.x-(NGHOST-1) :
+                      (direction.x < 0) ? AC_nlocal_max.x - vertexIdx.x
+                                        : INT_MAX
+        const int steps_y = (direction.y > 0) ? vertexIdx.y-(NGHOST-1) :
+                      (direction.y < 0) ? AC_nlocal_max.y - vertexIdx.y
+                                        : INT_MAX
+        const int steps_z = (direction.z > 0) ? vertexIdx.z-(NGHOST-1) :
+                      (direction.z < 0) ? AC_nlocal_max.z - vertexIdx.z
+                                        : INT_MAX
+        const int steps = min(steps_x,min(steps_y,steps_z))
+        return (int3)
+                {
+                        vertexIdx.x-steps*direction.x,
+                        vertexIdx.y-steps*direction.y,
+                        vertexIdx.z-steps*direction.z
+                }
+}
+
+get_incoming_boundary_ray(Field f, int3 direction)
+{
+        const int3 boundary_vertex = get_incoming_boundary_ray_point(direction)
+        return f[boundary_vertex.x][boundary_vertex.y][boundary_vertex.z]
+}
+
+extrinsic_ray_update(int3 direction, Field Q, Field TAU)
+{
+        incoming_Q = get_incoming_boundary_ray(Q,direction)
+        return Q + incoming_Q*exp(-TAU)
 }
