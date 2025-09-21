@@ -2723,10 +2723,40 @@ gen_kernel_params_info(const ASTNode* root)
 
 #define NUM_ALWAYS_PRODUCED (5)
 
+static size_t
+count_symbols(const char* type)
+{
+	size_t res = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    		if(symbol_table[i].tspecifier == type)
+      			++res;
+	return res;
+}
+static size_t
+count_symbols_type(const NodeType type)
+{
+	size_t res = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    		if(symbol_table[i].type & type)
+      			++res;
+	return res;
+}
+static size_t
+count_profiles()
+{
+
+  string_vec prof_types = get_prof_types();
+  size_t res = 0;
+  for(size_t i = 0; i < prof_types.size; ++i)
+	  res += count_symbols(prof_types.data[i]);
+  return res;
+}
+
 void
 gen_kernel_structs(ASTNode* root)
 {
 
+  	num_kernels = count_symbols(KERNEL_STR);
   	gen_kernel_params_info(root);
 	string_vec names = VEC_INITIALIZER;
   	for(size_t sym = 0; sym< num_symbols[0]; ++sym)
@@ -6051,34 +6081,6 @@ write_calling_info(FILE* fp, const char* func, const char* arr_name)
     }
 }
 
-static size_t
-count_symbols(const char* type)
-{
-	size_t res = 0;
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    		if(symbol_table[i].tspecifier == type)
-      			++res;
-	return res;
-}
-static size_t
-count_symbols_type(const NodeType type)
-{
-	size_t res = 0;
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    		if(symbol_table[i].type & type)
-      			++res;
-	return res;
-}
-static size_t
-count_profiles()
-{
-
-  string_vec prof_types = get_prof_types();
-  size_t res = 0;
-  for(size_t i = 0; i < prof_types.size; ++i)
-	  res += count_symbols(prof_types.data[i]);
-  return res;
-}
 
 static void
 write_calling_info_for_stencilgen(const string_vec* stencils_called)
