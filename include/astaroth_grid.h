@@ -373,6 +373,9 @@ FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const siz
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
 
 /** */
+FUNC_DEFINE(bool, acGridTaskGraphIsEmpty,(AcTaskGraph* graph));
+
+/** */
 FUNC_DEFINE(bool, acGridTaskGraphHasPeriodicBoundcondsX,(AcTaskGraph* graph));
 
 /** */

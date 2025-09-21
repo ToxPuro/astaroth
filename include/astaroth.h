@@ -553,6 +553,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsX,stream);
 	LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsY,stream);
 	LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsZ,stream);
+	LOAD_DSYM(acGridTaskGraphIsEmpty,stream);
 	LOAD_DSYM(acGridExecuteTaskGraph,stream);
 	LOAD_DSYM(acGridExecuteTaskGraphBase,stream);
 	LOAD_DSYM(acGridFinalizeReduceLocal,stream);

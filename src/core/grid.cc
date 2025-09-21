@@ -4726,6 +4726,12 @@ acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph)
 }
 
 bool
+acGridTaskGraphIsEmpty(AcTaskGraph* graph)
+{
+    return graph->all_tasks.size() == 0;
+}
+
+bool
 acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph* graph)
 {
     return (graph->periodic_boundaries & BOUNDARY_Y) != 0;
