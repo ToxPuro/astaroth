@@ -976,6 +976,7 @@ steps_definition_call: identifier '(' identifier ')' {$$ = astnode_create(NODE_U
 boundconds_definition: boundconds identifier '{' function_call_list '}' {$$ = astnode_create(NODE_BOUNDCONDS_DEF, $2, $4);}
 	       ;
 steps_definition: computesteps steps_definition_call '{' function_call_list '}' {$$ = astnode_create(NODE_TASKGRAPH_DEF, $2, $4);}
+steps_definition: computesteps steps_definition_call '{''}' {$$ = astnode_create(NODE_TASKGRAPH_DEF, $2, NULL);}
 	       ;
 
 

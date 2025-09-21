@@ -916,6 +916,7 @@ static inline node_vec
 get_nodes_in_list(const ASTNode* head)
 {
 	node_vec res = VEC_INITIALIZER;
+	if(head == NULL) return res;
 	const int num_of_nodes = count_num_of_nodes_in_list(head);
 	int counter = num_of_nodes;
 	while(--counter)

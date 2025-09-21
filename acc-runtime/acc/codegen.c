@@ -4872,6 +4872,7 @@ rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* 
   const bool do_checks = true;
   const NodeType exclude = 0;
   if(node->type == NODE_STRUCT_DEF) return;
+  if(node->type == NODE_TASKGRAPH_DEF) return;
   if(node->type & NODE_DECLARATION) decl = node;
   if(node->parent && node->parent->type & NODE_FUNCTION && node->parent->rhs->id == node->id) func_body = node;
   child_of_enum |= (node->type & NODE_ENUM_DEF);

@@ -31,6 +31,10 @@ initcond(boundconds)
 {
 	init_kernel()
 }
+ComputeSteps
+empty_steps(boundconds)
+{
+}
 
 
 fixed_boundary Kernel sor_red()
