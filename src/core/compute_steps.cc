@@ -1408,6 +1408,10 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 {
 	if(is_bc_taskgraph(graph))
 		return acGetDSLBCTaskGraphOps(graph,optimized);
+	auto kernel_calls = optimized ?
+				get_optimized_kernels(graph,true) :
+				DSLTaskGraphKernels[graph];
+	if(kernel_calls.size() == 0) return std::vector<AcTaskDefinition>{};
 	const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
 	const FieldBCs  field_boundconds = get_field_boundconds(bc_graph,optimized,info.data());
 	std::vector<AcTaskDefinition> res{};
@@ -1416,9 +1420,6 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);
 	std::array<bool,NUM_FIELDS> field_written_out_before{};
-	auto kernel_calls = optimized ?
-				get_optimized_kernels(graph,true) :
-				DSLTaskGraphKernels[graph];
 	const auto field_ray_directions = get_field_ray_directions(kernel_calls,info.data());
 	for(size_t current_level_set_index = 0; current_level_set_index < level_sets.size(); ++current_level_set_index)
 	{
