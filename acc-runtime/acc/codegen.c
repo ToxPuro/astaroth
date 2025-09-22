@@ -2246,7 +2246,7 @@ preprocess_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec
     node_vec array_accesses = VEC_INITIALIZER;
     get_array_access_nodes(node,&array_accesses);
     const char* expr_type = get_expr_type(node);
-    if(expr_type == REAL_STR && var_dims.size == 2 && var_dims.size == array_accesses.size+1 && !strcmp(combine_all_new(var_dims.data[1]),"3"))
+    if(expr_type == REAL_STR && (var_dims.size == 2 || var_dims.size == 4) && var_dims.size == array_accesses.size+1 && !strcmp(combine_all_new(var_dims.data[var_dims.size-1]),"3"))
     {
 	    node_vec nodes = VEC_INITIALIZER;
 	    const size_t n_initializer = 3;
@@ -2254,7 +2254,7 @@ preprocess_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec
 	    {
 		ASTNode* indexing = astnode_create(NODE_UNKNOWN,NULL,NULL);
 		astnode_sprintf(indexing,"%zu",i);
-		ASTNode* new_node = astnode_create(NODE_ARRAY_ACCESS,astnode_dup(array_accesses.data[0]->parent,NULL),indexing);
+		ASTNode* new_node = astnode_create(NODE_ARRAY_ACCESS,astnode_dup(array_accesses.data[var_dims.size-2]->parent,NULL),indexing);
 		astnode_set_infix("[",new_node);
 		astnode_set_postfix("]",new_node);
 	    	push_node(&nodes,new_node);
