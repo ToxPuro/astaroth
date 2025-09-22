@@ -101,6 +101,8 @@ main(void)
     }
 
     acGridInit(info);
+    //Test that can build test ComputeSteps
+    const auto empty_graph = acGetOptimizedDSLTaskGraph(empty_steps);
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
     const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);

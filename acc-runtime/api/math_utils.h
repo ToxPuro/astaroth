@@ -210,6 +210,65 @@ max(const T& a, const T& b, const T& c)
 	const auto tmp = a > b ? a : b;
 	return (tmp > c) ? tmp : c;
 }
+template <typename T>
+static HOST_DEVICE_INLINE AcReal
+max(const T& a,const T& b,const T& c,const T& d)
+{
+	auto res = a > b ? a : b;
+	res = res > c ? res : c;
+	res = res > d ? res : d;
+	return res;
+}
+
+template <typename T>
+static HOST_DEVICE_INLINE AcReal
+max(const T& a,const T& b,const T& c,const T& d, const T& e)
+{
+	auto res = a > b ? a : b;
+	res = res > c ? res : c;
+	res = res > d ? res : d;
+	res = res > e ? res : e;
+	return res;
+}
+
+template <typename T>
+static HOST_DEVICE_INLINE AcReal
+max(const T& a,const T& b,const T& c,const T& d, const T& e, const T& f)
+{
+	auto res = a > b ? a : b;
+	res = res > c ? res : c;
+	res = res > d ? res : d;
+	res = res > e ? res : e;
+	res = res > f ? res : f;
+	return res;
+}
+
+template <typename T>
+static HOST_DEVICE_INLINE AcReal
+max(const T& a,const T& b,const T& c,const T& d, const T& e, const T& f,const T& g)
+{
+	auto res = a > b ? a : b;
+	res = res > c ? res : c;
+	res = res > d ? res : d;
+	res = res > e ? res : e;
+	res = res > f ? res : f;
+	res = res > g ? res : g;
+	return res;
+}
+
+template <typename T>
+static HOST_DEVICE_INLINE AcReal
+max(const T& a,const T& b,const T& c,const T& d, const T& e, const T& f, const T& g,  const T& h)
+{
+	auto res = a > b ? a : b;
+	res = res > c ? res : c;
+	res = res > d ? res : d;
+	res = res > e ? res : e;
+	res = res > f ? res : f;
+	res = res > g ? res : g;
+	res = res > h ? res : h;
+	return res;
+}
 
 
 template <class T>
