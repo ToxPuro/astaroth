@@ -18,6 +18,8 @@ real intrinsic fabs(real)
 real intrinsic floor(real)
 real intrinsic round(real)
 bool intrinsic isnan(real)
+bool intrinsic isfinite(real)
+bool intrinsic isinf(real)
 
 
 intrinsic min
