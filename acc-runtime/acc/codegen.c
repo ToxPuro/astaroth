@@ -6134,13 +6134,12 @@ write_calling_info_for_stencilgen(const string_vec* stencils_called)
 }
 static void
 gen_kernels_recursive(const ASTNode* node, char** dfunctions,
-            const bool gen_mem_accesses)
+            const bool gen_mem_accesses, int* curr_kernel)
 {
-  static int curr_kernel = 0;
   assert(node);
 
   if (node->lhs)
-    gen_kernels_recursive(node->lhs, dfunctions, gen_mem_accesses);
+    gen_kernels_recursive(node->lhs, dfunctions, gen_mem_accesses,curr_kernel);
   if (node->type & NODE_KFUNCTION) {
 
     const size_t len = 64 * 1024 * 1024;
@@ -6164,8 +6163,8 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
       sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
     }
     else {
-      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", curr_kernel);
-      ++curr_kernel; // HACK TODO better
+      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", *curr_kernel);
+      ++(*curr_kernel);
     }
     FILE* proc = popen(cmdoptions, "r");
     assert(proc);
@@ -6203,14 +6202,15 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
 
 
   if (node->rhs)
-    gen_kernels_recursive(node->rhs, dfunctions, gen_mem_accesses);
+    gen_kernels_recursive(node->rhs, dfunctions, gen_mem_accesses,curr_kernel);
 }
 static void
 gen_kernels(const ASTNode* node, char** dfunctions,
             const bool gen_mem_accesses)
 {
   	traverse(node, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
-	gen_kernels_recursive(node,dfunctions,gen_mem_accesses);
+	int curr_kernel = 0;
+	gen_kernels_recursive(node,dfunctions,gen_mem_accesses,&curr_kernel);
   	symboltable_reset();
 }
 
