@@ -81,5 +81,5 @@ quintic_step(real x, real x0, real width, real shift)
 }
 quintic_step(real x, real x0, real width)
 {
-	return quintic_step(x,x0,width,shift)
+	return quintic_step(x,x0,width,0.0)
 }
