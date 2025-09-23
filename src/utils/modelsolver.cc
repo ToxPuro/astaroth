@@ -43,7 +43,7 @@
 #define LENTROPY (1)
 #define LTEMPERATURE (0)
 #define LFORCING (0)
-#define LUPWD (0)
+#define LUPWD (1)
 #define AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 #define R_PI ((Scalar)M_PI)
 */
@@ -425,6 +425,14 @@ derzz(const int i, const int j, const int k, const AcReal* arr)
 static inline Scalar
 der6x_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
+#if STENCIL_ORDER == 2
+    Scalar pencil[STENCIL_ORDER + 1];
+    // #pragma unroll
+    for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
+        pencil[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
+
+    return 0.5*getReal(AC_ds).x*second_derivative(pencil, ((Scalar)1. / getReal(AC_ds).x));
+#else
     Scalar inv_ds = ((Scalar)1. / getReal(AC_ds).x);
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
@@ -432,11 +440,20 @@ der6x_upwd(const int i, const int j, const int k, const AcReal* arr)
             (Scalar)(15.0) * ((Scalar)arr[IDX(i + 1, j, k)] + (Scalar)arr[IDX(i - 1, j, k)]) -
             (Scalar)(6.0) * ((Scalar)arr[IDX(i + 2, j, k)] + (Scalar)arr[IDX(i - 2, j, k)]) +
             (Scalar)arr[IDX(i + 3, j, k)] + (Scalar)arr[IDX(i - 3, j, k)]);
+#endif
 }
 
 static inline Scalar
 der6y_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
+#if STENCIL_ORDER == 2
+    Scalar pencil[STENCIL_ORDER + 1];
+    // #pragma unroll
+    for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
+        pencil[offset] = (Scalar)arr[IDX(i , j+ offset - STENCIL_ORDER / 2, k)];
+
+    return 0.5*getReal(AC_ds).y*second_derivative(pencil, ((Scalar)1. / getReal(AC_ds).y));
+#else
     Scalar inv_ds = ((Scalar)1. / getReal(AC_ds).y);
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
@@ -444,11 +461,20 @@ der6y_upwd(const int i, const int j, const int k, const AcReal* arr)
             (Scalar)(15.0) * ((Scalar)arr[IDX(i, j + 1, k)] + (Scalar)arr[IDX(i, j - 1, k)]) -
             (Scalar)(6.0) * ((Scalar)arr[IDX(i, j + 2, k)] + (Scalar)arr[IDX(i, j - 2, k)]) +
             (Scalar)arr[IDX(i, j + 3, k)] + (Scalar)arr[IDX(i, j - 3, k)]);
+#endif
 }
 
 static inline Scalar
 der6z_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
+#if STENCIL_ORDER == 2
+    Scalar pencil[STENCIL_ORDER + 1];
+    // #pragma unroll
+    for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
+        pencil[offset] = (Scalar)arr[IDX(i , j, k+ offset - STENCIL_ORDER / 2)];
+
+    return 0.5*getReal(AC_ds).z*second_derivative(pencil, ((Scalar)1. / getReal(AC_ds).z));
+#else
     Scalar inv_ds = ((Scalar)1. / getReal(AC_ds).z);
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
@@ -456,6 +482,7 @@ der6z_upwd(const int i, const int j, const int k, const AcReal* arr)
             (Scalar)(15.0) * ((Scalar)arr[IDX(i, j, k + 1)] + (Scalar)arr[IDX(i, j, k - 1)]) -
             (Scalar)(6.0) * ((Scalar)arr[IDX(i, j, k + 2)] + (Scalar)arr[IDX(i, j, k - 2)]) +
             (Scalar)arr[IDX(i, j, k + 3)] + (Scalar)arr[IDX(i, j, k - 3)]);
+#endif
 }
 #endif
 
