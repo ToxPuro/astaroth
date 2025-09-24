@@ -493,7 +493,7 @@ ac_get_field_halos(const Field& field)
 #if AC_CPU_BUILD
 #define READ_ONLY_LOAD(expr) expr
 #else
-#define READ_ONLY_LOAD(expr) __ldg(&##expr##)
+#define READ_ONLY_LOAD(expr) __ldg(&expr)
 #endif
 #include "user_kernels.h"
 #undef size
