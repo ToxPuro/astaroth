@@ -724,4 +724,6 @@ To enable additional API functions in the Astaroth Core library for integration 
 
 The stencil order can be set by the user by `hostdefine STENCIL_ORDER (x)`, where `x` is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.
 
+Alternatively it can be set via CMAKE with `-DAC_STENCIL_ORDER=N`.
+
 > Note: The size of the halo surrounding the computational domain depends on `STENCIL_ORDER`.
