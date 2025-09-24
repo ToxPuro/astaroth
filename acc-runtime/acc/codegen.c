@@ -4181,6 +4181,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	if(gen_mem_accesses)
 	{
 	  astnode_sprintf_postfix(compound_statement,"%s; (void)vba; (void)current_block_idx;} } } }",compound_statement->postfix);
+	  if(AC_CPU_BUILD) astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
 	  return;
 	}
 
@@ -4200,6 +4201,8 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 		gen_all_final_reductions(compound_statement,kernel_index,true);
 	}
 	astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
+	//TP: have extra loops because we have the loop inside the kernel
+	if(AC_CPU_BUILD) astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
 	if(has_block_loops(kernel_index)  && func_calls_reduce(fn_name) && !AC_CPU_BUILD)
 	{
 #if AC_USE_HIP

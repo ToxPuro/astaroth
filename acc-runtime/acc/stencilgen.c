@@ -442,13 +442,31 @@ gen_kernel_block_loops(const int curr_kernel)
 			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
 			);
 		}
+		//TP: no tiling for ray kernels
+		printf(
+		       "{"
+		       "{"
+		       "{"
+		      );
 	  }
 	  else
 	  {
-		  printf("for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
-			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
-			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+		  const int BX = 4;
+		  const int BY = 4;
+		  const int BZ = 4;
+		  printf(
+			 "for(int bz = 0; bz < end.z-start.z; bz +=%d){"
+			 "for(int by = 0; by < end.y-start.y; by +=%d){"
+		         "for(int bx = 0; bx < end.x-start.x; bx +=%d){"
+			 ,BZ,BY,BX
 			);
+		  printf(
+			 "for(int threadIdx_z = bz; threadIdx_z < min(bz+%d,end.z-start.z); ++threadIdx_z){"
+			 "for(int threadIdx_y = by; threadIdx_y < min(by+%d,end.y-start.y); ++threadIdx_y){"
+		         "for(int threadIdx_x = bx; threadIdx_x < min(bx+%d,end.x-start.x); ++threadIdx_x){"
+			 ,BZ,BY,BX
+			);
+
 	  }
 	  printf("[[maybe_unused]] const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z};");
   	  printf("const dim3 current_block_idx = blockIdx;");
