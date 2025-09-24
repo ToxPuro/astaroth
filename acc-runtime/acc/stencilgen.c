@@ -451,9 +451,9 @@ gen_kernel_block_loops(const int curr_kernel)
 	  }
 	  else
 	  {
-		  const int BX = 4;
-		  const int BY = 4;
-		  const int BZ = 4;
+		  const int BX = XBLOCK_SIZE;
+		  const int BY = YBLOCK_SIZE;
+		  const int BZ = ZBLOCK_SIZE;
 		  printf(
 			 "for(int bz = 0; bz < end.z-start.z; bz +=%d){"
 			 "for(int by = 0; by < end.y-start.y; by +=%d){"

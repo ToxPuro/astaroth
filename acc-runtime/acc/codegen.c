@@ -4181,7 +4181,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	if(gen_mem_accesses)
 	{
 	  astnode_sprintf_postfix(compound_statement,"%s; (void)vba; (void)current_block_idx;} } } }",compound_statement->postfix);
-	  if(AC_CPU_BUILD) astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
+	  astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
 	  return;
 	}
 
@@ -10601,6 +10601,7 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
   */
 
   char build_cmd[4096];
+  const int block_size = gen_mem_accesses ? 1 : 4;
   snprintf(build_cmd, 4096,
            "gcc -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
            "-DIMPLEMENTATION=%d "
@@ -10610,10 +10611,14 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
 	   "-DAC_DOUBLE_PRECISION=%d "
 	   "-DBUFFERED_REDUCTIONS=%d "
 	   "-DAC_CPU_BUILD=%d "
+	   "-DXBLOCK_SIZE=%d "
+	   "-DYBLOCK_SIZE=%d "
+	   "-DZBLOCK_SIZE=%d "
            "-o %s",
            IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,AC_DOUBLE_PRECISION,
 	   BUFFERED_REDUCTIONS,
 	   AC_CPU_BUILD | gen_mem_accesses,
+	   ,block_size,block_size,block_size
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);
@@ -11157,7 +11162,7 @@ compile_helper(const bool log)
   }
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d " 
+  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
   ,api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );

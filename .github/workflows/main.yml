@@ -32,11 +32,7 @@ jobs:
       - name: Build and test
         run: |
           . ./sourceme.sh
-          mkdir -p acc-runtime/build
-          cd acc-runtime/build
-          cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j
-          cd acc
-          $AC_HOME/acc-runtime/tests/syntaxtest.sh
+          ./test/run_syntaxtest.sh
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           cd $AC_HOME/test-builds && ac_build_tests --parallel
