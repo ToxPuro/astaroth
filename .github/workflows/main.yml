@@ -47,7 +47,9 @@ jobs:
         run: |
           . ./sourceme.sh
           cd ambipolar_diffusion
-          ./build.sh
+          ./build_tests.sh
+          ./run_tests.sh
+          ./verify.sh
 
       - name: Build and test
         run: |
