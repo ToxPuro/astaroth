@@ -46,6 +46,7 @@ jobs:
       - name: Test ambipolar diffusion
         run: |
           . ./sourceme.sh
+          export AC_CPU_BUILD=on
           cd ambipolar_diffusion
           ./build_tests.sh
           ./run_tests.sh
