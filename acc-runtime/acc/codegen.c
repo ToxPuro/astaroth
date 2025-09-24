@@ -10618,7 +10618,7 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
            IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,AC_DOUBLE_PRECISION,
 	   BUFFERED_REDUCTIONS,
 	   AC_CPU_BUILD | gen_mem_accesses,
-	   ,block_size,block_size,block_size
+	   block_size,block_size,block_size,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);
