@@ -1,4 +1,5 @@
 u_dot_grad(Field3 f, Matrix m,real3 v){
+	suppress_unused_warning(f)
 	real3 res = m*v
 	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
