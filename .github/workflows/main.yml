@@ -34,11 +34,17 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.CI_CD_KEY }}
 
+      - name: Clone ambipolar diffusion
+        uses: actions/checkout@v4
+        with:
+          repository: ToxPuro/ambipolar_diffusion
+          ref: main
+          fetch-depth: 1
+          token: ${{ secrets.CI_CD_KEY }}
+
       - name: Test ambipolar diffusion
         run: |
-         mkdir -p ~/.ssh/ && touch ~/.ssh/known_hosts
-         ssh-keyscan github.com >> ~/.ssh/known_hosts
-         git clone git@github.com:ToxPuro/ambipolar_diffusion.git
+          ./build.sh
 
       - name: Build and test
         run: |
