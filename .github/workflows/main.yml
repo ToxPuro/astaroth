@@ -50,7 +50,8 @@ jobs:
           cd ambipolar_diffusion
           ./build_tests.sh
           ./run_tests.sh
-          python3 verify.py
+          ac_verify reference.ts build/timeseries.ts
+          ac_verify 2nd_order_reference.ts 2nd_order_build/timeseries.ts
 
       - name: Build and test
         run: |
