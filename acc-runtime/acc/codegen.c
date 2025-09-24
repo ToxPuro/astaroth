@@ -2404,7 +2404,7 @@ gen_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec dataty
 		{
 			//TP: on cuda bool -> __nv_bool and there is no __ldg for __nv_bool for some reason
 			{
-				astnode_sprintf_prefix(base,"%s%s",
+				astnode_sprintf_prefix(base,"%s",
 					 is_primitive_datatype(datatype_scalar) && datatype_scalar != BOOL_STR ? "READ_ONLY_LOAD(": ""
 			       	);
 			}
