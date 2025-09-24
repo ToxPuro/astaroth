@@ -21,6 +21,7 @@ pipelines:
       script: # Modify the commands below to build your repository.
         - apk add --no-cache git
         - apk add --no-cache git openssh-client
+        - apk -U upgrade
         - git remote add github git@github.com:ToxPuro/astaroth.git
         - git push github
         #- export DEBIAN_FRONTEND=noninteractive
