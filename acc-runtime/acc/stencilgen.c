@@ -1199,9 +1199,9 @@ gen_kernel_write_funcs(const int curr_kernel)
     	for(int field = 0; field < NUM_FIELDS; ++field)
     	{
     		if(vtxbuf_has_variable_dims[field])
-    			printf("case %s: { return __ldg(&vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}",field_names[field],vtxbuf_dims_str[field]);
+    			printf("case %s: { return READ_ONLY_LOAD(vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}",field_names[field],vtxbuf_dims_str[field]);
     	}
-    	printf("default: {return __ldg(&vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))]);}");
+    	printf("default: {return READ_ONLY_LOAD(vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))]);}");
     }
     else
     {
@@ -2074,7 +2074,7 @@ prefetch_stencil_elements(const int curr_kernel)
                 !cell_initialized[field][depth][height][width]) {
               printf("const auto f%d_%d_%d_%d = ", //
                      field, depth, height, width);
-              printf("__ldg(&");
+              printf("READ_ONLY_LOAD(");
               printf("vba.in[%d][DEVICE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                      "vertexIdx.z+(%d))]",
                      field, -STENCIL_ORDER / 2 + width,
@@ -2388,7 +2388,7 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
    
    else
    {
-   	printf("__ldg(&");
+   	printf("READ_ONLY_LOAD(");
    	printf("vba.in[%s]"
    	       "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
    	       "vertexIdx.z+(%d),VAL(%s))])",
@@ -2648,7 +2648,7 @@ gen_kernel_body(const int curr_kernel)
                     printf("auto p%d_s%d = ", profile, stencil);
 		    printf_stencil_point(stencil,depth,height,width);
                     printf("%s(", stencil_unary_ops[stencil]);
-                    printf("__ldg(&");
+                    printf("READ_ONLY_LOAD(");
                     printf("vba.profiles.in[%d]"
                            "[%s+(%d)])",
                            profile, vertex_idx, offset);
@@ -2663,7 +2663,7 @@ gen_kernel_body(const int curr_kernel)
                            stencil);
 		    printf_stencil_point(stencil,depth,height,width);
                     printf("%s(", stencil_unary_ops[stencil]);
-                    printf("__ldg(&");
+                    printf("READ_ONLY_LOAD(");
                     printf("vba.profiles.in[%d]"
                            "[%s+(%d)])",
                            profile, vertex_idx,offset);

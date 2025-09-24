@@ -491,13 +491,9 @@ ac_get_field_halos(const Field& field)
 
 #define postprocess_reduce_result(DST,OP)
 #if AC_CPU_BUILD
-
-template <typename T>
-T
-__ldg(const T* src)
-{
-	return *src;
-}
+#define READ_ONLY_LOAD(expr) expr
+#else
+#define READ_ONLY_LOAD(expr) __ldg(&##expr##)
 #endif
 #include "user_kernels.h"
 #undef size
