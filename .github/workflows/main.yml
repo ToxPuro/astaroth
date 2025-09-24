@@ -40,10 +40,13 @@ jobs:
           repository: ToxPuro/ambipolar_diffusion
           ref: main
           fetch-depth: 1
+          path: ambipolar_diffusion
           ssh-key: ${{ secrets.CI_CD_KEY }}
 
       - name: Test ambipolar diffusion
         run: |
+          . ./sourceme.sh
+          cd ambipolar_diffusion
           ./build.sh
 
       - name: Build and test
