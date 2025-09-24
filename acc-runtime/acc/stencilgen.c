@@ -460,12 +460,26 @@ gen_kernel_block_loops(const int curr_kernel)
 		         "for(int bx = 0; bx < end.x-start.x; bx +=%d){"
 			 ,BZ,BY,BX
 			);
-		  printf(
-			 "for(int threadIdx_z = bz; threadIdx_z < min(bz+%d,end.z-start.z); ++threadIdx_z){"
-			 "for(int threadIdx_y = by; threadIdx_y < min(by+%d,end.y-start.y); ++threadIdx_y){"
-		         "for(int threadIdx_x = bx; threadIdx_x < min(bx+%d,end.x-start.x); ++threadIdx_x){"
-			 ,BZ,BY,BX
-			);
+		  if(BX == 1 &&  BY == 1 && BZ == 1)
+		  {
+			  printf(
+				 "{"
+				 "{"
+				 "{"
+				 "const int& threadIdx_z = bz;"
+				 "const int& threadIdx_y = by;"
+				 "const int& threadIdx_x = bx;"
+				);
+		  }
+		  else
+		  {
+			  printf(
+				 "for(int threadIdx_z = bz; threadIdx_z < min(bz+%d,end.z-start.z); ++threadIdx_z){"
+				 "for(int threadIdx_y = by; threadIdx_y < min(by+%d,end.y-start.y); ++threadIdx_y){"
+			         "for(int threadIdx_x = bx; threadIdx_x < min(bx+%d,end.x-start.x); ++threadIdx_x){"
+				 ,BZ,BY,BX
+				);
+		  }
 
 	  }
 	  printf("[[maybe_unused]] const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z};");
