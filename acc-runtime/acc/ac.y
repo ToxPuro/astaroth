@@ -17,6 +17,7 @@ const char* ZERO_STR = NULL;
 const char* REAL_ARR_STR = NULL;
 const char* INTRINSIC_STR = NULL;
 const char* CHAR_PTR_STR = NULL;
+const char* AC_IS_LOADED_STR = NULL;
 const char* REAL_PTR_STR = NULL;
 const char* BOOL_PTR_STR = NULL;
 const char* FALSE_STR = NULL;
@@ -453,6 +454,11 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
     	  if (AC_HOME_PATH != NULL) {
 	  	fprintf(out,"#define AC_HOME %s\n",AC_HOME_PATH);
     	  }
+	  if(AC_STENCIL_ORDER != -1)
+          {
+	  	fprintf(out,"hostdefine STENCIL_ORDER (%d)\n",AC_STENCIL_ORDER);
+	  	fprintf(out,"#define STENCIL_ORDER (%d)\n",AC_STENCIL_ORDER);
+          }
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID %d\n",AC_LAGRANGIAN_GRID);
 	  fprintf(out,"#define TWO_D %d\n",TWO_D);
 	  fprintf(out,"#define AC_DOUBLE_PRECISION %d\n",AC_DOUBLE_PRECISION);
@@ -602,6 +608,7 @@ populate_global_strings()
 	INTRINSIC_STR = intern("intrinsic");
 
 	ZERO_STR = intern("0");
+	AC_IS_LOADED_STR = intern("ac_is_loaded");
 	REAL_PTR_STR = intern("AcReal*");
 	BOOL_PTR_STR = intern("bool*");
 	TRUE_STR     = intern("true");

@@ -141,8 +141,8 @@ const char*
 get_cmake_options(const char* user_cmake_options)
 {
 	static char options[10000];
-  	sprintf(options,"-DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DOPENMP_ENABLED=OFF -DCPU_BUILD=%s -DDSL_MODULE_DIR=%s -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s",
-		AC_CPU_BUILD ? "ON" : "OFF",DSL_MODULE_DIR,acc_compiler_path().c_str(), user_cmake_options
+  	sprintf(options,"-DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DOPENMP_ENABLED=OFF -DCPU_BUILD=%s -DDSL_MODULE_DIR=%s -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s -DAC_STENCIL_ORDER=%d %s",
+		AC_CPU_BUILD ? "ON" : "OFF",DSL_MODULE_DIR,acc_compiler_path().c_str(), AC_STENCIL_ORDER, user_cmake_options
 	 );
 	return options;
 }

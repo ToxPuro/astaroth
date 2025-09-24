@@ -7,7 +7,12 @@ else()
     set(DSL_MODULE_DIR ${resolved_module_dir})
 endif()
 
+if (NOT DEFINED AC_STENCIL_ORDER)
+  set(AC_STENCIL_ORDER -1)
+endif()
+
 add_library(acc_runtime_compiler OBJECT compiler.cpp)
+target_compile_definitions(acc_runtime_compiler PRIVATE -DAC_STENCIL_ORDER=${AC_STENCIL_ORDER})
 target_link_libraries(acc_runtime_compiler PRIVATE acc-runtime-headers)
 target_include_directories(acc_runtime_compiler PUBLIC ${AC_BASE_PATH}/include)
 target_compile_definitions(acc_runtime_compiler PRIVATE DSL_MODULE_DIR="${DSL_MODULE_DIR}")

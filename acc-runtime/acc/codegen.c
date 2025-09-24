@@ -62,6 +62,7 @@ extern const char* ZERO_STR     ;
 extern const char* REAL_ARR_STR ;
 extern const char* INTRINSIC_STR;
 extern const char* CHAR_PTR_STR ;
+extern const char* AC_IS_LOADED_STR ;
 extern const char* REAL_PTR_STR ;
 extern const char* BOOL_PTR_STR ;
 extern const char* FALSE_STR;
@@ -4982,6 +4983,11 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, travers
   if(node->type == NODE_STRUCT_DEF) return;
   if(node->type & NODE_DECLARATION)   params.decl       = node;
   if(node->type & NODE_FUNCTION_CALL) params.func_call = node;
+  //TP: Hack to not output DCONST and RCONST in ac_is_loaded
+  if(params.func_call && params.func_call->lhs && params.func_call->lhs->lhs && params.func_call->lhs->lhs->buffer == AC_IS_LOADED_STR)
+  {
+	  params.to_DSL = true;
+  }
   if (node->type & exclude)
 	  stream = NULL;
   if(params.return_on != NODE_UNKNOWN && (node->type == params.return_on))

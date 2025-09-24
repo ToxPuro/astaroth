@@ -11,7 +11,14 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
     //TP: utility lambdas
     [[maybe_unused]] auto ac_is_loaded = [&](auto param) -> bool
     {
+	  if constexpr(IsCompParam(param))
+	  {
+	    return config.run_consts.is_loaded[param];
+	  }
+	  else
+	  {
 	    return config.is_loaded[param];
+	  }
     };
 
     [[maybe_unused]] auto ac_get_process_decomposition = [&]() -> int3
