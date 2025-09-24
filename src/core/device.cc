@@ -68,6 +68,11 @@ struct device_s {
 AcResult
 acDevicePrintInfo(const Device device)
 {
+    if(AC_CPU_BUILD)
+    {
+	    printf("Running on CPU!\n");
+	    return AC_SUCCESS;
+    }
     acSetDevice(device->id);
     const int device_id = device->id;
 
