@@ -108,3 +108,9 @@ typedef int cudaDeviceAttr;
 	func<<<bpg,tpb,__VA_ARGS__>>>
 
 #endif
+
+#if AC_CPU_BUILD
+#define AC_READ_ONLY_LOAD(expr) expr
+#else
+#define AC_READ_ONLY_LOAD(expr) __ldg(&expr)
+#endif
