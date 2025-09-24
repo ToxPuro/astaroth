@@ -27,7 +27,8 @@ jobs:
           wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
           apt-add-repository 'deb https://apt.kitware.com/ubuntu/ noble main'
           apt-get update
-          apt-get install -y cmake flex bison openmpi-bin libopenmpi-dev gfortran git
+          apt-get install -y cmake flex bison openmpi-bin libopenmpi-dev gfortran git python3
+          pip3 install numpy pandas
 
       - name: Start SSH agent and add key
         uses: webfactory/ssh-agent@v0.9.0
@@ -50,7 +51,7 @@ jobs:
           cd ambipolar_diffusion
           ./build_tests.sh
           ./run_tests.sh
-          ./verify.sh
+          python3 verify.py
 
       - name: Build and test
         run: |
