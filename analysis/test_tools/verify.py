@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import argparse
 
+#We filter shock out since it can have very large values that with smoothing produce numerical noise that can be zero or a small value that is nonzero
 def filter_shock(df):
     cols_to_keep = [c for c in df.columns if "SHOCK" not in c]
     return df[cols_to_keep]
