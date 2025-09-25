@@ -7617,6 +7617,21 @@ set_identifiers_constexpr(ASTNode* node, const string_vec identifiers)
 		return;
 	node->is_constexpr |= true;
 }
+void
+add_assignment(struct hashmap_s* assignments, const char* lhs)
+{
+	  int* cached_val = (int*)hashmap_get(assignments,lhs,strlen(lhs));
+	  if(cached_val == NULL)
+	  {
+		  int* res_ptr = (int*)malloc(sizeof(int));
+		  *res_ptr = 1;
+		  hashmap_put(assignments,lhs,strlen(lhs),(void*)res_ptr);
+	  }
+	  else
+	  {
+		  *cached_val = *cached_val + 1;
+	  }
+}
 
 void
 count_num_of_assignments(const ASTNode* node, struct hashmap_s* assignments)
@@ -7632,18 +7647,12 @@ count_num_of_assignments(const ASTNode* node, struct hashmap_s* assignments)
 	  if(struct_expr)
 	  {
 		  lhs = intern(combine_all_new(struct_expr));
+		  const ASTNode* base = struct_expr;
+		  while(base->lhs && base->type == NODE_STRUCT_EXPRESSION) base = base->lhs;
+		  const char* base_identifier = get_node_by_token(IDENTIFIER,base)->buffer;
+	  	  add_assignment(assignments,base_identifier);
 	  }
-	  int* cached_val = (int*)hashmap_get(assignments,lhs,strlen(lhs));
-	  if(cached_val == NULL)
-	  {
-		  int* res_ptr = (int*)malloc(sizeof(int));
-		  *res_ptr = 1;
-		  hashmap_put(assignments,lhs,strlen(lhs),(void*)res_ptr);
-	  }
-	  else
-	  {
-		  *cached_val = *cached_val + 1;
-	  }
+	  add_assignment(assignments,lhs);
 	}
 
 }
@@ -7716,7 +7725,10 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 	  }
 	  const int* n_assignments = hashmap_get(assignments,lhs,strlen(lhs));
 	  if(n_assignments != NULL && *n_assignments > 1)
+	  {
+		  lhs_identifier->is_constexpr = false;
 		  return res;
+	  }
 	  if(lhs_identifier->is_constexpr == is_constexpr)
 		  return res;
 	  res |= is_constexpr;
