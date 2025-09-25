@@ -26,6 +26,15 @@ get_wavevector()
 	)
 }
 
+poisson_fft_solve(Field real_dst, Field real_imag, Field real_src, Field imag_src)
+{
+        const real3 k = get_wavevector()
+        const real k2 = dot(k,k)
+        res  = k2 == 0.0 ? complex(0.,0.) : -complex(real_src[vertexIdx.x][vertexIdx.y][vertexIdx.z], imag_src[vertexIdx.x][vertexIdx.y][vertexIdx.z])/k2
+        write(real_dst,res.x)
+        write(imag_dst,res.y)
+}
+
 poisson_fft_solve(ComplexField dst, ComplexField src)
 {
 	const real3 k = get_wavevector()
