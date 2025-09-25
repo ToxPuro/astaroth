@@ -10850,6 +10850,25 @@ replace_variable_with_constant_int(ASTNode* node,const char* old, const char* ne
 	}
 }
 void
+fold_const_int_addition(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(fold_const_int_addition);
+	if(!node_is_binary_expr(node)) return;
+	const char* op = get_node_by_token(BINARY_OP,node->rhs->lhs)->buffer;
+	if(op != PLUS_STR) return;
+	ASTNode* lhs_node = node->lhs;
+	const char* lhs_res = intern(combine_all_new(lhs_node));
+	const char* rhs_res = intern(combine_all_new(node->rhs->rhs));
+	if(is_number(lhs_res) && is_number(rhs_res))
+	{
+		const int lhs_val = atoi(lhs_res);
+		const int rhs_val = atoi(rhs_res);
+		const char* sum = itoa(lhs_val+rhs_val);
+		ASTNode* res = create_primary_expression(sum);
+		replace_node(node,res);
+	}
+}
+void
 unroll_constant_loops(ASTNode* node)
 {
 	TRAVERSE_PREAMBLE(unroll_constant_loops);
@@ -10892,6 +10911,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   gen_type_info(root);
+  fold_const_int_addition(root);
   unroll_constant_loops(root);
 
   if(gen_mem_accesses) add_tracing_to_conditionals(root);
