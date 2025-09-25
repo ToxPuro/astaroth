@@ -1,5 +1,7 @@
 #define AC_GENERAL_DERIVS_H
 
+hostdefine AC_GENERAL_DERIVS_ENABLED (1)
+
 gmem real AC_inv_r[AC_nlocal.x]
 gmem real AC_inv_cyl_r[AC_nlocal.x]
 gmem real AC_inv_sin_theta[AC_mlocal.y]
