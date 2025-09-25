@@ -2,7 +2,7 @@
 get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
 {
 	suppress_unused_warning(f)
-	suppress_unused_warning(speed)
+	suppress_unused_warning(characteristic_speed)
 	suppress_unused_warning(fdiff_limit)
 	suppress_unused_warning(h_slope_limited)
 	suppress_unused_warning(nlf)
@@ -13,7 +13,7 @@ get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_lim
 get_slope_limited_divergence_and_average_fluxes(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
 {
 	suppress_unused_warning(f)
-	suppress_unused_warning(speed)
+	suppress_unused_warning(characteristic_speed)
 	suppress_unused_warning(fdiff_limit)
 	suppress_unused_warning(h_slope_limited)
 	suppress_unused_warning(nlf)
@@ -24,7 +24,7 @@ get_slope_limited_divergence_and_average_fluxes(Field f, Field characteristic_sp
 get_slope_limited_divergence_and_heat(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
 {
 	suppress_unused_warning(f)
-	suppress_unused_warning(speed)
+	suppress_unused_warning(characteristic_speed)
 	suppress_unused_warning(fdiff_limit)
 	suppress_unused_warning(h_slope_limited)
 	suppress_unused_warning(nlf)
@@ -36,7 +36,7 @@ get_slope_limited_divergence_and_heat(Field f, Field characteristic_speed, real 
 get_slope_limited_all(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
 {
 	suppress_unused_warning(f)
-	suppress_unused_warning(speed)
+	suppress_unused_warning(characteristic_speed)
 	suppress_unused_warning(fdiff_limit)
 	suppress_unused_warning(h_slope_limited)
 	suppress_unused_warning(nlf)
