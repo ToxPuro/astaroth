@@ -37,7 +37,6 @@ FUNC_DEFINE(AcResult, acDeviceFFTC2R,(const Device device, const ComplexField sr
 FUNC_DEFINE(AcResult, acDeviceFFTC2RXY,(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers));
 FUNC_DEFINE(AcResult, acDeviceFFTR2CXY,(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers));
 FUNC_DEFINE(AcResult, acDeviceFFTR2Planar,(const Device device, const Field src, const Field real_dst, const Field imag_dst));
-FUNC_DEFINE(AcResult, acDeviceFFTPlanar2R,(const Device device, const Field real_src, const Field imag_src, const Field dst));
 FUNC_DEFINE(AcResult, acDeviceFFTBackwardTransformPlanar,(const Device device, const Field real_src, const Field imag_src, const Field real_dst,const Field imag_dst));
 FUNC_DEFINE(AcResult, acDeviceFFTBackwardTransformPlanar2R,(const Device device, const Field real_src, const Field imag_src, const Field real));
 
