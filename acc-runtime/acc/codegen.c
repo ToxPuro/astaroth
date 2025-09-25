@@ -10833,6 +10833,51 @@ generate_executed_nodes(ASTNode* root, bool gen_mem_accesses, FILE* stream)
    stream);
   fflush(stream);
 }
+bool
+is_for_iteration_statement(const ASTNode* node)
+{
+	if(node->lhs && node->lhs->lhs && node->lhs->lhs->token == FOR) return true;
+	return false;
+}
+void
+replace_variable_with_constant_int(ASTNode* node,const char* old, const char* new)
+{
+	TRAVERSE_PREAMBLE_PARAMS(replace_variable_with_constant_int,old,new);
+	if(node->buffer && node->buffer == old) 
+	{
+		node->buffer = new;
+		node->token = NUMBER;
+	}
+}
+void
+unroll_constant_loops(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(unroll_constant_loops);
+	if(!is_for_iteration_statement(node)) return;
+	const ASTNode* for_expr = node->lhs->rhs;
+	if(for_expr->rhs->token != RANGE) return;
+	const char* loop_variable = for_expr->lhs->buffer;
+	const char* start = intern(combine_buffers_new(for_expr->rhs->lhs->lhs));
+	const char* end   = intern(combine_buffers_new(for_expr->rhs->rhs->lhs));
+	if(is_number(start) && is_number(end))
+	{
+		const ASTNode* iterated_body = node->rhs;
+		if(iterated_body->type & NODE_BEGIN_SCOPE && iterated_body->lhs) iterated_body = iterated_body->lhs;
+		const int start_value = atoi(start);
+		const int end_value   = atoi(end);
+		node_vec nodes = VEC_INITIALIZER;
+		for(int i = start_value; i < end_value; ++i)
+		{
+			const char* replacement = intern(itoa(i));
+			ASTNode* res = astnode_dup(iterated_body,NULL);
+			replace_variable_with_constant_int(res,loop_variable,replacement);
+			push_node(&nodes,res);
+		}
+		ASTNode* res = build_list_node(nodes,"");
+		free_node_vec(&nodes);
+	    	replace_node(node,res);
+	}
+}
 
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool ELIMINATE_CONDITIONALS, const bool runtime_compilation)
@@ -10847,6 +10892,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   gen_type_info(root);
+  unroll_constant_loops(root);
 
   if(gen_mem_accesses) add_tracing_to_conditionals(root);
   gen_constexpr_info(root,gen_mem_accesses);

@@ -1680,6 +1680,7 @@ for_expression: identifier in expression {
 			astnode_set_infix(";++",end);
 
 			ASTNode* range = astnode_create(NODE_UNKNOWN,init,end);
+			range->token = RANGE;	
 
     			$$ = astnode_create(NODE_UNKNOWN, $1,range);
 	      }
