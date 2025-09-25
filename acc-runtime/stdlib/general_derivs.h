@@ -428,6 +428,8 @@ derz_upwind_front(Field f)
 	return 0.0
 }
 
+#else
+
 #if STENCIL_ORDER == 10
 
 #define DER10_1_1 (2100.0/2520.0)
