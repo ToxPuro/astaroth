@@ -695,4 +695,10 @@ elemental gaussian_smooth_inplace(Field f)
 	  f[vertexIdx.x+3][vertexIdx.y+3][vertexIdx.z+3] * 2.7212025766230546e-05
 	return res + 0.0*val
 }
+#else
+gaussian_smooth(Field f)
+{
+	fatal_error_message(true,"Gaussian smooth only implemented for 6th order!\n");
+	return 0.0
+}
 #endif
