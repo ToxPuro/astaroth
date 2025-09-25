@@ -346,6 +346,7 @@ FUNC_DEFINE(size_t, acGetNumFields,(void));
  * ```
  *  */
 FUNC_DEFINE(AcResult, acGetFieldHandle,(const char* field, size_t* handle));
+FUNC_DEFINE(const char*,acGetFieldName,(const Field field));
 
 /** */
 FUNC_DEFINE(Node, acGetNode,(void));
@@ -584,6 +585,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGetNumDevicesPerNode,stream)
 	LOAD_DSYM(acGetNumFields,stream)
 	LOAD_DSYM(acGetFieldHandle,stream)
+	LOAD_DSYM(acGetFieldName,stream)
 	LOAD_DSYM(acGetNode,stream)
 	LOAD_DSYM(acNodeCreate,stream)
 	LOAD_DSYM(acNodeDestroy,stream)

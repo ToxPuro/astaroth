@@ -222,6 +222,12 @@ acGetNumFields(void)
     return NUM_VTXBUF_HANDLES;
 }
 
+const char*
+acGetFieldName(const Field field)
+{
+	return field_names[field];
+}
+
 AcResult
 acGetFieldHandle(const char* field, size_t* handle)
 {
