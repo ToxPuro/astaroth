@@ -9,7 +9,7 @@ def filter_shock(df):
     cols_to_keep = [c for c in df.columns if "SHOCK" not in c]
     return df[cols_to_keep]
 
-def test(reference_path, result_path, tol=1e-8, lower_thresh=1e-12):
+def test(reference_path, result_path, tol=1e-8, thresh=1e-12):
     reference = filter_shock(pd.read_csv(reference_path, sep=r"\s+"))
     res = filter_shock(pd.read_csv(result_path, sep=r"\s+"))
 
@@ -18,7 +18,7 @@ def test(reference_path, result_path, tol=1e-8, lower_thresh=1e-12):
     res = res.select_dtypes(include="number")
 
     #Truncate small values to zero to get rid of numerical noise when comparing
-    mask = (reference.abs() > lower_thresh) | (res.abs() > lower_thresh)
+    mask = (reference.abs() > thresh) | (res.abs() > thresh)
     reference = reference.where(mask).fillna(0)
     res       = res.where(mask).fillna(0)
 
@@ -59,5 +59,5 @@ if __name__ == "__main__":
                         help="Threshold below which values are not considered (default=1e-12)")
 
     args = parser.parse_args()
-    test(args.reference, args.result, args.tol)
+    test(args.reference, args.result, args.tol, args.thresh)
 
