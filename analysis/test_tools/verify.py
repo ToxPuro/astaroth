@@ -17,14 +17,17 @@ def test(reference_path, result_path, tol=1e-8):
     reference = reference.select_dtypes(include="number")
     res = res.select_dtypes(include="number")
 
+    #Truncate small values to zero to get rid of numerical noise when comparing
+    lower_thresh=1e-12
+    mask = (reference.abs() > lower_thresh) | (res.abs() > lower_thresh)
+    reference = reference.where(mask).fillna(0)
+    res       = res.where(mask).fillna(0)
+
+
     # compute relative difference safely
     eps = 1e-15
     denominator = np.maximum(reference.abs(), res.abs()).replace(0, eps)
     rel_diff = (reference - res).abs() / denominator
-
-    lower_thresh = 1e-12
-    mask = (reference.abs() > lower_thresh) | (res.abs() > lower_thresh)
-    rel_diff_masked = rel_diff.where(mask)
 
     # maximum relative difference
     max_val = rel_diff.to_numpy().max()
