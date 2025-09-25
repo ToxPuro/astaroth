@@ -223,179 +223,209 @@ der3x_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der3x not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der3y_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der3y not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der3z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der3z not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der4x_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4x not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der4y_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4y not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der4z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4z not possible with Stencil order 2!\n");
+	return 0.0
 }
 der4x2y_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4x2y not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der4x2z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4x2z not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der4y2x_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4y2x not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der4y2z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4y2z not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der4z2x_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4z2x not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der4z2y_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der4z2y not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5x_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5x not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5y_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5y not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5z not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5x1y_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5x1y not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5x1z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5x1z not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5y1x_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5y1x not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5y1z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5y1z not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5z1x_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5z1x not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der5z1y_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der5z1y not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der6x_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der6x not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der6y_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der6y not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 der6z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der6z not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 derx_upwind_left(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"derx_upwind_left not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 derx_upwind_right(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"derx_upwind_right not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 dery_upwind_down(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"dery_upwind_down not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 dery_upwind_up(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"dery_upwind_up not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 derz_upwind_back(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"derz_upwind_back not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 derz_upwind_front(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"derz_upwind_front not possible with Stencil order 2!\n");
+	return 0.0
 }
 
 #else
