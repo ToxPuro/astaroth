@@ -24,6 +24,8 @@ acLibraryVersion(const char* library, const int counter, const AcCommunicator* c
 #if AC_MPI_ENABLED
 	ERRCHK_ALWAYS(comm != NULL && comm->handle != MPI_COMM_NULL);
 	MPI_Comm_rank(comm->handle,&pid);
+#else
+	(void)comm;
 #endif
 	if(pid == 0)
 	{

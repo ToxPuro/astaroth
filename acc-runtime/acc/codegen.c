@@ -10849,6 +10849,23 @@ replace_variable_with_constant_int(ASTNode* node,const char* old, const char* ne
 		node->token = NUMBER;
 	}
 }
+bool only_ints(const ASTNode* node)
+{
+	bool res = true;
+	if(node->lhs)
+	{
+		res &= only_ints(node->lhs);
+	}
+	if(node->rhs)
+	{
+		res &= only_ints(node->rhs);
+	}
+	if(node->type == NODE_PRIMARY_EXPRESSION)
+	{
+		if(node->lhs->token != NUMBER) res = false;
+	}
+	return res;
+}
 void
 fold_const_int_addition(ASTNode* node)
 {
@@ -10857,16 +10874,17 @@ fold_const_int_addition(ASTNode* node)
 	const char* op = get_node_by_token(BINARY_OP,node->rhs->lhs)->buffer;
 	if(op != PLUS_STR) return;
 	ASTNode* lhs_node = node->lhs;
+	if(!only_ints(lhs_node)) return;
+	if(!only_ints(node->rhs->rhs)) return;
 	const char* lhs_res = intern(combine_all_new(lhs_node));
+	if(!is_number(lhs_res)) return;
 	const char* rhs_res = intern(combine_all_new(node->rhs->rhs));
-	if(is_number(lhs_res) && is_number(rhs_res))
-	{
-		const int lhs_val = atoi(lhs_res);
-		const int rhs_val = atoi(rhs_res);
-		const char* sum = itoa(lhs_val+rhs_val);
-		ASTNode* res = create_primary_expression(sum);
-		replace_node(node,res);
-	}
+	if(!is_number(rhs_res)) return;
+	const int lhs_val = atoi(lhs_res);
+	const int rhs_val = atoi(rhs_res);
+	const char* sum = itoa(lhs_val+rhs_val);
+	ASTNode* res = create_primary_expression(sum);
+	replace_node(node,res);
 }
 void
 unroll_constant_loops(ASTNode* node)
