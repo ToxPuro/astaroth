@@ -945,6 +945,11 @@ get_array_access_nodes(const ASTNode* node, node_vec* dst)
 static inline void
 replace_node(ASTNode* original, ASTNode* replacement)
 {
+		if(replacement == NULL) 
+		{
+			fprintf(stderr,"Tried to replace with a NULL node!");
+			exit(EXIT_FAILURE);
+		}
 		if(original->parent->lhs && original->parent->lhs->id == original->id)
 			original->parent->lhs = replacement;
 		else

@@ -10893,6 +10893,9 @@ unroll_constant_loops(ASTNode* node)
 			push_node(&nodes,res);
 		}
 		ASTNode* res = build_list_node(nodes,"");
+		//res is null if we have 0:0 loop then no need to replace
+		//or if we have some other error we should skip unrolling since it is optional and thus return
+		if(res == NULL) return;
 		free_node_vec(&nodes);
 	    	replace_node(node,res);
 	}
