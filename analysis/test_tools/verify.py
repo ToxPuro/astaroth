@@ -9,7 +9,7 @@ def filter_shock(df):
     cols_to_keep = [c for c in df.columns if "SHOCK" not in c]
     return df[cols_to_keep]
 
-def test(reference_path, result_path, tol=1e-8):
+def test(reference_path, result_path, tol=1e-8, lower_thresh=1e-12):
     reference = filter_shock(pd.read_csv(reference_path, sep=r"\s+"))
     res = filter_shock(pd.read_csv(result_path, sep=r"\s+"))
 
@@ -18,7 +18,6 @@ def test(reference_path, result_path, tol=1e-8):
     res = res.select_dtypes(include="number")
 
     #Truncate small values to zero to get rid of numerical noise when comparing
-    lower_thresh=1e-12
     mask = (reference.abs() > lower_thresh) | (res.abs() > lower_thresh)
     reference = reference.where(mask).fillna(0)
     res       = res.where(mask).fillna(0)
@@ -56,6 +55,8 @@ if __name__ == "__main__":
     parser.add_argument("result", help="Path to result timeseries CSV")
     parser.add_argument("--tol", type=float, default=1e-8,
                         help="Tolerance for maximum relative difference (default=1e-8)")
+    parser.add_argument("--thresh", type=float, default=1e-12,
+                        help="Threshold below which values are not considered (default=1e-12)")
 
     args = parser.parse_args()
     test(args.reference, args.result, args.tol)
