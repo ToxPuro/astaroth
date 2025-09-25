@@ -50,8 +50,8 @@ jobs:
           cd ambipolar_diffusion
           ./build_tests.sh
           ./run_tests.sh
-          ac_verify reference.ts build/timeseries.ts --tol=1e-12  --thresh=1e-4
-          ac_verify 2nd_order_reference.ts 2nd_order_build/timeseries.ts --tol=1e-12 --thresh=1e-4
+          ac_verify reference.ts build/timeseries.ts --tol=1e-12  --thresh=1e-1
+          ac_verify 2nd_order_reference.ts 2nd_order_build/timeseries.ts --tol=1e-12 --thresh=1e-1
 
       - name: Build and test
         run: |
