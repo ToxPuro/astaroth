@@ -26,7 +26,7 @@ get_wavevector()
 	)
 }
 
-poisson_fft_solve(Field real_dst, Field real_imag, Field real_src, Field imag_src)
+poisson_fft_solve(Field real_dst, Field imag_dst, Field real_src, Field imag_src)
 {
         const real3 k = get_wavevector()
         const real k2 = dot(k,k)
