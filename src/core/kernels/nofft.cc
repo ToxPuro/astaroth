@@ -53,3 +53,11 @@ acFFTForwardTransformPlanar(const AcReal*, const AcReal*,const Volume, const Vol
 	exit(EXIT_FAILURE);
 	return AC_FAILURE;
 }
+AcResult
+acFFTBackwardTransformPlanar(const AcReal*, const AcReal*,const Volume, const Volume, const Volume, AcReal*, AcReal*)
+{
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTBackwardTransformPlanar!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}

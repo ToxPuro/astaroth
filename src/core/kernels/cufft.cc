@@ -171,6 +171,7 @@ acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_si
     return AC_SUCCESS;
 }
 
+
 AcResult
 acFFTForwardTransformR2C(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst) {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
@@ -197,6 +198,7 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
     return AC_SUCCESS;
 }
 
+
 AcResult
 acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
 {
@@ -213,3 +215,18 @@ acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,cons
     return AC_SUCCESS;
 }
 
+AcResult
+acFFTBackwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
+{
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    AcComplex* tmp  = get_fresh_complex_buffer(count);
+    AcComplex* tmp2 = get_fresh_complex_buffer(count);
+
+    acPlanarToComplex(real_src,imag_src,count,tmp);
+    acFFTBackwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
+    acComplexToPlanar(tmp,count,real_dst,imag_dst);
+
+    acDeviceFree(&tmp,0);
+    acDeviceFree(&tmp2,0);
+    return AC_SUCCESS;
+}

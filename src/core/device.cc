@@ -315,6 +315,27 @@ acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, 
 }
 
 AcResult
+acDeviceFFTBackwardTransformPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst,const Field imag_dst)
+{
+        
+  	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
+  	const auto imag_input_dims  = acGetMeshDims(device->local_config,imag_src);
+  	const auto real_output_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto imag_output_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(real_input_dims == real_output_dims);
+	ERRCHK_ALWAYS(imag_input_dims == imag_output_dims);
+	return acFFTBackwardTransformPlanar(
+				device->vba.on_device.in[real_src],
+				device->vba.on_device.in[imag_src],
+				real_input_dims.m1,	
+				real_input_dims.nn,	
+				real_input_dims.n0,
+				device->vba.on_device.in[real_dst],
+				device->vba.on_device.in[real_dst]
+			);
+}
+
+AcResult
 acDeviceFFTC2R(const Device device, const ComplexField src, const Field dst)
 {
 	return acFFTBackwardTransformC2R(
