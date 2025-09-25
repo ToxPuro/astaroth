@@ -16,8 +16,13 @@ u_dot_grad(Field3 f, Matrix m,real3 v){
 }
 
 u_dot_grad(Matrix m,real3 v){
+  if(AC_coordinate_system == AC_SPHERICAL_COORDINATES || AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+  {
+  	fatal_error_message(true,"u_dot_grad requires the vector field as an extra first parameter in spherical coordinates!!\n");
+  }
   return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
 }
+
 
 u_dot_grad_alt(Field f,real3 gradf,real3 uu,int advec_type){
 	suppress_unused_warning(f)
