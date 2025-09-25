@@ -9545,9 +9545,11 @@ remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 	const char* expr_type = get_expr_type(node);
 	if(!expr_type) return;
 	if(expr_type == FIELD_STR) return;
+	if(expr_type == FIELD3_STR) return;
 	const char* var = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	if(check_symbol(NODE_ANY,var,0,DYNAMIC_STR)) return;
 	if(check_symbol(NODE_ANY,var,FIELD_STR,0)) return;
+	if(check_symbol(NODE_ANY,var,FIELD3_STR,0)) return;
 	if(strstr(expr_type,"*")) return;
 	if(calls_non_pure_returning_func(node->rhs)) return;
 	if(!str_vec_contains(vars_used,var))
