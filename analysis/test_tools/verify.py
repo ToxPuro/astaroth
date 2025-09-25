@@ -22,6 +22,10 @@ def test(reference_path, result_path, tol=1e-8):
     denominator = np.maximum(reference.abs(), res.abs()).replace(0, eps)
     rel_diff = (reference - res).abs() / denominator
 
+    lower_thresh = 1e-12
+    mask = (reference.abs() > lower_thresh) | (res.abs() > lower_thresh)
+    rel_diff_masked = rel_diff.where(mask)
+
     # maximum relative difference
     max_val = rel_diff.to_numpy().max()
 
