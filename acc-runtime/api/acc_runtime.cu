@@ -434,7 +434,6 @@ acGetRealScratchpadSize(const size_t i)
 #define LOCAL_COMPDOMAIN_IDX(coord) \
 	((coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy)
 
-#define FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*func_name) __VA_ARGS__ = (return_type (*) __VA_ARGS__ ) ac_library_not_yet_loaded
 #define print(...) {if(!DCONST(AC_autotuning_at_work)) printf(__VA_ARGS__)} //TODO is this a good idea?
 // passes an array into a device function and then calls len (need to modify
 // the compiler to always pass arrays to functions as references before
