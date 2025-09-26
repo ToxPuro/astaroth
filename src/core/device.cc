@@ -315,7 +315,7 @@ acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, 
 }
 
 AcResult
-acDeviceFFTPlanar2R(const Device device, const Field real_src, const Field imag_src, const Field dst)
+acDeviceFFTBackwardTransformPlanar2R(const Device device, const Field real_src, const Field imag_src, const Field dst)
 {
         
   	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
