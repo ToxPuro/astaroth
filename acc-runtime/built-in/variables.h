@@ -398,3 +398,4 @@ run_const int3 AC_ngrid_extended  = AC_ngrid + AC_left_extended_halo  + AC_right
  */
 dconst int3 AC_extended_nlocal = AC_nlocal + AC_left_extended_halo + AC_right_extended_halo
 
+dconst bool AC_autotuning_at_work = false

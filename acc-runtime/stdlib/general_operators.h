@@ -378,9 +378,9 @@ del6_masked(Field s, int mask)
 
 del_upwd_masked(real3 velo, Field s, int mask)
 {
-        x = mask == 1 ? 0.0 : abs(velo.x*derx_upwd(s))
-        y = mask == 2 ? 0.0 : abs(velo.y*dery_upwd(s))
-        z = mask == 3 ? 0.0 : abs(velo.z*derz_upwd(s))
+        x = mask == 1 ? 0.0 : abs(velo.x)*derx_upwd(s)
+        y = mask == 2 ? 0.0 : abs(velo.y)*dery_upwd(s)
+        z = mask == 3 ? 0.0 : abs(velo.z)*derz_upwd(s)
         return x + y + z
 }
 
