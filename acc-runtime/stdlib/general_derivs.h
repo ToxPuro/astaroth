@@ -1,5 +1,4 @@
 #define AC_GENERAL_DERIVS_H
-
 hostdefine AC_GENERAL_DERIVS_ENABLED (1)
 
 gmem real AC_inv_r[AC_nlocal.x]
@@ -33,8 +32,6 @@ gmem real AC_mapping_func_tilde_z_extended[AC_extended_mlocal.z]
 #define AC_INV_SIN_THETA (AC_inv_sin_theta[vertexIdx.y])
 #define AC_COT           (AC_cot_theta[vertexIdx.y])
 
-
-
 #define AC_INV_R_extended AC_inv_r_extended[vertexIdx.x-NGHOST]
 #define AC_INV_CYL_R_extended AC_inv_cyl_r_extended[vertexIdx.x-NGHOST]
 #define AC_INV_SIN_THETA_extended AC_inv_sin_theta_extended[vertexIdx.y]
@@ -56,9 +53,6 @@ gmem real AC_mapping_func_tilde_z_extended[AC_extended_mlocal.z]
 #define AC_MAPPING_FUNC_TILDE_Y_extended  (AC_mapping_func_tilde_y_extended[vertexIdx.y])
 #define AC_MAPPING_FUNC_TILDE_Z_extended  (AC_mapping_func_tilde_z_extended[vertexIdx.z])
 
-
-
-
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
@@ -67,8 +61,6 @@ gmem real AC_mapping_func_tilde_z_extended[AC_extended_mlocal.z]
 #define DER2_2 (-3. / 20.)
 #define DER2_1 (3. / 2.)
 #define DER2_0 (-49. / 18.)
-
-
 
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)
@@ -89,12 +81,10 @@ gmem real AC_mapping_func_tilde_z_extended[AC_extended_mlocal.z]
 #define DER4_2 (12.0/6.0)
 #define DER4_3 (-1.0)
 
-
 #define DER3_0 (0)
 #define DER3_1 (-13.0/8.0)
 #define DER3_2 (1)
 #define DER3_3 (-1.0/8.0)
-
 
 #define DER4i2j_scaling_factor 1/(6.0*180.0)
 #define DER4i2j_first 56.0
@@ -106,8 +96,6 @@ gmem real AC_mapping_func_tilde_z_extended[AC_extended_mlocal.z]
 #define DER4i2j_1 270.0
 #define DER4i2j_2 -27.0
 #define DER4i2j_3 2.0
-
-
 
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)
@@ -2016,9 +2004,6 @@ dery(Profile<Y> prof)
 	}
 }
 
-
-
-
 #define AC_GEN_DERZ_WITH_EXTENSION(NAME,STENCIL,EXTENSION_NAME) \
 	elemental NAME##EXTENSION_NAME(Field f) \
 	{ \
@@ -2079,13 +2064,6 @@ derz(Profile<Z> prof)
 		return derz_stencil(prof)*coordinate_factor*grid_factor
 	}
 }
-
-
-
-
-
-
-
 
 #define AC_GEN_DERXX_WITH_EXTENSION(NAME,STENCIL,DERX,EXTENSION_NAME) \
 elemental NAME##EXTENSION_NAME(Field f) \
@@ -2177,9 +2155,6 @@ derxx(Profile<X> prof)
 	}
 	return res
 }
-
-
-
 
 #define AC_GEN_DERYY_WITH_EXTENSION(NAME,STENCIL,DERY,EXTENSION_NAME) \
 elemental NAME##EXTENSION_NAME(Field f) \
@@ -2335,8 +2310,6 @@ deryy(Profile<Y> prof)
 		return res
 	}
 }
-
-
 
 #define AC_GEN_DER_ZZ_WITH_EXTENSION(NAME,STENCIL,DERZ,EXTENSION_NAME) \
 elemental NAME##EXTENSION_NAME(Field f) \
@@ -2529,7 +2502,6 @@ derxy(Field f)
 }
 #define deryx derxy
 
-
 derxz(Field f)
 {
 	if(AC_dimension_inactive.x || AC_dimension_inactive.z)
@@ -2575,7 +2547,6 @@ derxz(Field f)
 }
 
 #define derzx derxz
-
 
 deryz(Field f)
 {
@@ -2627,7 +2598,6 @@ deryz(Field f)
 
 #define derzy deryz
 
-
 der3x(Field f)
 {
 	if(AC_dimension_inactive.x)
@@ -2640,7 +2610,6 @@ der3x(Field f)
 		return der3x_stencil(f)
 	}
 }
-
 
 der3y(Field f)
 {
@@ -2665,7 +2634,6 @@ der3y(Field f)
 	}
 }
 
-
 der3z(Field f)
 {
 	if(AC_dimension_inactive.z)
@@ -2685,7 +2653,6 @@ der3z(Field f)
 	}
 }
 
-
 der4x(Field f)
 {
 	if(AC_dimension_inactive.x)
@@ -2698,6 +2665,7 @@ der4x(Field f)
 		return der4x_stencil(f)
 	}
 }
+
 der4y(Field f)
 {
 	if(AC_dimension_inactive.y)
@@ -2744,13 +2712,6 @@ der4z(Field f)
 		return der4z_stencil(f)
 	}
 }
-
-
-
-
-
-
-
 
 der4x2y(Field f)
 {
@@ -2917,8 +2878,6 @@ der5z(Field f)
 	}
 }
 
-
-
 der5z1y(Field f)
 {
 	if(AC_dimension_inactive.z || AC_dimension_inactive.y)
@@ -2934,9 +2893,6 @@ der5z1y(Field f)
 		return der5z1y_stencil(f)*AC_inv_ds_5.z*AC_inv_ds.y
 	}
 }
-
-
-
 
 der5z1x(Field f)
 {
@@ -2954,8 +2910,6 @@ der5z1x(Field f)
 	}
 }
 
-
-
 der5y1z(Field f)
 {
 	if(AC_dimension_inactive.y || AC_dimension_inactive.z)
@@ -2971,8 +2925,6 @@ der5y1z(Field f)
 		return der5y1z_stencil(f)*AC_inv_ds_5.y*AC_inv_ds.z
 	}
 }
-
-
 
 der5y1x(Field f)
 {
@@ -2990,8 +2942,6 @@ der5y1x(Field f)
 	}
 }
 
-
-
 der5x1z(Field f)
 {
 	if(AC_dimension_inactive.x || AC_dimension_inactive.z)
@@ -3008,8 +2958,6 @@ der5x1z(Field f)
 	}
 }
 
-
-
 der5x1y(Field f)
 {
 	if(AC_dimension_inactive.x || AC_dimension_inactive.y)
@@ -3025,10 +2973,6 @@ der5x1y(Field f)
 		return der5x1y_stencil(f)*AC_inv_ds_5.x*AC_inv_ds.y
 	}
 }
-
-
-
-
 
 //TP: corresponds to der6_main
 der6x(Field f)
@@ -3174,7 +3118,6 @@ derz_upwd(Field f)
 	}
 }
 
-
 elemental der6x_ignore_spacing(Field f)
 {
 	if(AC_dimension_inactive.x)
@@ -3211,12 +3154,6 @@ elemental der6z_ignore_spacing(Field f)
 		return der6z_stencil(f)
 	}
 }
-
-
-
-
-
-
 
 derx_upwind(Field f, real vec)
 {
@@ -3310,6 +3247,3 @@ derz_upwind(Field f, real vec)
 //	res += DER2_1*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z+1];
 //	return res;
 //}
-
-
-
