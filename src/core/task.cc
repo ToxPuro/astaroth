@@ -2176,6 +2176,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
 
     syncVBA();
     nothing_to_communicate = input_region.memory.profiles.size() == 0;
+    cuda_aware_mpi_for_profiles = ac_get_info()[AC_use_cuda_aware_mpi] && ac_get_info()[AC_use_cuda_aware_mpi_for_profile_reductions];
     const auto& reduce_outputs = input_region.memory.reduce_outputs;
     for(size_t i = 0; i < reduce_outputs.size(); ++i)
     {
@@ -2185,6 +2186,11 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
 	    if(reduce_outputs[i].type == AC_FLOAT_TYPE)  nothing_to_communicate &= !float_output_is_global[reduce_outputs[i].variable];
 #endif
     }
+   for(const auto& prof: input_regions[0].memory.profiles)
+   {
+	   reduces_profiles = true;
+	   profile_comm_buffers[prof] = acDeviceGetProfileBuffer(device,prof);
+   }
 
     name   = "Reduce " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
@@ -2198,6 +2204,9 @@ ReduceTask::test()
 {
     switch (static_cast<ReduceState>(state)) {
     case ReduceState::Reducing: {
+        return poll_stream();
+    }
+    case ReduceState::Transferring: {
         return poll_stream();
     }
     case ReduceState::Loading: {
@@ -2479,6 +2488,30 @@ to_mpi_op(const AcReduceOp op)
 }
 
 void
+ReduceTask::transfer_to_host()
+{
+   for(const auto& prof: input_regions[0].memory.profiles)
+   {
+	AcReal* dst = profile_comm_buffers[prof];
+	AcReal* src = acDeviceGetProfileBuffer(device,prof);
+        const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+        ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
+   }
+}
+
+void
+ReduceTask::transfer_to_device()
+{
+   for(const auto& prof: input_regions[0].memory.profiles)
+   {
+	AcReal* dst = acDeviceGetProfileBuffer(device,prof);
+	AcReal* src = profile_comm_buffers[prof];
+        const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+        ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
+   }
+}
+
+void
 ReduceTask::communicate()
 {
    const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
@@ -2498,6 +2531,7 @@ ReduceTask::communicate()
    	     	   	(prof_types[prof] == PROFILE_YZ || prof_types[prof] == PROFILE_ZY) ? sub_comms.x :
    	     		MPI_COMM_NULL;
 
+		AcReal* buffer = profile_comm_buffers[prof];
    	        if(reduces_only_prof != PROFILE_NONE)
    	        {
    	     	   const auto n_size = 
@@ -2511,11 +2545,10 @@ ReduceTask::communicate()
    	     		   reduces_only_prof == PROFILE_Y ? output_region.id.y :
    	     		   reduces_only_prof == PROFILE_Z ? output_region.id.z :
    	     		   0;
-
    	     	   if(id == -1)
    	     	   {
-   	        		MPI_Iallreduce(MPI_IN_PLACE,
-   	     		   acDeviceGetProfileBuffer(device,prof),
+   	        	   MPI_Iallreduce(MPI_IN_PLACE,
+   	     		   buffer,
    	     		   NGHOST,
    	     		   AC_REAL_MPI_TYPE,
    	     		   MPI_SUM,
@@ -2524,8 +2557,8 @@ ReduceTask::communicate()
    	     	   }
    	     	   else if(id == 0)
    	     	   {
-   	        		MPI_Iallreduce(MPI_IN_PLACE,
-   	     		   acDeviceGetProfileBuffer(device,prof)+NGHOST,
+   	        	   MPI_Iallreduce(MPI_IN_PLACE,
+   	     		   buffer+NGHOST,
    	     		   n_size,
    	     		   AC_REAL_MPI_TYPE,
    	     		   MPI_SUM,
@@ -2534,8 +2567,8 @@ ReduceTask::communicate()
    	     	   }
    	     	   else if(id == 1)
    	     	   {
-   	        		MPI_Iallreduce(MPI_IN_PLACE,
-   	     		   acDeviceGetProfileBuffer(device,prof)+NGHOST+n_size,
+   	        	   MPI_Iallreduce(MPI_IN_PLACE,
+   	     		   buffer+NGHOST+n_size,
    	     		   NGHOST,
    	     		   AC_REAL_MPI_TYPE,
    	     		   MPI_SUM,
@@ -2547,8 +2580,8 @@ ReduceTask::communicate()
    	        else
    	        {
    	        	MPI_Iallreduce(MPI_IN_PLACE,
-   	     		   acDeviceGetProfileBuffer(device,prof),
-   	                        prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])),
+   	     		   buffer, 
+   	                   prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])),
    	     		   AC_REAL_MPI_TYPE,
    	     		   MPI_SUM,
    	     		   comm,
@@ -2570,6 +2603,7 @@ ReduceTask::communicate()
 void
 ReduceTask::load_outputs()
 {
+	if (!cuda_aware_mpi_for_profiles) transfer_to_device();
 	const auto& reduce_outputs = input_regions[0].memory.reduce_outputs;
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
     	{
@@ -2642,6 +2676,13 @@ ReduceTask::advance(const TraceFile* trace_file)
 		load_outputs();
         	break;
 	}
+	else if(!cuda_aware_mpi_for_profiles)
+	{
+        	trace_file->trace(this, "reducing", "transferring");
+        	state = static_cast<int>(ReduceState::Transferring);
+		transfer_to_host();
+        	break;
+	}
 	else
 	{
         	trace_file->trace(this, "reducing", "communicating");
@@ -2649,6 +2690,14 @@ ReduceTask::advance(const TraceFile* trace_file)
 		communicate();
         	break;
 	}
+    }
+    case ReduceState::Transferring:
+    {
+
+        trace_file->trace(this, "tranferring", "communicating");
+        state = static_cast<int>(ReduceState::Communicating);
+	communicate();
+        break;
     }
     case ReduceState::Communicating:
     {

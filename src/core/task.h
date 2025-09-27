@@ -363,9 +363,10 @@ typedef class BoundaryConditionTask : public Task {
     bool test();
 } BoundaryConditionTask;
 
-enum class ReduceState { Waiting = Task::wait_state, Reducing, Communicating, Loading };
+enum class ReduceState { Waiting = Task::wait_state, Reducing, Transferring, Communicating, Loading };
 typedef class ReduceTask : public Task {
   private:
+    AcReal* profile_comm_buffers[NUM_PROFILES+1]{};
     AcReal local_res_real[NUM_OUTPUTS]{};
     int    local_res_int[NUM_OUTPUTS]{};
 #if AC_DOUBLE_PRECISION
@@ -374,6 +375,8 @@ typedef class ReduceTask : public Task {
     MPI_Request requests[NUM_OUTPUTS+NUM_PROFILES]{};
     AcProfileType reduces_only_prof{};
     bool nothing_to_communicate{};
+    bool reduces_profiles{};
+    bool cuda_aware_mpi_for_profiles{};
   public:
     ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
@@ -382,6 +385,8 @@ typedef class ReduceTask : public Task {
     void load_outputs();
     void advance(const TraceFile* trace_file);
     bool test();
+    void transfer_to_host();
+    void transfer_to_device();
 } ReduceTask;
 
 
