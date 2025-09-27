@@ -2189,7 +2189,15 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
    for(const auto& prof: input_regions[0].memory.profiles)
    {
 	   reduces_profiles = true;
-	   profile_comm_buffers[prof] = acDeviceGetProfileBuffer(device,prof);
+	   if(!cuda_aware_mpi_for_profiles)
+	   {
+           	const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+		ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&profile_comm_buffers[prof],bytes));
+	   }
+	   else
+	   {
+	   	profile_comm_buffers[prof] = acDeviceGetProfileBuffer(device,prof);
+	   }
    }
 
     name   = "Reduce " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
