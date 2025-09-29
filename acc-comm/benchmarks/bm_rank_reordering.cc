@@ -330,14 +330,15 @@ main(int argc, char* argv[])
 
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0)
             std::cerr << "Usage: ./bm_rank_reordering <nx> <ny> <nz> <radius> <nsamples> "
-                         "<jobid>"
+                         "<jobid> <jobname>"
                       << std::endl;
-        const size_t nx{(argc > 1) ? std::stoull(argv[1]) : 32};
-        const size_t ny{(argc > 2) ? std::stoull(argv[2]) : 32};
-        const size_t nz{(argc > 3) ? std::stoull(argv[3]) : 32};
-        const size_t radius{(argc > 4) ? std::stoull(argv[4]) : 3};
-        const size_t nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
-        const size_t jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
+        const size_t      nx{(argc > 1) ? std::stoull(argv[1]) : 32};
+        const size_t      ny{(argc > 2) ? std::stoull(argv[2]) : 32};
+        const size_t      nz{(argc > 3) ? std::stoull(argv[3]) : 32};
+        const size_t      radius{(argc > 4) ? std::stoull(argv[4]) : 3};
+        const size_t      nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
+        const size_t      jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
+        const std::string jobname{(argc > 7) ? std::string(argv[7]) : "default"};
 
         const ac::shape global_nn{nx, ny, nz};
         const ac::index rr{ac::make_index(global_nn.size(), radius)};
@@ -349,17 +350,19 @@ main(int argc, char* argv[])
             PRINT_DEBUG(radius);
             PRINT_DEBUG(nsamples);
             PRINT_DEBUG(jobid);
+            PRINT_DEBUG(jobname);
         }
 
         std::ostringstream filename_stream;
-        filename_stream << "bm-rank-reordering-" << jobid << "-" << getpid() << "-"
+        filename_stream << "bm-rank-reordering-" << jobname + "-" << jobid << "-" << getpid() << "-"
                         << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto filename{filename_stream.str()};
 
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
             std::ofstream file{filename};
             file.exceptions(~std::ios::goodbit);
-            file << "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,ns" << std::endl;
+            file << "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,jobname,ns"
+                 << std::endl;
             file.close();
         }
 
@@ -382,6 +385,7 @@ main(int argc, char* argv[])
                 file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
                 file << ac::mpi::get_size(MPI_COMM_WORLD) << ",";
                 file << jobid << ",";
+                file << jobname << ",";
                 file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
                      << std::endl;
             }
