@@ -1,0 +1,17 @@
+Field UU
+
+input real AC_dt
+output real AC_uu_sum
+Kernel singlepass_solve(real dt) {
+    write(UU, UU + dt*UU)
+    reduce_sum(UU,AC_uu_sum)
+}
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XY)
+}
+ComputeSteps rhs(bcs)
+{
+	singlepass_solve(AC_dt)
+}
