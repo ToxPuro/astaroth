@@ -2209,12 +2209,13 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		                  || kernel_only_writes_profile(op.kernel_enum,PROFILE_Y,kernel_analysis_info.data())
 				  || kernel_only_writes_profile(op.kernel_enum,PROFILE_Z,kernel_analysis_info.data());
 	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
-	    const bool small_grid =
-		    	(int)dims.x < grid.submesh.info[AC_nmin].x ||
-		    	(int)dims.y < grid.submesh.info[AC_nmin].y ||
-		    	(int)dims.z < grid.submesh.info[AC_nmin].z;
+	    //TP: if the subdomain we compute on is too small to form the 'mantle' around the 'core' we compute the subdomain as one big block
+	    const bool small_dims  =
+		    	(int)dims.x < 2*grid.submesh.info[AC_nmin].x ||
+		    	(int)dims.y < 2*grid.submesh.info[AC_nmin].y ||
+		    	(int)dims.z < 2*grid.submesh.info[AC_nmin].z;
 
-	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim || small_grid) ? 0 : 3;
+	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim || small_dims) ? 0 : 3;
 	    {
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
