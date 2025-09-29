@@ -470,13 +470,13 @@ get_compute_output_position(int3 id, Volume start, Volume ghosts, Volume nn, AcB
 static Volume
 get_compute_output_dim(int3 id, Volume ghosts, Volume nn, AcBoundary computes_on_boundary, const int max_facet_class)
 {
+      const int facet_class = std::abs(id.x) + std::abs(id.y) + std::abs(id.z);
       Volume res = (Volume)
       {
-	      get_compute_output_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
-	      get_compute_output_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
-	      get_compute_output_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
+	      get_compute_output_dim(id.x,ghosts.x,nn.x,(max_facet_class == 0 && facet_class == 0) || computes_on_boundary & BOUNDARY_X),
+	      get_compute_output_dim(id.y,ghosts.y,nn.y,(max_facet_class == 0 && facet_class == 0) || computes_on_boundary & BOUNDARY_Y),
+	      get_compute_output_dim(id.z,ghosts.z,nn.z,(max_facet_class == 0 && facet_class == 0) || computes_on_boundary & BOUNDARY_Z)
       };
-      const int facet_class = std::abs(id.x) + std::abs(id.y) + std::abs(id.z);
       if(max_facet_class == 2 && facet_class == 2 && id.x == 0)
       {
 	      res.x += 2*ghosts.x;
@@ -492,9 +492,9 @@ get_compute_output_dim(int3 id, Volume ghosts, Volume nn, AcBoundary computes_on
       }
       else if(max_facet_class == 0 && facet_class == 0)
       {
-	      res.x += 2*ghosts.x;
-	      res.y += 2*ghosts.y;
-	      res.z += 2*ghosts.z;
+             if(computes_on_boundary & BOUNDARY_X) res.x += 2*ghosts.x;
+             if(computes_on_boundary & BOUNDARY_Y) res.y += 2*ghosts.y;
+             if(computes_on_boundary & BOUNDARY_Z) res.z += 2*ghosts.z;
       }
       if((computes_on_boundary & BOUNDARY_X) == 0)
       {
@@ -2158,14 +2158,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
     ERRCHK_ALWAYS(op.num_profiles_reduce_out == op.num_profiles_in);
     ERRCHK_ALWAYS(op.num_outputs_out  == op.num_outputs_in);
 
-    const Volume ghosts = op.halo_sizes;
-
-    auto& input_region = input_regions[0];
-    input_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
-    input_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
-
-    output_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
-    output_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
+    const auto& input_region = input_regions[0];
 
     if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_X,op.analysis_info))
 	    reduces_only_prof = PROFILE_X;

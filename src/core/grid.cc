@@ -2209,7 +2209,12 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		                  || kernel_only_writes_profile(op.kernel_enum,PROFILE_Y,kernel_analysis_info.data())
 				  || kernel_only_writes_profile(op.kernel_enum,PROFILE_Z,kernel_analysis_info.data());
 	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
-	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim) ? 0 : 3;
+	    const bool small_grid =
+		    	(int)dims.x < grid.submesh.info[AC_nmin].x ||
+		    	(int)dims.y < grid.submesh.info[AC_nmin].y ||
+		    	(int)dims.z < grid.submesh.info[AC_nmin].z;
+
+	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim || small_grid) ? 0 : 3;
 	    {
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
@@ -2227,9 +2232,9 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    }
 	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
             	    //graph->all_tasks.push_back(task);
-    	            ERRCHK_ALWAYS((int)dims.x > grid.submesh.info[AC_nmin].x*2);
-    	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2);
-    	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2);
+    	            ERRCHK_ALWAYS((int)dims.x > grid.submesh.info[AC_nmin].x*2 || max_comp_facet_class == 0);
+    	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2 || max_comp_facet_class == 0);
+    	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2 || max_comp_facet_class == 0);
 		    if(Region::tag_to_facet_class(tag) > max_comp_facet_class) continue;
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries,max_comp_facet_class);
             	    graph->all_tasks.push_back(task);
@@ -2462,12 +2467,19 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
             break;
         }
 	case TASKTYPE_REDUCE:  {
+    //input_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
+    //input_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
 
+    //output_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
+    //output_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
+
+	  const Volume reduce_start = start - op.halo_sizes;
+	  const Volume reduce_dims  = dims  + 2*op.halo_sizes;
 	  if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_X,kernel_analysis_info.data()))
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({id,0,0}), start,dims, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({id,0,0}), reduce_start,reduce_dims, device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
@@ -2475,7 +2487,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,id,0}), start,dims, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,id,0}), reduce_start,reduce_dims, device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
@@ -2483,13 +2495,13 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,0,id}), start,dims, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,0,id}), reduce_start,reduce_dims, device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
 	  else
 	  {
-	  	auto task = std::make_shared<ReduceTask>(op, i, 0, start,dims, device, swap_offset);
+	  	auto task = std::make_shared<ReduceTask>(op, i, 0, reduce_start,reduce_dims, device, swap_offset);
 	  	graph->all_tasks.push_back(task);
 	  }
 	  break;
