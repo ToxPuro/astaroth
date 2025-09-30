@@ -96,7 +96,6 @@ decompose_hierarchical(const ac::shape&             nn,
 
     ac::shape curr_nn{nn};
     for (const auto& nprocs : nprocs_per_layer) {
-        PRINT_DEBUG(nprocs);
         const ac::shape decomp{decompose(curr_nn, nprocs)};
         decompositions.push_back(decomp);
         curr_nn = curr_nn / decomp;
