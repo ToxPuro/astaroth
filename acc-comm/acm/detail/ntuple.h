@@ -1019,11 +1019,10 @@ to_linear(const ac::static_ntuple<T, N>& coords, const ac::static_ntuple<T, N>& 
 #endif
 
     T result{0};
+    T factor{1};
     for (size_t j{0}; j < shape.size(); ++j) {
-        T factor{1};
-        for (size_t i{0}; i < j; ++i)
-            factor *= shape[i];
         result += coords[j] * factor;
+        factor *= shape[j];
     }
     return result;
 }
@@ -1033,11 +1032,10 @@ template <typename T, size_t N>
                                   to_spatial(const T index, const ac::static_ntuple<T, N>& shape)
 {
     ac::static_ntuple<T, N> coords{shape};
+    T                       divisor{1};
     for (size_t j{0}; j < shape.size(); ++j) {
-        T divisor{1};
-        for (size_t i{0}; i < j; ++i)
-            divisor *= shape[i];
         coords[j] = (index / divisor) % shape[j];
+        divisor *= shape[j];
     }
     return coords;
 }
