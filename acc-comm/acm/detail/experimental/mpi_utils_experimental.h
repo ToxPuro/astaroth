@@ -415,8 +415,11 @@ namespace ac::mpi {
 
 namespace ac::mpi {
 
-/** Select the device and return its id */
+/** Select the device and return its id: tuned for LUMI topology */
 int select_device_lumi();
+
+/** Select the device and return its id: choose COMM_WORLD rank modulo visible device count */
+int select_device_generic();
 
 } // namespace ac::mpi
 
