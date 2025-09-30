@@ -153,7 +153,7 @@ main(int argc, char* argv[])
         const auto         local_nn{ac::mpi::get_local_nn(comm.get(), global_nn)};
         const auto         global_nn_offset{ac::mpi::get_global_nn_offset(comm.get(), global_nn)};
 
-        const auto device_id{ac::mpi::select_device_lumi()};
+        const auto device_id{ac::mpi::select_device_generic()};
         MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
         PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
         PRINT_DEBUG(ac::mpi::get_rank(comm.get()));
