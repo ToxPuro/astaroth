@@ -116,6 +116,8 @@ pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_o
         return pack<T, 3>(mm, block_shape, block_offset, inputs, output, do_pack);
     case 4:
         return pack<T, 4>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 5:
+        return pack<T, 5>(mm, block_shape, block_offset, inputs, output, do_pack);
     default:
         ERROR(false, "Unhandled");
     }
