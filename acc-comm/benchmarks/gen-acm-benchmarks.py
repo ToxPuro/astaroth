@@ -12,12 +12,13 @@ cmake -LAH >> system_info-$SLURM_JOB_ID.txt
 """
 
 class System:
-    def __init__(self, name, account, partition, devices_per_node, sockets_per_node, modules, env_vars, cpu_bind):
+    def __init__(self, name, account, partition, devices_per_node, sockets_per_node, gres_type, modules, env_vars, cpu_bind):
         self.name = name
         self.account = account
         self.partition = partition
         self.devices_per_node = devices_per_node
         self.sockets_per_node = sockets_per_node
+        self.gres_type = gres_type
         self.modules = modules
         self.env_vars = env_vars
         self.cpu_bind = cpu_bind
@@ -31,10 +32,14 @@ class System:
 #SBATCH --account={self.account}
 #SBATCH --time={time_limit}
 #SBATCH --partition={self.partition}
-#SBATCH --gpus-per-node={ntasks_per_node}
-#SBATCH --ntasks-per-node={ntasks_per_node}
 #SBATCH --nodes={nnodes}
+#SBATCH --ntasks-per-node={ntasks_per_node}
 """
+        if self.gres_type:
+            preamble += f"#SBATCH --gres={self.gres_type}:{ntasks_per_node}\n"
+        else:
+            preamble += f"#SBATCH --gpus-per-node={ntasks_per_node}\n"
+
         if self.sockets_per_node:
             ntasks_per_socket = max(ntasks_per_node // self.sockets_per_node, 1)
             preamble += f"#SBATCH --ntasks-per-socket={ntasks_per_socket}\n"
@@ -60,6 +65,7 @@ lumi = System(
     partition = "standard-g",
     devices_per_node = 8,
     sockets_per_node = None,
+    gres_type = None,
     modules = """
 # Modules
 module load PrgEnv-cray
@@ -84,6 +90,7 @@ puhti = System(
     partition = "gpu",
     devices_per_node = 4,
     sockets_per_node = 2,
+    gres_type = "gpu:v100",
     modules = """
 # Modules
 module load gcc/11.3.0 openmpi/4.1.4-cuda cuda cmake
@@ -99,6 +106,7 @@ mahti = System(
     partition = "gpumedium",
     devices_per_node = 4,
     sockets_per_node = 2,
+    gres_type = "gpu:a100",
     modules = """
 # Modules
 module load python-data
