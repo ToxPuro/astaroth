@@ -170,14 +170,14 @@ def gen_pack_benchmarks(system):
             npack = 1
             for ndims in range(1, 6):
                 dim = int(np.round(nn**(1/ndims)))
-                print(f'time ./benchmarks/bm_pack {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+                print(f'time srun ./benchmarks/bm_pack {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
             print()
 
             jobname = "\"aggr\""
             ndims = 3
             for npack in [1, 2, 4, 8, 16]:
                 dim = int(np.round(nn**(1/ndims)))
-                print(f'time ./benchmarks/bm_pack {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+                print(f'time srun ./benchmarks/bm_pack {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
 
 def gen_comm_benchmarks(system):
 
@@ -195,7 +195,7 @@ def gen_comm_benchmarks(system):
         with open(f'bm-{system.name}-comm-scaling-strong-{nprocs}.sh', 'w') as f:
             with redirect_stdout(f):
                 print(system.gen_preamble(nprocs, time_limit))
-                print(f'time ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+                print(f'time srun ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
 
     jobname = "\"nd\""
     nprocs = 64
@@ -205,7 +205,7 @@ def gen_comm_benchmarks(system):
             print(system.gen_preamble(nprocs, time_limit))
             for ndims in range(1, 6):
                 dim = int(np.round(nn**(1/ndims)))
-                print(f'time ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+                print(f'time srun ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
 
     jobname = "\"aggr\""
     nprocs = 64
@@ -215,7 +215,7 @@ def gen_comm_benchmarks(system):
         with redirect_stdout(f):
             print(system.gen_preamble(nprocs, time_limit))
             for npack in [1, 2, 4, 8, 16]:
-                print(f'time ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+                print(f'time srun ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
 
 def gen_rank_reordering_benchmarks(system):
     nsamples = 100
@@ -242,30 +242,30 @@ def gen_rank_reordering_benchmarks(system):
                 for i, nn in enumerate(cases):
                     #jobname = "\"scaling-strong-(" + ",".join([str(x) for x in case]) + ")\""
                     jobname = f"\"scaling-strong-case-{i}\""
-                    print(f'time ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
+                    print(f'time srun ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
                     print(f'time {gen_srun_command(system.cpu_bind)} ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 1') # Hierarchical
 
 
     # NOTE: modifies cases
-    # max_nprocs = 256
-    # nprocs = 1
-    # axis = ndims-1
-    # while nprocs <= max_nprocs:
-    #     with open(f'bm-{system.name}-rank-reordering-scaling-weak-{nprocs}.sh', 'w') as f:
-    #         with redirect_stdout(f):
-    #             print(system.gen_preamble(nprocs, time_limit))
+    max_nprocs = 256
+    nprocs = 1
+    axis = ndims-1
+    while nprocs <= max_nprocs:
+        with open(f'bm-{system.name}-rank-reordering-scaling-weak-{nprocs}.sh', 'w') as f:
+            with redirect_stdout(f):
+                print(system.gen_preamble(nprocs, time_limit))
 
-    #             for i, nn in enumerate(cases):
-    #                 # print(f'nn: {nn}')
-    #                 # print(f'nprocs: {nprocs}')
-    #                 # print(f'axis: {axis}')
-    #                 jobname = f"\"scaling-weak-case-{i}\""
-    #                 print(f'time ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
-    #                 print(f'time {gen_srun_command(system.cpu_bind)} ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 1') # Hierarchical
-    #                 nn[axis] *=2
+                for i, nn in enumerate(cases):
+                    # print(f'nn: {nn}')
+                    # print(f'nprocs: {nprocs}')
+                    # print(f'axis: {axis}')
+                    jobname = f"\"scaling-weak-case-{i}\""
+                    print(f'time srun ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
+                    print(f'time {gen_srun_command(system.cpu_bind)} ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 1') # Hierarchical
+                    nn[axis] *=2
                     
-    #             nprocs *= 2
-    #             axis = (axis + len(nn) - 1) % len(nn)
+                nprocs *= 2
+                axis = (axis + len(nn) - 1) % len(nn)
 
 
 
