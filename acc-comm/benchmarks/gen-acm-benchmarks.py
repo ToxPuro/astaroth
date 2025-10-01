@@ -239,25 +239,25 @@ def gen_rank_reordering_benchmarks(system):
 
 
     # NOTE: modifies cases
-    max_nprocs = 256
-    nprocs = 1
-    axis = ndims-1
-    while nprocs <= max_nprocs:
-        with open(f'bm-{system.name}-rank-reordering-scaling-weak-{nprocs}.sh', 'w') as f:
-            with redirect_stdout(f):
-                print(system.gen_preamble(nprocs, time_limit))
+    # max_nprocs = 256
+    # nprocs = 1
+    # axis = ndims-1
+    # while nprocs <= max_nprocs:
+    #     with open(f'bm-{system.name}-rank-reordering-scaling-weak-{nprocs}.sh', 'w') as f:
+    #         with redirect_stdout(f):
+    #             print(system.gen_preamble(nprocs, time_limit))
 
-                for i, nn in enumerate(cases):
-                    # print(f'nn: {nn}')
-                    # print(f'nprocs: {nprocs}')
-                    # print(f'axis: {axis}')
-                    jobname = f"\"scaling-weak-case-{i}\""
-                    print(f'time ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
-                    print(f'time {gen_srun_command(system.cpu_bind)} ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 1') # Hierarchical
-                    nn[axis] *=2
+    #             for i, nn in enumerate(cases):
+    #                 # print(f'nn: {nn}')
+    #                 # print(f'nprocs: {nprocs}')
+    #                 # print(f'axis: {axis}')
+    #                 jobname = f"\"scaling-weak-case-{i}\""
+    #                 print(f'time ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
+    #                 print(f'time {gen_srun_command(system.cpu_bind)} ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 1') # Hierarchical
+    #                 nn[axis] *=2
                     
-                nprocs *= 2
-                axis = (axis + len(nn) - 1) % len(nn)
+    #             nprocs *= 2
+    #             axis = (axis + len(nn) - 1) % len(nn)
 
 
 
