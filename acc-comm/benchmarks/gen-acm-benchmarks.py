@@ -2,20 +2,6 @@
 import numpy as np
 from contextlib import redirect_stdout
 
-def gen_sbatch_preamble(nprocs, devices_per_node, account, time_limit, partition):
-    ntasks_per_node = min(nprocs, devices_per_node)
-    nnodes = nprocs // ntasks_per_node
-    assert(ntasks_per_node * nnodes == nprocs)
-
-    return f"""#!/usr/bin/env bash
-#SBATCH --account={account}
-#SBATCH --time={time_limit}
-#SBATCH --partition={partition}
-#SBATCH --gpus-per-node={ntasks_per_node}
-#SBATCH --ntasks-per-node={ntasks_per_node}
-#SBATCH --nodes={nnodes}
-"""
-
 def gen_srun_command(cpu_bind = ""):
     return f'srun --cpu-bind="{cpu_bind}"' if cpu_bind else "srun"
 
@@ -26,17 +12,36 @@ cmake -LAH >> system_info-$SLURM_JOB_ID.txt
 """
 
 class System:
-    def __init__(self, name, account, partition, devices_per_node, modules, env_vars, cpu_bind):
+    def __init__(self, name, account, partition, devices_per_node, sockets_per_node, modules, env_vars, cpu_bind):
         self.name = name
         self.account = account
         self.partition = partition
         self.devices_per_node = devices_per_node
+        self.sockets_per_node = sockets_per_node
         self.modules = modules
         self.env_vars = env_vars
         self.cpu_bind = cpu_bind
 
+    def gen_sbatch_preamble(self, nprocs, time_limit):
+        ntasks_per_node = min(nprocs, self.devices_per_node)
+        nnodes = nprocs // ntasks_per_node
+        assert(ntasks_per_node * nnodes == nprocs)
+
+        preamble = f"""#!/usr/bin/env bash
+#SBATCH --account={self.account}
+#SBATCH --time={time_limit}
+#SBATCH --partition={self.partition}
+#SBATCH --gpus-per-node={ntasks_per_node}
+#SBATCH --ntasks-per-node={ntasks_per_node}
+#SBATCH --nodes={nnodes}
+"""
+        if self.sockets_per_node:
+            ntasks_per_socket = max(ntasks_per_node // self.sockets_per_node, 1)
+            preamble += f"#SBATCH --ntasks-per-socket={ntasks_per_socket}\n"
+        return preamble
+
     def gen_preamble(self, nprocs, time_limit):
-        return gen_sbatch_preamble(nprocs, self.devices_per_node, self.account, time_limit, self.partition) + \
+        return self.gen_sbatch_preamble(nprocs, time_limit) + \
                self.modules + \
                self.env_vars + \
                gen_run_information()
@@ -54,6 +59,7 @@ lumi = System(
     #partition = "dev-g",
     partition = "standard-g",
     devices_per_node = 8,
+    sockets_per_node = None,
     modules = """
 # Modules
 module load PrgEnv-cray
@@ -69,6 +75,37 @@ module load craype-accel-amd-gfx90a # Must be loaded after LUMI/24.03
 export MPICH_GPU_SUPPORT_ENABLED=1
 """,
     cpu_bind = "map_cpu:33,41,49,57,17,25,1,9",
+)
+
+puhti = System(
+    name = "puhti",
+    account = "project_2000403",
+    #partition = "gputest",
+    partition = "gpu",
+    devices_per_node = 4,
+    sockets_per_node = 2,
+    modules = """
+# Modules
+module load gcc/11.3.0 openmpi/4.1.4-cuda cuda cmake
+""",
+    env_vars = "",
+    cpu_bind = "",
+)
+
+mahti = System(
+    name = "mahti",
+    account = "project_2000403",
+    #partition = "gputest",
+    partition = "gpumedium",
+    devices_per_node = 4,
+    sockets_per_node = 2,
+    modules = """
+# Modules
+module load python-data
+module load gcc/10.4.0 openmpi/4.1.5-cuda cuda
+""",
+    env_vars = "",
+    cpu_bind = "",
 )
 
 # def gen_tfm_benchmark(system, nprocs, time_limit, config, nn, label):
@@ -224,7 +261,7 @@ def gen_rank_reordering_benchmarks(system):
 
 
 
-systems = [lumi]
+systems = [lumi, puhti, mahti]
 
 for system in systems:
     gen_pack_benchmarks(system)
