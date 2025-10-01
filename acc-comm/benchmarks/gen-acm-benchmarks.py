@@ -194,11 +194,11 @@ def gen_rank_reordering_benchmarks(system):
             with redirect_stdout(f):
                 print(system.gen_preamble(nprocs, time_limit))
 
-                for i, case in enumerate(cases):
+                for i, nn in enumerate(cases):
                     #jobname = "\"scaling-strong-(" + ",".join([str(x) for x in case]) + ")\""
                     jobname = f"\"scaling-strong-case-{i}\""
-                    print(f'time ./benchmarks/bm_collective_comm {case[0]} {case[1]} {case[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
-                    print(f'time {gen_srun_command(system.cpu_bind)} ./benchmarks/bm_collective_comm {case[0]} {case[1]} {case[2]} {radius} {nsamples} {jobid} {jobname} 1') # Hierarchical
+                    print(f'time ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
+                    print(f'time {gen_srun_command(system.cpu_bind)} ./benchmarks/bm_rank_reordering {nn[0]} {nn[1]} {nn[2]} {radius} {nsamples} {jobid} {jobname} 1') # Hierarchical
 
 
     # NOTE: modifies cases
