@@ -434,7 +434,7 @@ acGetRealScratchpadSize(const size_t i)
 #define LOCAL_COMPDOMAIN_IDX(coord) \
 	((coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy)
 
-#define print(...) {if(!DCONST(AC_autotuning_at_work)) printf(__VA_ARGS__)} //TODO is this a good idea?
+#define print(...) {if(!DCONST(AC_autotuning_at_work)) printf(__VA_ARGS__);} //TODO is this a good idea?
 // passes an array into a device function and then calls len (need to modify
 // the compiler to always pass arrays to functions as references before
 // re-enabling)
