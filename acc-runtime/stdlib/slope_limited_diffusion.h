@@ -1,3 +1,9 @@
+struct sld_fluxes
+{
+	real2 x;
+	real2 y;
+	real2 z;
+} 
 #if STENCIL_ORDER == 2
 get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
 {
@@ -486,6 +492,15 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	return real2(left_flux,right_flux)
 }
 
+get_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
+{
+	return sld_fluxes(
+			get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field),
+			get_y_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field),
+			get_z_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field)
+		    )
+}
+
 get_x_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
 {
 	return get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false)
@@ -499,81 +514,97 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	return get_z_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false)
 }
 
+
+get_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
+{
+	return real3(
+			get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false),
+			get_y_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false),
+			get_z_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false)
+		    )
+}
+
+get_slope_limited_divergence(sld_fluxes fluxes)
+{
+	div = 
+		  (fluxes.x.y - fluxes.x.x)*AC_inv_ds.x
+		+ (fluxes.y.y - fluxes.y.x)*AC_inv_ds.y
+		+ (fluxes.z.y - fluxes.z.x)*AC_inv_ds.z
+}
+
 //TP: works only for equidistant cartesian at the moment
 get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
 {
-	x_fluxes = get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field)
-	y_fluxes = get_y_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field)
-	z_fluxes = get_z_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field)
-	div = 
-		  (x_fluxes.y - x_fluxes.x)*AC_inv_ds.x
-		+ (y_fluxes.y - y_fluxes.x)*AC_inv_ds.y
-		+ (z_fluxes.y - z_fluxes.x)*AC_inv_ds.z
-	return div
+	fluxes = get_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field)
+	return get_slope_limited_divergence(fluxes)
 }
 
 get_slope_limited_divergence_and_average_fluxes(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
 {
-	x_fluxes = get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	y_fluxes = get_y_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	z_fluxes = get_z_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	div =
-		  (x_fluxes.y - x_fluxes.x)*AC_inv_ds.x
-		+ (y_fluxes.y - y_fluxes.x)*AC_inv_ds.y
-		+ (z_fluxes.y - z_fluxes.x)*AC_inv_ds.z
+	fluxes = get_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
+	div = get_slope_limited_divergence(fluxes)
 	return 
 		real4(
 				div,
-				0.5*(x_fluxes.x + x_fluxes.y),
-				0.5*(y_fluxes.x + y_fluxes.y),
-				0.5*(z_fluxes.x + z_fluxes.y)
+				0.5*(fluxes.x.x + fluxes.x.y),
+				0.5*(fluxes.y.x + fluxes.y.y),
+				0.5*(fluxes.z.x + fluxes.z.y)
 		     )
 
 }
-get_slope_limited_divergence_and_heat(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
+
+get_slope_limited_heating(fluxes, Field f, Field lnrho)
 {
-	x_fluxes = get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	y_fluxes = get_y_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	z_fluxes = get_z_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	div =
-		  (x_fluxes.y - x_fluxes.x)*AC_inv_ds.x
-		+ (y_fluxes.y - y_fluxes.x)*AC_inv_ds.y
-		+ (z_fluxes.y - z_fluxes.x)*AC_inv_ds.z
 	//TP: copy-paste TODO: refactor to a function
 	heat = 0.0
-		density_m1 = sld_get_left_exp(lnrho)
-		density = exp(lnrho)
-		density_p1 = sld_get_right_exp(lnrho)
+	density_m1 = sld_get_left_exp(lnrho)
+	density = exp(lnrho)
+	density_p1 = sld_get_right_exp(lnrho)
 
-		f_m1 = sld_get_left(f)
-		f_p1 = sld_get_right(f)
-		heat += 0.5*(
-				  (x_fluxes.x*(density*f-density_m1*f_m1)*AC_inv_ds.x)
-				+ (x_fluxes.y*(density_p1*f_p1-density*f)*AC_inv_ds.x)
+	f_m1 = sld_get_left(f)
+	f_p1 = sld_get_right(f)
+	heat += 0.5*(
+			  (fluxes.x.x*(density*f-density_m1*f_m1)*AC_inv_ds.x)
+			+ (fluxes.x.y*(density_p1*f_p1-density*f)*AC_inv_ds.x)
+		    )
+
+	density_m1 = sld_get_down_exp(lnrho)
+	density_p1 = sld_get_up_exp(lnrho)
+
+	f_m1 = sld_get_down(f)
+	f_p1 = sld_get_up(f)
+	heat_y_update = 0.5*(
+				  (fluxes.y.x*(density*f-density_m1*f_m1)*AC_inv_ds.y)
+				+ (fluxes.y.y*(density_p1*f_p1-density*f)*AC_inv_ds.y)
 			    )
 
-		density_m1 = sld_get_down_exp(lnrho)
-		density = exp(lnrho)
-		density_p1 = sld_get_up_exp(lnrho)
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		heat_y_update *= AC_INV_R
+	}
+	heat += heat_y_update
 
-		f_m1 = sld_get_down(f)
-		f_p1 = sld_get_up(f)
-		heat += 0.5*(
-				  (y_fluxes.x*(density*f-density_m1*f_m1)*AC_inv_ds.y)
-				+ (y_fluxes.y*(density_p1*f_p1-density*f)*AC_inv_ds.y)
-			    )
+	density_m1 = sld_get_back_exp(lnrho)
+	density_p1 = sld_get_front_exp(lnrho)
 
-		density_m1 = sld_get_back_exp(lnrho)
-		density = exp(lnrho)
-		density_p1 = sld_get_front_exp(lnrho)
+	f_m1 = sld_get_back(f)
+	f_p1 = sld_get_front(f)
+	heat_z_update = 0.5*(
+			  (fluxes.z.x*(density*f-density_m1*f_m1)*AC_inv_ds.z)
+			+ (fluxes.z.y*(density_p1*f_p1-density*f)*AC_inv_ds.z)
+		    )
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		heat_z_update *= AC_INV_R*AC_INV_SIN_THETA
+	}
+	heat += heat_z_update
+}
 
-		f_m1 = sld_get_back(f)
-		f_p1 = sld_get_front(f)
-		heat += 0.5*(
-				  (z_fluxes.x*(density*f-density_m1*f_m1)*AC_inv_ds.z)
-				+ (z_fluxes.y*(density_p1*f_p1-density*f)*AC_inv_ds.z)
-			    )
-
+get_slope_limited_divergence_and_heat(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
+{
+	fluxes = get_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
+	div = get_slope_limited_divergence(fluxes)
+	heat = get_slope_limited_heating(fluxes,f,lnrho)
 	return 
 		real2(
 				div,
@@ -583,53 +614,15 @@ get_slope_limited_divergence_and_heat(Field f, Field characteristic_speed, real 
 }
 get_slope_limited_all(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
 {
-	x_fluxes = get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	y_fluxes = get_y_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	z_fluxes = get_z_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
-	heat = 0.0
-		density_m1 = sld_get_left_exp(lnrho)
-		density = exp(lnrho)
-		density_p1 = sld_get_right_exp(lnrho)
-
-		f_m1 = sld_get_left(f)
-		f_p1 = sld_get_right(f)
-		heat += 0.5*(
-				  (x_fluxes.x*(density*f-density_m1*f_m1)*AC_inv_ds.x)
-				+ (x_fluxes.y*(density_p1*f_p1-density*f)*AC_inv_ds.x)
-			    )
-
-		density_m1 = sld_get_down_exp(lnrho)
-		density = exp(lnrho)
-		density_p1 = sld_get_up_exp(lnrho)
-
-		f_m1 = sld_get_down(f)
-		f_p1 = sld_get_up(f)
-		heat += 0.5*(
-				  (y_fluxes.x*(density*f-density_m1*f_m1)*AC_inv_ds.y)
-				+ (y_fluxes.y*(density_p1*f_p1-density*f)*AC_inv_ds.y)
-			    )
-
-		density_m1 = sld_get_back_exp(lnrho)
-		density = exp(lnrho)
-		density_p1 = sld_get_front_exp(lnrho)
-
-		f_m1 = sld_get_back(f)
-		f_p1 = sld_get_front(f)
-		heat += 0.5*(
-				  (z_fluxes.x*(density*f-density_m1*f_m1)*AC_inv_ds.z)
-				+ (z_fluxes.y*(density_p1*f_p1-density*f)*AC_inv_ds.z)
-			    )
-
-	div =
-		  (x_fluxes.y - x_fluxes.x)*AC_inv_ds.x
-		+ (y_fluxes.y - y_fluxes.x)*AC_inv_ds.y
-		+ (z_fluxes.y - z_fluxes.x)*AC_inv_ds.z
+	fluxes = get_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
+	div = get_slope_limited_divergence(fluxes)
+	heat = get_slope_limited_heating(fluxes,f,lnrho)
 	return 
 		real5(
 				div,
-				0.5*(x_fluxes.x + x_fluxes.y),
-				0.5*(y_fluxes.x + y_fluxes.y),
-				0.5*(z_fluxes.x + z_fluxes.y),
+				0.5*(fluxes.x.x + fluxes.x.y),
+				0.5*(fluxes.y.x + fluxes.y.y),
+				0.5*(fluxes.z.x + fluxes.z.y),
 				heat
 		     )
 
