@@ -517,7 +517,7 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 
 get_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
 {
-	return real3(
+	return sld_fluxes(
 			get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false),
 			get_y_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false),
 			get_z_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false)
@@ -526,7 +526,7 @@ get_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_li
 
 get_slope_limited_divergence(sld_fluxes fluxes)
 {
-	div = 
+	return
 		  (fluxes.x.y - fluxes.x.x)*AC_inv_ds.x
 		+ (fluxes.y.y - fluxes.y.x)*AC_inv_ds.y
 		+ (fluxes.z.y - fluxes.z.x)*AC_inv_ds.z
