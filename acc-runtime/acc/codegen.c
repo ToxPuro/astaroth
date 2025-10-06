@@ -257,10 +257,10 @@ is_called(const ASTNode* node)
 
 
 
-#define MAX_KERNELS (100)
+#define MAX_KERNELS (2000)
 
 bool skip_kernel_in_analysis[MAX_KERNELS] = {};
-#define MAX_FUNCS (1100)
+#define MAX_FUNCS (4000)
 #define MAX_COMBINATIONS (1000)
 static int MAX_DFUNCS = 0;
 // Symbols
@@ -3804,7 +3804,7 @@ add_param_combinations(const variable var, const int kernel_index,const char* pr
 	const int param_index = push(&combinatorials.names[kernel_index],intern(full_name));
 	for(size_t i = 0; i < options.size; ++i)
 	{
-		push(&combinatorials.options[kernel_index+100*param_index],options.data[i]);
+		push(&combinatorials.options[kernel_index+MAX_KERNELS*param_index],options.data[i]);
 	}
 }
 
@@ -3815,11 +3815,11 @@ gen_all_possibilities(string_vec res, int kernel_index, size_t my_index,param_co
 {
 	if(my_index == combinatorials.names[kernel_index].size-1)
 	{
-		for(size_t i = 0; i<combinatorials.options[kernel_index+100*my_index].size; ++i)
+		for(size_t i = 0; i<combinatorials.options[kernel_index+MAX_KERNELS*my_index].size; ++i)
 		{
 
 			combinations.vals[kernel_index + MAX_KERNELS*combinations.nums[kernel_index]] = str_vec_copy(res);
-			push(&combinations.vals[kernel_index + MAX_KERNELS*combinations.nums[kernel_index]], intern(combinatorials.options[kernel_index+100*my_index].data[i]));
+			push(&combinations.vals[kernel_index + MAX_KERNELS*combinations.nums[kernel_index]], intern(combinatorials.options[kernel_index+MAX_KERNELS*my_index].data[i]));
 			++combinations.nums[kernel_index];
 
 		}
@@ -3827,10 +3827,10 @@ gen_all_possibilities(string_vec res, int kernel_index, size_t my_index,param_co
 	}
 	else
 	{
-		for(size_t i = 0; i<combinatorials.options[kernel_index+100*my_index].size; ++i)
+		for(size_t i = 0; i<combinatorials.options[kernel_index+MAX_KERNELS*my_index].size; ++i)
 		{
 			string_vec copy = str_vec_copy(res);
-			push(&copy, intern(combinatorials.options[kernel_index+100*my_index].data[i]));
+			push(&copy, intern(combinatorials.options[kernel_index+MAX_KERNELS*my_index].data[i]));
 			gen_all_possibilities(copy,kernel_index,my_index+1,combinations,combinatorials);
 		}
 	}
@@ -3877,7 +3877,7 @@ void
 gen_kernel_num_of_combinations(const ASTNode* root, param_combinations combinations, string_vec* user_kernels_with_input_params,string_vec* user_kernel_combinatorial_params)
 {
 
-	string_vec user_kernel_combinatorial_params_options[100*100] = { [0 ... 100*100 -1] = VEC_INITIALIZER};
+	string_vec user_kernel_combinatorial_params_options[MAX_KERNELS*MAX_KERNELS] = { [0 ... MAX_KERNELS*MAX_KERNELS-1] = VEC_INITIALIZER};
 	gen_kernel_num_of_combinations_recursive(root,combinations,user_kernels_with_input_params,(combinatorial_params){user_kernel_combinatorial_params,user_kernel_combinatorial_params_options});
 }
 
@@ -4418,11 +4418,11 @@ typedef struct
 combinatorial_params_info
 get_combinatorial_params_info(const ASTNode* root)
 {
-  string_vec* user_kernel_combinatorial_params = malloc(sizeof(string_vec)*100);
-  memset(user_kernel_combinatorial_params,0,100*sizeof(string_vec));
+  string_vec* user_kernel_combinatorial_params = malloc(sizeof(string_vec)*MAX_KERNELS);
+  memset(user_kernel_combinatorial_params,0,MAX_KERNELS*sizeof(string_vec));
   string_vec user_kernels_with_input_params = VEC_INITIALIZER;
-  int* nums = malloc(sizeof(int)*100);
-  memset(nums,0,sizeof(int)*100);
+  int* nums = malloc(sizeof(int)*MAX_KERNELS);
+  memset(nums,0,sizeof(int)*MAX_KERNELS);
   string_vec* vals = malloc(sizeof(string_vec)*MAX_KERNELS*MAX_COMBINATIONS);
   param_combinations param_in = {nums, vals};
   gen_kernel_num_of_combinations(root,param_in,&user_kernels_with_input_params,user_kernel_combinatorial_params);
@@ -4434,7 +4434,7 @@ free_combinatorial_params_info(combinatorial_params_info* info)
 {
   free_str_vec(&info->kernels_with_input_params);
   free(info->params.vals);
-  for(int i = 0; i < 100; ++i)
+  for(int i = 0; i < MAX_KERNELS; ++i)
 	  free_str_vec(&info->kernel_combinatorial_params[i]);
 }
 void
