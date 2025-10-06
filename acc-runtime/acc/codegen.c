@@ -260,6 +260,7 @@ is_called(const ASTNode* node)
 #define MAX_KERNELS (2000)
 
 bool skip_kernel_in_analysis[MAX_KERNELS] = {};
+#define MAX_PARAMS (100)
 #define MAX_FUNCS (4000)
 #define MAX_COMBINATIONS (1000)
 static int MAX_DFUNCS = 0;
@@ -3877,7 +3878,7 @@ void
 gen_kernel_num_of_combinations(const ASTNode* root, param_combinations combinations, string_vec* user_kernels_with_input_params,string_vec* user_kernel_combinatorial_params)
 {
 
-	string_vec user_kernel_combinatorial_params_options[MAX_KERNELS*MAX_KERNELS] = { [0 ... MAX_KERNELS*MAX_KERNELS-1] = VEC_INITIALIZER};
+	string_vec user_kernel_combinatorial_params_options[MAX_PARAMS*MAX_KERNELS] = { [0 ... MAX_PARAMS*MAX_KERNELS-1] = VEC_INITIALIZER};
 	gen_kernel_num_of_combinations_recursive(root,combinations,user_kernels_with_input_params,(combinatorial_params){user_kernel_combinatorial_params,user_kernel_combinatorial_params_options});
 }
 
