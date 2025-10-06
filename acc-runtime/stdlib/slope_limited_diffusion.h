@@ -598,6 +598,7 @@ get_slope_limited_heating(fluxes, Field f, Field lnrho)
 		heat_z_update *= AC_INV_R*AC_INV_SIN_THETA
 	}
 	heat += heat_z_update
+	return heat
 }
 
 get_slope_limited_divergence_and_heat(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
