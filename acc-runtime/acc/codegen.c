@@ -5291,8 +5291,9 @@ get_binary_expr_type(const ASTNode* node)
 	if(!lhs_res || !rhs_res) return NULL;
 	const bool lhs_real = lhs_res == REAL_STR;
 	const bool rhs_real = rhs_res == REAL_STR;
-	const bool lhs_int   = lhs_res == INT_STR;
-	const bool rhs_int   = rhs_res == INT_STR;
+	//TP: in arithmetic expressions bools behave the same as ints
+	const bool lhs_int   = lhs_res == INT_STR || lhs_res == BOOL_STR;
+	const bool rhs_int   = rhs_res == INT_STR || rhs_res == BOOL_STR;
 	const char* res = 	
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,COMPLEX_FIELD_STR) || !strcmp(rhs_res,COMPLEX_FIELD_STR))   ? COMPLEX_STR  :
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD_STR) || !strcmp(rhs_res,FIELD_STR))   ? REAL_STR  :
@@ -5301,7 +5302,7 @@ get_binary_expr_type(const ASTNode* node)
                 (lhs_real || rhs_real) && (lhs_int || rhs_int) ? REAL_STR :
                 !strcmp_null_ok(op,MULT_STR) && !strcmp(lhs_res,MATRIX_STR) &&  !strcmp(rhs_res,REAL3_STR) ? REAL3_STR :
 		!strcmp(lhs_res,COMPLEX_STR) || !strcmp(rhs_res,COMPLEX_STR)   ? COMPLEX_STR  :
-		lhs_real && !strcmps(rhs_res,INT_STR,LONG_STR,LONG_LONG_STR,DOUBLE_STR,FLOAT_STR)    ?  REAL_STR  :
+		lhs_real && !strcmps(rhs_res,INT_STR,BOOL_STR,LONG_STR,LONG_LONG_STR,DOUBLE_STR,FLOAT_STR)    ?  REAL_STR  :
 		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)     && lhs_real && !rhs_int  ?  rhs_res   :
 		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)  && rhs_real && !lhs_int  ?  lhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
