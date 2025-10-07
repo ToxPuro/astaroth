@@ -7184,7 +7184,6 @@ void
 replace_variable_with(ASTNode* node,const char* old, const ASTNode* new)
 {
 	TRAVERSE_PREAMBLE_PARAMS(replace_variable_with,old,new);
-	const ASTNode* parent = node->parent;
 	if(node->buffer && node->buffer == old) 
 	{
 		replace_node(node,astnode_dup(new,NULL));
