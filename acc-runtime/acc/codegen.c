@@ -4742,7 +4742,8 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
         }
         else if (add_auto(node))
 	{
-	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
+	  const bool is_reference = tspecifier_out && tspecifier_out[strlen(tspecifier_out)-1] == '&';
+	  if(!is_reference && node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
 	  if(node->expr_type)
 	  {
 		tspecifier_out = node->expr_type;
@@ -7179,6 +7180,17 @@ should_be_reference(const ASTNode* node)
 	return is_reference;
 }
 
+void
+replace_variable_with(ASTNode* node,const char* old, const ASTNode* new)
+{
+	TRAVERSE_PREAMBLE_PARAMS(replace_variable_with,old,new);
+	const ASTNode* parent = node->parent;
+	if(node->buffer && node->buffer == old) 
+	{
+		replace_node(node,astnode_dup(new,NULL));
+	}
+}
+
 ASTNode*
 inline_returning_function(const ASTNode* node, int counter)
 {
@@ -7203,16 +7215,13 @@ inline_returning_function(const ASTNode* node, int counter)
 	for(size_t i = 0; i < params.size; ++i)
 	{
 
-		const char* type = params_info.types.data[i] ? sprintf_intern("%s%s",
-				params_info.types.data[i], should_be_reference(params.data[i]) ? "&" : "")
-			: NULL;
 		const char* identifier = get_node_by_token(IDENTIFIER,params_info.expr_nodes.data[i])->buffer;
 		if(!strstr(identifier,"AC_INTERNAL"))
 		{
 			identifier = sprintf_intern("%s___AC_INTERNAL_%s_REPLACE_WITH_INLINE_COUNTER",identifier,func_name);
 		}
-		ASTNode* alias = create_assignment(create_declaration(identifier,type,CONST_STR),params.data[i],EQ_STR);
-		add_to_node_list(dfunc_statements,alias);
+
+		replace_variable_with(new_dfunc,identifier,params.data[i]);
 	}
 	char* replacement = itoa(counter);
 	replace_substrings(new_dfunc,"REPLACE_WITH_INLINE_COUNTER",replacement);
@@ -7240,22 +7249,17 @@ inline_non_returning_function(const ASTNode* node, int counter)
 	ASTNode* new_dfunc = astnode_dup(dfunc,NULL);
 	if(get_return_node(new_dfunc->rhs))
 		fatal("Not capturing return value of inlined value not allowed\n");
-	ASTNode* dfunc_statements = new_dfunc->rhs->rhs->lhs;
 	node_vec params = VEC_INITIALIZER;
 	if(func_node->rhs) params = get_nodes_in_list(func_node->rhs);
 	func_params_info params_info = get_function_params_info(dfunc,func_name);
 	for(size_t i = 0; i < params.size; ++i)
 	{
-		const char* type = params_info.types.data[i] ? sprintf_intern("%s%s",
-				params_info.types.data[i], should_be_reference(params.data[i]) ? "&" : "")
-			: NULL;
 		const char* identifier = get_node_by_token(IDENTIFIER,params_info.expr_nodes.data[i])->buffer;
 		if(!strstr(identifier,"AC_INTERNAL"))
 		{
 			identifier = sprintf_intern("%s___AC_INTERNAL_%s_REPLACE_WITH_INLINE_COUNTER",identifier,func_name);
 		}
-		ASTNode* alias = create_assignment(create_declaration(identifier,type,CONST_STR),params.data[i],EQ_STR);
-		add_to_node_list(dfunc_statements,alias);
+		replace_variable_with(new_dfunc,identifier,params.data[i]);
 	}
 	char* replacement = itoa(counter);
 	replace_substrings(new_dfunc,"REPLACE_WITH_INLINE_COUNTER",replacement);
@@ -7696,6 +7700,7 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 		node->is_constexpr |= check_symbol(NODE_DFUNCTION_ID,node->buffer,FIELD_STR,CONSTEXPR_STR);
 		res |= node->is_constexpr;
 	}
+
 	if(node->type & NODE_IF && primary_expr_is_false(node->lhs) && !node->is_constexpr)
 	{
 		node->is_constexpr = true;
@@ -10950,7 +10955,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   fold_const_int_addition(root);
   unroll_constant_loops(root);
 
-  if(gen_mem_accesses) add_tracing_to_conditionals(root);
   gen_constexpr_info(root,gen_mem_accesses);
   if(gen_mem_accesses)
   {
@@ -11122,6 +11126,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_type_info(root);
   cache_func_calls(root);
   inline_dfuncs(root);
+  if(gen_mem_accesses) add_tracing_to_conditionals(root);
   gen_type_info(root);
 
 
