@@ -126,6 +126,15 @@ elemental ac_const_bc(AcBoundary boundary, Field f, real const_val)
 		f[ghost.x][ghost.y][ghost.z] = const_val;
 	}
 }
+
+ac_const_bc(AcBoundary boundary,  real const_val)
+{
+	for f in 0:NUM_FIELDS
+	{
+		ac_const_bc(boundary,Field(f),const_val)
+	}
+}
+
 utility Kernel BOUNDCOND_CONST(Field f, real const_val)
 {
 	ac_const_bc(BOUNDARY_XYZ,f,const_val)

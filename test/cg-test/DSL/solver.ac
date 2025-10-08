@@ -1,0 +1,158 @@
+hostdefine STENCIL_ORDER (2)
+
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/cg.h"
+Field HEAT_INIT
+Field HEAT_SOLUTION
+real AC_k = 1.0
+real AC_SOR_omega = 1.8
+Field TEST_SOLUTION
+Field TEST_HEAT
+
+Field RESIDUAL
+
+Field CG_P 
+Field CG_R
+input real AC_laplace_sign
+
+Kernel init_kernel(real init_sign)
+{
+	//Not using the sine wave example since due to being eigensolution would converge in a single step
+	pos = grid_position()
+	write(HEAT_INIT,init_sign*(pos.x + pos.y + pos.z))
+	write(HEAT_SOLUTION,0.0)
+	write(TEST_SOLUTION, (1.0/6.0)*(pos.x*pos.x*pos.x + pos.y*pos.y*pos.y + pos.z*pos.z*pos.z))
+}
+bc_heat(AcBoundary boundary, Field f) {
+   const int3 normal = get_normal(boundary)
+   const int3 boundary_point = get_boundary(normal)
+   int3 ghost  = boundary_point
+   for i in 0:NGHOST
+   {
+           ghost  = ghost  + normal
+	   pos = grid_position(ghost)
+           f[ghost.x][ghost.y][ghost.z] = (1.0/6.0)*((pos.x*pos.x*pos.x) + (pos.y*pos.y*pos.y) + (pos.z*pos.z*pos.z));
+   }
+
+}
+
+bc_heat_source(AcBoundary boundary, Field f)
+{
+   const int3 normal = get_normal(boundary)
+   const int3 boundary_point = get_boundary(normal)
+   int3 ghost  = boundary_point
+   for i in 0:NGHOST
+   {
+           ghost  = ghost  + normal
+	   pos = grid_position(ghost)
+           f[ghost.x][ghost.y][ghost.z] = pos.x + pos.y + pos.z;
+   }
+
+}
+
+
+BoundConds boundconds{
+	bc_heat(BOUNDARY_XYZ,HEAT_SOLUTION)
+	ac_const_bc(BOUNDARY_XYZ,CG_P,0.0)
+	bc_heat(BOUNDARY_XYZ,TEST_SOLUTION)
+}
+
+output real AC_residual2
+Kernel residual_kernel(real laplace_sign)
+{
+	r = HEAT_INIT-(laplace_sign*laplace(HEAT_SOLUTION))
+	write(RESIDUAL,r)
+	reduce_sum(r*r,AC_residual2)
+	write(TEST_HEAT,-laplace(TEST_SOLUTION))
+}
+
+ComputeSteps
+initcond(boundconds)
+{
+	init_kernel(AC_laplace_sign)
+}
+
+
+ComputeSteps
+empty_steps(boundconds)
+{
+}
+Kernel
+init_cg_solution()
+{
+	write(HEAT_SOLUTION,0.0)
+}
+
+Kernel
+init_cg_residual()
+{
+	r = HEAT_INIT -(-laplace(HEAT_SOLUTION))
+	write(CG_P,r)
+	write(CG_R,r)
+}
+
+
+Kernel cg_compute_alpha()
+{
+	Ap = -laplace(CG_P)
+ 	r  = value(CG_R)
+	p  = value(CG_P)
+	cg_compute_inner_products(Ap,p,r)
+}
+
+
+Kernel cg_advance()
+{
+	Ap = -laplace(CG_P)
+	p  = value(CG_P)
+	cg_advance_solution(HEAT_SOLUTION,Ap,p,CG_R)
+}
+
+
+Kernel cg_advance_p()
+{
+	cg_next_direction(CG_P,CG_R)
+}
+
+ComputeSteps
+init_cg(boundconds)
+{
+	init_cg_solution()
+	init_cg_residual()
+}
+
+ComputeSteps
+cg_step(boundconds)
+{
+	cg_compute_alpha()
+	cg_advance()
+	cg_advance_p()
+}
+
+fixed_boundary Kernel sor_red(real laplace_sign)
+{
+	poisson_sor_red_black_extended(SOR_RED,value(HEAT_INIT),HEAT_SOLUTION,AC_SOR_omega,laplace_sign)
+}
+fixed_boundary Kernel sor_black(real laplace_sign)
+{
+	poisson_sor_red_black_extended(SOR_BLACK,value(HEAT_INIT),HEAT_SOLUTION,AC_SOR_omega,laplace_sign)
+}
+
+ComputeSteps
+sor_red_black_step(boundconds)
+{
+	sor_red(AC_laplace_sign)
+	sor_black(AC_laplace_sign)
+}
+
+ComputeSteps
+get_residual(boundconds)
+{
+	residual_kernel(AC_laplace_sign)
+}
+

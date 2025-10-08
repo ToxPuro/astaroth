@@ -57,10 +57,6 @@ gmem real AC_mapping_func_tilde_z_extended[AC_extended_mlocal.z]
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
 
-#define DER2_3 (1. / 90.)
-#define DER2_2 (-3. / 20.)
-#define DER2_1 (3. / 2.)
-#define DER2_0 (-49. / 18.)
 
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)
@@ -153,14 +149,78 @@ Stencil derzz_2nd_stencil {
     [1 ][0][0]  = DER2_2nd_1
 }
 
+derxx_2nd_central_coeff()
+{
+	real res = DER2_2nd_0
+	if(!AC_nonequidistant_grid.x)
+	{
+		res *= AC_inv_ds_2.x
+	}
+	else
+	{
+		//Tilde factor conveniently vanishes
+		 res *= (AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) 
+	}
+	return res
+}
+
+deryy_2nd_central_coeff()
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = (AC_INV_R*AC_INV_R)
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R)
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.y)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y
+	}
+	else
+	{
+		grid_factor = AC_inv_ds_2.y
+	}
+	res = coordinate_factor*grid_factor
+	//Tilde factor vanishes!
+	return DER2_2nd_0*res
+}
+
+derzz_2nd_central_coeff()
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA;
+		coordinate_factor *= coordinate_factor
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.z)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		grid_factor = AC_inv_ds_2.z
+	}
+	res = coordinate_factor*grid_factor
+	//Tilde factor conveniently vanishes
+	return DER2_2nd_0*res
+}
+
 #if STENCIL_ORDER == 2
 
+#define DER2_0 DER2_2nd_0
 #define derx_stencil  derx_2nd_stencil
 #define dery_stencil  dery_2nd_stencil
 #define derz_stencil  derz_2nd_stencil
 #define derxx_stencil derxx_2nd_stencil
 #define deryy_stencil deryy_2nd_stencil
 #define derzz_stencil derzz_2nd_stencil
+
 #define derxx_neighbours_stencil derxx_2nd_neighbours_stencil
 #define deryy_neighbours_stencil deryy_2nd_neighbours_stencil
 #define derzz_neighbours_stencil derzz_2nd_neighbours_stencil
@@ -862,6 +922,11 @@ derz_upwind_front(Field f)
 }
 
 #else
+
+#define DER2_3 (1. / 90.)
+#define DER2_2 (-3. / 20.)
+#define DER2_1 (3. / 2.)
+#define DER2_0 (-49. / 18.)
 
 #define DERX_3 (2. / 720.)
 #define DERX_2 (-27. / 720.)
@@ -2123,20 +2188,6 @@ derxx_central_coeff()
 	return res
 }
 
-derxx_2nd_central_coeff()
-{
-	real res = DER2_2nd_0
-	if(!AC_nonequidistant_grid.x)
-	{
-		res *= AC_inv_ds_2.x
-	}
-	else
-	{
-		//Tilde factor conveniently vanishes
-		 res *= (AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) 
-	}
-	return res
-}
 
 derxx(Profile<X> prof)
 {
@@ -2201,30 +2252,6 @@ AC_GEN_DERYY(deryy_2nd,deryy_2nd_stencil,dery_2nd)
 AC_GEN_DERYY(deryy_2nd_neighbours,deryy_2nd_neighbours_stencil,dery_2nd)
 AC_GEN_DERYY(deryy_neighbours,deryy_neighbours_stencil,dery)
 
-deryy_2nd_central_coeff()
-{
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
-	{
-		coordinate_factor = (AC_INV_R*AC_INV_R)
-	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
-	{
-		coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R)
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.y)
-	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y
-	}
-	else
-	{
-		grid_factor = AC_inv_ds_2.y
-	}
-	res = coordinate_factor*grid_factor
-	//Tilde factor vanishes!
-	return DER2_2nd_0*res
-}
 
 deryy_central_coeff()
 {
@@ -2353,27 +2380,6 @@ AC_GEN_DER_ZZ(derzz_neighbours,derzz_neighbours_stencil,derz)
 AC_GEN_DER_ZZ(derzz_2nd,derzz_2nd_stencil,derz_2nd)
 AC_GEN_DER_ZZ(derzz,derzz_stencil,derz)
 
-derzz_2nd_central_coeff()
-{
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
-	{
-		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA;
-		coordinate_factor *= coordinate_factor
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.z)
-	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z
-	}
-	else
-	{
-		grid_factor = AC_inv_ds_2.z
-	}
-	res = coordinate_factor*grid_factor
-	//Tilde factor conveniently vanishes
-	return DER2_2nd_0*res
-}
 
 derzz_central_coeff()
 {
