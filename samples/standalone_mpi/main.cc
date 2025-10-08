@@ -553,7 +553,7 @@ file_exists(const char* filename)
 
 /* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
 static void
-read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time)
+read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time, const bool distributed)
 {
     if (*step > 0) {
         ERROR("step in read_file_to_mesh (config start_step) was > 0, do not know what to do with "
@@ -588,8 +588,7 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time)
        std::vector<AcReal> times = doc.GetColumn<AcReal>("t_step");
        *simulation_time = times[times.size()-1];
        if(step_numbers.size() == 0) {
-           ERROR("Tried to load from the latest snapshot but snapshots_info.csv is malformatted "
-                 "or non-existing");
+           ERROR("Tried to load from the latest snapshot but snapshots_info.csv is malformatted ");
        }
     }
     ERRCHK_ALWAYS(modstep >= 0);
@@ -633,8 +632,16 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time)
             "from a file instead of hardcoding it like this.");
 #endif
 
-    for (size_t i = 0; i < num_io_fields; ++i)
-        acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
+    if(distributed)
+    {
+    	for (size_t i = 0; i < num_io_fields; ++i)
+    	    acGridAccessMeshOnDiskSynchronousDistributed(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
+    }
+    else
+    {
+    	for (size_t i = 0; i < num_io_fields; ++i)
+    	    acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
+    }
 
 //#if LMAGNETIC
 //    // Scale the magnetic field
@@ -1253,6 +1260,12 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Done reading Pencil Code var file\n");
         break;
     }
+    case InitialMeshProcedure::LoadDistributedSnapshot: {
+        acLogFromRootProc(pid, "Reading mesh file\n");
+        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time, true);
+        acLogFromRootProc(pid, "Done reading mesh file\n");
+        break;
+    }
     /*
     case InitialMeshProcedure::LoadDistributedSnapshot: {
         acLogFromRootProc(pid, "Reading mesh state from distributed snapshot\n");
@@ -1269,7 +1282,7 @@ main(int argc, char** argv)
     */
     case InitialMeshProcedure::LoadSnapshot: {
         acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time);
+        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time, false);
         acLogFromRootProc(pid, "Done reading mesh file\n");
         break;
     }
