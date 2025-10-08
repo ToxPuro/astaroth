@@ -7182,12 +7182,19 @@ should_be_reference(const ASTNode* node)
 }
 
 void
-replace_variable_with(ASTNode* node,const char* old, const ASTNode* new)
+replace_variable_with(ASTNode* node,const char* old, const ASTNode* new, const char* new_str)
 {
-	TRAVERSE_PREAMBLE_PARAMS(replace_variable_with,old,new);
+	TRAVERSE_PREAMBLE_PARAMS(replace_variable_with,old,new,new_str);
 	if(node->buffer && node->buffer == old) 
 	{
 		replace_node(node,astnode_dup(new,NULL));
+	}
+	if(node->type == NODE_TSPEC && strstr(node->lhs->buffer,old))
+	{
+		char* tmp = strdup(node->lhs->buffer);
+                replace_substring(tmp,old,new_str);
+		astnode_set_buffer(tmp,node->lhs);
+		free(tmp);
 	}
 }
 
@@ -7221,7 +7228,7 @@ inline_returning_function(const ASTNode* node, int counter)
 			identifier = sprintf_intern("%s___AC_INTERNAL_%s_REPLACE_WITH_INLINE_COUNTER",identifier,func_name);
 		}
 
-		replace_variable_with(new_dfunc,identifier,params.data[i]);
+		replace_variable_with(new_dfunc,identifier,params.data[i],combine_all_new(params.data[i]));
 	}
 	char* replacement = itoa(counter);
 	replace_substrings(new_dfunc,"REPLACE_WITH_INLINE_COUNTER",replacement);
@@ -7259,7 +7266,7 @@ inline_non_returning_function(const ASTNode* node, int counter)
 		{
 			identifier = sprintf_intern("%s___AC_INTERNAL_%s_REPLACE_WITH_INLINE_COUNTER",identifier,func_name);
 		}
-		replace_variable_with(new_dfunc,identifier,params.data[i]);
+		replace_variable_with(new_dfunc,identifier,params.data[i],combine_all_new(params.data[i]));
 	}
 	char* replacement = itoa(counter);
 	replace_substrings(new_dfunc,"REPLACE_WITH_INLINE_COUNTER",replacement);
@@ -10952,6 +10959,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   gen_type_info(root);
+
+
   fold_const_int_addition(root);
   unroll_constant_loops(root);
 
