@@ -44,6 +44,11 @@ poisson_jacobi_update_extended(real b , Field x_prev, real laplace_sign)
 	return (b-Ax)/coef
 }
 
+poisson_jacobi_update_extended(real b , Field x_prev)
+{
+	poisson_jacobi_update_extended(b,x_prev,1.0)
+}
+
 poisson_sor_red_black_extended(int color, real density, Field potential, real omega, real laplace_sign)
 {
 	res = (1-omega)*potential+omega*poisson_jacobi_update_extended(density,potential,laplace_sign)

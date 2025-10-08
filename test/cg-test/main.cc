@@ -161,15 +161,27 @@ main(void)
     };
 
 
-    fprintf(stderr,"CG: \n");
     acDeviceSetInput(acGridGetDevice(),AC_laplace_sign,-1.0);
+    fprintf(stderr,"CG: \n");
     acGridExecuteTaskGraph(initcond_graph,1);
     cg_solve();
 
     fprintf(stderr,"SOR: \n");
-    //acDeviceSetInput(acGridGetDevice(),AC_laplace_sign,1.0);
     acGridExecuteTaskGraph(initcond_graph,1);
     sor_solve();
+
+    //TP: CG will fail due to not being SPD
+    /**
+    fprintf(stderr,"Switching sign -1 ---> +1\n");
+    acDeviceSetInput(acGridGetDevice(),AC_laplace_sign,1.0);
+    fprintf(stderr,"CG: \n");
+    acGridExecuteTaskGraph(initcond_graph,1);
+    cg_solve();
+
+    fprintf(stderr,"SOR: \n");
+    acGridExecuteTaskGraph(initcond_graph,1);
+    sor_solve();
+    **/
 
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &model);
