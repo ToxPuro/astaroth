@@ -1,3 +1,4 @@
+#include "$AC_HOME/acc-runtime/stdlib/general_grid/vars.h"
 struct sld_fluxes
 {
 	real2 x;
@@ -513,12 +514,42 @@ get_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_li
 
 get_slope_limited_divergence(sld_fluxes fluxes)
 {
-	return	  (fluxes.x.y - fluxes.x.x)*AC_inv_ds.x
-		+ (fluxes.y.y - fluxes.y.x)*AC_inv_ds.y
-		+ (fluxes.z.y - fluxes.z.x)*AC_inv_ds.z
+	real divx
+	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		divx = (AC_x12[vertexIdx.x]*AC_x12[vertexIdx.x]*fluxes.x.y - AC_x12[vertexIdx.x-1]*AC_x12[vertexIdx.x-1]*fluxes.x.x)
+		      *AC_INV_R*AC_INV_R
+	}
+	else if (AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		divx = (AC_x12[vertexIdx.x]*fluxes.x.y - AC_x12[vertexIdx.x-1]*fluxes.x.x)*AC_INV_R
+	}
+	else
+		divx = fluxes.x.y - fluxes.x.x
+
+	divx *= AC_inv_ds.x     // x contribution
+
+	real divy
+	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		divy = (AC_sinth12[vertexIdx.y]*fluxes.y.y - AC_sinth12[vertexIdx.y-1]*fluxes.y.x)
+		       *AC_INV_SIN_THETA
+	} else
+	{
+		divy = fluxes.y.y - fluxes.y.x
+	}
+	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES || AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		divy *= AC_INV_R
+	}
+	divy *= AC_inv_ds.y  	// y contribution
+
+	divz = (fluxes.z.y - fluxes.z.x)*AC_inv_ds.z    // z contribution
+	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES) divz *= AC_INV_R*AC_INV_SIN_THETA
+
+	return divx + divy + divz
 }
 
-//TP: works only for equidistant cartesian at the moment
 get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
 {
 	fluxes = get_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field)
@@ -576,9 +607,9 @@ get_slope_limited_heating(fluxes, Field f, Field lnrho)
 	f_m1 = sld_get_back(f)
 	f_p1 = sld_get_front(f)
 	heat_z_update = 0.5*(
-			  (fluxes.z.x*(density*f-density_m1*f_m1)*AC_inv_ds.z)
-			+ (fluxes.z.y*(density_p1*f_p1-density*f)*AC_inv_ds.z)
-		    )
+			       (fluxes.z.x*(density*f-density_m1*f_m1)*AC_inv_ds.z)
+			     + (fluxes.z.y*(density_p1*f_p1-density*f)*AC_inv_ds.z)
+			    )
 	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
 		heat_z_update *= AC_INV_R*AC_INV_SIN_THETA
