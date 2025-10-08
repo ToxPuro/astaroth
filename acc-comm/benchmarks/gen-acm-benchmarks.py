@@ -116,72 +116,148 @@ module load gcc/10.4.0 openmpi/4.1.5-cuda cuda
     cpu_bind = "",
 )
 
-# def gen_tfm_benchmark(system, nprocs, time_limit, config, nn, label):
-#     return system.gen_preamble(nprocs, time_limit) + \
-#            gen_run_information_tfm(config, label) + \
-#            f'{system.gen_srun_command(nprocs)} {gen_run_command_tfm(config, nn, label)}'
-
-# def gen_weak_scaling_benchmarks(system, max_nprocs):
-    
-#     nn = [256,256,256]
-#     axis = len(nn) - 1
-#     time_limit = "00:30:00"
-#     config = "/users/pekkila/astaroth/samples/tfm/cases/laplace-nonsoca.ini"
-#     label = "weak"
-
-#     nprocs = 1
-#     while nprocs <= max_nprocs:
-#         with open(f'bm-{label}-{nprocs}.sh', 'w') as f:
-#             print(gen_tfm_benchmark(system, nprocs, time_limit, config, nn, label), file=f)
-        
-#         nprocs *= 2
-#         nn[axis] *= 2
-#         axis = (axis + len(nn) - 1) % len(nn)
-        
-# def gen_strong_scaling_benchmarks(system, max_nprocs):
-#     nn = [256,256,256]
-#     time_limit = "00:15:00"
-#     config = "/users/pekkila/astaroth/samples/tfm/cases/laplace-nonsoca.ini"
-#     label = "strong"
-
-#     nprocs = 2
-#     while nprocs <= max_nprocs:
-#         with open(f'bm-{label}-{nprocs}.sh', 'w') as f:
-#             print(gen_tfm_benchmark(system, nprocs, time_limit, config, nn, label), file=f)
-#         nprocs *= 2
-
-# gen_weak_scaling_benchmarks(lumi, 4096)
-# gen_strong_scaling_benchmarks(lumi, 512)
+def get_global_dim(nprocs, dim, ndims):
+    return int(np.round((nprocs*dim**ndims)**(1/ndims)))
 
 def gen_pack_benchmarks(system):
-    nn = 256**3
     radius = 4
-    nprocs = 1
-    nsamples = 100
-    time_limit = "00:15:00"
+    nsamples = 100          # NOTE: Can increase for production
+    time_limit = "00:15:00" # NOTE: Can increase for production
     jobid = "$SLURM_JOB_ID"
 
-    with open(f'bm-{system.name}-pack-nd.sh', 'w') as f:
-        with redirect_stdout(f):
-            print(system.gen_preamble(nprocs, time_limit))
+    #for dim in [32, 128, 512]:
+    dims =  [16, 64, 256] # takes 5 mins 100 samples
+    nprocs = 1  
+    for dim in dims:
+    
+        # OK
+        jobname = f"pack-nd-dim-{dim}"
+        npack = 1
+        with open(f'bm-{system.name}-{jobname}.sh', 'w') as f:
+            with redirect_stdout(f):
+                print(system.gen_preamble(nprocs, time_limit))
 
-            # ND
-            jobname = "\"nd\""
-            npack = 1
-            for ndims in range(1, 6):
-                dim = int(np.round(nn**(1/ndims)))
-                print(f'time srun ./benchmarks/bm_pack {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
-            print()
+                # ND
+                for ndims in range(1, 6):
+                    if dim**ndims > dims[-1]**3: # Skip way too large dims
+                        continue
+                    print(f'time srun ./benchmarks/bm_pack {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+                print()
 
-            jobname = "\"aggr\""
-            ndims = 3
-            for npack in [1, 2, 4, 8, 16]:
-                dim = int(np.round(nn**(1/ndims)))
-                print(f'time srun ./benchmarks/bm_pack {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+        # OK
+        jobname = f"pack-aggr-dim-{dim}"
+        ndims = 3
+        with open(f'bm-{system.name}-{jobname}.sh', 'w') as f:
+            with redirect_stdout(f):
+                print(system.gen_preamble(nprocs, time_limit))
 
-def gen_comm_benchmarks(system):
+                for npack in [1, 2, 4, 8, 16]:
+                    print(f'time srun ./benchmarks/bm_pack {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
 
-    nn = 256**3
+    # OK
+    ndims = 3
+    npack = 1
+    for nprocs in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
+        for dim in dims:
+
+            jobname = f"comm-scaling-strong-dim-{dim}"
+            with open(f'bm-{system.name}-{jobname}-{nprocs}.sh', 'w') as f:
+                with redirect_stdout(f):
+                    print(system.gen_preamble(nprocs, time_limit))
+                    print(f'time srun ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+                
+
+    # OK
+    ndims = 3
+    nprocs = 64
+    for dim in dims:
+        
+        global_dim = get_global_dim(nprocs, dim, ndims)
+        assert(global_dim == 4*dim)
+        jobname = f"comm-aggr-dim-{global_dim}"
+
+        with open(f'bm-{system.name}-{jobname}.sh', 'w') as f:
+            with redirect_stdout(f):
+                print(system.gen_preamble(nprocs, time_limit))
+                for npack in [1, 2, 4, 8, 16]:
+                    print(f'time srun ./benchmarks/bm_collective_comm {global_dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+
+    # OK
+    nprocs = 64
+    for dim in dims:
+        jobname = f"comm-nd-dim-{dim}"
+
+        
+        with open(f'bm-{system.name}-{jobname}.sh', 'w') as f:
+            with redirect_stdout(f):
+                print(system.gen_preamble(nprocs, time_limit))
+
+                for ndims in range(1, 4):
+                    global_dim = get_global_dim(nprocs, dim, ndims)
+                    print(f'time srun ./benchmarks/bm_collective_comm {global_dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+
+    # OK
+    nprocs = 64
+    r = 4
+    dims = np.array([
+        [1024, 1024, 1024],
+        [2048, 1024,  512],
+        [2048, 2048,  256],
+        [ 512, 1024, 2048],
+        [ 256, 2048, 2048]
+    ])
+
+    for dim in dims:
+
+        jobname = f"rank-reorder-{dim[0]}-{dim[1]}-{dim[2]}"
+        
+        with open(f'bm-{system.name}-{jobname}.sh', 'w') as f:
+            with redirect_stdout(f):
+                print(system.gen_preamble(nprocs, time_limit))
+
+                print(f'time srun ./benchmarks/bm_rank_reordering {dim[0]} {dim[1]} {dim[2]} {radius} {nsamples} {jobid} {jobname} 0') # Non-hiearchical
+                print(f'time {gen_srun_command(system.cpu_bind)} ./benchmarks/bm_rank_reordering {dim[0]} {dim[1]} {dim[2]} {radius} {nsamples} {jobid} {jobname} 1') # Hierarchical
+
+    # Placeholder
+    # for dim in dims:
+        
+    #     for ndims in range(6):
+    #         jobname = f"comm-nd-dim-{dim}"
+
+    #         global_dim = get_global_dim(nprocs, dim, ndims)
+    #         with open(f'bm-{system.name}-{jobname}.sh', 'w') as f:
+    #             with redirect_stdout(f):
+    #                 print(system.gen_preamble(nprocs, time_limit))
+    #                     print(f'time srun ./benchmarks/bm_collective_comm {global_dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+
+    # dims =  [64, 256, 1024]
+    # nprocs = 64  
+    # for dim in dims:
+    #     jobname = f"comm-nd-dim-{dim}"
+    #     npack = 1
+    #     with open(f'bm-{system.name}-{jobname}.sh', 'w') as f:
+    #         with redirect_stdout(f):
+    #             print(system.gen_preamble(nprocs, time_limit))
+
+    #             # ND
+    #             for ndims in range(1, 6):
+    #                 if dim**ndims > dims[-1]**3: # Skip way too large dims
+    #                     continue
+    #                 print(f'time srun ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+    #             print()
+
+    #     jobname = f"comm-aggr-dim-{dim}"
+    #     ndims = 3
+    #     with open(f'bm-{system.name}-{jobname}.sh', 'w') as f:
+    #         with redirect_stdout(f):
+    #             print(system.gen_preamble(nprocs, time_limit))
+
+    #             for npack in [1, 2, 4, 8, 16]:
+    #                 print(f'time srun ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
+
+def gen_comm_benchmarks_old(system):
+
+    nn = 128**3
     radius = 4
     npack = 1
     nsamples = 100
@@ -217,18 +293,18 @@ def gen_comm_benchmarks(system):
             for npack in [1, 2, 4, 8, 16]:
                 print(f'time srun ./benchmarks/bm_collective_comm {dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
 
-def gen_rank_reordering_benchmarks(system):
+def gen_rank_reordering_benchmarks_old(system):
     nsamples = 100
     time_limit = "00:15:00"
     jobid = "$SLURM_JOB_ID"
     radius = 4
 
     cases = np.array((
-        [256, 256, 256],
-        [512, 256, 128], 
-        [512, 512, 64],
-        [128, 256, 512],
-        [64, 512, 512], 
+        np.array([256, 256, 256])//2,
+        np.array([512, 256, 128])//2,
+        np.array([512, 512, 64])//2,
+        np.array([128, 256, 512])//2,
+        np.array([64, 512, 512])//2,
     ))
     ndims = len(cases[0])
     assert(ndims == 3)
@@ -269,9 +345,9 @@ def gen_rank_reordering_benchmarks(system):
 
 
 
-systems = [lumi, puhti, mahti]
+systems = [lumi]
 
 for system in systems:
     gen_pack_benchmarks(system)
-    gen_comm_benchmarks(system)
-    gen_rank_reordering_benchmarks(system)
+    # gen_comm_benchmarks(system)
+    # gen_rank_reordering_benchmarks(system)
