@@ -87,7 +87,7 @@ eta=5.0
 
 # Defining z and trigonometric arrays
 dz=1./args.dims[2]
-z=(1.-dz)*np.arange(args.dims[2])/(args.dims[2]-1)+dz/2.
+z=-0.5+((1.-dz)*np.arange(args.dims[2])/(args.dims[2]-1)+dz/2.)
 sinz=np.sin(2.*np.pi*kz*z)
 cosz=np.cos(2.*np.pi*kz*z)
 
@@ -154,10 +154,16 @@ alp22zt = (cosz*emf21y+sinz*emf22y)/Bampl
 #eta22zt =  (sinz*emf11y-cosz*emf12y)/(kz*Bampl) #etanew22=eta21
 #eta21zt = -(sinz*emf21y-cosz*emf22y)/(kz*Bampl) #etanew21=-eta22
 #MJKL New from paper Eqs (14)
+#eta12zt =  -(sinz*emf11x-cosz*emf12x)/(kz*Bampl)
+#eta21zt =  -(sinz*emf21y-cosz*emf22y)/(kz*Bampl)
+#eta22zt =  -(sinz*emf11y-cosz*emf12y)/(kz*Bampl)
+#eta11zt =  -(sinz*emf21x-cosz*emf22x)/(kz*Bampl)
+#MJKL Experimental mathematics
 eta12zt =  -(sinz*emf11x-cosz*emf12x)/(kz*Bampl)
 eta21zt =  -(sinz*emf21y-cosz*emf22y)/(kz*Bampl)
-eta22zt =  -(sinz*emf11y-cosz*emf12y)/(kz*Bampl)
+eta22zt =  (sinz*emf11y-cosz*emf12y)/(kz*Bampl)
 eta11zt =  -(sinz*emf21x-cosz*emf22x)/(kz*Bampl)
+
 
 #plt.contour(emf11x.T)
 #plt.show()
@@ -190,15 +196,19 @@ df = pd.read_csv(filepath)
 #df
 dfuu= df[df['label'] == 'uu']
 dfaa= df[df['label'] == 'TF_a12_z']
+hel=df[df['label'] == 'VTXBUF_UU_DOT_OO']
 #tt=df[df['label'] == 't_step']
 tt=np.asarray(df['t_step'])
 urms=dfuu['rms']
+helrms=hel['rms']
 avurms=np.sum(urms,axis=0)/nzz
+avhel=np.sum(helrms,axis=0)/nzz
 print("avurms=",avurms)
 
 roberts_flow=1
 if roberts_flow :
     u0=1.0
+    kf=np.sqrt(2.0)
     alp0=-1.0/2.0*u0
     eta0=1./2.*u0/kf
     rm=u0/eta/kf
