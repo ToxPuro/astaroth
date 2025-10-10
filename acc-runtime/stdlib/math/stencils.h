@@ -698,6 +698,7 @@ elemental gaussian_smooth_inplace(Field f)
 #else
 gaussian_smooth(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"Gaussian smooth only implemented for 6th order!\n");
 	return 0.0
 }
