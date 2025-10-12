@@ -49,6 +49,7 @@
 #include "task.h"
 #include "ac_helpers.h"
 
+#include <fenv.h>
 #include <algorithm>
 #include <cstring> //memcpy
 #include <mpi.h>
@@ -642,6 +643,21 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
     return submesh;
 }
 
+static int original_excepts{};
+static void
+unset_floating_point_exceptions()
+{
+	original_excepts = fegetexcept();
+	fedisableexcept(FE_ALL_EXCEPT);
+}
+
+static void
+restore_floating_point_exceptions()
+{
+	feenableexcept(original_excepts);
+}
+
+
 static void
 check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> info)
 {
@@ -758,6 +774,8 @@ gen_postprocessing_metadata()
 AcResult
 acGridInitBase(const AcMesh user_mesh)
 {
+    //TP: we do this since here before the user might not have loaded all variables and thus the code can generate floating-point exceptions
+    unset_floating_point_exceptions();
     acCheckDeviceAvailability();
     int mpi_has_been_initialized{};
     MPI_Initialized(&mpi_has_been_initialized);
@@ -934,6 +952,7 @@ acGridInitBase(const AcMesh user_mesh)
 
     gen_postprocessing_metadata();
     acLogFromRootProc(ac_pid(), "acGridInit: Done\n");
+    restore_floating_point_exceptions();
 
     return AC_SUCCESS;
 }

@@ -10,6 +10,7 @@
 #include <queue>
 #include <vector>
 #include <stack>
+#include <fenv.h>
 
 
 #include "errchk.h"
@@ -20,6 +21,22 @@ get_info()
 {
 	return acDeviceGetLocalConfig(acGridGetDevice());
 }
+
+static int original_excepts{};
+static void
+unset_floating_point_exceptions()
+{
+        original_excepts = fegetexcept();
+        fedisableexcept(FE_ALL_EXCEPT);
+}
+
+static void
+restore_floating_point_exceptions()
+{
+        feenableexcept(original_excepts);
+}
+
+
 
 
 
@@ -1561,6 +1578,7 @@ acGridClearTaskGraphCache()
 AcTaskGraph*
 acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
 {
+	unset_floating_point_exceptions();
 	ERRCHK_ALWAYS(to_int3(end) >= to_int3(start));
 	auto optimized_kernels = get_optimized_kernels(graph,false);
 	auto optimized_bcs      = get_optimized_kernels(bc_graph,false);
@@ -1571,6 +1589,7 @@ acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume st
 	auto ops = acGetDSLTaskGraphOps(graph,true,bcs_everywhere,bc_graph);
 	auto res = acGridBuildTaskGraph(ops,start,end,bcs_everywhere);
 	task_graphs[key] = res;
+	restore_floating_point_exceptions();
 	return res;
 }
 
