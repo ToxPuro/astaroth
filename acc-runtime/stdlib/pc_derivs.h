@@ -61,31 +61,7 @@
 #define DER6UPWD_1 ( 15. / 60.)
 #define DER6UPWD_0 (-20. / 60.)
 
-gmem real AC_inv_r[AC_nlocal.x]
-gmem real AC_inv_cyl_r[AC_nlocal.x]
-gmem real AC_inv_sin_theta[AC_mlocal.y]
-gmem real AC_cot_theta[AC_mlocal.y]
-
-gmem real AC_inv_mapping_func_derivative_x[AC_mlocal.x]
-gmem real AC_inv_mapping_func_derivative_y[AC_mlocal.y]
-gmem real AC_inv_mapping_func_derivative_z[AC_mlocal.z]
-
-gmem real AC_mapping_func_tilde_x[AC_mlocal.x]
-gmem real AC_mapping_func_tilde_y[AC_mlocal.y]
-gmem real AC_mapping_func_tilde_z[AC_mlocal.z]
-
-#define AC_INV_R         (AC_inv_r[vertexIdx.x-NGHOST])
-#define AC_INV_CYL_R     (AC_inv_cyl_r[vertexIdx.x-NGHOST])
-#define AC_INV_SIN_THETA (AC_inv_sin_theta[vertexIdx.y])
-#define AC_COT           (AC_cot_theta[vertexIdx.y])
-
-#define AC_INV_MAPPING_FUNC_DER_X (AC_inv_mapping_func_derivative_x[vertexIdx.x])
-#define AC_INV_MAPPING_FUNC_DER_Y (AC_inv_mapping_func_derivative_y[vertexIdx.y])
-#define AC_INV_MAPPING_FUNC_DER_Z (AC_inv_mapping_func_derivative_z[vertexIdx.z])
-
-#define AC_MAPPING_FUNC_TILDE_X  (AC_mapping_func_tilde_x[vertexIdx.x])
-#define AC_MAPPING_FUNC_TILDE_Y  (AC_mapping_func_tilde_y[vertexIdx.y])
-#define AC_MAPPING_FUNC_TILDE_Z  (AC_mapping_func_tilde_z[vertexIdx.z])
+#include "$AC_HOME/acc-runtime/stdlib/general_grid/vars.h"
 
 Stencil derx_stencil_base {
     [0][0][-3] = -DER1_3,
