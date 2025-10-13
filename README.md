@@ -175,7 +175,6 @@ See `analysis/python/` directory of existing data visualization and analysis scr
 * `astaroth/include/astaroth.h`: Astaroth main header. Contains the interface for accessing single- and multi-GPU layers.
 * `astaroth/include/astaroth_utils.h`: Utility library header. Provides functions for performing common tasks on host, such as allocating and verifying meshes.
 * `acc-runtime/api/acc_runtime.h`: Low-level single-GPU library for running kernels generated from user-defined DSL files.
-* ~~`<build directory>/astaroth.f90`: Fortran interface to Astaroth. Generated when building the library.~~ (not available at the moment)
 
 ## FAQ
 
