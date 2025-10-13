@@ -714,4 +714,4 @@ The stencil order can be set by the user by `hostdefine STENCIL_ORDER (x)`, wher
 
 Alternatively it can be set via CMAKE with `-DAC_STENCIL_ORDER=N`.
 
-> Note: The size of the halo surrounding the computational domain depends on `STENCIL_ORDER`.
+> Note: The size of the halo surrounding the computational is the same as `STENCIL_ORDER`.
