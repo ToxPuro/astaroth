@@ -123,11 +123,11 @@ elemental ac_set_ghosts_for_onesided_derivs(AcBoundary boundary, Field f)
 		ghost  = ghost  + normal
 		d1 = ghost - normal
 		d2 = d1 - normal
-		d3 = d1 - normal
-		d4 = d1 - normal
-		d5 = d1 - normal
-		d6 = d1 - normal
-		d7 = d1 - normal
+		d3 = d2 - normal
+		d4 = d3 - normal
+		d5 = d4 - normal
+		d6 = d5 - normal
+		d7 = d6 - normal
 		val =  7.*(f[d1.x][d1.y][d1.z]-f[d6.x][d6.y][d6.z])
 		     -21.*(f[d2.x][d2.y][d2.z]-f[d5.x][d5.y][d5.z])
 		     +35.*(f[d3.x][d3.y][d3.z]-f[d4.x][d4.y][d4.z])
