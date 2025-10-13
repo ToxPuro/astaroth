@@ -172,7 +172,7 @@ enum Characters
     C
 }
 ```
-> Note: Whenever possible one should prefer using enums compared e.g. named integers, since using enums gives the DSL compile more information which it can use to perform optimizations.
+> Note: Whenever possible one should prefer using enums compared to e.g. named integers, since using enums gives the DSL compiler more information which it can use to perform optimizations.
 
 ##### Built-in enums
 [See here](https://toxpuro.github.io/astaroth/typedefs_8h.html)
