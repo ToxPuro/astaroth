@@ -163,6 +163,11 @@ Usage: ./ac_run [options]
 	   --config | -c: Uses the config file given after this flag instead of the default.
 ```
 
+```Bash
+Usage: ./ac_run_mpi [options]
+	     --help | -h: Prints the input parameters
+```
+
 See `analysis/python/` directory of existing data visualization and analysis scripts.
 
 ## Interface
