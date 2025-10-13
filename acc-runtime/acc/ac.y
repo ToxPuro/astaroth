@@ -775,10 +775,8 @@ main(int argc, char** argv)
 %left '&'
 %left '%'
 %left '^'
-%left '-'
-%left '+'
-%left '*'
-%left '/'
+%left '+' '-'
+%left '*' '/'
 %%
 
 
