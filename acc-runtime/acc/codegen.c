@@ -7698,22 +7698,27 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 		res |= gen_constexpr_in_func(node->lhs,gen_mem_accesses,assignments,params,vars_to_constexpr);
 	if(node->rhs)
 		res |= gen_constexpr_in_func(node->rhs,gen_mem_accesses,assignments,params,vars_to_constexpr);
-	if(node->token == IDENTIFIER && node->buffer && !node->is_constexpr)
+	if(node->is_constexpr) return res;
+	if(node->token == IDENTIFIER && node->buffer)
 	{
 		node->is_constexpr |= check_symbol(NODE_ANY,node->buffer,0,CONST_STR);
 		//if array access that means we are accessing the vtxbuffer which obviously is not constexpr
  		if(!params.in_array_access)
 			node->is_constexpr |= check_symbol(NODE_VARIABLE_ID,node->buffer,FIELD_STR,0);
 		node->is_constexpr |= check_symbol(NODE_DFUNCTION_ID,node->buffer,FIELD_STR,CONSTEXPR_STR);
+		if(node->postfix == intern("[AC_INTERNAL_ARRAY_LOOP_INDEX]"))
+		{
+			node->is_constexpr = false;
+		}
 		res |= node->is_constexpr;
 	}
 
-	if(node->type & NODE_IF && primary_expr_is_false(node->lhs) && !node->is_constexpr)
+	if(node->type & NODE_IF && primary_expr_is_false(node->lhs))
 	{
 		node->is_constexpr = true;
 		res = true;
 	}
-	if(node->type & NODE_IF && all_identifiers_are_constexpr(node->lhs) && !node->is_constexpr)
+	if(node->type & NODE_IF && all_identifiers_are_constexpr(node->lhs))
 	{
 		//TP: we only consider conditionals that are not inside other conditionals
 		if(!inside_conditional_scope(node))
@@ -7725,7 +7730,7 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 	//TP: below sets the constexpr value of lhs the same as rhs for: lhs = rhs
 	//TP: we restrict to the case that lhs is assigned only once in the function since full generality becomes too hard 
 	//TP: However we get sufficiently far with this approach since we turn many easy cases to SSA form which this check covers
-	if((node->type & NODE_ASSIGNMENT) && node->rhs && !node->is_constexpr)
+	if((node->type & NODE_ASSIGNMENT) && node->rhs)
 	{
 	  bool is_constexpr = all_identifiers_are_constexpr(node->rhs);
 	  ASTNode* lhs_identifier = get_node_by_token(IDENTIFIER,node->lhs);
@@ -7760,7 +7765,7 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 		  astnode_sprintf(tspec->lhs," constexpr %s",tspec->lhs->buffer);
 	  }
 	}
-	if(is_return_node(node) && !node->is_constexpr)
+	if(is_return_node(node))
 	{
 		if(all_identifiers_are_constexpr(node->rhs))
 		{
@@ -7810,7 +7815,9 @@ gen_constexpr_info(ASTNode* root, const bool gen_mem_accesses)
 {
 	bool has_changed = true;
 	while(has_changed) 
+	{
 		has_changed = gen_constexpr_info_base(root,gen_mem_accesses);
+	}
 
 }
 
@@ -10961,6 +10968,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_type_info(root);
 
 
+
   fold_const_int_addition(root);
   unroll_constant_loops(root);
 
@@ -10982,7 +10990,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   num_profiles = count_profiles();
   check_global_array_dimensions(root);
-
   gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses,get_field_dims(root));
   gen_profile_reads(root,gen_mem_accesses);
 
@@ -11132,11 +11139,13 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   check_for_input_use_in_other_than_computesteps(root,NULL);
   
 
+
   gen_type_info(root);
   cache_func_calls(root);
   inline_dfuncs(root);
   if(gen_mem_accesses) add_tracing_to_conditionals(root);
   gen_type_info(root);
+
 
 
   //TP: redo this after inlining and caching
