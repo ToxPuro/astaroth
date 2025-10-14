@@ -10,7 +10,6 @@
 #include <queue>
 #include <vector>
 #include <stack>
-#include <fenv.h>
 
 
 #include "errchk.h"
@@ -22,19 +21,6 @@ get_info()
 	return acDeviceGetLocalConfig(acGridGetDevice());
 }
 
-static int original_excepts{};
-static void
-unset_floating_point_exceptions()
-{
-        original_excepts = fegetexcept();
-        fedisableexcept(FE_ALL_EXCEPT);
-}
-
-static void
-restore_floating_point_exceptions()
-{
-        feenableexcept(original_excepts);
-}
 
 
 

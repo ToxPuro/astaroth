@@ -14,6 +14,23 @@ struct AcCommunicator
 };
 #endif
 #include <cfloat>
+
+#include <fenv.h>
+static int original_excepts{};
+
+void
+ac_unset_floating_point_exceptions()
+{
+        original_excepts = fegetexcept();
+        fedisableexcept(FE_ALL_EXCEPT);
+}
+
+void
+ac_restore_floating_point_exceptions()
+{
+        feenableexcept(original_excepts);
+}
+
 const char*
 acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm)
 {

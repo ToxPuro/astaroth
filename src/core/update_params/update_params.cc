@@ -1,12 +1,13 @@
 #include "astaroth.h"
 #include "math_utils.h"
 #include "is_comptime_param.h"
-
+#include "ac_helpers.h"
 
 AcResult
 acHostUpdateParams(AcMeshInfo* config_ptr)
 {
     
+    ac_unset_floating_point_exceptions();
     AcMeshInfo& config = *config_ptr; 
     //TP: utility lambdas
     [[maybe_unused]] auto ac_is_loaded = [&](auto param) -> bool
@@ -123,6 +124,7 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 	    tile_dims = (int3){1,1,1};
     }
     push_val(AC_reduction_tile_dimensions,tile_dims);
+    ac_restore_floating_point_exceptions();
     return AC_SUCCESS;
 }
 
