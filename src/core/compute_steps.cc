@@ -1564,7 +1564,7 @@ acGridClearTaskGraphCache()
 AcTaskGraph*
 acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
 {
-	unset_floating_point_exceptions();
+	ac_unset_floating_point_exceptions();
 	ERRCHK_ALWAYS(to_int3(end) >= to_int3(start));
 	auto optimized_kernels = get_optimized_kernels(graph,false);
 	auto optimized_bcs      = get_optimized_kernels(bc_graph,false);
@@ -1575,7 +1575,7 @@ acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume st
 	auto ops = acGetDSLTaskGraphOps(graph,true,bcs_everywhere,bc_graph);
 	auto res = acGridBuildTaskGraph(ops,start,end,bcs_everywhere);
 	task_graphs[key] = res;
-	restore_floating_point_exceptions();
+	ac_restore_floating_point_exceptions();
 	return res;
 }
 
