@@ -581,8 +581,8 @@ get_slope_limited_heating(fluxes, Field f, Field lnrho)
 	f_m1 = sld_get_left(f)
 	f_p1 = sld_get_right(f)
 	heat += 0.5*(
-			  (fluxes.x.x*(density*f-density_m1*f_m1)*AC_inv_ds.x)
-			+ (fluxes.x.y*(density_p1*f_p1-density*f)*AC_inv_ds.x)
+			  fluxes.x.x*(density*f-density_m1*f_m1)*AC_INV_MAPPING_FUNC_DER_X
+			+ fluxes.x.y*(density_p1*f_p1-density*f)*AC_inv_mapping_func_derivative_x[vertexIdx.x+1]
 		    )
 
 	density_m1 = sld_get_down_exp(lnrho)
@@ -591,8 +591,8 @@ get_slope_limited_heating(fluxes, Field f, Field lnrho)
 	f_m1 = sld_get_down(f)
 	f_p1 = sld_get_up(f)
 	heat_y_update = 0.5*(
-				  (fluxes.y.x*(density*f-density_m1*f_m1)*AC_inv_ds.y)
-				+ (fluxes.y.y*(density_p1*f_p1-density*f)*AC_inv_ds.y)
+				  fluxes.y.x*(density*f-density_m1*f_m1)*AC_INV_MAPPING_FUNC_DER_Y
+				+ fluxes.y.y*(density_p1*f_p1-density*f)*AC_inv_mapping_func_derivative_y[vertexIdx.y+1]
 			    )
 
 	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
@@ -607,8 +607,8 @@ get_slope_limited_heating(fluxes, Field f, Field lnrho)
 	f_m1 = sld_get_back(f)
 	f_p1 = sld_get_front(f)
 	heat_z_update = 0.5*(
-			       (fluxes.z.x*(density*f-density_m1*f_m1)*AC_inv_ds.z)
-			     + (fluxes.z.y*(density_p1*f_p1-density*f)*AC_inv_ds.z)
+			       fluxes.z.x*(density*f-density_m1*f_m1)*AC_INV_MAPPING_FUNC_DER_Z
+			     + fluxes.z.y*(density_p1*f_p1-density*f)*AC_inv_mapping_func_derivative_y[vertexIdx.z+1]
 			    )
 	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
@@ -643,7 +643,6 @@ get_slope_limited_all(Field f, Field characteristic_speed, real fdiff_limit, rea
 				0.5*(fluxes.z.x + fluxes.z.y),
 				heat
 		     )
-
 }
 #endif
 

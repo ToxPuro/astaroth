@@ -558,7 +558,7 @@ check_field_boundconds(const FieldBCs field_boundconds, const std::vector<Field>
 					if(x == 0 && y == 0 && z == 0) continue;
 					if(!communicated_regions[index][field]) continue;
 					if(field_boundconds[field][index].kernel  == AC_NULL_KERNEL)
-						fatal("FATAL AC ERROR: Missing boundcond for field %s at(%d,%d,%d)\n",field_names[field],x,y,z)
+						fatal("FATAL AC ERROR: Missing boundcond for field %s in halo section at position (%d,%d,%d)\n",field_names[field],x,y,z)
 				}
 			}
 		}
