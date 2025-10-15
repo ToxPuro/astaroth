@@ -14,6 +14,13 @@ typedef struct device_s* Device;
 extern "C" 
 {
 #endif
+
+void
+ac_unset_floating_point_exceptions();
+
+void
+ac_restore_floating_point_exceptions();
+
 const char* acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm);
 
 size_t
