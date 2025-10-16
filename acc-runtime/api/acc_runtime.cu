@@ -60,6 +60,28 @@ const bool useColor = false;
 
 #include "astaroth_cuda_wrappers.h"
 
+//TP: When we are checking for CUDA errors we should disregard those that happened before
+//TP: Cannot abort since we do not know what has caused the error: it can be arbitrary user code
+void
+catch_previous_errors(const AcKernel kernel, const char* msg)
+{
+  const auto err = acGetLastError();
+  if (err != cudaSuccess) {
+    fprintf(stderr,"\nWARNING: Catched previous error when %s: %s\nReason: %s\n",msg,kernel_names[kernel],acGetErrorName(err));
+    fprintf(stderr,"\nWARNING: Catched previous error when %s: %s\nReason: %s\n",msg,kernel_names[kernel],acGetErrorName(err));
+    fprintf(stderr,"\nWARNING: Catched previous error when %s: %s\nReason: %s\n",msg,kernel_names[kernel],acGetErrorName(err));
+  }
+}
+void
+catch_previous_errors_debug(const AcKernel kernel, const char* msg)
+{
+	(void)kernel;
+	(void)msg;
+#ifndef NDEBUG
+	catch_previous_errors(kernel,msg);
+#endif
+}
+
 #if AC_CPU_BUILD
 cudaError_t
 acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind)
@@ -565,6 +587,7 @@ acRuntimeInit(const AcMeshInfo config)
 AcResult
 acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream)
 {
+  catch_previous_errors_debug(kernel,"launching kernel");
   if(is_coop_raytracing_kernel(kernel) && acSupportsCooperativeLaunches())
   {
 	void* args[] = {(void*)&start,(void*)&end,(void*)&vba.on_device};
@@ -1146,13 +1169,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   //TP: logs the percent 0% which is useful to know the autotuning has started
   if (log) logAutotuningStatus(counter,n_samples,kernel,best_measurement.time / num_iters);
   //Previous failures should not affect autotuning. Up to the user do they fix the warnings or not
-  const auto err = acGetLastError();
-  if (err != cudaSuccess) {
-    //TP: reset autotune results
-    fprintf(stderr,"\nWARNING: Catched previous error when starting autotuning: %s\nReason: %s\n",kernel_names[kernel],acGetErrorName(err));
-    fprintf(stderr,"\nWARNING: Catched previous error when starting autotuning: %s\nReason: %s\n",kernel_names[kernel],acGetErrorName(err));
-    fprintf(stderr,"\nWARNING: Catched previous error when starting autotuning: %s\nReason: %s\n",kernel_names[kernel],acGetErrorName(err));
-  }
+  catch_previous_errors(kernel,"starting autotuning");
 
   acLoadUniform(AC_autotuning_at_work, true);
   for(size_t sample  = start_samples; sample < end_samples; ++sample)
