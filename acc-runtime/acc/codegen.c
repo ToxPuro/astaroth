@@ -2345,7 +2345,7 @@ gen_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec dataty
     base->postfix=NULL;
     base->infix=NULL;
 
-    const bool check_access_bounds = datatype_scalar == REAL_STR && ACC_ARRAY_BOUND_CHECKS;
+    const bool check_access_bounds = datatype_scalar == REAL_STR && ACC_ARRAY_BOUND_CHECKS && !is_left_child(NODE_ASSIGNMENT,node);
 
     ASTNode* identifier_node = create_primary_expression(get_internal_array_name(sym));
     identifier_node->parent = base;
