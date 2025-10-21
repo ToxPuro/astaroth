@@ -197,14 +197,14 @@ def gen_pack_benchmarks(system):
                     print(f'time srun ./benchmarks/bm_collective_comm {global_dim} {radius} {ndims} {npack} {nsamples} {jobid} {jobname}')
 
     # OK
-    nprocs = 64
+    nprocs = 512
     r = 4
     dims = np.array([
-        [1024, 1024, 1024],
-        [2048, 1024,  512],
-        [2048, 2048,  256],
-        [ 512, 1024, 2048],
-        [ 256, 2048, 2048]
+        2*np.array([1024, 1024, 1024]),
+        2*np.array([2048, 1024,  512]),
+        2*np.array([2048, 2048,  256]),
+        2*np.array([ 512, 1024, 2048]),
+        2*np.array([ 256, 2048, 2048])
     ])
 
     for dim in dims:
