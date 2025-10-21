@@ -423,9 +423,9 @@ main(int argc, char* argv[])
 
         if (bench_hierarchical) {
             // mpi-no-custom-decomp likely unnecessary: what would it show?
-            // bm("mpi-no-custom-decomp",
-            //    ac::mpi::RankReorderMethod::no_custom_decomp,
-            //    bench_hierarchical);
+            bm("mpi-no-custom-decomp",
+               ac::mpi::RankReorderMethod::no_custom_decomp,
+               bench_hierarchical);
             //
             // mpi-default-custom-decomp: shows comparison between a simple locality-preserving
             // assignment vs. hierarchical
