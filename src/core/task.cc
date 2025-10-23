@@ -2266,198 +2266,42 @@ ReduceTask::reduce()
 		        memcpy(dst,reduce_buf.src.data,bytes);
 			continue;
 		   }
-		    if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == -1)
+		   const int id = get_id();
+   		   const auto n_size = 
+   		           reduces_only_prof == PROFILE_X ? nn.x :
+   		           reduces_only_prof == PROFILE_Y ? nn.y :
+   		           reduces_only_prof == PROFILE_Z ? nn.z :
+   		           0;
+		    if(on_halos())
 		    {
-		    	acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst,
-				   stream,
-				   (Volume){0,0,0},
-				   (Volume){
-					NGHOST,
-				   	reduce_buf.src.shape.y,
-				   	reduce_buf.src.shape.z,
-					},
-				   (Volume){0,0,0},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					NGHOST
-				   }
-			    );
-		    }
-		    else if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == 0)
-		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst+NGHOST,
-					   stream,
-					   (Volume){NGHOST,0,0},
-					   (Volume){
-						nn.x+NGHOST,
-					   	reduce_buf.src.shape.y,
-					   	reduce_buf.src.shape.z
-						},
-					   (Volume){0,0,NGHOST},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						nn.x+NGHOST
-					   }
-				    );
-		    }
-		    else if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == 1)
-		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst+NGHOST+nn.x,
-					   stream,
-					   (Volume){NGHOST+nn.x,0,0},
-					   (Volume){
-						nn.x+2*NGHOST,
-					   	reduce_buf.src.shape.y,
-					   	reduce_buf.src.shape.z
-						},
-					   (Volume){0,0,NGHOST+nn.x},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						nn.x+2*NGHOST
-					   }
-				    );
-		    }
-		    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == -1)
-		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst,
-					   stream,
-					   (Volume){0,0,0},
-					   (Volume){
-					   	reduce_buf.src.shape.x,
-						NGHOST,
-					   	reduce_buf.src.shape.z,
-						},
-					   (Volume){0,0,0},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						NGHOST
-					   }
-				    );
-		    }
-		    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == 0)
-		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst+NGHOST,
-					   stream,
-					   (Volume){0,NGHOST,0},
-					   (Volume){
-					   	reduce_buf.src.shape.x,
-						nn.y+NGHOST,
-					   	reduce_buf.src.shape.z
-						},
-					   (Volume){0,0,NGHOST},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						nn.y+NGHOST
-					   }
-				    );
-		    }
-		    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == 1)
-		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst+NGHOST+nn.y,
-					   stream,
-					   (Volume){0,NGHOST+nn.y,0},
-					   (Volume){
-					   	reduce_buf.src.shape.x,
-						nn.y+2*NGHOST,
-					   	reduce_buf.src.shape.z
-						},
-					   (Volume){0,0,NGHOST+nn.y},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						nn.y+2*NGHOST
-					   }
-				    );
-		    }
-
-
-		    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == -1)
-		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst,
-					   stream,
-					   (Volume){0,0,0},
-					   (Volume){
-					   	reduce_buf.src.shape.x,
-					   	reduce_buf.src.shape.y,
-						NGHOST
-						},
-					   (Volume){0,0,0},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						NGHOST
-					   }
-				    );
-		    }
-		    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == 0)
-		    {
-
-		    	acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst+NGHOST,
-				   stream,
-				   (Volume){0,0,NGHOST},
-				   (Volume){
-				   	reduce_buf.src.shape.x,
-				   	reduce_buf.src.shape.y,
-					nn.z+NGHOST
-					},
-				   (Volume){0,0,NGHOST},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					nn.z+NGHOST
-				   }
-			    );
-		    }
-		    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == 1)
-		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst+NGHOST+nn.z,
-					   stream,
-					   (Volume){0,0,NGHOST+nn.z},
-					   (Volume){
-					   	reduce_buf.src.shape.x,
-					   	reduce_buf.src.shape.y,
-						nn.z+2*NGHOST
-						},
-					   (Volume){0,0,NGHOST+nn.z},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						nn.z+2*NGHOST
-					   }
-				    );
-				
+			    const size_t offset = id == 0 ? NGHOST : id == 1 ? NGHOST+n_size : 0;
+			    const size_t data_size = id == 0 ? n_size : NGHOST;
+			    dst += offset;
+			    const Volume start = 
+			    (Volume)
+			    {
+					reduces_only_prof == PROFILE_X ? offset : 0,
+					reduces_only_prof == PROFILE_Y ? offset : 0,
+					reduces_only_prof == PROFILE_Z ? offset : 0
+			    };
+			    const Volume end = 
+			    start + (Volume)
+			    {
+					reduces_only_prof == PROFILE_X ? data_size : reduce_buf.src.shape.x,
+					reduces_only_prof == PROFILE_Y ? data_size : reduce_buf.src.shape.y,
+					reduces_only_prof == PROFILE_Z ? data_size : reduce_buf.src.shape.z
+			    };
+			    const Volume transposed_start = (Volume){0,0,offset};
+			    const Volume transposed_end   = (Volume){reduce_buf.transposed.shape.x,reduce_buf.transposed.shape.y,offset+data_size};
+		    	    acReduceProfileWithBounds(prof,
+		    	    	   reduce_buf,
+		    	    	   dst,
+		    	    	   stream,
+			    	   start,
+			    	   end,
+			    	   transposed_start,
+			    	   transposed_end
+		    	        );
 		    }
 		    else
 		    {
