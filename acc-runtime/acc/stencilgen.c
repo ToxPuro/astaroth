@@ -982,7 +982,7 @@ gen_profile_funcs(const int kernel)
     	    		printf("}");
     	    		printf("else {");
     	    	   		printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output%s);",profile_names[i],access);
-    	    			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(start.z - NGHOST + profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = reduce_res;");
+    	    			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(start.y - NGHOST + profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = reduce_res;");
     	    		printf("}");
     	    	printf("}");
     	        printf("break;}");
