@@ -366,6 +366,8 @@ typedef class BoundaryConditionTask : public Task {
 enum class ReduceState { Waiting = Task::wait_state, Reducing, Transferring, Communicating, Loading };
 typedef class ReduceTask : public Task {
   private:
+    bool on_halos();
+    int get_id();
     AcReal* profile_comm_buffers[NUM_PROFILES+1]{};
     AcReal local_res_real[NUM_OUTPUTS]{};
     int    local_res_int[NUM_OUTPUTS]{};
@@ -373,7 +375,7 @@ typedef class ReduceTask : public Task {
     float  local_res_float[NUM_OUTPUTS]{};
 #endif
     MPI_Request requests[NUM_OUTPUTS+NUM_PROFILES]{};
-    AcSubCommunicators sub_comms{};
+    AcSubCommunicators sub_comms[3]{};
     AcProfileType reduces_only_prof{};
     bool nothing_to_communicate{};
     bool reduces_profiles{};

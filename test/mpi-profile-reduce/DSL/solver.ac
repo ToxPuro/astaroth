@@ -38,7 +38,7 @@ Kernel reduce_profiles()
 
 Kernel reduce_only_z()
 {
-	reduce_sum(FIELD,PROF_Z_INCLUDING_HALOS)
+      reduce_sum(FIELD,PROF_Z_INCLUDING_HALOS)
 }
 Kernel deriv_z()
 {

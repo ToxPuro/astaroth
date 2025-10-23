@@ -82,6 +82,9 @@ main(int argc, char* argv[])
     auto graph = acGetOptimizedDSLTaskGraph(rhs);
     acGridExecuteTaskGraph(graph,1);
 
+    auto z_graph = acGetOptimizedDSLTaskGraph(z_rhs);
+    acGridExecuteTaskGraph(z_graph,1);
+
 
     acHostMeshRandomize(&model);
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
@@ -92,6 +95,11 @@ main(int argc, char* argv[])
     auto test = [&](const bool)
     {
     	acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+    	acGridSynchronizeStream(STREAM_ALL);
+
+	acGridPeriodicBoundconds(STREAM_ALL);
+	acGridHaloExchange();
+    	acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &model);
     	acGridSynchronizeStream(STREAM_ALL);
 
 
@@ -368,10 +376,40 @@ main(int argc, char* argv[])
 
     	fprintf(stderr,"ZX SUM REDUCTION %d ... %s\n", pid, zx_sum_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	fprintf(stderr,"ZY SUM REDUCTION %d ... %s\n", pid, zy_sum_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+
+    	acGridExecuteTaskGraph(z_graph,1);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	acDeviceStoreProfile(acGridGetDevice(), PROF_Z_INCLUDING_HALOS,  &model);
+    	const AcReal* z_sum_incl_gpu = model.profile[PROF_Z_INCLUDING_HALOS];
+    	for(size_t k = 0; k < dims.m1.z;  ++k)
+    	{
+    	    z_sum[k] = 0.0;
+    	    for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+    	    {
+    	    	for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    	    	{
+    	    		auto val   = model.vertex_buffer[FIELD][IDX(i,j,k)];
+	    		z_sum[k] += val;
+	    	}
+	    }
+	}
+	MPI_Allreduce(MPI_IN_PLACE,z_sum,model.info[AC_mlocal].z,AC_REAL_MPI_TYPE, MPI_SUM, acGridMPISubComms().xy);
+	bool z_including_halos_correct = true;
+    	for(size_t i = 0; i < dims.m1.z; ++i)
+    	{
+    	    bool correct =  in_eps_threshold(z_sum[i],z_sum_incl_gpu[i]);
+    	    z_including_halos_correct &= correct;
+    	    if(!correct) fprintf(stderr,"Z SUM INCLUDING HALOS WRONG %d: %ld, %14e, %14e\n",pid,i,z_sum[i],z_sum_incl_gpu[i]);
+    	}
+	
+
     	bool correct = sums_correct && x_sum_correct && y_sum_correct
 			&& xy_sum_correct && xz_sum_correct
 			&& yx_sum_correct && yz_sum_correct
 			&& zx_sum_correct && zy_sum_correct
+			&& z_including_halos_correct;
 			;
     	free(x_sum);
     	free(y_sum);

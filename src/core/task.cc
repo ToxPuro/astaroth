@@ -2139,6 +2139,21 @@ MPIScanTask::communicate()
    ERRCHK_ALWAYS(MPI_Iexscan(MPI_IN_PLACE,&msg->data[0],msg->length,AC_REAL_MPI_TYPE,MPI_SUM,scan_comm,&msg->requests[0]) == MPI_SUCCESS);
 }
 
+AcSubCommunicators
+dup_sub_comms()
+{
+       AcSubCommunicators sub_comms{};
+       const auto ac_sub_comms = acGridMPISubComms();
+       MPI_Comm_dup(ac_sub_comms.all,&sub_comms.all);
+       MPI_Comm_dup(ac_sub_comms.x,&sub_comms.x);
+       MPI_Comm_dup(ac_sub_comms.y,&sub_comms.y);
+       MPI_Comm_dup(ac_sub_comms.z,&sub_comms.z);
+       MPI_Comm_dup(ac_sub_comms.xy,&sub_comms.xy);
+       MPI_Comm_dup(ac_sub_comms.xz,&sub_comms.xz);
+       MPI_Comm_dup(ac_sub_comms.yz,&sub_comms.yz);
+       return sub_comms;
+}
+
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
@@ -2171,14 +2186,9 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
     nothing_to_communicate = input_region.memory.profiles.size() == 0;
     if(!nothing_to_communicate)
     {
-	    const auto ac_sub_comms = acGridMPISubComms();
-	    MPI_Comm_dup(ac_sub_comms.all,&sub_comms.all);
-	    MPI_Comm_dup(ac_sub_comms.x,&sub_comms.x);
-	    MPI_Comm_dup(ac_sub_comms.y,&sub_comms.y);
-	    MPI_Comm_dup(ac_sub_comms.z,&sub_comms.z);
-	    MPI_Comm_dup(ac_sub_comms.xy,&sub_comms.xy);
-	    MPI_Comm_dup(ac_sub_comms.xz,&sub_comms.xz);
-	    MPI_Comm_dup(ac_sub_comms.yz,&sub_comms.yz);
+	    sub_comms[0] = dup_sub_comms();
+	    sub_comms[1] = dup_sub_comms();
+	    sub_comms[2] = dup_sub_comms();
     }
     cuda_aware_mpi_for_profiles = ac_get_info()[AC_use_cuda_aware_mpi] && ac_get_info()[AC_use_cuda_aware_mpi_for_profile_reductions];
     const auto& reduce_outputs = input_region.memory.reduce_outputs;
@@ -2252,7 +2262,7 @@ ReduceTask::reduce()
 		   auto dst        = acDeviceGetProfileBuffer(device,prof);
 		   if(AC_CPU_BUILD)
 		   {
-    		        const size_t bytes = reduce_buf.src.shape.x*reduce_buf.src.shape.y*reduce_buf.src.shape.z*sizeof(AcReal);
+           		const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
 		        memcpy(dst,reduce_buf.src.data,bytes);
 			continue;
 		   }
@@ -2407,24 +2417,25 @@ ReduceTask::reduce()
 		    }
 		    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == 0)
 		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst+NGHOST,
-					   stream,
-					   (Volume){0,0,NGHOST},
-					   (Volume){
-					   	reduce_buf.src.shape.x,
-					   	reduce_buf.src.shape.y,
-						nn.z+NGHOST
-						},
-					   (Volume){0,0,NGHOST},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						nn.z+NGHOST
-					   }
-				    );
+
+		    	acReduceProfileWithBounds(prof,
+				   reduce_buf,
+				   dst+NGHOST,
+				   stream,
+				   (Volume){0,0,NGHOST},
+				   (Volume){
+				   	reduce_buf.src.shape.x,
+				   	reduce_buf.src.shape.y,
+					nn.z+NGHOST
+					},
+				   (Volume){0,0,NGHOST},
+				   (Volume)
+				   {
+				   	reduce_buf.transposed.shape.x,
+				   	reduce_buf.transposed.shape.y,
+					nn.z+NGHOST
+				   }
+			    );
 		    }
 		    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == 1)
 		    {
@@ -2508,9 +2519,51 @@ ReduceTask::transfer_to_host()
    {
 	AcReal* dst = profile_comm_buffers[prof];
 	AcReal* src = acDeviceGetProfileBuffer(device,prof);
-        const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+
+	const int id = get_id();
+   	const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
+   	const auto n_size = 
+   	        reduces_only_prof == PROFILE_X ? nn.x :
+   	        reduces_only_prof == PROFILE_Y ? nn.y :
+   	        reduces_only_prof == PROFILE_Z ? nn.z :
+   	        0;
+	if(on_halos())
+	{
+		if(id == 0)
+		{
+			dst += NGHOST;
+			src += NGHOST;
+		}
+
+		if(id == 1)
+		{
+			dst += NGHOST+n_size;
+			src += NGHOST+n_size;
+		}
+	}
+   	const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+			       id == 0 ? n_size : NGHOST;
+        const size_t bytes = sizeof(AcReal)*as_size_t(data_size);
         ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
    }
+}
+
+bool
+ReduceTask::on_halos()
+{
+	return
+          reduces_only_prof == PROFILE_X  ||
+          reduces_only_prof == PROFILE_Y  ||
+          reduces_only_prof == PROFILE_Z ;
+}
+int
+ReduceTask::get_id()
+{
+	return
+          reduces_only_prof == PROFILE_X ? output_region.id.x :
+          reduces_only_prof == PROFILE_Y ? output_region.id.y :
+          reduces_only_prof == PROFILE_Z ? output_region.id.z :
+          -1;
 }
 
 void
@@ -2520,7 +2573,31 @@ ReduceTask::transfer_to_device()
    {
 	AcReal* dst = acDeviceGetProfileBuffer(device,prof);
 	AcReal* src = profile_comm_buffers[prof];
-        const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+
+	const int id = get_id();
+   	const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
+   	const auto n_size = 
+   	        reduces_only_prof == PROFILE_X ? nn.x :
+   	        reduces_only_prof == PROFILE_Y ? nn.y :
+   	        reduces_only_prof == PROFILE_Z ? nn.z :
+   	        0;
+	if(on_halos())
+	{
+		if(id == 0)
+		{
+			dst += NGHOST;
+			src += NGHOST;
+		}
+
+		if(id == 1)
+		{
+			dst += NGHOST+n_size;
+			src += NGHOST+n_size;
+		}
+	}
+   	const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+			       id == 0 ? n_size : NGHOST;
+        const size_t bytes = sizeof(AcReal)*as_size_t(data_size);
         ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
    }
 }
@@ -2534,73 +2611,39 @@ ReduceTask::communicate()
    {
    	for(const auto& prof: input_regions[0].memory.profiles)
    	{
+		const int id = get_id();
+	        const AcSubCommunicators correct_sub_comms = sub_comms[id+1];
    	        const MPI_Comm comm =
-   	     	   	prof_types[prof] == PROFILE_X ? sub_comms.yz :
-   	     	   	prof_types[prof] == PROFILE_Y ? sub_comms.xz :
-   	     	   	prof_types[prof] == PROFILE_Z ? sub_comms.xy :
+   	     	   	prof_types[prof] == PROFILE_X ? correct_sub_comms.yz :
+   	     	   	prof_types[prof] == PROFILE_Y ? correct_sub_comms.xz :
+   	     	   	prof_types[prof] == PROFILE_Z ? correct_sub_comms.xy :
 
-   	     	   	(prof_types[prof] == PROFILE_XY || prof_types[prof] == PROFILE_YX) ? sub_comms.z :
-   	     	   	(prof_types[prof] == PROFILE_XZ || prof_types[prof] == PROFILE_ZX) ? sub_comms.y :
-   	     	   	(prof_types[prof] == PROFILE_YZ || prof_types[prof] == PROFILE_ZY) ? sub_comms.x :
+   	     	   	(prof_types[prof] == PROFILE_XY || prof_types[prof] == PROFILE_YX) ? correct_sub_comms.z :
+   	     	   	(prof_types[prof] == PROFILE_XZ || prof_types[prof] == PROFILE_ZX) ? correct_sub_comms.y :
+   	     	   	(prof_types[prof] == PROFILE_YZ || prof_types[prof] == PROFILE_ZY) ? correct_sub_comms.x :
    	     		MPI_COMM_NULL;
 
+   	        const auto n_size = 
+   	                reduces_only_prof == PROFILE_X ? nn.x :
+   	                reduces_only_prof == PROFILE_Y ? nn.y :
+   	                reduces_only_prof == PROFILE_Z ? nn.z :
+   	                0;
 		AcReal* buffer = profile_comm_buffers[prof];
-   	        if(reduces_only_prof != PROFILE_NONE)
-   	        {
-   	     	   const auto n_size = 
-   	     		   reduces_only_prof == PROFILE_X ? nn.x :
-   	     		   reduces_only_prof == PROFILE_Y ? nn.y :
-   	     		   reduces_only_prof == PROFILE_Z ? nn.z :
-   	     		   0;
-
-   	     	   const auto id = 
-   	     		   reduces_only_prof == PROFILE_X ? output_region.id.x :
-   	     		   reduces_only_prof == PROFILE_Y ? output_region.id.y :
-   	     		   reduces_only_prof == PROFILE_Z ? output_region.id.z :
-   	     		   0;
-   	     	   if(id == -1)
-   	     	   {
-   	        	   MPI_Iallreduce(MPI_IN_PLACE,
-   	     		   buffer,
-   	     		   NGHOST,
-   	     		   AC_REAL_MPI_TYPE,
-   	     		   MPI_SUM,
-   	     		   comm,
-   	     		   &requests[NUM_OUTPUTS + prof]);
-			   
-   	     	   }
-   	     	   else if(id == 0)
-   	     	   {
-   	        	   MPI_Iallreduce(MPI_IN_PLACE,
-   	     		   buffer+NGHOST,
-   	     		   n_size,
-   	     		   AC_REAL_MPI_TYPE,
-   	     		   MPI_SUM,
-   	     		   comm,
-   	     		   &requests[NUM_OUTPUTS + prof]);
-   	     	   }
-   	     	   else if(id == 1)
-   	     	   {
-   	        	   MPI_Iallreduce(MPI_IN_PLACE,
-   	     		   buffer+NGHOST+n_size,
-   	     		   NGHOST,
-   	     		   AC_REAL_MPI_TYPE,
-   	     		   MPI_SUM,
-   	     		   comm,
-   	     		   &requests[NUM_OUTPUTS + prof]
-			   );
-   	     	   }
-   	        }
-   	        else
-   	        {
-   	        	MPI_Iallreduce(MPI_IN_PLACE,
-   	     		   buffer, 
-   	                   prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])),
-   	     		   AC_REAL_MPI_TYPE,
-   	     		   MPI_SUM,
-   	     		   comm,
-   	     		   &requests[NUM_OUTPUTS + prof]);
-   	        }
+		if(on_halos())
+		{
+			if (id == 0) buffer += NGHOST;
+			if (id == 1) buffer += NGHOST+n_size;
+		}
+   	        const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+				id == 0 ? n_size  : NGHOST;
+   	        MPI_Iallreduce(MPI_IN_PLACE,
+   	     		buffer,
+   	     		data_size,
+   	     		AC_REAL_MPI_TYPE,
+   	     		MPI_SUM,
+   	     		comm,
+			&requests[NUM_OUTPUTS + prof]
+		);
    	}
    }
   const auto& reduce_outputs = input_regions[0].memory.reduce_outputs;
