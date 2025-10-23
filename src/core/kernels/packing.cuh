@@ -392,6 +392,7 @@ AcResult
 acKernelUnpackDataFull(const cudaStream_t stream, const AcRealPacked* packed, const Volume vba_start,
                    const Volume dims, VertexBufferArray vba)
 {
+    catch_previous_errors_debug(AcKernel(0),"when packing data");
     (void)stream;
     const dim3 tpb{32, 8, 1};
     [[maybe_unused]] const dim3 bpg{(unsigned int)ceil(dims.x / (double)tpb.x),
