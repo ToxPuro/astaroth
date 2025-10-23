@@ -7654,7 +7654,9 @@ count_num_of_assignments(const ASTNode* node, struct hashmap_s* assignments)
 		count_num_of_assignments(node->rhs,assignments);
 	if(node->type == NODE_ASSIGNMENT && node->rhs)
 	{
-	  const char* lhs = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	  const ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
+	  if(!identifier) return;
+	  const char* lhs = identifier->buffer;
 	  const ASTNode* struct_expr = get_node(NODE_STRUCT_EXPRESSION,node->lhs);
 	  if(struct_expr)
 	  {
@@ -7734,35 +7736,38 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 	{
 	  bool is_constexpr = all_identifiers_are_constexpr(node->rhs);
 	  ASTNode* lhs_identifier = get_node_by_token(IDENTIFIER,node->lhs);
-	  const char* lhs = lhs_identifier->buffer;
-	  const ASTNode* struct_expr = get_node(NODE_STRUCT_EXPRESSION,node->lhs);
-	  if(struct_expr)
+	  if(lhs_identifier)
 	  {
-		  lhs = intern(combine_all_new(struct_expr));
-	  	  lhs_identifier = get_node_by_token(IDENTIFIER,struct_expr->lhs);
-	  }
-	  const int* n_assignments = hashmap_get(assignments,lhs,strlen(lhs));
-	  if(n_assignments != NULL && *n_assignments > 1)
-	  {
-		  lhs_identifier->is_constexpr = false;
-		  return res;
-	  }
-	  if(lhs_identifier->is_constexpr == is_constexpr)
-		  return res;
-	  res |= is_constexpr;
-	  node->is_constexpr |= is_constexpr;
-	  lhs_identifier->is_constexpr |= is_constexpr;
-	  if(is_constexpr) 
-	  {
-		  if(!str_vec_contains(*vars_to_constexpr,lhs_identifier->buffer))
-		  {
-			  push(vars_to_constexpr,lhs_identifier->buffer);
-		  }
-	  }
-	  if(is_constexpr && get_node(NODE_TSPEC,node->lhs))
-	  {
-		  ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,node->lhs);
-		  astnode_sprintf(tspec->lhs," constexpr %s",tspec->lhs->buffer);
+	  	const char* lhs = lhs_identifier->buffer;
+	  	const ASTNode* struct_expr = get_node(NODE_STRUCT_EXPRESSION,node->lhs);
+	  	if(struct_expr)
+	  	{
+	  	        lhs = intern(combine_all_new(struct_expr));
+	  		  lhs_identifier = get_node_by_token(IDENTIFIER,struct_expr->lhs);
+	  	}
+	  	const int* n_assignments = hashmap_get(assignments,lhs,strlen(lhs));
+	  	if(n_assignments != NULL && *n_assignments > 1)
+	  	{
+	  	        lhs_identifier->is_constexpr = false;
+	  	        return res;
+	  	}
+	  	if(lhs_identifier->is_constexpr == is_constexpr)
+	  	        return res;
+	  	res |= is_constexpr;
+	  	node->is_constexpr |= is_constexpr;
+	  	lhs_identifier->is_constexpr |= is_constexpr;
+	  	if(is_constexpr) 
+	  	{
+	  	        if(!str_vec_contains(*vars_to_constexpr,lhs_identifier->buffer))
+	  	        {
+	  	      	  push(vars_to_constexpr,lhs_identifier->buffer);
+	  	        }
+	  	}
+	  	if(is_constexpr && get_node(NODE_TSPEC,node->lhs))
+	  	{
+	  	        ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,node->lhs);
+	  	        astnode_sprintf(tspec->lhs," constexpr %s",tspec->lhs->buffer);
+	  	}
 	  }
 	}
 	if(is_return_node(node))
