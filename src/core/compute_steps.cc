@@ -1155,6 +1155,8 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 										const int index = id_to_arr_index(x,y,z);
 										if(x == 0 && y ==  0 && z == 0) continue;
 										field_need_halo_to_be_in_sync[index][j] |= true;
+										const int facet_class = std::abs(x) + std::abs(y) + std::abs(z);
+										halo_types_level_set[j][n_level_sets] = max(halo_types_level_set[j][n_level_sets],facet_class);
 									}
 					}
 					
@@ -1253,7 +1255,10 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 			}
 		}
 
-		for(size_t i = 0; i < NUM_FIELDS; ++i) halo_types[i] = (facet_class_range){1,halo_types_level_set[i][level_set_index]};
+		for(size_t i = 0; i < NUM_FIELDS; ++i) 
+		{
+			halo_types[i] = (facet_class_range){1,halo_types_level_set[i][level_set_index]};
+		}
 
 		level_sets.push_back((level_set){level_set_calls,tmp,regions,halo_types});
 	}
