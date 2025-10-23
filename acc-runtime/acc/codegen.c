@@ -9573,9 +9573,11 @@ remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 	if(expr_type == FIELD3_STR) return;
 	const char* var = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	if(check_symbol(NODE_ANY,var,0,DYNAMIC_STR)) return;
+	if(check_symbol(NODE_ANY,var,0,GLOBAL_MEM_STR)) return;
 	if(check_symbol(NODE_ANY,var,FIELD_STR,0)) return;
 	if(check_symbol(NODE_ANY,var,FIELD3_STR,0)) return;
 	if(strstr(expr_type,"*")) return;
+	if(strstr(var,"AC_INTERNAL_gmem_")) return;
 	if(calls_non_pure_returning_func(node->rhs)) return;
 	if(!str_vec_contains(vars_used,var))
 	{
