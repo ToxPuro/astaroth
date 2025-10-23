@@ -2242,7 +2242,7 @@ void
 ReduceTask::reduce()
 {
 	const auto& reduce_outputs = input_regions[0].memory.reduce_outputs;
-	const auto nn = acDeviceGetLocalConfig(acGridGetDevice())[AC_nlocal];
+        const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
 
 	if constexpr (NUM_PROFILES != 0)
 	{

@@ -1,1 +1,1 @@
-mpiexec --oversubscribe -n 4 build/mpi-profile-reduce
+mpiexec --oversubscribe -n 8 build/mpi-profile-reduce

@@ -21,6 +21,8 @@ Profile<YZ> PROF_YZ
 Profile<ZX> PROF_ZX
 Profile<ZY> PROF_ZY
 
+Profile<Z> PROF_Z_INCLUDING_HALOS
+
 Kernel reduce_profiles()
 {
     reduce_sum(FIELD,PROF_X)
@@ -34,6 +36,15 @@ Kernel reduce_profiles()
     reduce_sum(FIELD,PROF_ZY)
 }
 
+Kernel reduce_only_z()
+{
+	reduce_sum(FIELD,PROF_Z_INCLUDING_HALOS)
+}
+Kernel deriv_z()
+{
+	write(PROF_Z,derz(PROF_Z_INCLUDING_HALOS))
+}
+
 
 BoundConds bcs
 {
@@ -45,3 +56,8 @@ ComputeSteps rhs(bcs)
 	reduce_profiles()
 }
 
+ComputeSteps z_rhs(bcs)
+{
+	reduce_only_z()
+	deriv_z()
+}
