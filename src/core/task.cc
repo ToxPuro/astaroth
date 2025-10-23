@@ -2169,6 +2169,17 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
 
     syncVBA();
     nothing_to_communicate = input_region.memory.profiles.size() == 0;
+    if(!nothing_to_communicate)
+    {
+	    const auto ac_sub_comms = acGridMPISubComms();
+	    MPI_Comm_dup(ac_sub_comms.all,&sub_comms.all);
+	    MPI_Comm_dup(ac_sub_comms.x,&sub_comms.x);
+	    MPI_Comm_dup(ac_sub_comms.y,&sub_comms.y);
+	    MPI_Comm_dup(ac_sub_comms.z,&sub_comms.z);
+	    MPI_Comm_dup(ac_sub_comms.xy,&sub_comms.xy);
+	    MPI_Comm_dup(ac_sub_comms.xz,&sub_comms.xz);
+	    MPI_Comm_dup(ac_sub_comms.yz,&sub_comms.yz);
+    }
     cuda_aware_mpi_for_profiles = ac_get_info()[AC_use_cuda_aware_mpi] && ac_get_info()[AC_use_cuda_aware_mpi_for_profile_reductions];
     const auto& reduce_outputs = input_region.memory.reduce_outputs;
     for(size_t i = 0; i < reduce_outputs.size(); ++i)
@@ -2196,7 +2207,9 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
     name   = "Reduce " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     for(int i = 0; i < NUM_OUTPUTS+NUM_PROFILES; ++i)
-	    requests[i] = MPI_REQUEST_NULL;
+    {
+      requests[i] = MPI_REQUEST_NULL;
+    }
     task_type = TASKTYPE_REDUCE;
 }
 
@@ -2229,7 +2242,7 @@ void
 ReduceTask::reduce()
 {
 	const auto& reduce_outputs = input_regions[0].memory.reduce_outputs;
-     	const auto nn = output_region.comp_dims;
+	const auto nn = acDeviceGetLocalConfig(acGridGetDevice())[AC_nlocal];
 
 	if constexpr (NUM_PROFILES != 0)
 	{
@@ -2396,7 +2409,7 @@ ReduceTask::reduce()
 		    {
 		    		acReduceProfileWithBounds(prof,
 					   reduce_buf,
-					   dst+3,
+					   dst+NGHOST,
 					   stream,
 					   (Volume){0,0,NGHOST},
 					   (Volume){
@@ -2516,7 +2529,6 @@ void
 ReduceTask::communicate()
 {
    const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
-   const auto sub_comms = acGridMPISubComms();
    const auto grid_comm = acGridMPIComm();
    if constexpr(NUM_PROFILES != 0)
    {
@@ -2555,6 +2567,7 @@ ReduceTask::communicate()
    	     		   MPI_SUM,
    	     		   comm,
    	     		   &requests[NUM_OUTPUTS + prof]);
+			   
    	     	   }
    	     	   else if(id == 0)
    	     	   {
@@ -2574,8 +2587,8 @@ ReduceTask::communicate()
    	     		   AC_REAL_MPI_TYPE,
    	     		   MPI_SUM,
    	     		   comm,
-   	     		   &requests[NUM_OUTPUTS + prof]);
-
+   	     		   &requests[NUM_OUTPUTS + prof]
+			   );
    	     	   }
    	        }
    	        else
@@ -2594,7 +2607,7 @@ ReduceTask::communicate()
   for(size_t i = 0; i < reduce_outputs.size(); ++i)
   {
 	  const int var = reduce_outputs[i].variable;
-	  if(real_output_is_global[var]  && reduce_outputs[i].type == AC_REAL_TYPE)   MPI_Allreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm);
+	  if(real_output_is_global[var]  && reduce_outputs[i].type == AC_REAL_TYPE)   MPI_Iallreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm,&requests[i]);
 	  if(int_output_is_global[var]   && reduce_outputs[i].type == AC_INT_TYPE)    MPI_Iallreduce(MPI_IN_PLACE, &local_res_int[i],1,MPI_INT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
 #if AC_DOUBLE_PRECISION
 	  if(float_output_is_global[var] && reduce_outputs[i].type == AC_FLOAT_TYPE)  MPI_Iallreduce(MPI_IN_PLACE, &local_res_float[i],1,MPI_FLOAT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);

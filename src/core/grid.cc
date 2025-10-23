@@ -536,6 +536,7 @@ get_comm_size(const MPI_Comm comm)
 static void
 create_astaroth_sub_communicators()
 {
+	astaroth_sub_comms.all = astaroth_comm;
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_x_color(),ac_pid(),&astaroth_sub_comms.x) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_y_color(),ac_pid(),&astaroth_sub_comms.y) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_z_color(),ac_pid(),&astaroth_sub_comms.z) == MPI_SUCCESS);
@@ -2219,6 +2220,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    	(int)dims.y < 2*grid.submesh.info[AC_nmin].y ||
 		    	(int)dims.z < 2*grid.submesh.info[AC_nmin].z;
 
+
 	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim || small_dims) ? 0 : 3;
 	    {
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
@@ -2235,8 +2237,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 			if(!(bc_dependencies & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z))
 				if(Region::tag_to_id(tag).z != 0) continue;
 		    }
-	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
-            	    //graph->all_tasks.push_back(task);
     	            ERRCHK_ALWAYS((int)dims.x > grid.submesh.info[AC_nmin].x*2 || max_comp_facet_class == 0);
     	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2 || max_comp_facet_class == 0);
     	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2 || max_comp_facet_class == 0);
@@ -2472,11 +2472,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
             break;
         }
 	case TASKTYPE_REDUCE:  {
-    //input_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
-    //input_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
-
-    //output_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
-    //output_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
 
 	  const Volume reduce_start = start - op.halo_sizes;
 	  const Volume reduce_dims  = dims  + 2*op.halo_sizes;

@@ -246,6 +246,8 @@ acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const Volume dims, const Volu
 AcResult
 acTransposeWithBounds(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
 {
+	ERRCHK_ALWAYS(src != NULL);
+	ERRCHK_ALWAYS(dst != NULL);
 	switch(order)
 	{
 		case(XYZ):

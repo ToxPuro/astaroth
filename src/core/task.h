@@ -373,6 +373,7 @@ typedef class ReduceTask : public Task {
     float  local_res_float[NUM_OUTPUTS]{};
 #endif
     MPI_Request requests[NUM_OUTPUTS+NUM_PROFILES]{};
+    AcSubCommunicators sub_comms{};
     AcProfileType reduces_only_prof{};
     bool nothing_to_communicate{};
     bool reduces_profiles{};

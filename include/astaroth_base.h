@@ -39,6 +39,7 @@ struct AcCommunicator
 };
 
 typedef struct AcSubCommunicators {
+	MPI_Comm all;
 	MPI_Comm x;
 	MPI_Comm y;
 	MPI_Comm z;
