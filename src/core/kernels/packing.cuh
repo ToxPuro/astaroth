@@ -413,6 +413,8 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
     //done to ensure performance backwards compatibility
     if(num_vtxbufs == NUM_COMMUNICATED_FIELDS)
 	    return acKernelPackDataFull(stream,vba,vba_start,dims,packed);
+
+    catch_previous_errors_debug(AcKernel(0),"when packing data");
     const dim3 tpb{32, 8, 1};
     [[maybe_unused]] const dim3 bpg{(unsigned int)ceil(dims.x / (double)tpb.x),
                    (unsigned int)ceil(dims.y / (double)tpb.y),
