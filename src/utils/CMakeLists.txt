@@ -6,7 +6,7 @@ target_link_libraries(modelsolver astaroth_core)
 add_library(astaroth_random astaroth_random.cc)
 target_link_libraries(astaroth_random astaroth_core)
 
-add_library(astaroth_forcing astaroth_forcing.cc)
+add_library(astaroth_forcing astaroth_forcing.cc helical_forcing.cc)
 target_link_libraries(astaroth_forcing astaroth_core astaroth_random)
 
 add_library(astaroth_utils config_loader.c memory.c verification.c modelreduce.c profiles.c logging.c)

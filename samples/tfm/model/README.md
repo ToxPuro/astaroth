@@ -136,6 +136,9 @@ TF_a22_z,2500,8.160662e+01,3.262428e-02,-6.570793e+00,2.357011e+00,6.570793e+00,
 
 ### laplace nonsoca turbulence:
 `$SRUNMPI64 ./tfm-mpi --config ~/astaroth/samples/tfm/cases/laplace-nonsoca.ini --benchmark 1`
+`rm -rf simulation_state.txt *.profile *.mesh *.snapshot *.txt *.out *.ini *.csv output && $SRUNMPI8 ./tfm-mpi --config ${CONFIG} --benchmark 1`
+
+And check that the timeseries matches with verify-allclose.py
 
 ### laplace soca roberts:
 `$SRUNMPI64 ./tfm-mpi --config ~/astaroth/samples/tfm/cases/laplace-soca.ini --benchmark 1`

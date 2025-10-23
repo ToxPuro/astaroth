@@ -230,11 +230,12 @@ acHostUpdateLocalBuiltinParams(AcMeshInfo* config)
 int
 acHostUpdateForcingParams(AcMeshInfo* info)
 {
-    ForcingParams forcing_params = generateForcingParams(info->real_params[AC_relhel],
+    ForcingParams forcing_params = generateHelicalForcingParams(info->real_params[AC_relhel],
                                                          info->real_params[AC_forcing_magnitude],
                                                          info->real_params[AC_kmin],
                                                          info->real_params[AC_kmax]);
     loadForcingParamsToMeshInfo(forcing_params, info);
+    // printForcingParams(forcing_params);
 
     return 0;
 }

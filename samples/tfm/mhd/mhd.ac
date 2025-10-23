@@ -404,7 +404,7 @@ grid_position() {
 #if LFORCING
 // The Pencil Code forcing_hel_noshear(), manual Eq. 222, inspired forcing function with adjustable
 // helicity
-helical_forcing(k_force, xx, ff_re, ff_im, phi)
+unused_old_helical_forcing(k_force, xx, ff_re, ff_im, phi)
 {
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
@@ -420,7 +420,7 @@ helical_forcing(k_force, xx, ff_re, ff_im, phi)
     return force
 }
 
-forcing()
+unused_old_forcing()
 {
     xx = grid_position()
     cs  = AC_cs_sound
@@ -431,7 +431,7 @@ forcing()
     ff_im     = real3(AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz)
 
     // Determine that forcing funtion type at this point.
-    force = helical_forcing(k_force, xx, ff_re, ff_im, AC_forcing_phase)
+    force = unused_old_helical_forcing(k_force, xx, ff_re, ff_im, AC_forcing_phase)
 
     // Scaling N = magnitude*cs*sqrt(k*cs/dt)  * dt
     NN = cs * AC_forcing_magnitude * sqrt(AC_kaver * cs)
@@ -441,6 +441,28 @@ forcing()
     force.z = sqrt(AC_dt) * NN * force.z
 
     return force
+}
+
+forcing() {
+    f0 = AC_forcing_magnitude
+    cs = AC_cs_sound
+    dt = AC_dt
+    kaver = AC_kaver
+    N = f0 * cs * sqrt(kaver * cs / dt) // PC user manual
+    // N = f0 * cs * sqrt(cs / (kaver * dt)) // brandenburg_crosshelically_2019 if they mean cs / kf * dt == cs / (kf * dt)
+
+    phi   = AC_forcing_phase
+    k     = real3(AC_k_forcex,   AC_k_forcey,   AC_k_forcez  )
+    f_k_re = real3(AC_ff_hel_rex, AC_ff_hel_rey, AC_ff_hel_rez)
+    f_k_im = real3(AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz)
+
+    x = grid_position()
+
+    f = N * (f_k_re * cos(dot(k, x)) * cos(phi) -
+            f_k_re * sin(dot(k, x)) * sin(phi) -
+            f_k_im * cos(dot(k, x)) * sin(phi) -
+            f_k_im * cos(phi) * sin(dot(k, x)))
+    return f * dt
 }
 #endif // LFORCING
 
