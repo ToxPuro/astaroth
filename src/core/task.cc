@@ -1377,7 +1377,8 @@ HaloMessage::~HaloMessage()
     acFree(data);
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
-    	acFree(data_pinned);
+    	acFreeHost(data_pinned);
+	data_pinned = NULL;
     }
     data = NULL;
 }

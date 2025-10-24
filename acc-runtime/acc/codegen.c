@@ -3855,12 +3855,25 @@ add_kernel_bool_dconst_to_combinations(const ASTNode* node, const int kernel_ind
 
 
 }
+bool
+identifier_in_nodes(const ASTNode* node, const char* identifier)
+{
+	bool res = false;
+	if(node->lhs) res |= identifier_in_nodes(node->lhs,identifier);
+	if(node->rhs) res |= identifier_in_nodes(node->rhs,identifier);
+	if(node->token == IDENTIFIER)
+	{
+		res |= node->buffer == identifier;
+	}
+	return res;
+}
 void
 gen_kernel_num_of_combinations_recursive(const ASTNode* node, param_combinations combinations, string_vec* user_kernels_with_input_params,combinatorial_params combinatorials)
 {
 	TRAVERSE_PREAMBLE_PARAMS(gen_kernel_num_of_combinations_recursive,combinations,user_kernels_with_input_params,combinatorials);
 	if(node->type & NODE_KFUNCTION && node->rhs->lhs)
 	{
+	   const ASTNode* kernel_body = node->rhs->rhs;
 	   const char* kernel_name = get_node(NODE_FUNCTION_ID, node)->buffer;
 	   const int kernel_index = push(user_kernels_with_input_params,kernel_name);
 	   func_params_info info = get_function_params_info(node,kernel_name);
@@ -3868,6 +3881,7 @@ gen_kernel_num_of_combinations_recursive(const ASTNode* node, param_combinations
 	   {
 		   const char* type = info.types.data[i]; 
 		   const char* name = intern(combine_all_new(info.expr_nodes.data[i]));
+		   if(!identifier_in_nodes(kernel_body,name)) continue;
 	           add_param_combinations((variable){type,name},kernel_index,"",combinatorials);
 	   }
 	   //add_kernel_bool_dconst_to_combinations(node,kernel_index,combinatorials);
@@ -10030,7 +10044,6 @@ add_casts(ASTNode* node)
 		}
 	}
 }
-
 void
 preprocess(ASTNode* root, const bool optimize_input_params)
 {

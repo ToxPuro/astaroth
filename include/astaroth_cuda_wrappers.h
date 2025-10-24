@@ -50,6 +50,8 @@ acMalloc(void** dst, const size_t bytes);
 cudaError_t
 acFree(void* dst);
 cudaError_t
+acFreeHost(void* dst);
+cudaError_t
 acMallocHost(void** dst, const size_t bytes);
 cudaError_t
 acGetDevice(int* dst);

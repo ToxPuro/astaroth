@@ -103,6 +103,12 @@ acMalloc(void** dst, const size_t bytes)
 	return cudaSuccess;
 }
 cudaError_t
+acFreeHost(void* dst)
+{
+	free(dst);
+	return cudaSuccess;
+}
+cudaError_t
 acFree(void* dst)
 {
 	free(dst);
