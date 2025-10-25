@@ -127,6 +127,7 @@ acGridInitialized()
 	return grid.initialized;
 }
 
+
 AcMeshInfo
 acGridGetLocalMeshInfo(void)
 {
@@ -179,7 +180,7 @@ getPid3D(const int pid)
 {
     return getPid3D(pid, grid.decomposition,ac_proc_mapping_strategy()); 
 }
-static int3
+static UNUSED int3
 getPid3D()
 {
 	return getPid3D(ac_pid());
@@ -1984,6 +1985,12 @@ get_spacings()
 }
 
 
+static int
+id_to_arr_index(const int x,const int y,const int z) {return (x+1)+3*((y+1)+3*(z+1));}
+static int
+id_to_arr_index(const int3 vec) 
+{return id_to_arr_index(vec.x,vec.y,vec.z);}
+
 AcTaskGraph*
 acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_ops, const Volume start_in, const Volume end_in, const bool globally_imposed_bcs)
 { 
@@ -2133,6 +2140,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     };
 
 
+    std::array<int,27> previous_tag_counts;
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", ops.size());
     for (size_t i = 0; i < ops.size(); i++) {
         acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
@@ -2311,7 +2319,10 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    	ERRCHK_ALWAYS(op.halo_sizes.z <= start.z);
 	    }
             acVerboseLogFromRootProc(rank, "Creating halo exchange tasks\n");
-            int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
+
+            int tag0 = op.ray_direction == (int3){0,0,0} || op.receiving ? grid.mpi_tag_space_count * Region::max_halo_tag
+	    								 : previous_tag_counts[id_to_arr_index(op.ray_direction)] * Region::max_halo_tag;
+	    previous_tag_counts[id_to_arr_index(op.ray_direction)] = grid.mpi_tag_space_count;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
 
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
@@ -2339,7 +2350,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                 }
             }
             acVerboseLogFromRootProc(rank, "Halo exchange tasks created\n");
-            if(op.ray_direction == (int3){0,0,0} || op.sending) grid.mpi_tag_space_count++;
+            if(op.ray_direction == (int3){0,0,0} || op.receiving) grid.mpi_tag_space_count++;
             break;
         }
 
