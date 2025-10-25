@@ -1032,6 +1032,23 @@ get_grid_nn()
 	return acGetGridNN(acDeviceGetLocalConfig(acGridGetDevice()));
 }
 
+cudaStream_t
+get_stream(Device device)
+{
+	//TP: using only the default stream saves memory which is useful on
+	//    low-level hardware test environments
+        if(ac_get_info()[AC_only_default_stream_for_taskgraphs])
+	{
+		return cudaStream_t(0);
+	}
+	cudaStream_t stream;
+	set_device(device);
+        int low_prio, high_prio;
+        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+	return stream;
+}
+
 
 /* Computation */
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
@@ -1046,14 +1063,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 		   op.outputs_out, op.num_outputs_out},max_facet_class),
            op, device_, swap_offset_)
 {
-    // stream = device->streams[STREAM_DEFAULT + region_tag];
-    {
-	set_device(device);
-
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    }
+    stream = get_stream(device);
     auto& input_region = input_regions[0];
     const auto dimension_inactive = ac_get_info()[AC_dimension_inactive];
     if(kernel_only_writes_profile(op.kernel_enum,PROFILE_X,op.analysis_info))
@@ -1142,13 +1152,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, std::vector<Region> in
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     (void)fields_already_depend_on_boundaries;
-    {
-	set_device(device);
-
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    }
+    stream = get_stream(device);
 
     syncVBA();
 
@@ -1171,13 +1175,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     (void)fields_already_depend_on_boundaries;
-    {
-	set_device(device);
-
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    }
+    stream = get_stream(device);
 
     syncVBA();
 
@@ -1292,6 +1290,19 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 
 bool
 ComputeTask::isComputeTask() { return true; }
+
+void
+destroy_stream(cudaStream_t stream)
+{
+    (void)stream;
+    if(ac_get_info()[AC_only_default_stream_for_taskgraphs]) return;
+    acStreamDestroy(stream);
+}
+
+ComputeTask::~ComputeTask()
+{
+    destroy_stream(stream);
+}
 
 
 AcKernel
@@ -1600,13 +1611,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
     auto& input_region = input_regions[0];
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
-    {
-	set_device(device);
-
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    }
+    stream = get_stream(device);
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done creating CUDA stream\n");
 
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: syncing VBA\n");
@@ -1657,7 +1662,7 @@ HaloExchangeTask::~HaloExchangeTask()
 
     set_device(device);
     // dependents.clear();
-    acStreamDestroy(stream);
+    destroy_stream(stream);
 }
 
 void
@@ -2030,14 +2035,8 @@ MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, co
 	    scan_comm = sub_comms.reverse_z;
     }
     // Create stream for packing/unpacking
-    {
-	(void)grid_info;
-	set_device(device);
-
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    }
+    (void)grid_info;
+    stream = get_stream(device);
 }
 
 MPIScanTask::~MPIScanTask()
@@ -2052,7 +2051,7 @@ MPIScanTask::~MPIScanTask()
 
     set_device(device);
     // dependents.clear();
-    acStreamDestroy(stream);
+    destroy_stream(stream);
 }
 
 bool
@@ -2162,13 +2161,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
            Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out},3),
            op, device_, swap_offset_)
 {
-    // stream = device->streams[STREAM_DEFAULT + region_tag];
-    {
-        set_device(device);
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    }
+    stream = get_stream(device);
     ERRCHK_ALWAYS(!(op.num_profiles_in  == 0 && op.num_outputs_in  == 0));
     ERRCHK_ALWAYS(!(op.num_profiles_reduce_out == 0 && op.num_outputs_out == 0));
     ERRCHK_ALWAYS(op.num_profiles_reduce_out == op.num_profiles_in);
@@ -2635,12 +2628,7 @@ BoundaryConditionTask::BoundaryConditionTask(
        fieldwise(op.fieldwise)
 {
     // Create stream for boundary condition task
-    {
-        set_device(device);
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    }
+    stream = get_stream(device);
     syncVBA();
 
 

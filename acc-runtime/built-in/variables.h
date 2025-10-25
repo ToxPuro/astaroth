@@ -403,4 +403,13 @@ run_const int3 AC_ngrid_extended  = AC_ngrid + AC_left_extended_halo  + AC_right
  */
 dconst int3 AC_extended_nlocal = AC_nlocal + AC_left_extended_halo + AC_right_extended_halo
 
+/**
+ * Set by the autotuner to true when autotuning is happening
+ * Used to not get output from prints when autotuning
+ */
 dconst bool AC_autotuning_at_work = false
+/**
+ * If true using the default stream for taskgraphs
+ * Helps to save memory but will have performance effect
+ */
+run_const bool AC_only_default_stream_for_taskgraphs = false

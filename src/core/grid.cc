@@ -179,6 +179,11 @@ getPid3D(const int pid)
 {
     return getPid3D(pid, grid.decomposition,ac_proc_mapping_strategy()); 
 }
+static int3
+getPid3D()
+{
+	return getPid3D(ac_pid());
+}
 
 AcResult
 ac_MPI_Init()
@@ -2320,9 +2325,13 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		included |= (Region::tag_to_id(tag).y == +1 && (op.boundary & BOUNDARY_Y_TOP) != 0);
 		included |= (Region::tag_to_id(tag).z == -1 && (op.boundary & BOUNDARY_Z_BOT) != 0);
 		included |= (Region::tag_to_id(tag).z == +1 && (op.boundary & BOUNDARY_Z_TOP) != 0);
+		const AcBoundary boundary = op.ray_direction == (int3){0,0,0} ? BOUNDARY_XYZ : op.boundary;
 		if(!included) continue;
+		const int ray_facet_class = std::abs(op.ray_direction.x) + std::abs(op.ray_direction.y) + std::abs(op.ray_direction.z);
+		if(ray_facet_class == 1 && op.sending   && Region::tag_to_id(tag) !=  op.ray_direction) continue;
+		if(ray_facet_class == 1 && op.receiving && Region::tag_to_id(tag) != -op.ray_direction) continue;
 
-                if (op.include_boundaries || !Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
+                if (op.include_boundaries || !Region::is_on_boundary(decomp, rank, tag, boundary, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info,
                                                                    device, swap_offset,false);
                     graph->halo_tasks.push_back(task);
@@ -2330,7 +2339,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                 }
             }
             acVerboseLogFromRootProc(rank, "Halo exchange tasks created\n");
-            grid.mpi_tag_space_count++;
+            if(op.ray_direction == (int3){0,0,0} || op.sending) grid.mpi_tag_space_count++;
             break;
         }
 
@@ -2685,7 +2694,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
     std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done sorting tasks by priority\n");
-
 
     return graph;
 }

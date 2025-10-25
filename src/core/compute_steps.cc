@@ -575,12 +575,23 @@ log_halo_types(
 			if(!ac_pid()) fprintf(stream, "(%d,%d),",halo_type.min,halo_type.max);
 		if(!ac_pid()) fprintf(stream,"}");
 }
+AcBoundary
+get_opposite_boundary(const AcBoundary boundary)
+{
+	if(boundary == BOUNDARY_X_BOT) return BOUNDARY_X_TOP;
+	if(boundary == BOUNDARY_X_TOP) return BOUNDARY_X_BOT;
+	if(boundary == BOUNDARY_Y_BOT) return BOUNDARY_Y_TOP;
+	if(boundary == BOUNDARY_Y_TOP) return BOUNDARY_Y_BOT;
+	if(boundary == BOUNDARY_Z_BOT) return BOUNDARY_Z_TOP;
+	if(boundary == BOUNDARY_Z_TOP) return BOUNDARY_Z_BOT;
+	return boundary;
+}
 static std::vector<AcTaskDefinition>
 gen_halo_exchange(
 		const std::vector<Field>& output_fields,
 		const FieldBCs field_boundconds,
 		const int3 direction,
-		const AcBoundary boundary,
+		AcBoundary boundary,
 		const std::vector<facet_class_range> halo_types,
 		const bool before_kernel_call,
 		FILE* stream
@@ -605,6 +616,7 @@ gen_halo_exchange(
 		const Volume end = std::get<0>(bounds);
 		const bool sending   = (direction == (int3){0,0,0} || !before_kernel_call); 
 		const bool receiving = (direction == (int3){0,0,0} || before_kernel_call); 
+		if(sending && direction != (int3){0,0,0}) boundary = get_opposite_boundary(boundary);
 		if(!ac_pid()) fprintf(stream,",sending = %d,receiving = %d",sending,receiving);
 		if(!ac_pid()) fprintf(stream, ",%s",ac_boundary_to_str(boundary));
 		log_halo_types(halo_types,stream);

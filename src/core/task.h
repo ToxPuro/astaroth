@@ -233,6 +233,7 @@ typedef class ComputeTask : public Task {
 	        	std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
 		    );
 
+    ~ComputeTask();
     ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
