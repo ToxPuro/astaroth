@@ -175,8 +175,6 @@ cudaError_t
 acStreamQuery(cudaStream_t stream)
 {
     const auto res = cudaStreamQuery(stream);
-        ERRCHK_CUDA(res);
-
     return res;
 }
 const char*
