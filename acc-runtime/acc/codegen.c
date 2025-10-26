@@ -2089,7 +2089,7 @@ get_const_array_var_dims_recursive(const ASTNode* node, struct hashmap_s* cache)
 		{
 			const int num_of_elems = array_initializer ? count_num_of_nodes_in_list(array_initializer->lhs) : 0;
 			push_node(&res,create_primary_expression(intern(itoa(num_of_elems))));
-			const ASTNode* second_array_initializer = get_node(NODE_ARRAY_INITIALIZER, array_initializer->lhs);
+			const ASTNode* second_array_initializer = array_initializer->lhs ? get_node(NODE_ARRAY_INITIALIZER, array_initializer->lhs) : NULL;
 			if(second_array_initializer)
 			{
 				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
@@ -5958,7 +5958,6 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 		if(array_initializer)
 		{
 			const int num_of_elems = array_initializer ? count_num_of_nodes_in_list(array_initializer->lhs) : 0;
-			const ASTNode* second_array_initializer = get_node(NODE_ARRAY_INITIALIZER, array_initializer->lhs);
 			if(array_dim == 1)
 			{
 				if(is_builtin_constant(name))
@@ -5971,6 +5970,7 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			}
 			else if(array_dim == 2)
 			{
+				const ASTNode* second_array_initializer = get_node(NODE_ARRAY_INITIALIZER, array_initializer->lhs);
 				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
 				if(is_builtin_constant(name))
 					print_const_array(fp_non_scalar_builtin,datatype_scalar,name,num_of_elems_in_list*num_of_elems,assignment_val,static_str);

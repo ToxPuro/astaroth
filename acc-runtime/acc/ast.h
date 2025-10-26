@@ -54,6 +54,7 @@ fatal(const char* format, ...)
 	fprintf(stderr,FATAL_ERROR_MESSAGE);
 	vfprintf(stderr,format,args);
 	va_end(args);
+	abort();
 	exit(EXIT_FAILURE);
 }
 
@@ -755,6 +756,7 @@ is_real(const char* str)
 static inline int
 count_num_of_nodes_in_list(const ASTNode* list_head)
 {
+	if(list_head == NULL) return 0;
 	int res = 0;
 	while(list_head->rhs)
 	{
@@ -884,7 +886,6 @@ get_node(const NodeType type, const ASTNode* node)
 {
   if(!node) 
   {
-  	  assert(node);
 	  fatal("WRONG; passed NULL to get_node\n");
   }
 
