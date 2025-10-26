@@ -4,6 +4,7 @@
 Field Field_arr[3]
 const int ndustspec = 3
 Field Field_empty_arr[0]
+Field3 Field_empty_vec_arr[0]
 
 //TP: should produce fields that have auxiliary type qualifier and that are either not communicated or communicated respectively
 //TP: as of 4-11-2024 does produce the correct qualifiers
