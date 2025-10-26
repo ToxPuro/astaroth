@@ -5927,8 +5927,8 @@ is_builtin_constant(const char* name)
 void
 print_const_array(FILE* fp, const char* datatype_scalar, const char* name, int num_of_elems, const char* assignment_val, const char* static_str)
 {
-        //TP: zero-sized arrays not supported by all GPU compilers
-        if(num_of_elems == 0) num_of_elems = 1;
+	//TP: zero-sized arrays not supported by all GPU compilers
+	if(num_of_elems == 0) num_of_elems = 1;
 	fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] %s const constexpr %s %s[%d] = %s;\n#endif\n",static_str,datatype_scalar, name, num_of_elems, assignment_val);
 }
 
@@ -8545,6 +8545,12 @@ transform_array_calls_to_scalar_calls(ASTNode* node)
 	}
 }
 void
+remove_implicit_loop(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(remove_implicit_loop)
+	if(node->postfix == intern("[AC_INTERNAL_ARRAY_LOOP_INDEX]")) node->postfix = NULL;
+}
+void
 add_index_to_arrays(ASTNode* node, const size_t rank)
 {
 	if(node->type & NODE_FUNCTION_CALL)
@@ -8678,6 +8684,7 @@ transform_array_assignments(ASTNode* node)
                         else
                         {
                                 node_vec params = VEC_INITIALIZER;
+				remove_implicit_loop(node->lhs);
                                 push_node(&params,node->lhs);
                                 push_node(&params,node->rhs->rhs);
                                 replace_node(
