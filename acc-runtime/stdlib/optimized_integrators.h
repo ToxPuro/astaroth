@@ -1,3 +1,4 @@
+run_const bool AC_rk_cumulative_df = false
 const real rk1_alpha = [0.0]
 const real rk1_beta  = [1.0]
 
@@ -71,6 +72,10 @@ rk1_final(real3 f,real3 w,int step_num){
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk2_intermediate(Field f, real roc, int step_num, real dt) {
+    if(AC_rk_cumulative_df)
+    {
+	    return roc
+    }
     previous_value = step_num > 0 ? previous(f) : 0.0;
     return rk2_alpha[step_num] * previous_value + roc * dt
 }
@@ -87,25 +92,41 @@ rk2_final(Field f,int step_num) {
     return previous(f) + rk2_beta[step_num] * value(f)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk2_final(Field3 f, int step_num){
-  return real3( rk2_final(f.x,step_num),
-                rk2_final(f.y,step_num),
-                rk2_final(f.z,step_num)
+rk2_final(Field f,int step_num,real dt) {
+    if(AC_rk_cumulative_df)
+    {
+    	return previous(f) + dt*rk2_beta[step_num] * value(f)
+    }
+    return previous(f) + rk2_beta[step_num] * value(f)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk2_final(Field3 f, int step_num, real dt){
+  return real3( rk2_final(f.x,step_num,dt),
+                rk2_final(f.y,step_num,dt),
+                rk2_final(f.z,step_num,dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk2_final(real f, real w, int step_num) {
-    return f + rk3_beta[step_num] * w
+rk2_final(real f, real w, int step_num,real dt) {
+    if(AC_rk_cumulative_df)
+    {
+    	return f + dt*rk2_beta[step_num] * w
+    }
+    return f + rk2_beta[step_num] * w
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk2_final(real3 f,real3 w,int step_num){
-  return real3( rk3_final(f.x,w.x,step_num),
-                rk3_final(f.y,w.y,step_num),
-                rk3_final(f.z,w.z,step_num)
+rk2_final(real3 f,real3 w,int step_num, real dt){
+  return real3( rk2_final(f.x,w.x,step_num,dt),
+                rk2_final(f.y,w.y,step_num,dt),
+                rk2_final(f.z,w.z,step_num,dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_intermediate(Field f, real roc, int step_num, real dt) {
+    if(AC_rk_cumulative_df)
+    {
+	    return roc
+    }
     previous_value = step_num > 0 ? previous(f) : 0.0;
     return rk3_alpha[step_num] * previous_value + roc * dt
 }
@@ -118,25 +139,33 @@ rk3_intermediate(Field3 f, real3 roc, int step_num, real dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final(Field f,int step_num) {
+rk3_final(Field f,int step_num, real dt) {
+    if(AC_rk_cumulative_df)
+    {
+    	return previous(f) + dt*rk3_beta[step_num] * value(f)
+    }
     return previous(f) + rk3_beta[step_num] * value(f)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final(Field3 f, int step_num){
-  return real3( rk3_final(f.x,step_num),
-                rk3_final(f.y,step_num),
-                rk3_final(f.z,step_num)
+rk3_final(Field3 f, int step_num,real dt){
+  return real3( rk3_final(f.x,step_num,dt),
+                rk3_final(f.y,step_num,dt),
+                rk3_final(f.z,step_num,dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk3_final(real f, real w, int step_num) {
+rk3_final(real f, real w, int step_num, real dt) {
+    if(AC_rk_cumulative_df)
+    {
+    	return f + dt*rk3_beta[step_num] * w
+    }
     return f + rk3_beta[step_num] * w
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final(real3 f,real3 w,int step_num){
-  return real3( rk3_final(f.x,w.x,step_num),
-                rk3_final(f.y,w.y,step_num),
-                rk3_final(f.z,w.z,step_num)
+rk3_final(real3 f,real3 w,int step_num, real dt){
+  return real3( rk3_final(f.x,w.x,step_num,dt),
+                rk3_final(f.y,w.y,step_num,dt),
+                rk3_final(f.z,w.z,step_num,dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
@@ -149,6 +178,10 @@ rk3_intermediate(real w, real roc, int step_num, real dt) {
     //} else {
     //    return roc * AC_dt
     //}
+    if(AC_rk_cumulative_df)
+    {
+	    return roc*dt
+    }
     return rk3_alpha[step_num] * w + roc * dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
@@ -307,6 +340,54 @@ rkf4_update(real3 df, int step_num, real dt, Field3 ERROR, Field3 BETA, Field3 F
 	return 0.0;
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
+rk1_intermediate_split_first(Field f,int step_num)
+{
+	suppress_unused_warning(f)
+	return 0.0
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk2_intermediate_split_first(Field f, int step_num)
+{
+    previous_value = step_num > 0 ? previous(f) : 0.0;
+    return rk2_alpha[step_num] * previous_value
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk3_intermediate_split_first(Field f, int step_num)
+{
+    previous_value = step_num > 0 ? previous(f) : 0.0;
+    return rk3_alpha[step_num] * previous_value
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk_intermediate_split_first(Field f, int step_num)
+{
+	if(!AC_rk_cumulative_df)
+	{
+		return 0.0
+	}
+	if(AC_rk_order == 1)
+		return rk1_intermediate_split_first(f,step_num)
+	else if(AC_rk_order == 2)
+		return rk2_intermediate_split_first(f,step_num)
+	else if(AC_rk_order == 3)
+		return rk3_intermediate_split_first(f,step_num)
+	else
+		return 0.0;
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk_intermediate_split_first(Field3 f, int step_num)
+{
+	if(!AC_rk_cumulative_df)
+	{
+		return real3(0.,0.,0.)
+	}
+	return (real3)
+	{
+		rk_intermediate_split_first(f.x,step_num),
+		rk_intermediate_split_first(f.y,step_num),
+		rk_intermediate_split_first(f.z,step_num)
+	}
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
 rk_intermediate(Field f, real df, int step_num, real dt)
 {
 	if(AC_rk_order == 1)
@@ -328,50 +409,50 @@ rk_intermediate(Field3 f, real3 df, int step_num, real dt)
 			)
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final(Field f, int step_num)
+rk_final(Field f, int step_num, real dt)
 {
 	if(AC_rk_order == 1)
 		return rk1_final(f,step_num)
 	else if(AC_rk_order == 2)
-		return rk2_final(f,step_num)
+		return rk2_final(f,step_num,dt)
 	else if(AC_rk_order == 3)
-		return rk3_final(f,step_num)
+		return rk3_final(f,step_num,dt)
 	else 
 		return 0.0;
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final(Field f, real w, int step_num)
+rk_final(Field f, real w, int step_num,real dt)
 {
 	if(AC_rk_order == 1)
 		return rk1_final(f,w,step_num)
 	else if(AC_rk_order == 2)
-		return rk2_final(f,w,step_num)
+		return rk2_final(f,w,step_num,dt)
 	else if(AC_rk_order == 3)
-		return rk3_final(f,w,step_num)
+		return rk3_final(f,w,step_num,dt)
 	else 
 		return 0.0;
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final(Field3 f, int step_num)
+rk_final(Field3 f, int step_num,real dt)
 {
 	if(AC_rk_order == 1)
 		return rk1_final(f,step_num)
 	else if(AC_rk_order == 2)
-		return rk2_final(f,step_num)
+		return rk2_final(f,step_num,dt)
 	else if(AC_rk_order == 3)
-		return rk3_final(f,step_num)
+		return rk3_final(f,step_num,dt)
 	else 
 		return real3(0.0,0.0,0.0);
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final(Field3 f, real3 w, int step_num)
+rk_final(Field3 f, real3 w, int step_num,real dt)
 {
 	if(AC_rk_order == 1)
 		return rk1_final(f,w,step_num)
 	else if(AC_rk_order == 2)
-		return rk2_final(f,w,step_num)
+		return rk2_final(f,w,step_num,dt)
 	else if(AC_rk_order == 3)
-		return rk3_final(f,w,step_num)
+		return rk3_final(f,w,step_num,dt)
 	else 
 		return real3(0.0,0.0,0.0);
 }
@@ -395,13 +476,13 @@ rk_intermediate_update(Field3 f, real3 df, int step_num, real dt)
 		write(f,rk_intermediate(f,df,step_num,dt))
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final_update(Field f, int step_num)
+rk_final_update(Field f, int step_num,real dt)
 {
-	write(f,rk_final(f,step_num))
+	write(f,rk_final(f,step_num,dt))
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final_update(Field3 f, int step_num)
+rk_final_update(Field3 f, int step_num,real dt)
 {
-	write(f,rk_final(f,step_num))
+	write(f,rk_final(f,step_num,dt))
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
