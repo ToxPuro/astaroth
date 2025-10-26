@@ -1885,7 +1885,7 @@ Stencil der6y_stencil {
     [0][3][0]  = DER6_3
 }
 
-ExpSum Stencil der6y_stencil {
+ExpSum Stencil der6y_exp_stencil {
     [0][-3][0] = DER6_3,
     [0][-2][0] = DER6_2,
     [0][-1][0] = DER6_1,
