@@ -372,6 +372,13 @@ der6x_stencil(Field f)
 	return 0.0
 }
 
+der6x_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6x_exp not possible with Stencil order 2!\n");
+	return 0.0
+}
+
 der6y_stencil(Field f)
 {
 	suppress_unused_warning(f)
@@ -379,10 +386,24 @@ der6y_stencil(Field f)
 	return 0.0
 }
 
+der6y_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6y_exp not possible with Stencil order 2!\n");
+	return 0.0
+}
+
 der6z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der6z not possible with Stencil order 2!\n");
+	return 0.0
+}
+
+der6z_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6z_exp not possible with Stencil order 2!\n");
 	return 0.0
 }
 
@@ -815,6 +836,13 @@ der6x_stencil(Field f)
 	return 0.0
 }
 
+der6x_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6x_exp not implemented with Stencil order 10!\n");
+	return 0.0
+}
+
 der6y_stencil(Field f)
 {
 	suppress_unused_warning(f)
@@ -822,10 +850,24 @@ der6y_stencil(Field f)
 	return 0.0
 }
 
+der6y_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6y_exp not implemented with Stencil order 10!\n");
+	return 0.0
+}
+
 der6z_stencil(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"der6z not implemented with Stencil order 10!\n");
+	return 0.0
+}
+
+der6z_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6z_exp not implemented with Stencil order 10!\n");
 	return 0.0
 }
 
@@ -1823,6 +1865,16 @@ Stencil der6x_stencil {
     [0][0][3]  = DER6_3
 }
 
+ExpSum Stencil der6x_exp_stencil {
+    [0][0][-3] = DER6_3,
+    [0][0][-2] = DER6_2,
+    [0][0][-1] = DER6_1,
+    [0][0][0]  = DER6_0,
+    [0][0][1]  = DER6_1,
+    [0][0][2]  = DER6_2,
+    [0][0][3]  = DER6_3
+}
+
 Stencil der6y_stencil {
     [0][-3][0] = DER6_3,
     [0][-2][0] = DER6_2,
@@ -1832,7 +1884,28 @@ Stencil der6y_stencil {
     [0][2][0]  = DER6_2,
     [0][3][0]  = DER6_3
 }
+
+ExpSum Stencil der6y_stencil {
+    [0][-3][0] = DER6_3,
+    [0][-2][0] = DER6_2,
+    [0][-1][0] = DER6_1,
+    [0][0][0]  = DER6_0,
+    [0][1][0]  = DER6_1,
+    [0][2][0]  = DER6_2,
+    [0][3][0]  = DER6_3
+}
+
 Stencil der6z_stencil {
+    [-3][0][0] = DER6_3,
+    [-2][0][0] = DER6_2,
+    [-1][0][0] = DER6_1,
+    [0][0][0]  = DER6_0,
+    [1][0][0]  = DER6_1,
+    [2][0][0]  = DER6_2,
+    [3][0][0]  = DER6_3
+}
+
+ExpSum Stencil der6z_exp_stencil {
     [-3][0][0] = DER6_3,
     [-2][0][0] = DER6_2,
     [-1][0][0] = DER6_1,
@@ -2941,6 +3014,18 @@ der6x(Field f)
 		return der6x_stencil(f)*AC_inv_ds_6.x
 	}
 }
+der6x_exp(Field f)
+{
+	if (AC_dimension_inactive.x)
+	{
+		suppress_unused_warning(f)
+		return 0.0
+	}
+	else
+	{
+		return der6x_exp_stencil(f)*AC_inv_ds_6.x
+	}
+}
 der6y(Field f)
 {
 	if (AC_dimension_inactive.y)
@@ -2968,6 +3053,33 @@ der6y(Field f)
 		return der6y_stencil(f)*coordinate_factor*AC_inv_ds_6.y
 	}
 }
+der6y_exp(Field f)
+{
+	if (AC_dimension_inactive.y)
+	{
+		suppress_unused_warning(f)
+		return 0.0
+	}
+	else
+	{
+		coordinate_factor = 1.0
+		if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor_1 = AC_INV_R
+			factor_2 = factor_1*factor_1
+			factor_4 = factor_2*factor_2
+			coordinate_factor = factor_4*factor_2
+		}
+		if (AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			factor_1 = AC_INV_CYL_R
+			factor_2 = factor_1*factor_1
+			factor_4 = factor_2*factor_2
+			coordinate_factor = factor_4*factor_2
+		}
+		return der6y_exp_stencil(f)*coordinate_factor*AC_inv_ds_6.y
+	}
+}
 
 der6z(Field f)
 {
@@ -2988,6 +3100,28 @@ der6z(Field f)
 
 		}
 		return der6z_stencil(f)*coordinate_factor*AC_inv_ds_6.z
+	}
+}
+
+der6z_exp(Field f)
+{
+	if (AC_dimension_inactive.z)
+	{
+		suppress_unused_warning(f)
+		return 0.0
+	}
+	else
+	{
+		coordinate_factor = 1.0
+		if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor_1 = AC_INV_R*AC_INV_SIN_THETA
+			factor_2 = factor_1*factor_1
+			factor_4 = factor_2*factor_2
+			coordinate_factor = factor_4*factor_2
+
+		}
+		return der6z_exp_stencil(f)*coordinate_factor*AC_inv_ds_6.z
 	}
 }
 

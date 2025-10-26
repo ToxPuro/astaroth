@@ -307,6 +307,10 @@ elemental del6(Field s) {
   return der6x(s) + der6y(s) + der6z(s)
 }
 
+
+//TP: old analytical expressions
+//    easier and most likely more performant to simply calculate the exponentials together with the stencil ops
+/**
 //TP: these are mainly for testing
 //    if one would actually want production performance for equidistant cartesian with this
 //    then one would combine all the coefficients off the different derivative
@@ -363,6 +367,7 @@ der6z_exp(Field f) {
 		)
 
 }
+**/
 elemental del6_exp(Field f)
 {
 	return der6x_exp(f) + der6y_exp(f) + der6z_exp(f)
