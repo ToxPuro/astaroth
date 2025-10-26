@@ -5925,8 +5925,10 @@ is_builtin_constant(const char* name)
 	return strlen(name) > 2 && name[0] == 'A' && name[1] == 'C';
 }
 void
-print_const_array(FILE* fp, const char* datatype_scalar, const char* name, const int num_of_elems, const char* assignment_val, const char* static_str)
+print_const_array(FILE* fp, const char* datatype_scalar, const char* name, int num_of_elems, const char* assignment_val, const char* static_str)
 {
+        //TP: zero-sized arrays not supported by all GPU compilers
+        if(num_of_elems == 0) num_of_elems = 1;
 	fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] %s const constexpr %s %s[%d] = %s;\n#endif\n",static_str,datatype_scalar, name, num_of_elems, assignment_val);
 }
 
