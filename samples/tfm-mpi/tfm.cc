@@ -1756,14 +1756,22 @@ class Grid {
         const auto nsteps{ac::pull_param(m_device.get(), AC_simulation_nsteps)};
         const auto tf_reset_interval{
             ac::pull_param(m_device.get(), AC_simulation_reset_test_field_interval)};
+        const auto reset_time_interval{ac::pull_param(m_device.get(), AC_simulation_reset_test_field_time_interval)};
+        auto time_at_last_reset{ac::pull_param(m_device.get(), AC_current_time)};
 
         PRINT_LOG_TRACE("Entering simulation loop %d", ac::mpi::get_rank(m_comm.get()));
         for (int counter{0}; counter < nsteps; ++counter) {
 
             const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+            const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
 
             if ((current_step > 0) && ((current_step % tf_reset_interval) == 0))
                 reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
+
+            if (current_time - time_at_last_reset >= reset_time_interval) {
+                reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
+                time_at_last_reset = ac::pull_param(m_device.get(), AC_current_time);
+            }
 
             tfm_pipeline(1);
             io_step(restart_fields, ts_path);
