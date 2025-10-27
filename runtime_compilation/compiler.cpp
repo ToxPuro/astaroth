@@ -189,6 +189,7 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
 void
 acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
+        ac_unset_floating_point_exceptions();
 	if(mesh_info.runtime_compilation_build_path) dynamic_binary_path = mesh_info.runtime_compilation_build_path;
 	if(mesh_info.runtime_compilation_base_path)  dynamic_base_path  = mesh_info.runtime_compilation_base_path;
 	check_that_built_ins_loaded(mesh_info.run_consts);
@@ -309,4 +310,5 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 #if AC_MPI_ENABLED
 	MPI_Barrier(mesh_info.comm->handle);
 #endif
+        ac_restore_floating_point_exceptions();
 }
