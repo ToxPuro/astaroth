@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-static inline void
+static inline void __attribute__((unused))
 cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 {
   if (code != cudaSuccess) {
@@ -47,7 +47,8 @@ cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
   }
 
 #ifdef NDEBUG
-#define ERRCHK_CUDA
+#undef ERRCHK_CUDA
+#define ERRCHK_CUDA(params) (void)(params)
 #endif
 
 cudaError_t
