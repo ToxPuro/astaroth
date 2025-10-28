@@ -2300,6 +2300,7 @@ gen_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec dataty
   if(get_parent_node(NODE_VARIABLE,node)) return;
   const ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
   if(!identifier) return;
+  const bool is_input = identifier->type & NODE_INPUT;
   const char* datatype = get_expr_type((ASTNode*)identifier);
   const char* array_name = identifier->buffer;
   const int index = str_vec_get_index(datatypes,datatype);
@@ -2345,7 +2346,7 @@ gen_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec dataty
     base->postfix=NULL;
     base->infix=NULL;
 
-    const bool check_access_bounds = datatype_scalar == REAL_STR && ACC_ARRAY_BOUND_CHECKS && !is_left_child(NODE_ASSIGNMENT,node);
+    const bool check_access_bounds = datatype_scalar == REAL_STR && ACC_ARRAY_BOUND_CHECKS && !is_left_child(NODE_ASSIGNMENT,node) && !is_input;
 
     ASTNode* identifier_node = create_primary_expression(get_internal_array_name(sym));
     identifier_node->parent = base;
@@ -2358,6 +2359,7 @@ gen_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec dataty
     ASTNode* access_node        = astnode_create(NODE_UNKNOWN,pointer_access,elem_access);
     if(check_access_bounds)
     {
+
     	base->lhs =  identifier_node;
 	ASTNode* a = build_product_node(var_dims);
 	ASTNode* b = astnode_create(NODE_UNKNOWN,astnode_dup(elem_index,NULL), astnode_dup(create_primary_expression(sym->identifier),NULL));
@@ -11199,8 +11201,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
   //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
   free_combinatorial_params_info(&info);
-
   gen_array_reads(root,root,primitive_datatypes);
+
 
 
   const bool optimize_mem_accesses = OPTIMIZE_MEM_ACCESSES && !runtime_compilation;
