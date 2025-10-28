@@ -147,11 +147,19 @@ rk3_final(Field f,int step_num, real dt) {
     return previous(f) + rk3_beta[step_num] * value(f)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_final(Field f,int step_num) {
+	rk3_final(f,step_num,0.0)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_final(Field3 f, int step_num,real dt){
   return real3( rk3_final(f.x,step_num,dt),
                 rk3_final(f.y,step_num,dt),
                 rk3_final(f.z,step_num,dt)
               )
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk3_final(Field3 f, int step_num){
+	rk3_final(f,step_num,0.0)
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk3_final(real f, real w, int step_num, real dt) {
@@ -162,11 +170,19 @@ rk3_final(real f, real w, int step_num, real dt) {
     return f + rk3_beta[step_num] * w
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_final(real f, real w, int step_num) {
+	rk3_final(f,w,step_num,0.0)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_final(real3 f,real3 w,int step_num, real dt){
   return real3( rk3_final(f.x,w.x,step_num,dt),
                 rk3_final(f.y,w.y,step_num,dt),
                 rk3_final(f.z,w.z,step_num,dt)
               )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_final(real3 f,real3 w,int step_num){
+	rk3_final(f,w,step_num,0.0)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_intermediate(real w, real roc, int step_num, real dt) {
