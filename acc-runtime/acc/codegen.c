@@ -11193,13 +11193,14 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	preprocess_array_reads(root,root,tmp,gen_mem_accesses);
 	free_str_vec(&tmp);
   }
-  gen_array_reads(root,root,primitive_datatypes);
 
   if(!gen_mem_accesses) gen_user_taskgraphs(root);
   combinatorial_params_info info = get_combinatorial_params_info(root);
   gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
   //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
   free_combinatorial_params_info(&info);
+
+  gen_array_reads(root,root,primitive_datatypes);
 
 
   const bool optimize_mem_accesses = OPTIMIZE_MEM_ACCESSES && !runtime_compilation;
