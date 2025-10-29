@@ -987,25 +987,6 @@ main(int argc, char** argv)
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
 
     info.comm->handle = MPI_COMM_WORLD;
-
-    // OL: We are calling both acLoadConfig AND set_extra_config_params (defined in config_loader.c)
-    // even though acLoadConfig calls acHostUpdateParams
-    // set_extra_config_params will set some extra config parameters, namely:
-    //  - AC_xlen, AC_ylen, AC_zlen
-    //  - AC_xorig, AC_yorig, AC_zorig
-    //  ^ these could be set in acHostUpdateParams
-    //  - AC_cs2_sound
-    //  - AC_cv_sound
-    //  - AC_unit_mass
-    //  - AC_M_sink
-    //  - AC_M_sink_init
-    //  - AC_G_const
-    //  - AC_sq2GM_star
-    //  ^ these depend on config vals that may not be present
-    //  but we could check if they are defined before attempting to set the extra params
-    //  perhaps set_extra_config_params could become
-    //   -> acHostUpdateAstrophysicsBuiltinParams
-    set_extra_config_params(&info);
     acLogFromRootProc(pid, "Done loading config file\n");
 #if AC_RUNTIME_COMPILATION
     const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF"
@@ -1670,7 +1651,7 @@ main(int argc, char** argv)
                     MPI_Barrier(acGridMPIComm());
                     log_from_root_proc_with_sim_progress(pid, "Reloading config file\n");
                     acLoadConfig(config_path, &new_info);
-                    set_extra_config_params(&new_info);
+		    acHostUpdateParams(&new_info);
 
                     // TODO: refactor this big mess of runtime checks into a function that returns a
                     // bool Check differences to current config
