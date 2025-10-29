@@ -2889,7 +2889,7 @@ gen_kernel_structs(ASTNode* root)
 	}
 	{
 		FILE* fp = fopen("kernel_input_param_str.h","w");
-		fprintf(fp,"const char* kernel_input_param_strs[] = {");
+		fprintf(fp,"const static char* kernel_input_param_strs[] = {");
 		for(size_t k = 0; k < num_kernels; ++k)
 		{
 			fprintf(fp,"\"");
