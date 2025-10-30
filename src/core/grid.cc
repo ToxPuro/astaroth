@@ -2004,6 +2004,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
          	   op.start = start_in;
          	   op.end   = end_in;
             }
+	    ops_in.push_back(op);
     }
     // ERRCHK(grid.initialized);
     std::vector<AcTaskDefinition> ops{};
