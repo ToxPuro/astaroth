@@ -1336,12 +1336,12 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start
   void
   acPushToConfig(AcMeshInfo& config, P param, V val)
   {
-	  if constexpr(IsCompParam<decltype(param)>())
+	  if constexpr(IsCompParam<P>())
 	  {
 	  	  config.run_consts.config[param] = val;
 	  	  config.run_consts.is_loaded[param] = true;
 	  }
-	  else if constexpr(IsParam<decltype(param)>())
+	  else if constexpr(IsParam<P>())
 	  {
 		  config[param] = val;
 		  config.is_loaded[param] = true;
