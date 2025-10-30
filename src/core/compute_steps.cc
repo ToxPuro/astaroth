@@ -312,8 +312,14 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 	{
 		VertexBufferArray vba{};
 		const auto loader = get_loader(graph,call_index);
-		ParamLoadingInfo p = {&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
+		
+		//TP: doing this with a separate local variable as here
+		//    is for some reason safer with the NVCC compiler
+        	acKernelInputParams params{};
+		ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
     		loader(p);
+		vba.on_device.kernel_input_params = params;
+
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
 		const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),optimized_kernel);
 		if(filter_unnecessary_ones)
