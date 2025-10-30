@@ -12,7 +12,7 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
     //TP: utility lambdas
     [[maybe_unused]] auto ac_is_loaded = [&](auto param) -> bool
     {
-	  if constexpr(IsCompParam(param))
+	  if constexpr(IsCompParam<decltype(param)>())
 	  {
 	    return config.run_consts.is_loaded[param];
 	  }
@@ -42,7 +42,7 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 			) return;
 
     	    //the loaders defined in DSL are supposed to be overwritable i.e. if the user loads some value say for AC_len then that value should be preferred over the default value defined in the DSL
-	    if constexpr(IsCompParam(param))
+	    if constexpr(IsCompParam<decltype(param)>())
 	    {
 		    if(config.run_consts.is_loaded[param]) return;
 	    }
@@ -53,7 +53,7 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 	    acPushToConfig(config,param,val);
 	    //TP: variables loaded through the DSL default value loaders should not be counted as loaded
 	    //TP: but for generating the overrides the runtime compiler should know that they have taken the default values coming from the DSL loaders
-	    if constexpr(IsCompParam(param))
+	    if constexpr(IsCompParam<decltype(param)>())
 	    {
 		    config.run_consts.is_loaded[param] = false;
 		    config.run_consts.has_default_value[param] = true;

@@ -1790,17 +1790,31 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		);
 
 	fprintf_filename("is_comptime_param.h",
-		"constexpr static bool UNUSED IsCompParam(const %s&)               {return false;}\n"       
-		"constexpr static bool UNUSED IsCompParam(const %sParam&)          {return false;}\n"  
-		"constexpr static bool UNUSED IsCompParam(const %sArrayParam&)     {return false;}\n"
-		"constexpr static bool UNUSED IsCompParam(const %sCompArrayParam&) {return true;}\n"
-		"constexpr static bool UNUSED IsCompParam(const %sCompParam&)      {return true;}\n"
+		"template <> constexpr bool IsCompParam<%s>()               {return false;}\n"       
+		"template <> constexpr bool IsCompParam<%sParam>()          {return false;}\n"  
+		"template <> constexpr bool IsCompParam<%sArrayParam>()     {return false;}\n"
+		"template <> constexpr bool IsCompParam<%sCompArrayParam>() {return true;}\n"
+		"template <> constexpr bool IsCompParam<%sCompParam>()      {return true;}\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name
 		,enum_name
 		,enum_name
 		);
+
+	fprintf_filename("is_comptime_param.h",
+		"template <> constexpr bool IsParam<%s>()               {return false;}\n"       
+		"template <> constexpr bool IsParam<%sParam>()          {return true;}\n"  
+		"template <> constexpr bool IsParam<%sArrayParam>()     {return true;}\n"
+		"template <> constexpr bool IsParam<%sCompArrayParam>() {return true;}\n"
+		"template <> constexpr bool IsParam<%sCompParam>()      {return true;}\n"
+		,datatype_scalar
+		,enum_name
+		,enum_name
+		,enum_name
+		,enum_name
+		);
+
 
 	fprintf_filename("is_array_param.h",
 		"constexpr static bool UNUSED IsArrayParam(const %s&)               {return false;}\n"       
@@ -6828,6 +6842,10 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
 
   fprintf_filename("is_comptime_param.h","%s","#pragma once\n");
+  fprintf_filename("is_comptime_param.h",
+  	"template <typename P> constexpr bool IsCompParam()               {return false;}\n"       
+  	"template <typename P> constexpr bool IsParam()                   {return false;}\n"       
+  );
   {
 	FILE* fp_runtime = fopen("user_defines_runtime_lib.h","w");
   	for (size_t i = 0; i < datatypes.size; ++i)

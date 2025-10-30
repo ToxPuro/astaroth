@@ -1336,17 +1336,12 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start
   void
   acPushToConfig(AcMeshInfo& config, P param, V val)
   {
-	  static_assert(!std::is_same<P,int>::value);
-	  static_assert(!std::is_same<P,AcReal>::value);
-	  static_assert(!std::is_same<P,AcReal3>::value);
-	  static_assert(!std::is_same<P,bool>::value);
-	  static_assert(!std::is_same<P,AcBool3>::value);
-	  if constexpr(IsCompParam(param))
+	  if constexpr(IsCompParam<decltype(param)>())
 	  {
 	  	  config.run_consts.config[param] = val;
 	  	  config.run_consts.is_loaded[param] = true;
 	  }
-	  else
+	  else if constexpr(IsParam<decltype(param)>())
 	  {
 		  config[param] = val;
 		  config.is_loaded[param] = true;
