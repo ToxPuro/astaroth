@@ -1992,9 +1992,19 @@ id_to_arr_index(const int3 vec)
 {return id_to_arr_index(vec.x,vec.y,vec.z);}
 
 AcTaskGraph*
-acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_ops, const Volume start_in, const Volume end_in, const bool globally_imposed_bcs)
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size_t n_ops, const Volume start_in, const Volume end_in, const bool globally_imposed_bcs)
 { 
 
+    std::vector<AcTaskDefinition> ops_in{};
+    for(size_t i = 0; i < n_ops; ++i)
+    {
+            auto op = ops_in_array[i];
+            if(!op.given_launch_bounds)
+            {
+         	   op.start = start_in;
+         	   op.end   = end_in;
+            }
+    }
     // ERRCHK(grid.initialized);
     std::vector<AcTaskDefinition> ops{};
     //TP: insert reduce tasks in between of tasks
@@ -2148,13 +2158,8 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 
 	ERRCHK_ALWAYS(to_int3(end_in) >= to_int3(start_in));
 	ERRCHK_ALWAYS(to_int3(op.end) >= to_int3(op.start));
-        const Volume dims = 
-			    op.given_launch_bounds ?
-			    op.end-op.start :
-			    end_in-start_in;
-	const Volume start =
-				op.given_launch_bounds ?
-				op.start : start_in;
+	const Volume dims  = op.end-op.start;
+	const Volume start = op.start;
 
         op_indices.push_back(graph->all_tasks.size());
 
