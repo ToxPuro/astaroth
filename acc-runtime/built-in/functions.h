@@ -509,6 +509,15 @@ alog(real a)
 	return log(a)
 }
 
+/*
+ * Modulo function as defined in the Fortran standard
+ */
+mod(a,p)
+{
+	return a - (int(a/p)*p)
+}
+
+
 
 //inline any(b) {return b.x || b.y || b.z}
 //inline all(b) {return b.x && b.y && b.z}
