@@ -39,9 +39,9 @@ struct safe_array
 		(void)index;
 		return val[0];
 	}
-}
+};
 
-safe_array<AcReal> AcReal AC_INTERNAL_run_const_AcReal_array_here{};
+safe_array<AcReal> AC_INTERNAL_run_const_AcReal_array_here{};
 safe_array<AcReal> AC_INTERNAL_run_const_array_here{};
 safe_array<bool>   AC_INTERNAL_run_const_bool_array_here{};
 safe_array<int>    AC_INTERNAL_run_const_int_array_here{};
