@@ -2789,6 +2789,7 @@ remove_suffix_intern(const char* src, const char* suffix)
 	char* tmp = strdup(src);
 	remove_suffix(tmp,suffix);
 	const char* res = intern(tmp);
+	free(tmp);
 	return res;
 }
 void
@@ -4516,8 +4517,8 @@ replace_boolean_dconsts_in_optimized(ASTNode* node, const string_vec* vals, stri
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
+	const int combinations_index = get_suffix_int(fn_identifier->buffer,"_optimized_");
 	const char* kernel_name = remove_suffix_intern(fn_identifier->buffer,"_optimized_");
-	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
 	if(combinations_index == -1)
 		return;
