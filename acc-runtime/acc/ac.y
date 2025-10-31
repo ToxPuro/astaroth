@@ -689,7 +689,6 @@ int
 main(int argc, char** argv)
 {
     atexit(&cleanup);
-    string_vec filenames = VEC_INITIALIZER;
     char* file = NULL;
     ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-1]);
     RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-2]),"1"); 
