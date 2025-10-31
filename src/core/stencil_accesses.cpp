@@ -30,20 +30,31 @@ bool should_reduce_int[1000] = {false};
 #define AcComplex(x,y)   (AcComplex){x,y}
 #include "user_defines.h"
 #include <array>
-AcReal AC_INTERNAL_run_const_AcReal_array_here[2000]{};
-AcReal AC_INTERNAL_run_const_array_here[2000]{};
-bool   AC_INTERNAL_run_const_bool_array_here[2000]{};
-int    AC_INTERNAL_run_const_int_array_here[2000]{};
-float  AC_INTERNAL_run_const_float_array_here[2000]{};
-AcComplex    AC_INTERNAL_run_const_AcComplex_array_here[2000]{};
+template <typename T>
+struct safe_array
+{
+	T val[1];
+	T& operator[](const int index)
+	{
+		(void)index;
+		return val[0];
+	}
+}
 
-AcReal*
+safe_array<AcReal> AcReal AC_INTERNAL_run_const_AcReal_array_here{};
+safe_array<AcReal> AC_INTERNAL_run_const_array_here{};
+safe_array<bool>   AC_INTERNAL_run_const_bool_array_here{};
+safe_array<int>    AC_INTERNAL_run_const_int_array_here{};
+safe_array<float>  AC_INTERNAL_run_const_float_array_here{};
+safe_array<AcComplex>    AC_INTERNAL_run_const_AcComplex_array_here{};
+
+safe_array<AcReal>
 RCONST(AcRealCompArrayParam)
 {
        return AC_INTERNAL_run_const_AcReal_array_here;
 }
 
-bool*
+safe_array<bool>
 RCONST(AcBoolCompArrayParam)
 {
        return AC_INTERNAL_run_const_bool_array_here;
