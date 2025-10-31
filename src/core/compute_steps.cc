@@ -353,13 +353,14 @@ get_dynamic_info(const AcDSLTaskGraph graph)
 	std::vector<KernelAnalysisInfo> info{};
 	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
 	{
+		const AcKernel kernel = get_optimized_kernel(graph,false,call_index);
 		VertexBufferArray vba{};
 		const auto loader = get_loader(graph,call_index);
         	acKernelInputParams params{};
-		ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
+		ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel};
     		loader(p);
 		vba.on_device.kernel_input_params = params;
-		info.push_back(get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel_calls[call_index],vba.on_device.kernel_input_params));
+		info.push_back(get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel,vba.on_device.kernel_input_params));
 	}
 	return info;
 }
