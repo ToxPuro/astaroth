@@ -720,6 +720,8 @@ AC_INTERNAL_read_vtxbuf(const Field& field, const int x, const int y, const int 
 	{
 		if(field >= NUM_FIELDS) return AcReal(1.0);
 	}
+	const int field_index = (int)field;
+	if(field_index < 0) return AcReal(1.0);
 	stencils_accessed[field][stencil_value_stencil] |= 
 							index_at_boundary(x,y,z) ? AC_IN_BOUNDS_READ : AC_OUT_OF_BOUNDS_READ;
 	return AcReal(1.0);
