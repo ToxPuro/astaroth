@@ -496,14 +496,20 @@ get_allocating_types()
 	}
 	return allocating_types;
 }
+const char*
+remove_substring_intern(const char* src, const char* to_remove)
+{
+	char* tmp = strdup(src);
+	remove_substring(tmp,to_remove);
+	const char* res = intern(tmp);
+	free(tmp);
+	return res;
+}
 bool is_allocating_type(const char* type)
 {
 	if(strstr(type,"*"))
 	{
-
-		const char* tmp = intern(remove_substring(strdup(type),"*"));
-		const bool res = consists_of_types(get_allocating_types(),tmp);
-		return res;
+		return consists_of_types(get_allocating_types(),remove_substring_intern(type,"*"));
 	}
 	return consists_of_types(get_allocating_types(),type);
 }
@@ -2168,6 +2174,13 @@ n_occurances(const char* str, const char test)
 	while(str[++i] != '\0') res += str[i] == test;
 	return res;
 }
+const char*
+intern_and_free(char* tmp)
+{
+	const char* res = intern(tmp);
+	free(tmp);
+	return res;
+}
 
 const char*
 get_array_elem_type(const char* arr_type_in)
@@ -2184,7 +2197,7 @@ get_array_elem_type(const char* arr_type_in)
 		arr_type[end] = '\0';
 		char* tmp = malloc(sizeof(char)*1000);
 		strcpy(tmp, &arr_type[start]);
-		return intern(tmp);
+		return intern_and_free(tmp);
 	}
 	return intern(arr_type);
 }
@@ -3989,8 +4002,17 @@ void
 get_reduce_info(const ASTNode* node)
 {
 	TRAVERSE_PREAMBLE(get_reduce_info);
+	if(node->type == NODE_TASKGRAPH_DEF) return;
 	if(node->type & NODE_FUNCTION)
-		get_reduce_info_in_func(node,&reduce_infos[str_vec_get_index(calling_info.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer)]);
+	{
+		const int index = str_vec_get_index(calling_info.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+		if(index == -1) 
+		{
+			fatal("DID NOT FIND: %s\n",get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+		}
+		get_reduce_info_in_func(node,&reduce_infos[index]);
+	}
+
 }
 
 void
@@ -9396,12 +9418,14 @@ canonalize_assignments(ASTNode* node)
 	if(!(node->type & NODE_ASSIGNMENT)) return;
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
-	char* op = strdup(node->rhs->lhs->buffer);
+	const char* op = node->rhs->lhs->buffer;
 	if(strcmps(op,MEQ_STR,MINUSEQ_STR,AEQ_STR,DEQ_STR,MODEQ_STR))   return;
 	if(count_num_of_nodes_in_list(node->rhs->rhs) != 1)   return;
 	ASTNode* assign_expression = node->rhs->rhs->lhs;
-	remove_substring(op,EQ_STR);
-	ASTNode* binary_expression = create_binary_expression(node->lhs, assign_expression, op);
+	char* op_modified = strdup(op);
+	remove_substring(op_modified,EQ_STR);
+	ASTNode* binary_expression = create_binary_expression(node->lhs, assign_expression, op_modified);
+	free(op_modified);
 	ASTNode* assignment        = create_assignment(node->lhs, binary_expression, EQ_STR); 
 	assignment->parent = node->parent;
 	node->parent->lhs = assignment;

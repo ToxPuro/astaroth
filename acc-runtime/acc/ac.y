@@ -271,6 +271,7 @@ get_preprocessed_file(const char* filename, char* file_buf)
 	}
 	fclose(in);
         fclose(out);
+	free(buf);
         return fmemopen(file_buf,strlen(file_buf),"r");
 }
 

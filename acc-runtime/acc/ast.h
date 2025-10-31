@@ -875,7 +875,7 @@ build_list_node(const node_vec nodes, const char* separator)
 	for(size_t i = 1; i < nodes.size; ++i)
 	{
 		list_head = astnode_create(NODE_UNKNOWN,list_head, astnode_dup(nodes.data[i],NULL));
-		list_head->buffer = strdup(separator);
+		list_head->buffer = intern(separator);
 	}
 	return list_head;
 }
