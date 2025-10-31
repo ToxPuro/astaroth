@@ -505,6 +505,7 @@ remove_substring_intern(const char* src, const char* to_remove)
 	free(tmp);
 	return res;
 }
+
 bool is_allocating_type(const char* type)
 {
 	if(strstr(type,"*"))
@@ -2144,7 +2145,7 @@ get_const_array_var_dims(const char* name, const ASTNode* root)
 const char*
 get_internal_array_name(const Symbol* sym)
 {
-	const char* datatype_scalar = intern(remove_substring(strdup(sym->tspecifier),"*"));
+	const char* datatype_scalar = remove_substring_intern(sym->tspecifier,"*");
     	if(str_vec_contains(sym->tqualifiers,DEAD_STR,RUN_CONST_STR))
     	{
 	    return sprintf_intern("AC_INTERNAL_run_const_%s_array_here",datatype_scalar);
@@ -4546,7 +4547,7 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	{
 		if(type && strstr(type,"*") && gen_mem_accesses)
 		{
-			const char* datatype_scalar = intern(remove_substring(strdup(type),MULT_STR));
+			const char* datatype_scalar = remove_substring_intern(type,MULT_STR);
 			astnode_sprintf(node,"AC_INTERNAL_run_const_%s_array_here",datatype_scalar);
 			return;
 		}
@@ -5309,7 +5310,7 @@ get_array_access_type(const ASTNode* node)
 	return (!base_type)   ? NULL : 
 		counter == 2 && base_type == MATRIX_STR ? REAL_STR :
 		base_type == MATRIX_STR ? REAL_PTR_STR:
-		strstr(base_type,MULT_STR) ? intern(remove_substring(strdup(base_type),MULT_STR)) :
+		strstr(base_type,MULT_STR) ? remove_substring_intern(base_type,MULT_STR) :
 		strstr(base_type,"AcArray") ? get_array_elem_type(base_type) :
 		base_type == FIELD_STR  ? REAL_STR :
 		base_type == REAL3_STR ? REAL_STR :
@@ -5628,7 +5629,7 @@ get_in_range_expr_type(ASTNode* node)
 {
 	const char* base_type = get_expr_type(node->rhs);
 	const char* res = (!base_type)   ? NULL : 
-		strstr(base_type,MULT_STR) ? intern(remove_substring(strdup(base_type),MULT_STR)) :
+		strstr(base_type,MULT_STR) ? remove_substring_intern(base_type,MULT_STR) :
 		strstr(base_type,"AcArray") ? get_array_elem_type(base_type) :
 		NULL;
 	if(!node->lhs->expr_type)
@@ -5981,7 +5982,7 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 		const ASTNode* array_initializer  = get_node(NODE_ARRAY_INITIALIZER, assignment);
 		const ASTNode* array_access       = get_node(NODE_ARRAY_ACCESS, def->lhs);
 		const char* datatype = tspec->lhs->buffer;
-		const char* datatype_scalar = intern(remove_substring(strdup(datatype),MULT_STR));
+		const char* datatype_scalar = remove_substring_intern(datatype,MULT_STR);
 		//TP: the C++ compiler is not always able to use the structs if you don't have the conversion from the initializer list
 		//TP: e.g. multiplying a matrix with a scalar won't work without the conversion
 		if(struct_initializer && !array_initializer)
@@ -9311,7 +9312,7 @@ expand_allocating_types_base(ASTNode* node)
                 {
                         ASTNode* decl = astnode_create((NODE_DECLARATION | NODE_GLOBAL),
                                         create_type_declaration_with_qualifiers(tquals,
-						intern(remove_substring(strdup(type),"*"))),
+						remove_substring_intern(type,"*")),
                                         astnode_dup(id_nodes.data[i],NULL)
                                         );
                         ASTNode* res_node = astnode_create(NODE_UNKNOWN,decl,NULL);
@@ -9329,7 +9330,7 @@ expand_allocating_types_base(ASTNode* node)
 
 		if(type == FIELD_STR) type = FIELD_PTR_STR;
                 ASTNode* type_declaration = create_type_declaration("const",
-			is_output ? sprintf_intern("%sOutputParam*", intern(remove_substring(strdup(type),"*"))) : sprintf_intern("%s",type)
+			is_output ? sprintf_intern("%sOutputParam*", remove_substring_intern(type,"*")) : sprintf_intern("%s",type)
 		);
 
                 ASTNode* const_declaration = create_const_declaration(arr_initializer,field_name_str,type_declaration);
@@ -9422,10 +9423,8 @@ canonalize_assignments(ASTNode* node)
 	if(strcmps(op,MEQ_STR,MINUSEQ_STR,AEQ_STR,DEQ_STR,MODEQ_STR))   return;
 	if(count_num_of_nodes_in_list(node->rhs->rhs) != 1)   return;
 	ASTNode* assign_expression = node->rhs->rhs->lhs;
-	char* op_modified = strdup(op);
-	remove_substring(op_modified,EQ_STR);
+	const char* op_modified = remove_substring_intern(op,EQ_STR);
 	ASTNode* binary_expression = create_binary_expression(node->lhs, assign_expression, op_modified);
-	free(op_modified);
 	ASTNode* assignment        = create_assignment(node->lhs, binary_expression, EQ_STR); 
 	assignment->parent = node->parent;
 	node->parent->lhs = assignment;
