@@ -11010,64 +11010,9 @@ unroll_constant_loops(ASTNode* node)
 	    	replace_node(node,res);
 	}
 }
-
 void
-generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool ELIMINATE_CONDITIONALS, const bool runtime_compilation)
-{ 
-  symboltable_reset();
-  reset_dfunc_cache = true;
-  ASTNode* root = astnode_dup(root_in,NULL);
-  get_field_order(root);
-  check_uniquenes(root,NODE_DFUNCTION,"function");
-  check_uniquenes(root,NODE_KFUNCTION,"kernel");
-  check_uniquenes(root,NODE_STENCIL,"stencil");
-  s_info = read_user_structs(root);
-  e_info = read_user_enums(root);
-  gen_type_info(root);
-
-
-
-  fold_const_int_addition(root);
-  unroll_constant_loops(root);
-
-  gen_constexpr_info(root,gen_mem_accesses);
-  if(gen_mem_accesses)
-  {
-  	//gen_ssa_in_basic_blocks(root);
-	//remove_dead_writes(root);
-  }
-
-  {
-  	traverse_base_params params;
-  	memset(&params,0,sizeof(params));
-  	params.do_checks = true;
-  	traverse_base(root, 0, NULL, params);
-  }
-  gen_reduce_info(root);
-  gen_kernel_reduce_outputs();
-
-  num_profiles = count_profiles();
-  check_global_array_dimensions(root);
-  gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses,get_field_dims(root));
-  gen_profile_reads(root,gen_mem_accesses);
-
-
-  // Fill the symbol table
-  generate_error_messages();
-
-
-  // print_symbol_table();
-
-  // Generate user_kernels.h
-  fprintf(stream, "#pragma once\n");
-
-
-
-
-
-  // Device constants
-  // gen_dconsts(root, stream);
-  {
+generate_fields_info(const ASTNode* root)
+{
           FILE* fp = fopen("fields_info.h","w");
           gen_field_info(fp);
 
@@ -11160,11 +11105,11 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	  free_str_vec(&field_halos);
 	  free_str_vec(&field_dims);
 	  fclose(fp);
-
-
-	  symboltable_reset();
-  	  traverse(root, NODE_NO_OUT, NULL);
-	  string_vec datatypes = get_all_datatypes();
+}
+void
+gen_array_infos(const ASTNode* root, const bool gen_mem_accesses)
+{
+	  const string_vec datatypes = get_all_datatypes();
 
   	  FILE* fp_info = fopen("array_info.h","w");
   	  fprintf(fp_info,"\n #ifdef __cplusplus\n");
@@ -11188,15 +11133,103 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 		copy_file("dconst_arrays_decl.h","cpu_dconst_arrays_decl.h");
 		copy_file("gmem_arrays_decl.h","cpu_gmem_arrays_decl.h");
 	  }
-  }
-  gen_array_qualifiers(root);
+}
+void
+generate_minimized_code(ASTNode* root, const bool gen_mem_accesses)
+{
+		//TP: known to break code TODO: fix it!
+		//Breaks cosmicray sample in PC
+  		//eval_conditionals(root,root);
+  	      	gen_constexpr_info(root,gen_mem_accesses);
+  	        bool eliminated_something = true;
+  	        while(eliminated_something)
+  	        {
+  	        	eliminated_something = eliminate_conditionals(root,gen_mem_accesses);
+  	        	remove_dead_writes(root);
+  	      		gen_constexpr_info(root,gen_mem_accesses);
+  	        }
 
+  	        FILE* fp = fopen("ac_minimized_code.ac.raw","w");
+  	        symboltable_reset();
+  	        traverse_base_params traverse_params;
+  	        memset(&traverse_params,0,sizeof(traverse_base_params));
+  	        traverse_params.to_DSL= true;
+  	        traverse_base(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL, traverse_params);
+  	        char** dfunc_strs = get_dfunc_strs(root,traverse_params);
+  	        for(size_t i = 0; i < num_dfuncs; ++i)
+  	        {
+  	              fprintf(fp,"%s\n",dfunc_strs[i]);
+  	              free(dfunc_strs[i]);
+  	        }
+  	         free(dfunc_strs);
+
+  	        // Kernels
+  	         symboltable_reset();
+  	        traverse_base(root,
+  	          NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
+  	              NODE_HOSTDEFINE | NODE_NO_OUT,
+  	          fp,traverse_params);
+  	        fclose(fp);
+  	        format_source("ac_minimized_code.ac.raw","ac_minimized_code.ac");
+  	        printf("Wrote minimized code in ac_minimized_code.ac\n");
+
+  		//TP: these are redone after code elimination to get more accurate static information
+		gen_calling_info(root);
+}
+
+void
+generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool ELIMINATE_CONDITIONALS, const bool runtime_compilation)
+{ 
+  symboltable_reset();
+  reset_dfunc_cache = true;
+  ASTNode* root = astnode_dup(root_in,NULL);
+  get_field_order(root);
+  check_uniquenes(root,NODE_DFUNCTION,"function");
+  check_uniquenes(root,NODE_KFUNCTION,"kernel");
+  check_uniquenes(root,NODE_STENCIL,"stencil");
+  s_info = read_user_structs(root);
+  e_info = read_user_enums(root);
+  gen_type_info(root);
+
+
+
+  fold_const_int_addition(root);
+  unroll_constant_loops(root);
+
+  gen_constexpr_info(root,gen_mem_accesses);
+  if(gen_mem_accesses)
+  {
+  	//gen_ssa_in_basic_blocks(root);
+	//remove_dead_writes(root);
+  }
+
+  {
+  	traverse_base_params params;
+  	memset(&params,0,sizeof(params));
+  	params.do_checks = true;
+  	traverse_base(root, 0, NULL, params);
+  }
+  gen_reduce_info(root);
+  gen_kernel_reduce_outputs();
+
+  num_profiles = count_profiles();
+  check_global_array_dimensions(root);
+  gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses,get_field_dims(root));
+  gen_profile_reads(root,gen_mem_accesses);
+
+  generate_error_messages();
+
+  // Generate user_kernels.h
+  fprintf(stream, "#pragma once\n");
+
+  generate_fields_info(root);
+  symboltable_reset();
+  traverse(root, NODE_NO_OUT, NULL);
+  gen_array_infos(root,gen_mem_accesses);
 
   // Stencils
   check_for_undeclared_functions(root,root);
   check_for_input_use_in_other_than_computesteps(root,NULL);
-  
-
 
   gen_type_info(root);
   cache_func_calls(root);
@@ -11237,44 +11270,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   {
   	if(!gen_mem_accesses && executed_nodes.size > 0 && optimize_mem_accesses && ELIMINATE_CONDITIONALS)
   	{
-		//TP: known to break code TODO: fix it!
-		//Breaks cosmicray sample in PC
-  		//eval_conditionals(root,root);
-  	      	gen_constexpr_info(root,gen_mem_accesses);
-  	        bool eliminated_something = true;
-  	        while(eliminated_something)
-  	        {
-  	        	eliminated_something = eliminate_conditionals(root,gen_mem_accesses);
-  	        	remove_dead_writes(root);
-  	      		gen_constexpr_info(root,gen_mem_accesses);
-  	        }
-
-  	        FILE* fp = fopen("ac_minimized_code.ac.raw","w");
-  	        symboltable_reset();
-  	        traverse_base_params traverse_params;
-  	        memset(&traverse_params,0,sizeof(traverse_base_params));
-  	        traverse_params.to_DSL= true;
-  	        traverse_base(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL, traverse_params);
-  	        char** dfunc_strs = get_dfunc_strs(root,traverse_params);
-  	        for(size_t i = 0; i < num_dfuncs; ++i)
-  	        {
-  	              fprintf(fp,"%s\n",dfunc_strs[i]);
-  	              free(dfunc_strs[i]);
-  	        }
-  	         free(dfunc_strs);
-
-  	        // Kernels
-  	         symboltable_reset();
-  	        traverse_base(root,
-  	          NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
-  	              NODE_HOSTDEFINE | NODE_NO_OUT,
-  	          fp,traverse_params);
-  	        fclose(fp);
-  	        format_source("ac_minimized_code.ac.raw","ac_minimized_code.ac");
-  	        printf("Wrote minimized code in ac_minimized_code.ac\n");
-
-  		//TP: these are redone after code elimination to get more accurate static information
-		gen_calling_info(root);
+		generate_minimized_code(root,gen_mem_accesses);
   	}
 
 	//TP: done after possible code elimination to have the most accurate static information
@@ -11288,7 +11284,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
         resolve_profile_stencils(root);
         gen_stencils(gen_mem_accesses,optimize_mem_accesses,stream);
 
-  	//TP: done after code elimination for the code written to ac_minimized to be valid DSL
   	traverse(root, NODE_NO_OUT, NULL);
   	gen_kernel_postfixes(root,gen_mem_accesses);
 
@@ -11313,15 +11308,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	{
 		generate_executed_nodes(root,gen_mem_accesses,stream);
   	}
-
-
-  	// print_symbol_table();
-  	//free(written_fields);
-  	//free(read_fields);
-  	//free(field_has_stencil_op);
-  	//written_fields       = NULL;
-  	//read_fields          = NULL;
-  	//field_has_stencil_op = NULL;
   }
 
 
