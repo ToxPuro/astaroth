@@ -40,7 +40,7 @@ static int ac_pid()
 #define fatal(MESSAGE, ...) \
         { \
 	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
-	exit(EXIT_FAILURE); \
+	abort(); \
 	} 
 
 static bool
@@ -1475,7 +1475,7 @@ get_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vect
 	return level_sets;
 }
 static std::array<std::vector<int3>,NUM_FIELDS>
-get_field_ray_directions(const std::vector<AcKernel> kernels,const KernelAnalysisInfo* info)
+get_field_ray_directions(const std::vector<AcKernel> kernels,const std::vector<KernelAnalysisInfo> info)
 {
 
 	std::array<std::vector<int3>,NUM_FIELDS> field_ray_directions{};
@@ -1519,7 +1519,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);
 	std::array<bool,NUM_FIELDS> field_written_out_before{};
-	const auto field_ray_directions = get_field_ray_directions(kernel_calls,info.data());
+	const auto field_ray_directions = get_field_ray_directions(kernel_calls,info);
 	for(size_t current_level_set_index = 0; current_level_set_index < level_sets.size(); ++current_level_set_index)
 	{
 		const auto& current_level_set = level_sets[current_level_set_index];
@@ -1579,9 +1579,10 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		}
 
 		std::vector<Field> input_fields_not_communicated{};
-		for(auto& call : current_level_set.calls)
+		for(size_t i = 0; i < current_level_set.calls.size(); ++i)
 		{
-			auto fields = get_kernel_fields(call.kernel,info.data()[call.kernel]);
+			const auto& call = current_level_set.calls[i];
+			auto fields = get_kernel_fields(call.kernel,current_level_set.infos[i]);
 			for(auto& field : fields.in)
 			{
 				if(std::find(current_level_set.fields_communicated_before.begin(), current_level_set.fields_communicated_before.end(), field) == current_level_set.fields_communicated_before.end())
@@ -1612,7 +1613,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 			if(call.kernel == AC_NULL_KERNEL) continue;
 			res.push_back(gen_taskgraph_kernel_entry(call,current_level_set_index+1,stream,current_level_set.infos[i]));
 			for(size_t field = 0; field < NUM_FIELDS; ++field)
-				field_written_out_before[field] |= info[call.kernel].written_fields[field];
+				field_written_out_before[field] |= current_level_set.infos[i].written_fields[field];
 
 		}
 
