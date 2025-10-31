@@ -2783,6 +2783,14 @@ count_profiles()
   return res;
 }
 
+const char*
+remove_suffix_intern(const char* src, const char* suffix)
+{
+	char* tmp = strdup(src);
+	remove_suffix(tmp,suffix);
+	const char* res = intern(tmp);
+	return res;
+}
 void
 gen_kernel_structs(ASTNode* root)
 {
@@ -2822,14 +2830,12 @@ gen_kernel_structs(ASTNode* root)
 			{
 				const func_params_info info = infos[k];
 				const char* name = names.data[k];
-				char* params_name = strdup(name);
-	        		remove_suffix(params_name,"_optimized_");
 				if(!str_vec_eq(infos[k].types,types)) continue;
 				fprintf(fp,"if(kernel == %s){ \n",name);
 				for(size_t j = 0; j < types.size; ++j)
 				{
 					fprintf(fp,"params.%s.%s = p_%ld;\n",
-							params_name,combine_all_new(info.expr_nodes.data[j]),j
+							remove_suffix_intern(name,"_optimized_"),combine_all_new(info.expr_nodes.data[j]),j
 							);
 				}
 				fprintf(fp,"return AC_SUCCESS;}\n");
@@ -3511,10 +3517,7 @@ write_dfunc_bc_kernel(const char* prefix, const char* func_name,const func_param
 
 	//TP: in bc call params jump over boundary
 	const int call_param_offset = 0;
-	char* tmp = strdup(func_name);
-	remove_suffix(tmp,"__AC_INTERNAL_NUMBERING");
-	const char* dfunc_name = intern(tmp);
-	free(tmp);
+	const char* dfunc_name = remove_suffix_intern(func_name,"__AC_INTERNAL_NUMBERING");
 	const size_t num_of_rest_params = call_info.types.size;
 	fprintf(fp,"Kernel %s_%s()\n{\n",prefix,func_name);
 	fprintf(fp,"\t%s(",dfunc_name);
@@ -3598,10 +3601,8 @@ make_unique_bc_calls(ASTNode* node)
 		ASTNode* identifier = (ASTNode*) get_node_by_token(IDENTIFIER, func_calls.data[i]);
 		const char* func_name = identifier->buffer;
 		if(func_name == PERIODIC) continue;
-		char* tmp = strdup(identifier->buffer);
-	        remove_suffix(tmp,"_AC_MANGLED_NAME");
-		astnode_sprintf(identifier,"%s__AC_INTERNAL_NUMBERING__%zu",tmp,i);
-		free(tmp);
+		astnode_sprintf(identifier,"%s__AC_INTERNAL_NUMBERING__%zu"
+				,remove_suffix_intern(identifier->buffer,"_AC_MANGLED_NAME"),i);
 	}
 	free_node_vec(&func_calls);
 }
@@ -4515,9 +4516,8 @@ replace_boolean_dconsts_in_optimized(ASTNode* node, const string_vec* vals, stri
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
-	char* kernel_name = strdup(fn_identifier->buffer);
+	const char* kernel_name = remove_suffix_intern(fn_identifier->buffer,"_optimized_");
 	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
-	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
 	if(combinations_index == -1)
 		return;
@@ -4537,10 +4537,9 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
-	char* kernel_name = strdup(fn_identifier->buffer);
+	const char* kernel_name = remove_suffix_intern(fn_identifier->buffer,"_optimized_");
 	if(strstr(kernel_name,"MONOMORPHIZED")) return;
 	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
-	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,intern(kernel_name));
 	const char* type = get_expr_type(node);
 	if(combinations_index == -1)
@@ -4706,10 +4705,7 @@ translate_buffer_body(FILE* stream, const ASTNode* node, const bool to_DSL)
     {
       if(to_DSL) 
       {
-	char* out = strdup(node->buffer);
-	remove_suffix(out,"_AC_MANGLED");
-      	fprintf(stream, "%s", out);
-	free(out);
+      	fprintf(stream, "%s", remove_suffix_intern(node->buffer,"_AC_MANGLED"));
       }
       else
       {
@@ -8270,10 +8266,7 @@ compatible_types(const char* a, const char* b)
 	if(b && strstr(b,"AcArray") && a && strstr(a,"*"))
 	{
 		const char* scalar_type = get_array_elem_type(b);
-		char* tmp = strdup(a);
-		remove_suffix(tmp,"*");
-		const char* ptr_scalar_type = intern(tmp);
-		free(tmp);
+		const char* ptr_scalar_type = remove_suffix_intern(a,"*");
 		if(scalar_type == ptr_scalar_type) return true;
 	}
 	const bool res = !strcmp(a,b) 
@@ -8552,9 +8545,7 @@ turn_array_type_to_scalar_type(ASTNode* node)
 		 type = get_array_elem_type(type);
 	else
 	{
-		char* new_type = strdup(type);
-		remove_suffix(new_type,"*");
-		type = intern(new_type);
+		type = remove_suffix_intern(type,"*");
 	}
 	node->expr_type = type;
 	while(node->parent && !(node->type & NODE_EXPRESSION))

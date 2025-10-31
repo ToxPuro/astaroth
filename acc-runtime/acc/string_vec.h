@@ -59,6 +59,7 @@ push(string_vec* dst, const char* src)
 	if(dst->capacity == 0)
 	{
 		dst->capacity = 4;
+		free(dst -> data);
 		dst->data = (const char**)malloc(sizeof(char*)*dst->capacity);
 	}
 	/**
