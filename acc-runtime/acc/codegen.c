@@ -6674,7 +6674,6 @@ gen_field_info(FILE* fp)
 	gen_dlsym(fp,func_name);
 	free(func_name);
   }
-  fclose(fp);
 }
 // Generate User Defines
 const char*
