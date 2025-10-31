@@ -302,36 +302,42 @@ call_all_user_loaders(ParamLoadingInfo p)
 }
 **/
 
+static AcKernel
+get_optimized_kernel(const AcDSLTaskGraph graph, const bool filter_unnecessary_ones, const int call_index)
+{
+	VertexBufferArray vba{};
+	const auto loader = get_loader(graph,call_index);
+	auto kernel_calls = DSLTaskGraphKernels[graph];
+	
+	//TP: doing this with a separate local variable as here
+	//    is for some reason safer with the NVCC compiler
+        acKernelInputParams params{};
+	ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
+    	loader(p);
+	vba.on_device.kernel_input_params = params;
+
+	const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
+	const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),optimized_kernel,params);
+	if(filter_unnecessary_ones)
+	{
+		auto outputs = get_kernel_outputs(optimized_kernel,info);
+		if(outputs.fields.out.size() == 0 && outputs.profiles.write_out.size() == 0 && outputs.profiles.reduce_out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
+		{
+			return AC_NULL_KERNEL;
+		}
+	}
+	return optimized_kernel;
+}
+
 
 static std::vector<AcKernel>
 get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_ones)
 {
-	auto kernel_calls = DSLTaskGraphKernels[graph];
 	std::vector<AcKernel> res{};
+	auto kernel_calls = DSLTaskGraphKernels[graph];
 	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
 	{
-		VertexBufferArray vba{};
-		const auto loader = get_loader(graph,call_index);
-		
-		//TP: doing this with a separate local variable as here
-		//    is for some reason safer with the NVCC compiler
-        	acKernelInputParams params{};
-		ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
-    		loader(p);
-		vba.on_device.kernel_input_params = params;
-
-		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
-		const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),optimized_kernel);
-		if(filter_unnecessary_ones)
-		{
-			auto outputs = get_kernel_outputs(optimized_kernel,info);
-			if(outputs.fields.out.size() == 0 && outputs.profiles.write_out.size() == 0 && outputs.profiles.reduce_out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
-			{
-				res.push_back(AC_NULL_KERNEL);
-				continue;
-			}
-		}
-		res.push_back(optimized_kernel);
+		res.push_back(get_optimized_kernel(graph,filter_unnecessary_ones,call_index));
 	}
 	return res;
 }
