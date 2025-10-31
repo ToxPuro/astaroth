@@ -6479,6 +6479,8 @@ get_ray_directions(const ASTNode* node)
 	return res;
 }
 
+#define MAX_FIELDS (10000)
+
 static void
 gen_field_info(FILE* fp)
 {
@@ -6488,11 +6490,11 @@ gen_field_info(FILE* fp)
   // Enums
   int num_of_communicated_fields=0;
   size_t num_of_fields=0;
-  bool field_is_auxiliary[256];
-  bool field_is_communicated[256];
-  bool field_is_device_only[256];
-  bool field_is_dead[256];
-  bool field_has_variable_dims[256];
+  bool field_is_auxiliary[MAX_FIELDS];
+  bool field_is_communicated[MAX_FIELDS];
+  bool field_is_device_only[MAX_FIELDS];
+  bool field_is_dead[MAX_FIELDS];
+  bool field_has_variable_dims[MAX_FIELDS];
   size_t num_of_alive_fields=0;
   string_vec field_names = VEC_INITIALIZER;
   string_vec original_names = VEC_INITIALIZER;
