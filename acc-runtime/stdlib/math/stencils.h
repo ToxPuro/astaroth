@@ -349,6 +349,7 @@ elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil(f)}
 elemental gaussian_smooth_inplace(Field f)
 {
 	val = gaussian_smooth(f)
+	val = 0.0
 	res = 
 	  f[vertexIdx.x-3][vertexIdx.y-3][vertexIdx.z-3] * 2.7212025766230546e-05+
 	  f[vertexIdx.x-3][vertexIdx.y-3][vertexIdx.z-2] * 9.497930249143296e-05+
