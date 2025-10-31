@@ -550,7 +550,7 @@ typedef struct
 } KernelCall;
 
 static AcTaskDefinition
-gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream, const KernelAnalysisInfo* info);
+gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream, const KernelAnalysisInfo info);
 
 static void
 check_field_boundconds(const FieldBCs field_boundconds, const std::vector<Field> fields,
@@ -1047,6 +1047,7 @@ typedef struct
 	std::vector<Field> fields_communicated_before;
 	std::array<std::array<bool,NUM_FIELDS>,27> communicated_regions;
 	std::array<facet_class_range,NUM_FIELDS> halo_types;
+	std::vector<KernelAnalysisInfo> infos;
 } level_set;
 
 
@@ -1262,11 +1263,13 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 	for(int level_set_index = 0; level_set_index < n_level_sets; ++level_set_index)
 	{
 		std::vector<KernelCall> level_set_calls{};
+		std::vector<KernelAnalysisInfo> level_set_infos{};
 		for(size_t call = 0; call < kernel_calls.size(); ++call) 
 		{
 			if(call_level_set[call] == level_set_index)
 			{
 				level_set_calls.push_back((KernelCall){kernel_calls[call], get_loader(graph,call)});
+				level_set_infos.push_back(info[call]);
 			}
 
 		}
@@ -1299,7 +1302,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 			halo_types[i] = (facet_class_range){1,halo_types_level_set[i][level_set_index]};
 		}
 
-		level_sets.push_back((level_set){level_set_calls,tmp,regions,halo_types});
+		level_sets.push_back((level_set){level_set_calls,tmp,regions,halo_types,level_set_infos});
 	}
 	return level_sets;
 }
@@ -1449,6 +1452,27 @@ get_field_ray_directions(const std::vector<AcKernel> kernels,const KernelAnalysi
 	return field_ray_directions;
 }
 
+std::vector<KernelAnalysisInfo>
+get_dynamic_info(const AcDSLTaskGraph graph)
+{
+	//TP: The point of this function is that e.g. which fields are written out of the kernels can depend on the inputs given to the kernels.
+	//    Take for example test/inplace_gaussian-test. There a user specified Field in an array of Fields is smoothed based on a *input* int
+	//    If we would get the info normally then the right field would not be seen as the output ---> wrong swapping of input and output buffers
+	const auto kernel_calls = DSLTaskGraphKernels[graph];
+	std::vector<KernelAnalysisInfo> info{};
+	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
+	{
+		VertexBufferArray vba{};
+		const auto loader = get_loader(graph,call_index);
+        	acKernelInputParams params{};
+		ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
+    		loader(p);
+		vba.on_device.kernel_input_params = params;
+		info.push_back(get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel_calls[call_index],vba.on_device.kernel_input_params));
+	}
+	return info;
+}
+
 
 std::vector<AcTaskDefinition>
 acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication, const AcDSLTaskGraph bc_graph)
@@ -1459,7 +1483,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
 	if(kernel_calls.size() == 0) return std::vector<AcTaskDefinition>{};
-	const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
+	const auto info = get_dynamic_info(graph);
 	const FieldBCs  field_boundconds = get_field_boundconds(bc_graph,optimized,info.data());
 	std::vector<AcTaskDefinition> res{};
 	auto level_sets = get_level_sets(graph,optimized,info.data());	
@@ -1554,10 +1578,11 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
                         	}
 			}
 		}
-		for(auto& call : current_level_set.calls)
+		for(size_t i = 0; i < current_level_set.calls.size(); ++i)
 		{
+			const auto& call = current_level_set.calls[i];
 			if(call.kernel == AC_NULL_KERNEL) continue;
-			res.push_back(gen_taskgraph_kernel_entry(call,current_level_set_index+1,stream,info.data()));
+			res.push_back(gen_taskgraph_kernel_entry(call,current_level_set_index+1,stream,current_level_set.infos[i]));
 			for(size_t field = 0; field < NUM_FIELDS; ++field)
 				field_written_out_before[field] |= info[call.kernel].written_fields[field];
 
@@ -1605,26 +1630,6 @@ acGridClearTaskGraphCache()
 	return AC_SUCCESS;
 }
 
-std::vector<KernelAnalysisInfo>
-get_dynamic_info(const AcDSLTaskGraph graph)
-{
-	//TP: The point of this function is that e.g. which fields are written out of the kernels can depend on the inputs given to the kernels.
-	//    Take for example test/inplace_gaussian-test. There a user specified Field in an array of Fields is smoothed based on a *input* int
-	//    If we would get the info normally then the right field would not be seen as the output ---> wrong swapping of input and output buffers
-	const auto kernel_calls = DSLTaskGraphKernels[graph];
-	std::vector<KernelAnalysisInfo> info{};
-	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
-	{
-		VertexBufferArray vba{};
-		const auto loader = get_loader(graph,call_index);
-        	acKernelInputParams params{};
-		ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
-    		loader(p);
-		vba.on_device.kernel_input_params = params;
-		info.push_back(get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel_calls[call_index],vba.on_device.kernel_input_params));
-	}
-	return info;
-}
 
 AcTaskGraph*
 acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
@@ -1671,7 +1676,7 @@ acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 }
 #include "user_constants.h"
 static AcTaskDefinition
-gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream, const KernelAnalysisInfo* info)
+gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream, const KernelAnalysisInfo info)
 {
 	constexpr int max_onion_level = 1;
 	onion_level = min(onion_level,max_onion_level);
@@ -1682,7 +1687,7 @@ gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream,
 			if(!ac_pid()) fprintf(stream, "%s,",get_name(elem));
 		if(!ac_pid()) fprintf(stream,"}");
 	};
-	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel,info[call.kernel]);
+	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel,info);
 	if(!ac_pid()) fprintf(stream,"%s(",kernel_names[call.kernel]);
 	log(fields.in);
 	if(!ac_pid()) fprintf(stream,",");
