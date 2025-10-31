@@ -4522,12 +4522,6 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	const char* type = get_expr_type(node);
 	if(combinations_index == -1)
 	{
-		if(type && gen_mem_accesses && !strstr(type,"*"))
-		{
-			astnode_sprintf(node,"(%s){}",type);
-			return;
-		}
-
 		if(type && strstr(type,"*") && gen_mem_accesses)
 		{
 			const char* datatype_scalar = intern(remove_substring(strdup(type),MULT_STR));
