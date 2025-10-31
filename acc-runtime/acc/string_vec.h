@@ -90,9 +90,9 @@ get_csv_entry(const char* line)
       res.data = NULL;
       res.size = 0;
       res.capacity = 0;
-      char* line_copy = strdup(line);
       char* token;
       if(strstr(line,"#")) return res;
+      char* line_copy = strdup(line);
       token = strtok(line_copy,",");
       while(token != NULL)
       {

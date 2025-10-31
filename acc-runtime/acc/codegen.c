@@ -2186,10 +2186,10 @@ intern_and_free(char* tmp)
 const char*
 get_array_elem_type(const char* arr_type_in)
 {
-	char* arr_type = strdup(arr_type_in);
-	if(!strstr(arr_type,"AcArray")) return NULL;
-	if(n_occurances(arr_type,'<') == 1)
+	if(!strstr(arr_type_in,"AcArray")) return NULL;
+	if(n_occurances(arr_type_in,'<') == 1)
 	{
+		char* arr_type = strdup(arr_type_in);
 		int start = 0;
 		while(arr_type[++start] != '<');
 		int end = start;
@@ -2198,9 +2198,10 @@ get_array_elem_type(const char* arr_type_in)
 		arr_type[end] = '\0';
 		char* tmp = malloc(sizeof(char)*1000);
 		strcpy(tmp, &arr_type[start]);
+		free(arr_type);
 		return intern_and_free(tmp);
 	}
-	return intern(arr_type);
+	return intern(arr_type_in);
 }
 void
 preprocess_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec datatype_scalars, const string_vec datatypes, const bool gen_mem_accesses)
@@ -3454,9 +3455,8 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 	if(get_node(NODE_MEMBER_ID,node)) return;
 	if(!(node->type & NODE_FUNCTION_CALL)) return;
 
-	char* tmp = strdup(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
-	if(strstr(tmp,"__AC_INTERNAL_NUMBERING")) return;
-        const char* func_name = intern(tmp);
+	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	if(strstr(func_name,"__AC_INTERNAL_NUMBERING")) return;
 
 	if(check_symbol(NODE_FUNCTION_ID,func_name,NULL,NULL)) return;
 

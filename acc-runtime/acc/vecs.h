@@ -200,7 +200,10 @@ my_vasprintf(char **strp, const char *fmt, va_list ap)
     len = vsnprintf(NULL, 0, fmt, ap1);
 
     if (len < 0)
+    {
+	va_end(ap1);
         return len;
+    }
 
     va_end(ap1);
     buffer = malloc(len + 1);
