@@ -5,6 +5,9 @@ get_kernel_analysis_info(const AcMeshInfo config);
 KernelAnalysisInfo
 get_kernel_analysis_info(const AcMeshInfo config, const AcKernel kernel);
 
+KernelAnalysisInfo
+get_kernel_analysis_info(const AcMeshInfo config, const AcKernel kernel, const acKernelInputParams input_params);
+
 bool
 kernel_has_profile_stencil_ops(const AcKernel kernel, const KernelAnalysisInfo* info);
 

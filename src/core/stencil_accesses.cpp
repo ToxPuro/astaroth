@@ -510,6 +510,7 @@ extern "C"
 	void acAnalysisCheckForDSLErrors(const AcMeshInfo info);
 	AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
 	KernelAnalysisInfo acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel);
+	KernelAnalysisInfo acAnalysisGetKernelInfoSingleWithInputParams(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params);
 	acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary);
 }
 //#include "user_constants.h"
@@ -1028,6 +1029,13 @@ acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary b
 		larger_output |= (written_fields[i] & AC_OUT_OF_BOUNDS_WRITE);
 	}
 	return (acAnalysisBCInfo){larger_input,larger_output};
+}
+
+KernelAnalysisInfo
+acAnalysisGetKernelInfoSingleWithInputParams(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params)
+{
+	VBA.on_device.kernel_input_params = input_params;
+	return acAnalysisGetKernelInfoSingle(info,kernel);
 }
 
 KernelAnalysisInfo

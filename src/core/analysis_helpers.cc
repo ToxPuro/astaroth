@@ -19,6 +19,13 @@ get_kernel_analysis_info(const AcMeshInfo info, const AcKernel kernel)
 {
 	return acAnalysisGetKernelInfoSingle(info,kernel);
 }
+
+KernelAnalysisInfo
+get_kernel_analysis_info(const AcMeshInfo info, const AcKernel kernel,const acKernelInputParams input_params)
+{
+       return acAnalysisGetKernelInfoSingleWithInputParams(info,kernel,input_params);
+}
+
 bool
 kernel_has_profile_stencil_ops(const AcKernel kernel, const KernelAnalysisInfo* info)
 {

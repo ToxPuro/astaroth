@@ -1050,6 +1050,17 @@ void hash_combine(std::size_t &seed, const T& value) {
     seed ^= std::hash<T>{}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
+void
+hash_kernel_analysis_info(std::size_t &seed, const KernelAnalysisInfo info)
+{
+	for(int field = 0; field < NUM_FIELDS; ++field)
+	{
+		hash_combine(seed,info.read_fields[field]);
+		hash_combine(seed,info.field_has_stencil_op[field]);
+		hash_combine(seed,info.written_fields[field]);
+	}
+}
+
 // Hash for a single vector
 struct VectorHash {
     std::size_t operator()(const std::vector<AcKernel> &vec) const {
@@ -1060,10 +1071,10 @@ struct VectorHash {
         return seed;
     }
 };
-using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume,bool>;
+using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume,bool,std::vector<KernelAnalysisInfo>>;
 struct KeyHash {
     std::size_t operator()(const KeyType &key) const {
-        const auto &[vec1, vec2,start,end,bcs_everywhere] = key;
+        const auto &[vec1, vec2,start,end,bcs_everywhere,info] = key;
         std::size_t seed = 0;
         hash_combine(seed, VectorHash{}(vec1));
         hash_combine(seed, VectorHash{}(vec2));
@@ -1074,6 +1085,10 @@ struct KeyHash {
         hash_combine(seed, end.y);
         hash_combine(seed, end.z);
         hash_combine(seed, bcs_everywhere);
+	for(auto& elem: info)
+	{
+		hash_kernel_analysis_info(seed,elem);
+	}
         return seed;
     }
 };
@@ -1584,6 +1599,27 @@ acGridClearTaskGraphCache()
 	return AC_SUCCESS;
 }
 
+std::vector<KernelAnalysisInfo>
+get_dynamic_info(const AcDSLTaskGraph graph)
+{
+	//TP: The point of this function is that e.g. which fields are written out of the kernels can depend on the inputs given to the kernels.
+	//    Take for example test/inplace_gaussian-test. There a user specified Field in an array of Fields is smoothed based on a *input* int
+	//    If we would get the info normally then the right field would not be seen as the output ---> wrong swapping of input and output buffers
+	const auto kernel_calls = DSLTaskGraphKernels[graph];
+	std::vector<KernelAnalysisInfo> info{};
+	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
+	{
+		VertexBufferArray vba{};
+		const auto loader = get_loader(graph,call_index);
+        	acKernelInputParams params{};
+		ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
+    		loader(p);
+		vba.on_device.kernel_input_params = params;
+		info.push_back(get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel_calls[call_index],vba.on_device.kernel_input_params));
+	}
+	return info;
+}
+
 AcTaskGraph*
 acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
 {
@@ -1591,7 +1627,8 @@ acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume st
 	ERRCHK_ALWAYS(to_int3(end) >= to_int3(start));
 	auto optimized_kernels = get_optimized_kernels(graph,false);
 	auto optimized_bcs      = get_optimized_kernels(bc_graph,false);
-	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end,bcs_everywhere);
+	const auto info = get_dynamic_info(graph);
+	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end,bcs_everywhere,info);
 	if(task_graphs.find(key) != task_graphs.end())
 		return task_graphs[key];
 

@@ -199,6 +199,7 @@ FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
 
 
 FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
+FUNC_DEFINE(KernelAnalysisInfo, acAnalysisGetKernelInfoSingleWithInputParams,(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params));
 FUNC_DEFINE(KernelAnalysisInfo, acAnalysisGetKernelInfoSingle,(const AcMeshInfo info, const AcKernel kernel));
 FUNC_DEFINE(AcResult, acAnalysisCheckForDSLErrors,(const AcMeshInfo info));
 	
