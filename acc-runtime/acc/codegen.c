@@ -4538,9 +4538,9 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
+	const int combinations_index = get_suffix_int(fn_identifier->buffer,"_optimized_");
 	const char* kernel_name = remove_suffix_intern(fn_identifier->buffer,"_optimized_");
 	if(strstr(kernel_name,"MONOMORPHIZED")) return;
-	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,intern(kernel_name));
 	const char* type = get_expr_type(node);
 	if(combinations_index == -1)
