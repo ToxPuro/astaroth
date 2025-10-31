@@ -69,7 +69,10 @@ bool
 kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info);
 
 std::vector<std::array<AcBoundary,NUM_PROFILES+1>>
-compute_kernel_call_computes_profile_across_halos(const AcMeshInfo config, const std::vector<AcKernel>& calls, const KernelAnalysisInfo* info);
+compute_kernel_call_computes_profile_across_halos(const AcMeshInfo config, const std::vector<AcKernel>& calls, const std::vector<KernelAnalysisInfo>& info);
+
+std::vector<std::array<AcBoundary,NUM_PROFILES+1>>
+compute_kernel_call_computes_profile_across_halos_static(const AcMeshInfo config, const std::vector<AcKernel>& calls, const std::vector<KernelAnalysisInfo>& info);
 
 std::tuple<int3,int3>
 get_stencil_dims(const Stencil stencil);

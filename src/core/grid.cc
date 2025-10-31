@@ -2047,7 +2047,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		    kernels[i] = op.kernel_enum;
 	    }
     }
-    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos(acGridGetLocalMeshInfo(),kernels,kernel_analysis_info.data());
+    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos_static(acGridGetLocalMeshInfo(),kernels,kernel_analysis_info);
     for(size_t i = 0; i < ops.size(); ++i)
     {
 	    ops[i].computes_on_halos = BOUNDARY_NONE;

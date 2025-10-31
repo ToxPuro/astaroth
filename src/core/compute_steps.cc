@@ -1029,7 +1029,7 @@ gen_halo_exchange_and_boundconds(
 
 constexpr int MAX_TASKS = 100;
 void
-compute_next_level_set(std::array<bool,NUM_KERNELS>& dst, const std::vector<AcKernel>& kernel_calls, std::array<bool,NUM_FIELDS>& field_written_to, const std::array<int,MAX_TASKS>& call_level_set, const KernelAnalysisInfo* info)
+compute_next_level_set(std::array<bool,NUM_KERNELS>& dst, const std::vector<AcKernel>& kernel_calls, std::array<bool,NUM_FIELDS>& field_written_to, const std::array<int,MAX_TASKS>& call_level_set, const std::vector<KernelAnalysisInfo>& info)
 {
 	std::array<bool,NUM_FIELDS> field_consumed{};
 	std::fill(field_consumed.begin(), field_consumed.end(),false);
@@ -1132,7 +1132,7 @@ struct KeyEqual {
 
 
 static std::vector<level_set>
-gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAnalysisInfo* info)
+gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vector<KernelAnalysisInfo>& info)
 {
 	auto kernel_calls = optimized ?
 				get_optimized_kernels(graph,true) :
@@ -1201,6 +1201,10 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 										if(z == -1 && (boundary & BOUNDARY_Z_BOT) == 0) continue;
 										if(z == +1 && (boundary & BOUNDARY_Z_TOP) == 0) continue;
 										field_need_halo_to_be_in_sync[index][j] |= true;
+										if(field_need_halo_to_be_in_sync[index][j] && !vtxbuf_is_communicated[j])
+										{
+											fatal("Non-communicated Field %s needs to be communicated because of Stencil in kernel: %s\n",field_names[j],kernel_names[kernel_calls[i]]);
+										}
 									}
 								}
 							}
@@ -1216,6 +1220,10 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 										const int index = id_to_arr_index(x,y,z);
 										if(x == 0 && y ==  0 && z == 0) continue;
 										field_need_halo_to_be_in_sync[index][j] |= true;
+										if(field_need_halo_to_be_in_sync[index][j] && !vtxbuf_is_communicated[j])
+										{
+											fatal("Non-communicated Field %s needs to be communicated because of computing across halos in kernel: %s\n",field_names[j],kernel_names[kernel_calls[i]]);
+										}
 										const int facet_class = std::abs(x) + std::abs(y) + std::abs(z);
 										halo_types_level_set[j][n_level_sets] = max(halo_types_level_set[j][n_level_sets],facet_class);
 									}
@@ -1239,7 +1247,24 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 										if(z == -1 && (boundary & BOUNDARY_Z_BOT) == 0) continue;
 										if(z == +1 && (boundary & BOUNDARY_Z_TOP) == 0) continue;
 										field_need_halo_to_be_in_sync[index][j] |= true;
+										if(field_need_halo_to_be_in_sync[index][j] && !vtxbuf_is_communicated[j])
+										{
+											fatal("Non-communicated Field %s needs to be communicated because of rays in kernel: %s\n",field_names[j],kernel_names[kernel_calls[i]]);
+										}
 									}
+						}
+					}
+				}
+			}
+			for(size_t j = 0; j < NUM_FIELDS; ++j)
+			{
+				for(int index = 0; index < 27; ++index)
+				{
+					if(field_need_halo_to_be_in_sync[index][j])
+					{
+						if(!vtxbuf_is_communicated[j])
+						{
+							fatal("Non-communicated Field %s needs to be communicated because of kernel: %s\n",field_names[j],kernel_names[kernel_calls[i]]);
 						}
 					}
 				}
@@ -1437,7 +1462,7 @@ fuse_calls_between_level_sets(std::vector<level_set>& level_sets)
 }
 
 static std::vector<level_set>
-get_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAnalysisInfo* info)
+get_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vector<KernelAnalysisInfo>& info)
 {
 	auto level_sets = gen_level_sets(graph,optimized,info);
 	bool fused_call_between_level_sets = true;
@@ -1489,7 +1514,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	const auto info = get_dynamic_info(graph);
 	const FieldBCs  field_boundconds = get_field_boundconds(bc_graph,optimized);
 	std::vector<AcTaskDefinition> res{};
-	auto level_sets = get_level_sets(graph,optimized,info.data());	
+	auto level_sets = get_level_sets(graph,optimized,info);	
 
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);

@@ -321,7 +321,7 @@ kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type,
 
 //TP: padded since cray compiler does not like zero sized arrays when debug flags are on
 std::vector<std::array<AcBoundary,NUM_PROFILES+1>>
-compute_kernel_call_computes_profile_across_halos(const AcMeshInfo config, const std::vector<AcKernel>& calls, const KernelAnalysisInfo* info)
+compute_kernel_call_computes_profile_across_halos_static(const AcMeshInfo config, const std::vector<AcKernel>& calls, const std::vector<KernelAnalysisInfo>& info)
 {
 	std::vector<std::array<AcBoundary,NUM_PROFILES+1>> res{};
 	for(size_t i = 0; i  < calls.size(); ++i)
@@ -333,12 +333,51 @@ compute_kernel_call_computes_profile_across_halos(const AcMeshInfo config, const
 
 	for(size_t i = 0; i  < calls.size(); ++i)
 	{
-		const auto k = calls[i];
+		const int k = calls[i];
 		for(int prof = 0; prof < NUM_PROFILES; ++prof)
 		{
 			for(size_t stencil = 0; stencil < NUM_STENCILS; ++stencil)
 			{
 				if(info[k].stencils_accessed[NUM_ALL_FIELDS+prof][stencil])
+				{
+					int defining_call = -1;
+					for(int j = i-1; j >= 0; --j)
+					{
+						if(info[calls[j]].written_profiles[prof] || info[calls[j]].reduced_profiles[prof])
+						{
+							defining_call = j;
+							break;
+						}
+					}
+					if(defining_call != -1)
+						res[defining_call][prof] = (AcBoundary) ((int)res[defining_call][prof] | stencil_accesses_boundaries(config, (Stencil)stencil));
+				}
+			}
+		}
+	}
+	return res;
+}
+
+//TP: padded since cray compiler does not like zero sized arrays when debug flags are on
+std::vector<std::array<AcBoundary,NUM_PROFILES+1>>
+compute_kernel_call_computes_profile_across_halos(const AcMeshInfo config, const std::vector<AcKernel>& calls, const std::vector<KernelAnalysisInfo>& info)
+{
+	std::vector<std::array<AcBoundary,NUM_PROFILES+1>> res{};
+	for(size_t i = 0; i  < calls.size(); ++i)
+	{
+		std::array<AcBoundary,NUM_PROFILES+1> computes_profile_across_halos{};
+		for(int prof = 0; prof < NUM_PROFILES; ++prof) computes_profile_across_halos[prof] = BOUNDARY_NONE;
+		res.push_back(computes_profile_across_halos);
+	}
+	ERRCHK_ALWAYS(calls.size() == info.size());
+
+	for(size_t i = 0; i  < calls.size(); ++i)
+	{
+		for(int prof = 0; prof < NUM_PROFILES; ++prof)
+		{
+			for(size_t stencil = 0; stencil < NUM_STENCILS; ++stencil)
+			{
+				if(info[i].stencils_accessed[NUM_ALL_FIELDS+prof][stencil])
 				{
 					int defining_call = -1;
 					for(int j = i-1; j >= 0; --j)
