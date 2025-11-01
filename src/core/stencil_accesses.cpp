@@ -582,6 +582,9 @@ index_at_boundary(const int x, const int y, const int z);
 void
 mark_as_written(const Field& field, const int x, const int y, const int z)
 {
+	const int field_index = (int)field;
+	if(field_index < 0) return;
+	if(field_index > NUM_FIELDS) return;
 	written_fields[field] |= 
 			index_at_boundary(x,y,z) ? AC_IN_BOUNDS_WRITE : AC_OUT_OF_BOUNDS_WRITE;
 }
@@ -613,6 +616,9 @@ ac_dummy_write(const Field& field, const int x, const int y, const int z)
 void
 AC_INTERNAL_write_vtxbuf(const Field& field, const int x, const int y, const int z, const AcReal&)
 {
+	const int field_index = (int)field;
+	if(field_index < 0) return;
+	if(field_index > NUM_FIELDS) return;
 	mark_as_written(field, x,y,z);
 	written_fields[field] |= AC_WRITE_TO_INPUT;
 }
@@ -643,6 +649,9 @@ AC_INTERNAL_write_vtxbuf4(const Field4& field, const int x, const int y, const i
 static int3 UNUSED
 ac_get_field_halos(const Field& field)
 {
+	const int field_index = (int)field;
+	if(field_index < 0)          return (int3){NGHOST,NGHOST,NGHOST};
+	if(field_index > NUM_FIELDS) return (int3){NGHOST,NGHOST,NGHOST};
 	if(vtxbuf_compile_time_halos[field] != (int3){-1,-1,-1})
 	{
 		return vtxbuf_compile_time_halos[field];
@@ -1105,6 +1114,7 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
 {
 	d_mesh_info = info;
 	memset(dst,0,sizeof(dst[0])*NUM_KERNELS);
+	memset(&VBA.on_device.kernel_input_params,0,sizeof(VBA.on_device.kernel_input_params));
 	for(size_t k = 0; k <NUM_KERNELS; ++k)
 	{
 		dst[k] = acAnalysisGetKernelInfoSingle(info,AcKernel(k));
