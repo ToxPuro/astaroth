@@ -382,7 +382,7 @@ compute_kernel_call_computes_profile_across_halos(const AcMeshInfo config, const
 					int defining_call = -1;
 					for(int j = i-1; j >= 0; --j)
 					{
-						if(info[calls[j]].written_profiles[prof] || info[calls[j]].reduced_profiles[prof])
+						if(info[j].written_profiles[prof] || info[j].reduced_profiles[prof])
 						{
 							defining_call = j;
 							break;
