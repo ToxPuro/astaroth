@@ -27,60 +27,60 @@ get_kernel_analysis_info(const AcMeshInfo info, const AcKernel kernel,const acKe
 }
 
 bool
-kernel_has_profile_stencil_ops(const AcKernel kernel, const KernelAnalysisInfo* info)
+kernel_has_profile_stencil_ops(const KernelAnalysisInfo info)
 {
 	for(int i = 0; i  < NUM_PROFILES; ++i)
-		if(info[kernel].profile_has_stencil_op[i]) return true;
+		if(info.profile_has_stencil_op[i]) return true;
 	return false;
 }
 
 bool
-kernel_has_stencil_ops(const AcKernel kernel, const KernelAnalysisInfo* info)
+kernel_has_stencil_ops(const KernelAnalysisInfo info)
 {
 	for(int i = 0; i  < NUM_FIELDS; ++i)
-		if(info[kernel].field_has_stencil_op[i]) return true;
+		if(info.field_has_stencil_op[i]) return true;
 	for(int i = 0; i  < NUM_PROFILES; ++i)
-		if(info[kernel].profile_has_stencil_op[i]) return true;
+		if(info.profile_has_stencil_op[i]) return true;
 	return false;
 }
 bool
-kernel_updates_vtxbuf(const AcKernel kernel, const KernelAnalysisInfo* info)
+kernel_updates_vtxbuf(const KernelAnalysisInfo info)
 {
 	for(int i = 0; i < NUM_FIELDS; ++i)
-		if(info[kernel].written_fields[i]) return true;
+		if(info.written_fields[i]) return true;
 	return false;
 }
 
 bool
-kernel_writes_to_input(const AcKernel kernel, const Field field, const KernelAnalysisInfo* info)
+kernel_writes_to_input(const Field field, const KernelAnalysisInfo info)
 {
-	return (info[kernel].written_fields[field] & AC_WRITE_TO_INPUT) != 0;
+	return (info.written_fields[field] & AC_WRITE_TO_INPUT) != 0;
 }
 
 bool
-kernel_writes_to_output(const AcKernel kernel, const Field field,const KernelAnalysisInfo* info)
+kernel_writes_to_output(const Field field,const KernelAnalysisInfo info)
 {
-	return info[kernel].written_fields[field] && ((info[kernel].written_fields[field] & AC_WRITE_TO_INPUT) == 0);
+	return info.written_fields[field] && ((info.written_fields[field] & AC_WRITE_TO_INPUT) == 0);
 }
 
 bool
-is_raytracing_kernel(const AcKernel kernel, const KernelAnalysisInfo* info)
+is_raytracing_kernel(const KernelAnalysisInfo info)
 {
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
 		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-			if(info[kernel].ray_accessed[field][ray]) return true;
+			if(info.ray_accessed[field][ray]) return true;
 	}
 	return false;
 }
 
 AcBool3
-raytracing_step_direction(const AcKernel kernel,const KernelAnalysisInfo* info)
+raytracing_step_direction(const KernelAnalysisInfo info)
 {
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
 		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-			if(info[kernel].ray_accessed[field][ray])
+			if(info.ray_accessed[field][ray])
 			{
 				if(ray_directions[ray].z != 0) return (AcBool3){false,false,true};
 				if(ray_directions[ray].y != 0) return (AcBool3){false,true,false};
@@ -170,20 +170,20 @@ stencil_accesses_boundaries(const AcMeshInfo info, const Stencil stencil)
 }
 
 std::array<int,NUM_FIELDS>
-get_fields_kernel_depends_on_boundaries(const AcMeshInfo config, const AcKernel kernel, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const KernelAnalysisInfo* info)
+get_fields_kernel_depends_on_boundaries(const AcMeshInfo config, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const KernelAnalysisInfo info)
 {
 	std::array<int,NUM_FIELDS> res{};
 	for(int j = 0; j < NUM_FIELDS; ++j)
        		res[j] = fields_already_depend_on_boundaries[j];
 	for(int j = 0; j < NUM_FIELDS; ++j)
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
-			if(info[kernel].stencils_accessed[j][stencil])
+			if(info.stencils_accessed[j][stencil])
 				res[j] |= stencil_accesses_boundaries(config,Stencil(stencil)); 
 	return res;
 }
 
 AcBoundary
-get_kernel_depends_on_boundaries(const AcMeshInfo config, const AcKernel kernel, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const KernelAnalysisInfo* info)
+get_kernel_depends_on_boundaries(const AcMeshInfo config, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const KernelAnalysisInfo info)
 {
 	//TP: this is because if kernel A uses stencils kernel B has to wait for A to finish on neighbours to avoid overwriting A's input
 	//TP: this is somewhat conservative since if A does not use stencils B has more dependency then needed
@@ -193,18 +193,18 @@ get_kernel_depends_on_boundaries(const AcMeshInfo config, const AcKernel kernel,
 	{
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 		{
-			if(info[kernel].stencils_accessed[j][stencil])
+			if(info.stencils_accessed[j][stencil])
 			{
 				res |= stencil_accesses_boundaries(config, Stencil(stencil));
 			}
 		}
-		if(info[kernel].written_fields[j])
+		if(info.written_fields[j])
 		{
 			res |= fields_already_depend_on_boundaries[j];
 		}
 		for(int ray = 0; ray < NUM_RAYS; ++ray)
 		{
-			if(info[kernel].ray_accessed[j][ray])
+			if(info.ray_accessed[j][ray])
 			{
 				res |= get_ray_boundaries(AcRay(ray));
 			}
@@ -213,7 +213,7 @@ get_kernel_depends_on_boundaries(const AcMeshInfo config, const AcKernel kernel,
 	}
 	for(int j = 0; j < NUM_PROFILES; ++j)
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
-			if(info[kernel].stencils_accessed[j+NUM_ALL_FIELDS][stencil])
+			if(info.stencils_accessed[j+NUM_ALL_FIELDS][stencil])
 				res |= stencil_accesses_boundaries(config, Stencil(stencil));
 
 
@@ -225,80 +225,80 @@ get_kernel_depends_on_boundaries(const AcMeshInfo config, const std::array<int,N
 {
 	std::vector<AcBoundary> res{};
 	for(size_t i = 0; i < NUM_KERNELS; ++i)
-		res.push_back(get_kernel_depends_on_boundaries(config, AcKernel(i), fields_already_depend_on_boundaries,info));
+		res.push_back(get_kernel_depends_on_boundaries(config, fields_already_depend_on_boundaries,info[i]));
 	return res;
 }
 
 bool
-kernel_reduces_scalar(const AcKernel kernel, const KernelAnalysisInfo* info)
+kernel_reduces_scalar(const KernelAnalysisInfo info)
 {
-	for(size_t i = 0; i < info[kernel].n_reduce_outputs; ++i)
-		if(info[kernel].reduce_outputs[i].type != AC_PROF_TYPE) return true;
+	for(size_t i = 0; i < info.n_reduce_outputs; ++i)
+		if(info.reduce_outputs[i].type != AC_PROF_TYPE) return true;
 	return false;
 }
 
 bool
-kernel_reduces_something(const AcKernel kernel, const KernelAnalysisInfo* info)
+kernel_reduces_something(const KernelAnalysisInfo info)
 {
 	for(int i = 0; i < NUM_PROFILES; ++i)
-		if(info[kernel].reduced_profiles[i]) return true;
-	if(kernel_reduces_scalar(kernel,info)) return true;
+		if(info.reduced_profiles[i]) return true;
+	if(kernel_reduces_scalar(info)) return true;
 	return false;
 }
 
 
 bool
-kernel_writes_profile(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info)
+kernel_writes_profile(const AcProfileType prof_type, const KernelAnalysisInfo info)
 {
 	for(int i = 0; i < NUM_PROFILES; ++i)
-		if(info[kernel].written_profiles[i] && prof_types[i] == prof_type) return true;
+		if(info.written_profiles[i] && prof_types[i] == prof_type) return true;
 	return false;
 }
 
 bool
-kernel_reduces_only_profiles(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info)
+kernel_reduces_only_profiles(const AcProfileType prof_type, const KernelAnalysisInfo info)
 {
-	if(kernel_reduces_scalar(kernel,info)) return false;
+	if(kernel_reduces_scalar(info)) return false;
 	for(int i = 0; i < NUM_PROFILES; ++i)
-		if(info[kernel].reduced_profiles[i] && prof_types[i] != prof_type) return false;
+		if(info.reduced_profiles[i] && prof_types[i] != prof_type) return false;
 	return true;
 }
 
 bool
-kernel_does_only_profile_reductions(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info)
+kernel_does_only_profile_reductions(const AcProfileType prof_type, const KernelAnalysisInfo info)
 {
-	if(kernel_updates_vtxbuf(kernel,info)) return false;
-	if(kernel_has_stencil_ops(kernel,info)) return false;
-	return kernel_reduces_only_profiles(kernel,prof_type,info);
+	if(kernel_updates_vtxbuf(info)) return false;
+	if(kernel_has_stencil_ops(info)) return false;
+	return kernel_reduces_only_profiles(prof_type,info);
 }
 
 bool
-kernel_calls_ray(const AcKernel kernel, const AcRay ray, const KernelAnalysisInfo* info)
+kernel_calls_ray(const AcRay ray, const KernelAnalysisInfo info)
 {
 	for(int field = 0; field < NUM_FIELDS; ++field)
 	{
-		if(info[kernel].ray_accessed[field][ray]) return true;
+		if(info.ray_accessed[field][ray]) return true;
 	}
 	return false;
 }
 
 bool
-kernel_uses_rays(const AcKernel kernel,const KernelAnalysisInfo* info)
+kernel_uses_rays(const KernelAnalysisInfo info)
 {
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
-		if(kernel_calls_ray(kernel,AcRay(ray),info)) return true;
+		if(kernel_calls_ray(AcRay(ray),info)) return true;
 	}
 	return false;
 }
 
 bool
-kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info)
+kernel_only_writes_profile(const AcProfileType prof_type, const KernelAnalysisInfo info)
 {
-	if(kernel_reduces_something(kernel,info)) return false;
-	if(kernel_updates_vtxbuf(kernel,info))    return false;
-	if(kernel_updates_vtxbuf(kernel,info))    return false;
-	if(kernel_uses_rays(kernel,info))    return false;
+	if(kernel_reduces_something(info)) return false;
+	if(kernel_updates_vtxbuf(info))    return false;
+	if(kernel_updates_vtxbuf(info))    return false;
+	if(kernel_uses_rays(info))    return false;
 	const std::array<AcProfileType,9> profile_types =
 	{
 		PROFILE_X,
@@ -315,7 +315,7 @@ kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type,
 		PROFILE_ZY,
 	};
 	for(const auto& type : profile_types)
-		if(prof_type != type && kernel_writes_profile(kernel,type,info)) return false;
+		if(prof_type != type && kernel_writes_profile(type,info)) return false;
 	return true;
 }
 
@@ -439,22 +439,22 @@ get_stencil_halo_type(const AcMeshInfo info, const Stencil stencil)
 }
 
 bool
-kernel_calls_stencil(const AcKernel kernel, const Stencil stencil, const KernelAnalysisInfo* info)
+kernel_calls_stencil(const Stencil stencil, const KernelAnalysisInfo info)
 {
 	for(int field = 0; field < NUM_FIELDS; ++field)
 	{
-		if(info[kernel].stencils_accessed[field][stencil]) return true;
+		if(info.stencils_accessed[field][stencil]) return true;
 	}
 	return false;
 }
 std::tuple<int3,int3>
-get_kernel_radius(const AcMeshInfo config, const AcKernel kernel, const KernelAnalysisInfo* info)
+get_kernel_radius(const AcMeshInfo config, const KernelAnalysisInfo info)
 {
 	int3 min_radius = (int3){0,0,0};
 	int3 max_radius = (int3){0,0,0};
 	for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 	{
-		if(kernel_calls_stencil(kernel,Stencil(stencil),info))
+		if(kernel_calls_stencil(Stencil(stencil),info))
 		{
 			const auto [stencil_min_radius,stencil_max_radius] = get_stencil_dims(config, Stencil(stencil));
 			min_radius.x = std::min(stencil_min_radius.x,min_radius.x);
@@ -468,7 +468,7 @@ get_kernel_radius(const AcMeshInfo config, const AcKernel kernel, const KernelAn
 	}
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
-		if(kernel_calls_ray(kernel,AcRay(ray),info))
+		if(kernel_calls_ray(AcRay(ray),info))
 		{
 			min_radius.x = std::min(-ray_directions[ray].x,min_radius.x);
 			min_radius.y = std::min(-ray_directions[ray].y,min_radius.y);

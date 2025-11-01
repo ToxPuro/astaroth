@@ -187,6 +187,7 @@ acCompute(const AcKernel kernel,
     task_def.num_profiles_reduce_out = num_profiles_out;
 
     task_def.load_kernel_params_func = new LoadKernelParamsFunc{[](ParamLoadingInfo){;}};
+    task_def.analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel);
     return task_def;
 }
 
@@ -239,6 +240,7 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
     task_def.num_outputs_out = num_outputs_out;
 
     task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    task_def.analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel);
     return task_def;
 }
 
@@ -1056,8 +1058,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 			 const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const int max_facet_class
 			 )
     : Task(order_,
-           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class)},
-           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
+           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class)},
+           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out},max_facet_class),
@@ -1066,19 +1068,19 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
     stream = get_stream(device);
     auto& input_region = input_regions[0];
     const auto dimension_inactive = ac_get_info()[AC_dimension_inactive];
-    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_X,op.analysis_info))
+    if(kernel_only_writes_profile(PROFILE_X,op.analysis_info))
     {
 	output_region.dims.y = 1;	
 	output_region.dims.z = 1;	
     }
 
-    else if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Y,op.analysis_info))
+    else if(kernel_only_writes_profile(PROFILE_Y,op.analysis_info))
     {
 	output_region.dims.x = 1;	
 	output_region.dims.z = 1;	
     }
 
-    else if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Z,op.analysis_info))
+    else if(kernel_only_writes_profile(PROFILE_Z,op.analysis_info))
     {
 	output_region.dims.x = 1;	
 	output_region.dims.y = 1;	
@@ -1086,7 +1088,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 
     else if(max_facet_class == 3)
     {
-	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(),op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info);
+	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(),fields_already_depend_on_boundaries,op.analysis_info);
 	if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X) && !dimension_inactive.x)
 	{
             output_region.dims.x += 2*NGHOST;
@@ -1114,7 +1116,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 	}
     }
 
-    const auto [left_radius,right_radius] = get_kernel_radius(acGridGetLocalMeshInfo(), op.kernel_enum,op.analysis_info);
+    const auto [left_radius,right_radius] = get_kernel_radius(acGridGetLocalMeshInfo(),op.analysis_info);
     bool in_bounds    =    (int)output_region.position.x-(int)left_radius.x >= 0
     			|| (int)output_region.position.y-(int)left_radius.y >= 0
     			|| (int)output_region.position.z-(int)left_radius.z >= 0
@@ -2169,11 +2171,11 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
 
     const auto& input_region = input_regions[0];
 
-    if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_X,op.analysis_info))
+    if(kernel_reduces_only_profiles(PROFILE_X,op.analysis_info))
 	    reduces_only_prof = PROFILE_X;
-    else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Y,op.analysis_info))
+    else if(kernel_reduces_only_profiles(PROFILE_Y,op.analysis_info))
 	    reduces_only_prof = PROFILE_Y;
-    else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Z,op.analysis_info))
+    else if(kernel_reduces_only_profiles(PROFILE_Z,op.analysis_info))
 	    reduces_only_prof = PROFILE_Z;
 
     syncVBA();
