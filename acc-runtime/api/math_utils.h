@@ -1113,3 +1113,6 @@ operator==(const AcMeshDims& a, const AcMeshDims& b)
 		a.nn == b.nn &&
 		a.reduction_tile == b.reduction_tile;
 }
+
+static HOST_DEVICE_INLINE int
+AC_abs(const int& x) {return abs(x);}

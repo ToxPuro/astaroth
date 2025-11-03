@@ -105,3 +105,5 @@ intrinsic copy_arr
 intrinsic postprocess_reduce_result
 intrinsic ac_dummy_write
 intrinsic safe_access
+
+intrinsic AC_abs

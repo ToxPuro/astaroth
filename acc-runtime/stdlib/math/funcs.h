@@ -8,6 +8,11 @@ elemental abs(real x)
 {
 	return fabs(x)
 }
+
+elemental abs(int x)
+{
+	return AC_abs(x)
+}
 set_min_val(real val, real min_val)
 {
 	return max(val,min_val)
