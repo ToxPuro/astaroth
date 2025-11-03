@@ -485,17 +485,36 @@ laplace_2nd_neighbours(Field s) {
     return del2f
 }
 
+laplace_2nd_neighbours(Field s, real3 inv_spacings_2) {
+    del2f = derxx_2nd_neighbours(s,inv_spacings_2.x) + deryy_2nd_neighbours(s,inv_spacings_2.y) + derzz_2nd_neighbours(s,inv_spacings_2.z)
+    return del2f
+}
+
+laplace_neighbours(Field s, real3 inv_spacings_2) {
+    del2f = derxx_neighbours(s,inv_spacings_2.x) + deryy_neighbours(s,inv_spacings_2.y) + derzz_neighbours(s,inv_spacings_2.z)
+    return del2f
+}
+
 laplace_central_coeff() {
     return derxx_central_coeff() + deryy_central_coeff() + derzz_central_coeff()
+}
+
+laplace_2nd_central_coeff() {
+    return derxx_2nd_central_coeff() + deryy_2nd_central_coeff() + derzz_2nd_central_coeff()
+}
+
+laplace_central_coeff(real3 inv_spacings_2) {
+    return derxx_central_coeff(inv_spacings_2.x) + deryy_central_coeff(inv_spacings_2.y) + derzz_central_coeff(inv_spacings_2.z)
+}
+
+laplace_2nd_central_coeff(real3 inv_spacings_2) {
+    return derxx_2nd_central_coeff(inv_spacings_2.x) + deryy_2nd_central_coeff(inv_spacings_2.y) + derzz_2nd_central_coeff(inv_spacings_2.z)
 }
 
 laplace_central_coeff_extended() {
     return derxx_central_coeff_extended() + deryy_central_coeff_extended() + derzz_central_coeff_extended()
 }
 
-laplace_2nd_central_coeff() {
-    return derxx_2nd_central_coeff() + deryy_2nd_central_coeff() + derzz_2nd_central_coeff()
-}
 
 laplace(Field3 s) {
 	d2A = get_d2A(s)
