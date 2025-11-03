@@ -2209,6 +2209,7 @@ derxx_helper(real stencil_value, real inv_spacing2, real inv_mapping_func_der, r
 #define AC_GEN_DERXX_WITH_EXTENSION(NAME,STENCIL,DERX,EXTENSION_NAME) \
 elemental NAME##EXTENSION_NAME(Field f,real inv_spacing_2) \
 { \
+	if(AC_dimension_inactive.x) return 0.0; \
 	real tilde_factor\
 	real inv_mapping_func_der\
 	real derx_value \
@@ -2312,6 +2313,7 @@ deryy_helper(real stencil_value, inv_r, inv_cyl_r, inv_mapping_func_der, inv_spa
 #define AC_GEN_DERYY_WITH_EXTENSION(NAME,STENCIL,DERY,EXTENSION_NAME) \
 elemental NAME##EXTENSION_NAME(Field f, real inv_spacing_2) \
 { \
+	if(AC_dimension_inactive.y) return 0.0; \
 	real inv_r \
 	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) inv_r = AC_INV_R##EXTENSION_NAME \
 	real inv_cyl_r \
@@ -2477,6 +2479,7 @@ derzz_helper(real stencil_value, real inv_spacing2, real inv_r, real inv_sin_the
 #define AC_GEN_DER_ZZ_WITH_EXTENSION(NAME,STENCIL,DERZ,EXTENSION_NAME) \
 elemental NAME##EXTENSION_NAME(Field f, real inv_spacing_2) \
 { \
+	if(AC_dimension_inactive.z) return 0.0; \
 	real inv_r\
 	real inv_sin_theta \
 	real inv_mapping_func_der \
