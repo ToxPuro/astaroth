@@ -515,6 +515,10 @@ laplace_central_coeff_extended() {
     return derxx_central_coeff_extended() + deryy_central_coeff_extended() + derzz_central_coeff_extended()
 }
 
+laplace_central_coeff_extended(real3 inv_spacings_2) {
+    return derxx_central_coeff_extended(inv_spacings_2.x) + deryy_central_coeff_extended(inv_spacings_2.y) + derzz_central_coeff_extended(inv_spacings_2.z)
+}
+
 
 laplace(Field3 s) {
 	d2A = get_d2A(s)
@@ -710,6 +714,20 @@ laplace_extended(Field s) {
 
 laplace_neighbours_extended(Field s) {
     del2f = derxx_neighbours_extended(s) + deryy_neighbours_extended(s) + derzz_neighbours_extended(s)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    del2f += derx_extended(s)*AC_INV_CYL_R_extended
+    }
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    del2f += 2*derx_extended(s)*AC_INV_R_extended
+	    del2f += dery_extended(s)*AC_INV_R_extended*AC_COT_extended
+    }
+    return del2f
+}
+
+laplace_neighbours_extended(Field s, real3 inv_spacings_2) {
+    del2f = derxx_neighbours_extended(s,inv_spacings_2.x) + deryy_neighbours_extended(s,inv_spacings_2.y) + derzz_neighbours_extended(s,inv_spacings_2.z)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
     {
 	    del2f += derx_extended(s)*AC_INV_CYL_R_extended
