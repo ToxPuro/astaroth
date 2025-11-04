@@ -443,6 +443,19 @@ laplace(Field s) {
     }
     return del2f
 }
+laplace(Field s, real3 inv_spacing_2) {
+    del2f = derxx(s,inv_spacing_2.x) + deryy(s,inv_spacing_2.y) + derzz(s,inv_spacing_2.z)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    del2f += derx(s)*AC_INV_CYL_R
+    }
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    del2f += 2*derx(s)*AC_INV_R
+	    del2f += dery(s)*AC_INV_R*AC_COT
+    }
+    return del2f
+}
 laplace_2nd(Field s) {
     del2f = derxx_2nd(s) + deryy_2nd(s) + derzz_2nd(s)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)

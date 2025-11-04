@@ -2248,7 +2248,7 @@ derxx_central_coeff_extended(real inv_spacing_2)
 
 derxx_central_coeff()
 {
-	return derxx_central_coeff_helper(DER2_0,AC_inv_ds_2.x,AC_nonequidistantt_grid.x ? AC_INV_MAPPING_FUNC_DER_X : 0.0)
+	return derxx_central_coeff_helper(DER2_0,AC_inv_ds_2.x,AC_nonequidistant_grid.x ? AC_INV_MAPPING_FUNC_DER_X : 0.0)
 }
 
 derxx_central_coeff(real inv_spacing_2)
@@ -2345,12 +2345,12 @@ AC_GEN_DERYY(deryy_neighbours,deryy_neighbours_stencil,dery)
 
 deryy_central_coeff()
 {
-	deryy_central_coeff_helper(AC_inv_ds_2.y,DER2_0)
+	return deryy_central_coeff_helper(AC_inv_ds_2.y,DER2_0)
 }
 
 deryy_central_coeff(real inv_spacing2)
 {
-	deryy_central_coeff_helper(inv_spacing2,DER2_0)
+	return deryy_central_coeff_helper(inv_spacing2,DER2_0)
 }
 
 deryy_central_coeff_extended()
