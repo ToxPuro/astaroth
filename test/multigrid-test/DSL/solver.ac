@@ -53,10 +53,6 @@ Kernel gmg_residual_scalar_kernel(GMG_LEVEL level)
 	const real res = AC_laplace_sign*laplace(GMG_SOLUTIONS[level],spacing)
 	r = GMG_RHS[level]- res
 	Field f = GMG_SOLUTIONS[level]
-	if(vertexIdx == (int3){8,8,8})
-	{
-		print("Solution at (8,8,8): %.14e\n",f[vertexIdx.x][vertexIdx.y][vertexIdx.z])
-	}
 	reduce_sum(r*r,AC_residual2)
 }
 Kernel residual_kernel()
@@ -91,25 +87,34 @@ Stencil laplace_neighbours_without_spacing
 
 Kernel jacobi_step_kernel(GMG_LEVEL level)
 {
-	spacing = AC_ds_2.x*pow(4,int(level))
-	res = (laplace_neighbours_without_spacing(GMG_SOLUTIONS[level]) + spacing*GMG_RHS[level])/6.0
-	if(vertexIdx == (int3){8,8,8})
-	{
-		print("H^2: %.14e\n",spacing)
-		print("Res: %.14e\n",res)
-	}
-	write(GMG_SOLUTIONS[level],res)
-	//write(GMG_SOLUTIONS[level],poisson_jacobi_update_extended(GMG_RHS[level],GMG_SOLUTIONS[level],AC_laplace_sign,spacing))
+	spacing = AC_inv_ds_2/pow(4,int(level))
+	h  = 1.0/spacing.x;
+	old_res = (laplace_neighbours_without_spacing(GMG_SOLUTIONS[level]) + h*GMG_RHS[level])/6.0
+	new_res = poisson_jacobi_update(GMG_RHS[level],GMG_SOLUTIONS[level],AC_laplace_sign,spacing)
+	//if(vertexIdx == (int3){8,8,8})
+	//{
+	//	print("Old res: %.14e\n",old_res)
+	//	print("New res: %.14e\n",new_res)
+	//}
+	write(GMG_SOLUTIONS[level],new_res)
 }
 
 Kernel sor_red(GMG_LEVEL level)
 {
 	spacing = AC_inv_ds_2/pow(4,int(level))
+	//This is here to force update of the boundaries
+	h  = 1.0/spacing.x;
+	old_res = (laplace_neighbours_without_spacing(GMG_SOLUTIONS[level]) + h*GMG_RHS[level])/6.0
+
 	poisson_sor_red_black_extended(SOR_RED,GMG_RHS[level],GMG_SOLUTIONS[level],AC_SOR_omega,AC_laplace_sign,spacing)
 }
 Kernel sor_black(GMG_LEVEL level)
 {
 	spacing = AC_inv_ds_2/pow(4,int(level))
+	//This is here to force update of the boundaries
+	h  = 1.0/spacing.x;
+	old_res = (laplace_neighbours_without_spacing(GMG_SOLUTIONS[level]) + h*GMG_RHS[level])/6.0
+
 	poisson_sor_red_black_extended(SOR_BLACK,GMG_RHS[level],GMG_SOLUTIONS[level],AC_SOR_omega,AC_laplace_sign,spacing)
 }
 
@@ -144,17 +149,7 @@ gmg_sor_red_black_step(gmg_boundconds)
 	gmg_sor_black(AC_GMG_LEVEL)
 }
 
-Kernel gmg_prolong_solution_kernel(GMG_LEVEL level)
-{
-	e = trilinear_prolongation(GMG_SOLUTIONS[level+1])
-	write(GMG_SOLUTIONS[level],e)
-}
 
-ComputeSteps
-gmg_prolong_solution(gmg_boundconds)
-{
-	gmg_prolong_solution_kernel(AC_GMG_LEVEL)
-}
 
 ComputeSteps
 get_residual(gmg_boundconds)

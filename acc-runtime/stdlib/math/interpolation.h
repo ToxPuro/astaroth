@@ -40,9 +40,9 @@ Stencil interpolate_middle_front
  */
 restrict_full_weighting(Field fine_residual, Field coarse_residual)
 {
-	i = 2*vertexIdx.x - NGHOST
-	j = 2*vertexIdx.y - NGHOST
-	k = 2*vertexIdx.z - NGHOST
+	i = 2*vertexIdx.x 
+	j = 2*vertexIdx.y 
+	k = 2*vertexIdx.z 
 	res = 0.0
 	int di
 	int dj
@@ -82,12 +82,11 @@ restrict_full_weighting(Field fine_residual, Field coarse_residual)
 trilinear_prolongation(Field coarse_residual)
 {
 
-	const int3 index = vertexIdx - NGHOST
-	const bool I_even = (index.x % 2 == 0)
-	const bool J_even = (index.y % 2 == 0)
-	const bool K_even = (index.z % 2 == 0)
+	const bool I_even = (vertexIdx.x % 2 == 0)
+	const bool J_even = (vertexIdx.y % 2 == 0)
+	const bool K_even = (vertexIdx.z % 2 == 0)
 
-	const int3 coarse_vertexIdx = (index / 2) + NGHOST;
+	const int3 coarse_vertexIdx = (vertexIdx / 2)
 
 	if(I_even && J_even && K_even)
 	{

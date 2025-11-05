@@ -1,17 +1,17 @@
 #include "$AC_HOME/acc-runtime/stdlib/math/interpolation.h"
 hostdefine AC_GMG_ENABLED (1)
 
-int3 AC_nlocal_gmg_level_0 = AC_nlocal
-int3 AC_nlocal_gmg_level_1 = ((AC_nlocal_gmg_level_0-1)/2)+1
-int3 AC_nlocal_gmg_level_2 = ((AC_nlocal_gmg_level_1-1)/2)+1
-int3 AC_nlocal_gmg_level_3 = ((AC_nlocal_gmg_level_2-1)/2)+1
-int3 AC_nlocal_gmg_level_4 = ((AC_nlocal_gmg_level_3-1)/2)+1
+int3 AC_mlocal_gmg_level_0 = AC_mlocal
+int3 AC_mlocal_gmg_level_1 = ((AC_mlocal_gmg_level_0-1)/2)+1
+int3 AC_mlocal_gmg_level_2 = ((AC_mlocal_gmg_level_1-1)/2)+1
+int3 AC_mlocal_gmg_level_3 = ((AC_mlocal_gmg_level_2-1)/2)+1
+int3 AC_mlocal_gmg_level_4 = ((AC_mlocal_gmg_level_3-1)/2)+1
 
-int3 AC_mlocal_gmg_level_0 = AC_nlocal_gmg_level_0 + 2*NGHOST
-int3 AC_mlocal_gmg_level_1 = AC_nlocal_gmg_level_1 + 2*NGHOST
-int3 AC_mlocal_gmg_level_2 = AC_nlocal_gmg_level_2 + 2*NGHOST
-int3 AC_mlocal_gmg_level_3 = AC_nlocal_gmg_level_3 + 2*NGHOST
-int3 AC_mlocal_gmg_level_4 = AC_nlocal_gmg_level_4 + 2*NGHOST
+int3 AC_nlocal_gmg_level_0 = AC_mlocal_gmg_level_0 - 2*NGHOST
+int3 AC_nlocal_gmg_level_1 = AC_mlocal_gmg_level_1 - 2*NGHOST
+int3 AC_nlocal_gmg_level_2 = AC_mlocal_gmg_level_2 - 2*NGHOST
+int3 AC_nlocal_gmg_level_3 = AC_mlocal_gmg_level_3 - 2*NGHOST
+int3 AC_nlocal_gmg_level_4 = AC_mlocal_gmg_level_4 - 2*NGHOST
 
 dims(AC_mlocal_gmg_level_0) Field GMG_SOLUTION_0
 dims(AC_mlocal_gmg_level_1) Field GMG_SOLUTION_1 
@@ -20,6 +20,10 @@ dims(AC_mlocal_gmg_level_3) Field GMG_SOLUTION_3
 dims(AC_mlocal_gmg_level_4) Field GMG_SOLUTION_4
 
 auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_INITIAL_RHS
+auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RHS_1
+auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RHS_2
+auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RHS_3
+auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RHS_4
 
 auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_RESIDUAL_0
 auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RESIDUAL_1 
@@ -41,10 +45,10 @@ const Field GMG_SOLUTIONS =
 const Field GMG_RHS =
 	[
 		GMG_INITIAL_RHS,
-		GMG_RESIDUAL_1,
-		GMG_RESIDUAL_2,
-		GMG_RESIDUAL_3,
-		GMG_RESIDUAL_4
+		GMG_RHS_1,
+		GMG_RHS_2,
+		GMG_RHS_3,
+		GMG_RHS_4
 	]
 
 const Field GMG_RESIDUALS =
@@ -344,9 +348,14 @@ gmg_laplace_neighbours(Field f, int level)
 
 Kernel gmg_restrict_residual_kernel(GMG_LEVEL level)
 {
-	restrict_full_weighting(GMG_RESIDUALS[level],GMG_RESIDUALS[level+1])
+	restrict_full_weighting(GMG_RESIDUALS[level],GMG_RHS[level+1])
 	//The residual is most likely small so zero is a meaningful starting value
 	write(GMG_SOLUTIONS[level+1],0.0)
+}
+
+Kernel gmg_copy_rhs_to_residual_kernel(GMG_LEVEL level)
+{
+	write(GMG_RESIDUALS[level],GMG_RHS[level])
 }
 
 Kernel gmg_get_correction_from_next_level_kernel(GMG_LEVEL level)
@@ -381,7 +390,7 @@ gmg_get_correction_from_next_level(gmg_boundconds)
 Kernel gmg_residual_kernel(GMG_LEVEL level)
 {
 	spacing = AC_inv_ds_2/pow(4.0,int(level));
-	residual = GMG_RHS[level] - laplace(GMG_SOLUTIONS[level],spacing)
+	residual = GMG_RHS[level] + laplace(GMG_SOLUTIONS[level],spacing)
 	write(GMG_RESIDUALS[level],residual)
 }
 
@@ -389,6 +398,11 @@ ComputeSteps
 gmg_get_residual(gmg_boundconds)
 {
 	gmg_residual_kernel(AC_GMG_LEVEL)
+}
+ComputeSteps
+gmg_copy_rhs_to_residual(gmg_boundconds)
+{
+	gmg_copy_rhs_to_residual_kernel(AC_GMG_LEVEL)
 }
 
 gmg_laplace_central_coeff(int level)
@@ -399,8 +413,8 @@ gmg_laplace_central_coeff(int level)
 
 gmg_poisson_jacobi_update(int level)
 {
-	Ax = gmg_laplace_neighbours(GMG_SOLUTIONS[level],level)
-	coef = gmg_laplace_central_coeff(level)
+	Ax = -gmg_laplace_neighbours(GMG_SOLUTIONS[level],level)
+	coef = -gmg_laplace_central_coeff(level)
 	return (GMG_RHS[level]-Ax)/coef
 }
 
@@ -415,4 +429,16 @@ gmg_poisson_sor_red_black(int color, int level, real omega)
 	{
 		write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level])
 	}
+}
+
+Kernel gmg_prolong_solution_kernel(GMG_LEVEL level)
+{
+	e = trilinear_prolongation(GMG_SOLUTIONS[level+1])
+	write(GMG_SOLUTIONS[level],e)
+}
+
+ComputeSteps
+gmg_prolong_solution(gmg_boundconds)
+{
+	gmg_prolong_solution_kernel(AC_GMG_LEVEL)
 }
