@@ -2201,7 +2201,7 @@ elemental NAME##EXTENSION_NAME(Field f, real inv_spacing_2) \
 	} \
 	return res \
 } \
-elemental NAME##EXTENSION_NAME(Field f, real inv_spacing_2) \
+elemental NAME##EXTENSION_NAME(Field f) \
 { \
 	return NAME##EXTENSION_NAME(f,AC_inv_ds_2.x) \
 }
