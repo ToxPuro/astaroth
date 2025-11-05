@@ -510,6 +510,13 @@ ac_get_field_halos(const Field& field)
 	return VAL(vtxbuf_run_time_device_halos[field]);
 }
 
+static __device__ UNUSED
+bool
+ac_field_has_default_dims(const Field& field)
+{
+	return vtxbuf_device_dims[field] == AC_mlocal;
+}
+
 
 #define postprocess_reduce_result(DST,OP)
 

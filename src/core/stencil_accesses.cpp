@@ -658,9 +658,18 @@ ac_get_field_halos(const Field& field)
 	}
 	return VAL(vtxbuf_run_time_halos[field]);
 }
-void
-write_base (const Field& field, const AcReal&)
+
+static bool
+ac_field_has_default_dims(const Field& field)
 {
+	return vtxbuf_dims[field] == AC_mlocal;
+}
+void
+write_base(const Field& field, const AcReal&)
+{
+	const int field_index = (int)field;
+	if(field_index < 0) return;
+	if(field_index >= NUM_FIELDS) return;
 	written_fields[field] |= AC_IN_BOUNDS_WRITE;
 }
 
