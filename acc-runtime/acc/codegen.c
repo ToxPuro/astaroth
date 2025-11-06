@@ -2837,7 +2837,7 @@ gen_kernel_structs(ASTNode* root)
 				for(size_t j = 0; j < types.size; ++j)
 				{
 					fprintf(fp,"params.%s.%s = p_%ld;\n",
-							remove_suffix_intern(name,"_optimized_"),combine_all_new(info.expr_nodes.data[j]),j
+							remove_suffix_intern(name,"___optimized_"),combine_all_new(info.expr_nodes.data[j]),j
 							);
 				}
 				fprintf(fp,"return AC_SUCCESS;}\n");
@@ -4418,7 +4418,7 @@ gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations,
 		ASTNode* new_node = astnode_dup(node,NULL);
 		make_ids_unique(new_node);
 		ASTNode* function_id = (ASTNode*) get_node(NODE_FUNCTION_ID,new_node->lhs);
-		astnode_sprintf(function_id,"%s_optimized_%d",get_node(NODE_FUNCTION_ID,node)->buffer,i);
+		astnode_sprintf(function_id,"%s___optimized_%d",get_node(NODE_FUNCTION_ID,node)->buffer,i);
 		push_node(&optimized_decls,new_node);
 	}
 	ASTNode* declarations = build_list_node(optimized_decls,"");
@@ -4454,9 +4454,9 @@ gen_kernel_ifs_base(ASTNode* node, const param_combinations combinations, const 
 
 		fprintf(fp,
 				")\n{\n"
-				"\treturn %s_optimized_%d;\n}\n"
+				"\treturn %s___optimized_%d;\n}\n"
 		,get_node(NODE_FUNCTION_ID,node)->buffer,i);
-		fprintf(fp_defs,"%s_optimized_%d,",get_node(NODE_FUNCTION_ID,node)->buffer,i);
+		fprintf(fp_defs,"%s___optimized_%d,",get_node(NODE_FUNCTION_ID,node)->buffer,i);
 	}
 	
 	fclose(fp);
@@ -4517,8 +4517,8 @@ replace_boolean_dconsts_in_optimized(ASTNode* node, const string_vec* vals, stri
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
-	const int combinations_index = get_suffix_int(fn_identifier->buffer,"_optimized_");
-	const char* kernel_name = remove_suffix_intern(fn_identifier->buffer,"_optimized_");
+	const int combinations_index = get_suffix_int(fn_identifier->buffer,"___optimized_");
+	const char* kernel_name = remove_suffix_intern(fn_identifier->buffer,"___optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
 	if(combinations_index == -1)
 		return;
@@ -4538,8 +4538,8 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
-	const int combinations_index = get_suffix_int(fn_identifier->buffer,"_optimized_");
-	const char* kernel_name = remove_suffix_intern(fn_identifier->buffer,"_optimized_");
+	const int combinations_index = get_suffix_int(fn_identifier->buffer,"___optimized_");
+	const char* kernel_name = remove_suffix_intern(fn_identifier->buffer,"___optimized_");
 	if(strstr(kernel_name,"MONOMORPHIZED")) return;
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,intern(kernel_name));
 	const char* type = get_expr_type(node);
