@@ -264,7 +264,7 @@ main(void)
 
     fprintf(stderr,"1/h2: %.14e\n",1.0/info[AC_inv_ds_2].x);
     fflush(stderr);
-    //exit(EXIT_SUCCESS);
+    /**
     fprintf(stderr,"SOR\n");
     {
     	acGridExecuteTaskGraph(initcond_graph,1);
@@ -287,6 +287,7 @@ main(void)
     	fprintf(stderr,"Final residual: %14e\n",residual);
     	fprintf(stderr,"Took %d steps\n",n_steps);
     }
+    **/
 
 
     gmg_v_cycle(3);

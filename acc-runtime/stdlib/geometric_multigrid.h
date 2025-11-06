@@ -25,11 +25,12 @@ auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RHS_2
 auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RHS_3
 auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RHS_4
 
-auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_RESIDUAL_0
-auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RESIDUAL_1 
-auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RESIDUAL_2
-auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RESIDUAL_3
-auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RESIDUAL_4
+//Need to be communicated if use other smoothers than gauss-seidel or jacobi
+communicated auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_RESIDUAL_0
+communicated auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RESIDUAL_1 
+communicated auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RESIDUAL_2
+communicated auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RESIDUAL_3
+communicated auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RESIDUAL_4
 
 dconst real AC_GMG_CENTRAL_COEFFS[5]
 
@@ -391,8 +392,7 @@ gmg_get_correction_from_next_level(gmg_boundconds)
 
 Kernel gmg_residual_kernel(GMG_LEVEL level)
 {
-	spacing = AC_inv_ds_2/pow(4.0,int(level));
-	residual = GMG_RHS[level] + laplace(GMG_SOLUTIONS[level],spacing)
+	residual = GMG_RHS[level] + gmg_laplace(GMG_SOLUTIONS[level],level)
 	write(GMG_RESIDUALS[level],residual)
 }
 
@@ -461,6 +461,47 @@ gmg_poisson_sor_red_black_step(gmg_boundconds)
 	gmg_sor_red(AC_GMG_LEVEL)
 	gmg_sor_black(AC_GMG_LEVEL)
 }
+
+//Optimized smoother across all of the 7-point stencils
+//When going to sixth-order can numerically find optimized
+//19-point smoother or even 343-point smoother by minimizing the smoothing factor.
+//Credit and further details
+//https://arxiv.org/pdf/2206.05543
+Stencil
+optimized_smoother_stencil
+{
+	[-1][0][0] = 1.0/10.0,
+	[1 ][0][0] = 1.0/10.0,
+	[0][-1][0] = 1.0/10.0,
+	[0][1 ][0] = 1.0/10.0,
+	[0][0][-1] = 1.0/10.0,
+	[0][0][1 ] = 1.0/10.0,
+
+	[0][0][0] = 8.0/10.0
+}
+
+optimized_smoother(Field r, int level)
+{
+	h2 = AC_ds_2.x*pow(4,int(level))
+	return optimized_smoother_stencil(r)*h2
+}
+
+
+Kernel gmg_optimized_smoother_kernel(GMG_LEVEL level)
+{
+	Field u = GMG_SOLUTIONS[level]
+	Field r = GMG_RESIDUALS[level]
+	const real omega = 0.274
+	write(u, u + omega*optimized_smoother(r,level))
+}
+
+ComputeSteps gmg_optimized_smoother(gmg_boundconds)
+{
+	gmg_residual_kernel(AC_GMG_LEVEL)
+	gmg_optimized_smoother_kernel(AC_GMG_LEVEL)
+}
+
+
 
 Kernel gmg_write_del2_kernel()
 {

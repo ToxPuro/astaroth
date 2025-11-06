@@ -223,7 +223,8 @@ gmg_level_step(const int level, const int max_level)
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 
-  const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step);
+  const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_optimized_smoother);
+  //const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step);
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(sor_red_black_step);
   //const auto sor_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
   ///

@@ -76,7 +76,6 @@ jacobi_step(gmg_boundconds)
 }
 
 Kernel randomize_residual_and_solution_kernel(GMG_LEVEL level) {
-	random_val = rand_uniform()
 	write(GMG_SOLUTIONS[level],rand_uniform())
 	write(GMG_RESIDUALS[level],rand_uniform())
 }
