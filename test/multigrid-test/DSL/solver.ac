@@ -69,36 +69,10 @@ Kernel jacobi_step_kernel(GMG_LEVEL level)
 	write(GMG_SOLUTIONS[level],new_res)
 }
 
-Kernel sor_red(GMG_LEVEL level)
-{
-	spacing = AC_inv_ds_2/pow(4,int(level))
-	//This is here to force update of the boundaries
-	h  = 1.0/spacing.x;
-	old_res = (laplace_neighbours_without_spacing(GMG_SOLUTIONS[level]) + h*GMG_RHS[level])/6.0
-
-	poisson_sor_red_black_extended(SOR_RED,GMG_RHS[level],GMG_SOLUTIONS[level],AC_SOR_omega,AC_laplace_sign,spacing)
-}
-Kernel sor_black(GMG_LEVEL level)
-{
-	spacing = AC_inv_ds_2/pow(4,int(level))
-	//This is here to force update of the boundaries
-	h  = 1.0/spacing.x;
-	old_res = (laplace_neighbours_without_spacing(GMG_SOLUTIONS[level]) + h*GMG_RHS[level])/6.0
-
-	poisson_sor_red_black_extended(SOR_BLACK,GMG_RHS[level],GMG_SOLUTIONS[level],AC_SOR_omega,AC_laplace_sign,spacing)
-}
-
 ComputeSteps
 jacobi_step(gmg_boundconds)
 {
 	jacobi_step_kernel(AC_GMG_LEVEL)
-}
-
-ComputeSteps
-sor_red_black_step(gmg_boundconds)
-{
-	sor_red(AC_GMG_LEVEL)
-	sor_black(AC_GMG_LEVEL)
 }
 
 Kernel randomize_residual_and_solution_kernel(GMG_LEVEL level) {
