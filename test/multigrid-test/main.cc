@@ -144,7 +144,7 @@ get_galerkin_operator(AcMesh mesh, const int level)
     }
     
     store_and_prolong(mesh,level);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(write_del2),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_write_del2),1);
     
     acDeviceStoreMesh(acGridGetDevice(),STREAM_ALL,&mesh);
     
@@ -258,17 +258,17 @@ gmg_level_step(AcMesh mesh, const int level)
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 
-  const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_sor_red_black_step);
+  const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step);
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(sor_red_black_step);
   //const auto sor_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
   ///
-  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual_scalar),1);
-  AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual_norm),1);
+  AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
   fprintf(stderr,"Residual coming in: %14e\n",residual);//
   acGridExecuteTaskGraph(sor_graph,1); //Pre-smooth step
 				       //
-  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual_scalar),1);
-  residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual_norm),1);
+  residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
   fprintf(stderr,"Residual after first smooth: %14e\n",residual);//
   if(level == MAX_GMG_LEVEL)
   {
@@ -375,10 +375,9 @@ main(void)
     info[AC_GMG_CENTRAL_COEFFS] = &gmg_central_coeffs[0];
     acGridInit(info);
     //Test that can build test ComputeSteps
-    const auto empty_graph = acGetOptimizedDSLTaskGraph(empty_steps);
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
-    const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(write_del2),1);
+    const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_write_del2),1);
     for(int i = 0; i < 4; ++i)
     {
 	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)i);
@@ -386,7 +385,7 @@ main(void)
 	const Volume full_launch_dims = to_volume(info[level_dims[i]]);
     	const Volume full_launch_end = full_launch_dims + full_launch_start;
     	const auto sor_graph         = acGetOptimizedDSLTaskGraph(sor_red_black_step,full_launch_start,full_launch_end);
-    	const auto gm_sor_graph         = acGetOptimizedDSLTaskGraph(gmg_sor_red_black_step,full_launch_start,full_launch_end);
+    	const auto gm_sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step,full_launch_start,full_launch_end);
     	const auto mg_residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual,full_launch_start,full_launch_end);
 
 	if(i < 4-1)
@@ -532,7 +531,7 @@ main(void)
     			acGridExecuteTaskGraph(restrict_graph,1); }
 
     		acGridExecuteTaskGraph(residual_graph,1);
-    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
     	    fprintf(stderr,"Residual: %14e\n",residual);
     	}
     	fprintf(stderr,"Final residual: %14e\n",residual);
@@ -546,7 +545,7 @@ main(void)
     {
     	acGridExecuteTaskGraph(initcond_graph,1);
     	acGridExecuteTaskGraph(residual_graph,1);
-    	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+    	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
     	int n_steps = 0;
     	while(residual > 1e-8)
@@ -556,7 +555,7 @@ main(void)
             gmg_v_cycle(candidate);
 
     	    acGridExecuteTaskGraph(residual_graph,1);
-    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
     	    fprintf(stderr,"Residual: %14e\n",residual);
     	}
     	fprintf(stderr,"Final residual: %14e\n",residual);

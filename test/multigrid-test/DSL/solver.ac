@@ -35,42 +35,12 @@ BoundConds gmg_boundconds{
 }
 
 
-Kernel write_del2_kernel()
-{
-	write(GMG_RESIDUALS[0],laplace(GMG_SOLUTIONS[0]))
-}
-
-ComputeSteps
-write_del2(gmg_boundconds)
-{
-	write_del2_kernel()
-}
-
-output real AC_residual2
-Kernel gmg_residual_scalar_kernel(GMG_LEVEL level)
-{
-	spacing = AC_inv_ds_2/pow(4,int(level))
-	const real res = AC_laplace_sign*laplace(GMG_SOLUTIONS[level],spacing)
-	r = GMG_RHS[level]- res
-	Field f = GMG_SOLUTIONS[level]
-	reduce_sum(r*r,AC_residual2)
-}
-Kernel residual_kernel()
-{
-	const real res = AC_laplace_sign*laplace(GMG_SOLUTIONS[0])
-	r = GMG_INITIAL_RHS  - res
-	reduce_sum(r*r,AC_residual2)
-}
 
 
 ComputeSteps
 initcond(gmg_boundconds)
 {
 	init_kernel()
-}
-ComputeSteps
-empty_steps(gmg_boundconds)
-{
 }
 
 Stencil laplace_neighbours_without_spacing
@@ -118,8 +88,6 @@ Kernel sor_black(GMG_LEVEL level)
 	poisson_sor_red_black_extended(SOR_BLACK,GMG_RHS[level],GMG_SOLUTIONS[level],AC_SOR_omega,AC_laplace_sign,spacing)
 }
 
-input GMG_LEVEL AC_GMG_LEVEL
-
 ComputeSteps
 jacobi_step(gmg_boundconds)
 {
@@ -131,36 +99,6 @@ sor_red_black_step(gmg_boundconds)
 {
 	sor_red(AC_GMG_LEVEL)
 	sor_black(AC_GMG_LEVEL)
-}
-fixed_boundary Kernel gmg_sor_red(GMG_LEVEL level)
-{
-	gmg_poisson_sor_red_black(SOR_RED,level,AC_SOR_omega)
-}
-
-fixed_boundary Kernel gmg_sor_black(GMG_LEVEL level)
-{
-	gmg_poisson_sor_red_black(SOR_BLACK,level,AC_SOR_omega)
-}
-
-ComputeSteps
-gmg_sor_red_black_step(gmg_boundconds)
-{
-	gmg_sor_red(AC_GMG_LEVEL)
-	gmg_sor_black(AC_GMG_LEVEL)
-}
-
-
-
-ComputeSteps
-get_residual(gmg_boundconds)
-{
-	residual_kernel()
-}
-
-ComputeSteps
-gmg_get_residual_scalar(gmg_boundconds)
-{
-	gmg_residual_scalar_kernel(AC_GMG_LEVEL)
 }
 
 Kernel randomize_residual_and_solution_kernel(GMG_LEVEL level) {
