@@ -1,17 +1,17 @@
 #include "$AC_HOME/acc-runtime/stdlib/grid_transfer_functions.h"
 hostdefine AC_GMG_ENABLED (1)
 
-int3 AC_mlocal_gmg_level_0 = AC_mlocal
-int3 AC_mlocal_gmg_level_1 = ((AC_mlocal_gmg_level_0-1)/2)+1
-int3 AC_mlocal_gmg_level_2 = ((AC_mlocal_gmg_level_1-1)/2)+1
-int3 AC_mlocal_gmg_level_3 = ((AC_mlocal_gmg_level_2-1)/2)+1
-int3 AC_mlocal_gmg_level_4 = ((AC_mlocal_gmg_level_3-1)/2)+1
+int3 AC_nlocal_gmg_level_0 = AC_nlocal
+int3 AC_nlocal_gmg_level_1 = ((AC_nlocal_gmg_level_0+1)/2)-1
+int3 AC_nlocal_gmg_level_2 = ((AC_nlocal_gmg_level_1+1)/2)-1
+int3 AC_nlocal_gmg_level_3 = ((AC_nlocal_gmg_level_2+1)/2)-1
+int3 AC_nlocal_gmg_level_4 = ((AC_nlocal_gmg_level_3+1)/2)-1
 
-int3 AC_nlocal_gmg_level_0 = AC_mlocal_gmg_level_0 - 2*NGHOST
-int3 AC_nlocal_gmg_level_1 = AC_mlocal_gmg_level_1 - 2*NGHOST
-int3 AC_nlocal_gmg_level_2 = AC_mlocal_gmg_level_2 - 2*NGHOST
-int3 AC_nlocal_gmg_level_3 = AC_mlocal_gmg_level_3 - 2*NGHOST
-int3 AC_nlocal_gmg_level_4 = AC_mlocal_gmg_level_4 - 2*NGHOST
+int3 AC_mlocal_gmg_level_0 = AC_nlocal_gmg_level_0 + 2*NGHOST
+int3 AC_mlocal_gmg_level_1 = AC_nlocal_gmg_level_1 + 2*NGHOST
+int3 AC_mlocal_gmg_level_2 = AC_nlocal_gmg_level_2 + 2*NGHOST
+int3 AC_mlocal_gmg_level_3 = AC_nlocal_gmg_level_3 + 2*NGHOST
+int3 AC_mlocal_gmg_level_4 = AC_nlocal_gmg_level_4 + 2*NGHOST
 
 dims(AC_mlocal_gmg_level_0) Field GMG_SOLUTION_0
 dims(AC_mlocal_gmg_level_1) Field GMG_SOLUTION_1 
