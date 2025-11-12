@@ -38,7 +38,6 @@ restrict_full_weighting(Field fine_residual, Field coarse_residual)
 		}
 	}
 	res /= 64.0
-	if(vertexIdx == (int3){8,8,8})
 	write(coarse_residual,res);
 }
 
