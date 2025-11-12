@@ -666,7 +666,7 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 				const bool run_time  = (info[k].stencils_accessed[j][i] & AC_STENCIL_CALL);
 				if(run_time && !comp_time)
 					fatal("In Kernel %s Stencil %s used for %s at runtime but not generated!\n"
-					      "Most likely that stencill is executed in a control-flow path that was not taken.\n"
+					      "Most likely that stencil is executed in a control-flow path that was not taken.\n"
 					      "Consider either runtime-compilation or rewriting the kernel do avoid the conditional stencil call\n"
 					      ,kernel_names[k], stencil_names[i], field_names[j]
 					      );
