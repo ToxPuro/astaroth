@@ -20,6 +20,12 @@ def gen_stencil(weights):
                 coeffs[i+NGHOST][j+NGHOST][k+NGHOST] = weights[i+NGHOST]*weights[j+NGHOST]*weights[k+NGHOST]/coeff_sum
                 print(f"\t  [{i}][{j}][{k}] = {coeffs[i+NGHOST][j+NGHOST][k+NGHOST]},")
                 ##print(f"\t  [{i}][{j}][{k}] = 1,")
+def gen_smoother():
+    for i in range(-NGHOST,NGHOST+1):
+        for j in range(-NGHOST,NGHOST+1):
+            for k in range(-NGHOST,NGHOST+1):
+                facet_class = abs(i) + abs(j) + abs(k)
+                print(f"\t  [{i}][{j}][{k}] = AC_gmg_optimized_smoother_coeff_facet_{facet_class}_r1,")
 def main():
     ##TP: for gaussian smoothing
     ##weights = base_gaussian()
@@ -28,5 +34,6 @@ def main():
     #TP: for radius of 2 smoothing
     ##weights = np.array([45.0, 70.0, 45.0])
     gen_stencil(weights)
+    #gen_smoother()
 if __name__ == '__main__':
         main()
