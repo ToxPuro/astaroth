@@ -67,20 +67,21 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     };
     auto coarse_dims = acGetMeshDims(acGridGetLocalMeshInfo(),GMG_SOLUTIONS[level]);
     const Volume hat_basis_position = to_volume(
-    	((to_int3(coarse_dims.nn)/2) + (int3){1,1,1})
+    	((to_int3(coarse_dims.nn)/2) + (int3){NGHOST,NGHOST,NGHOST})
     );
     /**
-    printf("Dims at level: (%zu,%zu,%zu)\n"
+    fprintf(stderr,"Dims at level %d: (%zu,%zu,%zu)\n"
+		,level
     		,coarse_dims.nn.x
     		,coarse_dims.nn.y
     		,coarse_dims.nn.z
           );
-    printf("Hat basis position: (%zu,%zu,%zu)\n"
+    fprintf(stderr,"Hat basis position: (%zu,%zu,%zu)\n"
     		,hat_basis_position.x
     		,hat_basis_position.y
     		,hat_basis_position.z
           );
-	  **/
+    **/
     for(size_t x = 0; x < coarse_dims.m1.x;++x)
     {
        for(size_t y = 0; y < coarse_dims.m1.y;++y)
@@ -151,7 +152,11 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
         			const AcReal val = mesh.vertex_buffer[GMG_RHS[level]][index];
         			if(val != 0.0)
         			{
-        				//fprintf(stderr,"Level %d galerkin operator at (%zu,%zu,%zu): %.14e\n",level,x,y,z,val);
+        				//fprintf(stderr,"Level %d galerkin operator at (%d,%d,%d): %.14e\n",level
+					//		,int(x)-int(hat_basis_position.x)
+					//		,int(y)-int(hat_basis_position.y)
+					//		,int(z)-int(hat_basis_position.z)
+					//		,val);
         			}
         		}
         	}
@@ -185,7 +190,7 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     //const AcReal central_coeff = -6.0*h2_inv;
     gmg_central_coeffs[level] = central_coeff;
     acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils[level],stencil);
-    stencil[1][1][1] = 0.0;
+    stencil[NGHOST][NGHOST][NGHOST] = 0.0;
     acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_neighbours_operator_stencils[level],stencil);
     acDeviceSynchronizeStream(acGridGetDevice(),STREAM_DEFAULT);
     //fprintf(stderr,"\n");

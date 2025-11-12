@@ -5,9 +5,9 @@
  */
 restrict_full_weighting(Field fine_residual, Field coarse_residual)
 {
-	i = 2*vertexIdx.x 
-	j = 2*vertexIdx.y 
-	k = 2*vertexIdx.z 
+	i = 2*vertexIdx.x + 1 - NGHOST 
+	j = 2*vertexIdx.y + 1 - NGHOST 
+	k = 2*vertexIdx.z + 1 - NGHOST 
 	res = 0.0
 	int di
 	int dj
@@ -38,6 +38,7 @@ restrict_full_weighting(Field fine_residual, Field coarse_residual)
 		}
 	}
 	res /= 64.0
+	if(vertexIdx == (int3){8,8,8})
 	write(coarse_residual,res);
 }
 
@@ -47,11 +48,12 @@ restrict_full_weighting(Field fine_residual, Field coarse_residual)
 trilinear_prolongation(Field coarse_residual)
 {
 
-	const bool I_even = (vertexIdx.x % 2 == 0)
-	const bool J_even = (vertexIdx.y % 2 == 0)
-	const bool K_even = (vertexIdx.z % 2 == 0)
+	const int3 shifted_index = vertexIdx - NGHOST + 1
+	const bool I_even = (shifted_index.x % 2 == 0)
+	const bool J_even = (shifted_index.y % 2 == 0)
+	const bool K_even = (shifted_index.z % 2 == 0)
 
-	const int3 coarse_vertexIdx = (vertexIdx / 2)
+	const int3 coarse_vertexIdx = (shifted_index/ 2) + NGHOST - 1
 
 	if(I_even && J_even && K_even)
 	{

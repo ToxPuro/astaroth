@@ -106,15 +106,15 @@ main(void)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    const int mx = 33;
-    const int my = 33;
-    const int mz = 33;
+    const int nx = 31;
+    const int ny = 31;
+    const int nz = 31;
     
-    //const int mx = 65;
-    //const int my = 65;
-    //const int mz = 65;
-    acSetGridMeshDims(mx-2*NGHOST,my-2*NGHOST,mz-2*NGHOST, &info);
-    acSetLocalMeshDims(mx-2*NGHOST,my-2*NGHOST,mz-2*NGHOST, &info);
+    //const int nx = 63;
+    //const int ny = 63;
+    //const int nz = 63;
+    acSetGridMeshDims(nx,ny,nz, &info);
+    acSetLocalMeshDims(nx,ny,nz, &info);
 
     #if AC_RUNTIME_COMPILATION
     const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
@@ -199,9 +199,9 @@ main(void)
     			{
     	    		const int index = acVertexBufferIdx(x,y,z,info,GMG_RESIDUALS[1]);
     	    		{ 
-    	    			int i = 2*x;
-    	    			int j = 2*y;
-    	    			int k = 2*z;
+    	    			int i = 2*x + 1 - NGHOST;
+    	    			int j = 2*y + 1 - NGHOST;
+    	    			int k = 2*z + 1 - NGHOST;
     	    			AcReal res = 0.0;
     	    			for(int di = -1; di < 2; ++di)
     	    			{
@@ -228,12 +228,6 @@ main(void)
     	    						res += weight*candidate.vertex_buffer[GMG_RESIDUALS[0]][fine_index];
     	    					}
     	    				}
-    	    			}
-    	    			if(x == 1 && y == 1 && z == 1)
-    	    			{
-    	    				const int fine_index= acVertexBufferIdx(i,j,k,info);
-    	    				printf("fine residual: %.14e\n",candidate.vertex_buffer[GMG_RESIDUALS[0]][fine_index]);
-    	    				printf("RES: %.14e\n",res/64.0);
     	    			}
     	    			model.vertex_buffer[GMG_RESIDUALS[1]][index] = res/64.0;
     	    		}
@@ -290,8 +284,9 @@ main(void)
     **/
 
 
-    gmg_v_cycle(3);
-    //test_restriction();
+    const int n_levels = 3;
+    gmg_v_cycle(n_levels);
+    test_restriction();
     fprintf(stderr,"GMG\n");
     {
     	acGridExecuteTaskGraph(initcond_graph,1);
@@ -302,7 +297,7 @@ main(void)
     	while(residual > 1e-8)
     	{
     	    ++n_steps;
-            gmg_v_cycle(3);
+            gmg_v_cycle(n_levels);
     	    acGridExecuteTaskGraph(residual_graph,1);
     	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
     	    fprintf(stderr,"Residual: %14e\n",residual);
