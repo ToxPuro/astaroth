@@ -467,17 +467,65 @@ gmg_poisson_sor_red_black_step(gmg_boundconds)
 //19-point smoother or even 343-point smoother by minimizing the smoothing factor.
 //Credit and further details
 //https://arxiv.org/pdf/2206.05543
+/**
+run_const real AC_omega_for_optimized_smoother = 0.274
+run_const real AC_gmg_optimized_smoother_r0 = 8.0/10.0
+run_const real AC_gmg_optimized_smoother_r1 = 1.0/10.0
+
+//Example of smoother parameters that were derived numerically
+//run_const real AC_omega_for_optimized_smoother = 0.7244
+//run_const real AC_gmg_optimized_smoother_r0 = 0.2997
+//run_const real AC_gmg_optimized_smoother_r1 = 0.0371
+
 Stencil
 optimized_smoother_stencil
 {
-	[-1][0][0] = 1.0/10.0,
-	[1 ][0][0] = 1.0/10.0,
-	[0][-1][0] = 1.0/10.0,
-	[0][1 ][0] = 1.0/10.0,
-	[0][0][-1] = 1.0/10.0,
-	[0][0][1 ] = 1.0/10.0,
+	[-1][0][0] = AC_gmg_optimized_smoother_r1,
+	[1 ][0][0] = AC_gmg_optimized_smoother_r1,
+	[0][-1][0] = AC_gmg_optimized_smoother_r1,
+	[0][1 ][0] = AC_gmg_optimized_smoother_r1,
+	[0][0][-1] = AC_gmg_optimized_smoother_r1,
+	[0][0][1 ] = AC_gmg_optimized_smoother_r1,
+	[0][0][0]  = AC_gmg_optimized_smoother_r0
+}
+*/
 
-	[0][0][0] = 8.0/10.0
+//This is the full 3x3x3 smoother with numerically derived coeffs that achieve smoothing factor of approx 0.285 which is better than the theoretical best when including only cardinals
+run_const real AC_omega_for_optimized_smoother = 1.3699
+run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.1432
+run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0284
+run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0081
+run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0025
+Stencil
+optimized_smoother_stencil
+{
+          [-1][-1][-1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [-1][-1][0] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [-1][-1][1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [-1][0][-1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [-1][0][0] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [-1][0][1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [-1][1][-1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [-1][1][0] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [-1][1][1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [0][-1][-1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [0][-1][0] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [0][-1][1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [0][0][-1] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [0][0][0] = AC_gmg_optimized_smoother_coeff_facet_0_r1,
+          [0][0][1] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [0][1][-1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [0][1][0] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [0][1][1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][-1][-1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [1][-1][0] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][-1][1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [1][0][-1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][0][0] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [1][0][1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][1][-1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [1][1][0] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][1][1] = AC_gmg_optimized_smoother_coeff_facet_3_r1
 }
 
 optimized_smoother(Field r, int level)
@@ -487,12 +535,12 @@ optimized_smoother(Field r, int level)
 }
 
 
+
 Kernel gmg_optimized_smoother_kernel(GMG_LEVEL level)
 {
 	Field u = GMG_SOLUTIONS[level]
 	Field r = GMG_RESIDUALS[level]
-	const real omega = 0.274
-	write(u, u + omega*optimized_smoother(r,level))
+	write(u, u + AC_omega_for_optimized_smoother*optimized_smoother(r,level))
 }
 
 ComputeSteps gmg_optimized_smoother(gmg_boundconds)
