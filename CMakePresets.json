@@ -1,6 +1,23 @@
 {
-    "version": 6,
+    "version": 4,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23
+    },
     "configurePresets": [
+        {
+            "name": "puhti-mhd",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "OPTIMIZE_MEM_ACCESSES": "ON",
+                "MPI_ENABLED": "ON",
+                "SINGLEPASS_INTEGRATION": "OFF",
+                "BUILD_STANDALONE": "ON",
+                "BUILD_MHD_SAMPLES": "ON",
+                "BUILD_SAMPLES": "ON",
+                "MAX_THREADS_PER_BLOCK": "0"
+            }
+        },
         {
             "name": "mahti-mhd",
             "cacheVariables": {
