@@ -170,6 +170,14 @@ Usage: ./ac_run_mpi [options]
 
 See `analysis/python/` directory of existing data visualization and analysis scripts.
 
+### Restarting from distributed snapshots
+
+```bash
+cmake ~/astaroth -DOPTIMIZE_MEM_ACCESSES=ON -DMPI_ENABLED=ON && cmake --build . --parallel && $SRUN4 ./ac_run_mpi --from-snapshot <snapshot directory>
+```
+
+See also config parameter `AC_num_snapshots` for more control over how many snapshots are written out.
+
 ## Interface
 
 * `astaroth/include/astaroth.h`: Astaroth main header. Contains the interface for accessing single- and multi-GPU layers.
