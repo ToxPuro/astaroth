@@ -114,7 +114,7 @@ run_const AcDimProductsInv AC_mgrid_products_inv = ac_get_dim_products_inv(AC_mg
 /**
  * Is the grid periodic in the given dimensions
  */
-run_const bool3 AC_periodic_grid;
+run_const bool3 AC_periodic_grid = (bool3){true,true,true};
 /**
  * Overrides the normal safety feature of not allowing periodic bcs if the grid is not specified as periodic. Might be sometimes needed if one needs e.g. impose artificial vanishing Dirichlet bcs as a step of calculating line integrals along the domain.
  */
