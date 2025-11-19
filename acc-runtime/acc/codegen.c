@@ -8711,6 +8711,14 @@ transform_array_assignments(ASTNode* node)
                             	add_index_to_arrays(node,1);
 			    }
 			}
+			else if(lhs_type == MATRIX_STR)
+			{
+				remove_implicit_loop(node->lhs);
+                      		replace_node(
+                      		          node->rhs->rhs,
+                      		          create_func_call_expr(intern("arr_to_matrix"),node->rhs->rhs)
+                      		  );
+			}
                         else
                         {
                                 node_vec params = VEC_INITIALIZER;

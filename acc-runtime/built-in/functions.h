@@ -452,6 +452,21 @@ inline create_neg_arr(real[] a)
 	return res;
 }
 
+arr_to_matrix(real[] arr)
+{
+	Matrix res
+	res[0][0] = arr[0 + 3*0]
+	res[1][0] = arr[1 + 3*0]
+	res[2][0] = arr[2 + 3*0]
+	res[0][1] = arr[0 + 3*1]
+	res[1][1] = arr[1 + 3*1]
+	res[2][1] = arr[2 + 3*1]
+	res[0][2] = arr[0 + 3*2]
+	res[1][2] = arr[1 + 3*2]
+	res[2][2] = arr[2 + 3*2]
+	return res
+}
+
 sum(real3 a)
 {
 	return a.x + a.y + a.z
