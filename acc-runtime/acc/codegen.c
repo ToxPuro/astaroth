@@ -11185,6 +11185,26 @@ generate_minimized_code(ASTNode* root, const bool gen_mem_accesses)
   		//TP: these are redone after code elimination to get more accurate static information
 		gen_calling_info(root);
 }
+void
+empty_non_optimized_kernels(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params ,string_vec* user_kernel_combinatorial_params)
+{
+	TRAVERSE_PREAMBLE_PARAMS(empty_non_optimized_kernels,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
+	if(!(node->type & NODE_KFUNCTION))
+		return;
+	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,get_node(NODE_FUNCTION_ID,node)->buffer);
+	if(kernel_index == -1)
+		return;
+	string_vec combination_params = user_kernel_combinatorial_params[kernel_index];
+	if(combination_params.size == 0) return;
+	if(combinations.nums[kernel_index] == 0) return;
+	ASTNode* new_node = astnode_dup(node,NULL);
+	make_ids_unique(new_node);
+	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	if(strstr(func_name,"___optimized")) return;
+	ASTNode* func_body = node->rhs;
+	ASTNode* compound_statement = func_body->rhs;
+	compound_statement->lhs = NULL;
+}
 
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool ELIMINATE_CONDITIONALS, const bool runtime_compilation)
@@ -11269,6 +11289,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   combinatorial_params_info info = get_combinatorial_params_info(root);
   gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
   //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  //
+  ///If we are only using the optimized kernels we might as well empty the bodies of the original functions to speedup the compilation
+  if(USE_ONLY_OPTIMIZED_KERNELS) empty_non_optimized_kernels(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
   free_combinatorial_params_info(&info);
   gen_array_reads(root,root,primitive_datatypes);
 
