@@ -384,6 +384,28 @@ gen_raytracing_sliding_loops(const int curr_kernel)
 }
 
 void
+gen_warp_id()
+{
+#if AC_USE_HIP
+        	printf("const size_t warp_id = rocprim__warpId();");
+#else
+		printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
+#endif
+}
+void
+gen_lane_id()
+{
+	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
+}
+void
+gen_warp_out_index()
+{
+	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
+	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
+	printf("[[maybe_unused]] const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+}
+
+void
 gen_kernel_block_loops(const int curr_kernel)
 {
   printf(
@@ -519,19 +541,12 @@ gen_kernel_block_loops(const int curr_kernel)
 				printf("[[maybe_unused]] float %s_reduce_output = -FLT_MAX;",float_output_names[i]);
 		}
 #endif
-	#if AC_USE_HIP
-        	printf("const size_t warp_id = rocprim__warpId();");
-	#else
-		printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
-	#endif
-
 	{
 		if(kernel_has_block_loops(curr_kernel) && !AC_CPU_BUILD)
 	    		printf("[[maybe_unused]] constexpr size_t warp_leader_id  = 0;");
-	    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
-	    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
-	    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
-	    	printf("[[maybe_unused]] const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+		gen_warp_id();
+		gen_lane_id();
+		gen_warp_out_index();
        #if AC_USE_HIP
 	        printf("[[maybe_unused]] auto AC_INTERNAL_active_threads = __ballot(1);");
        #else
@@ -1881,18 +1896,9 @@ gen_kernel_reduce_funcs(const int curr_kernel)
     {
 	if(!BUFFERED_REDUCTIONS)
 	{
-#if AC_USE_HIP
-        	printf("[[maybe_unused]] const size_t warp_id = rocprim__warpId();");
-#else
-		printf("[[maybe_unused]] const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
-#endif
-    		printf("[[maybe_unused]] const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
-
-    		printf("[[maybe_unused]] const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
-
-    		printf("[[maybe_unused]] const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
-
-    		printf("[[maybe_unused]] const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+		gen_warp_id();
+		gen_lane_id();
+		gen_warp_out_index();
 	}
     	printf("%s warp_leader_id  = %s(AC_INTERNAL_active_threads)-1;",false ? "" : "[[maybe_unused]] const size_t" ,ffs_string);
     }
@@ -1951,6 +1957,37 @@ gen_return_if_oob(const int curr_kernel)
     		printf("%s AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));",type);
     		//TP: if all threads are active can skip checks checking if target tid is active in reductions
     		printf("%s AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;",type);
+
+		int num_reduced = get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel],REDUCE_SUM);
+		num_reduced += get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel],REDUCE_MAX);
+		num_reduced += get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel],REDUCE_MIN);
+		if(num_reduced > 0)
+		{
+			printf("if(AC_INTERNAL_active_threads == 0){\n");
+			gen_warp_id();
+			gen_lane_id();
+			gen_warp_out_index();
+
+			for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+			{
+				if(reduced_reals[curr_kernel][i] == REDUCE_SUM)
+				{
+					const char* name = real_output_names[i];
+					printf("if(lane_id == 0) d_symbol_reduce_scratchpads_real[%s][warp_out_index] = 0.0;",name);
+				}
+				if(reduced_reals[curr_kernel][i] == REDUCE_MIN)
+				{
+					const char* name = real_output_names[i];
+					printf("if(lane_id == 0) d_symbol_reduce_scratchpads_real[%s][warp_out_index] = AC_REAL_MAX;",name);
+				}
+				if(reduced_reals[curr_kernel][i] == REDUCE_MAX)
+				{
+					const char* name = real_output_names[i];
+					printf("if(lane_id == 0) d_symbol_reduce_scratchpads_real[%s][warp_out_index] = -AC_REAL_MAX;",name);
+				}
+			}
+			printf("}\n");
+		}
        }
        printf("if(out_of_bounds) %s;",is_coop_raytracing_kernel(curr_kernel) || kernel_has_block_loops(curr_kernel) ? "continue" : "return");
        printf("{\n");
