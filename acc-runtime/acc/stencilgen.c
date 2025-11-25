@@ -1964,9 +1964,6 @@ gen_return_if_oob(const int curr_kernel)
 		if(num_reduced > 0)
 		{
 			printf("if(AC_INTERNAL_active_threads == 0){\n");
-			gen_warp_id();
-			gen_lane_id();
-			gen_warp_out_index();
 
 			for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
 			{
