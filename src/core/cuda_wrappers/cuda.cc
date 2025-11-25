@@ -248,8 +248,6 @@ cudaError_t
 acGetLastError()
 {
 	const auto res = cudaGetLastError();
-        ERRCHK_CUDA(res);
-
 	return res;
 }
 

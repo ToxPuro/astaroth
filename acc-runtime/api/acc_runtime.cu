@@ -592,9 +592,12 @@ acRuntimeInit(const AcMeshInfo config)
 }
 
 AcResult
-acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream)
+acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, bool perform_error_check)
 {
-  catch_previous_errors_debug(kernel,"launching kernel");
+  if(perform_error_check)
+  {
+  	catch_previous_errors_debug(kernel,"launching kernel");
+  }
   if(is_coop_raytracing_kernel(kernel) && acSupportsCooperativeLaunches())
   {
 	void* args[] = {(void*)&start,(void*)&end,(void*)&vba.on_device};
@@ -603,7 +606,10 @@ acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, Vert
   else
   {
   	KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
-  	ERRCHK_CUDA_KERNEL();
+	if(perform_error_check)
+	{
+  		ERRCHK_CUDA_KERNEL();
+	}
   }
   return AC_SUCCESS;
 }
@@ -681,7 +687,7 @@ acLaunchKernelCommon(AcKernel kernel, const cudaStream_t stream, const int3 star
 
   if(kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,stream);
+  acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,stream,true);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -1199,12 +1205,12 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
         ERRCHK_CUDA(acEventCreate(&tstart));
         ERRCHK_CUDA(acEventCreate(&tstop));
 
-        acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,0);
+        acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,0,false);
         ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
         ERRCHK_CUDA(acEventRecord(tstart)); // Timing start
         for (int i = 0; i < num_iters; ++i)
 	{
-        	acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,0);
+        	acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,0,false);
 	}
         ERRCHK_CUDA(acEventRecord(tstop)); // Timing stop
         ERRCHK_CUDA(acEventSynchronize(tstop));
