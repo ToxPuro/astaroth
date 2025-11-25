@@ -1,4 +1,5 @@
 #ifndef AC_MATH_FFT_H
+hostdefine AC_MATH_FFT_INCLUDED (1)
 #define AC_MATH_FFT_H
 
 get_wavevector_x()
@@ -43,5 +44,44 @@ poisson_fft_solve(ComplexField dst, ComplexField src)
 	dst[vertexIdx.x][vertexIdx.y][vertexIdx.z] = 
 				(k2 == 0.0) ? complex(0.0,0.0) :
 				-src[vertexIdx.x][vertexIdx.y][vertexIdx.z]/k2
+}
+
+split_diffusion_update(Field real_dst, Field imag_dst, Field real_src, Field imag_src, real dt, real diffusion_coeff)
+{
+        const real3 k = get_wavevector()
+        const real k2 = dot(k,k)
+	const real k2dt = dt*k2
+	const real decay = exp(-diffusion_coeff*k2dt)
+        res  = decay*complex(real_src[vertexIdx.x][vertexIdx.y][vertexIdx.z], imag_src[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+	if(vertexIdx == (int3){8,8,8})
+	{
+		print("Real input: %.14e\n",real_src[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+		print("Imag input: %.14e\n",imag_src[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+		print("Real res: %.14e\n",res.x)
+		print("Imag res: %.14e\n",res.y)
+	}
+        write(real_dst,res.x)
+        write(imag_dst,res.y)
+}
+
+Kernel split_diffusion_update_kernel(int real_dst, int imag_dst, int real_src, int imag_src, real dt, real diffusion_coeff)
+{
+	split_diffusion_update(Field(real_dst),Field(imag_dst),Field(real_src),Field(imag_src),dt,diffusion_coeff)
+}
+input int  AC_FFT_REAL_SRC
+input int  AC_FFT_IMAG_SRC
+input int  AC_FFT_REAL_DST
+input int  AC_FFT_IMAG_DST
+input real AC_FFT_SPLIT_DIFFUSION_UPDATE_DT
+input real AC_FFT_SPLIT_DIFFUSION_UPDATE_DIFFUSION_COEFF
+BoundConds ac_fft_bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps AC_fft_split_diffusion_update_step(ac_fft_bcs)
+{
+	split_diffusion_update_kernel(AC_FFT_REAL_DST,AC_FFT_IMAG_DST,AC_FFT_REAL_SRC,AC_FFT_IMAG_SRC,
+				      AC_FFT_SPLIT_DIFFUSION_UPDATE_DT, AC_FFT_SPLIT_DIFFUSION_UPDATE_DIFFUSION_COEFF)
 }
 #endif
