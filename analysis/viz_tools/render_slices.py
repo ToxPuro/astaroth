@@ -16,11 +16,11 @@ parser.add_argument('--termcolor', type=str, default='on', choices=['on', 'off']
 parser.add_argument('--dtype', type=str, default='double', help='The datatype of a single data element (default: double). Accepted values: numpy dtypes')
 parser.add_argument('--dpi', type=int, default=150, help='Set DPI of the output images')
 parser.add_argument('--vrange', type=float, nargs=2, required=False, help='Manually set the value range of the plots as --vrange {min} {max}')
-parser.add_argument('--write-png', action=argparse.BooleanOptionalAction, help='Write slices to png images')
-parser.add_argument('--only-lines', action=argparse.BooleanOptionalAction, help='Write only x lines')
-parser.add_argument('--write-movie', action=argparse.BooleanOptionalAction, help='Write slices to gif movies')
-parser.add_argument('--write-bin', action=argparse.BooleanOptionalAction, help='Write slices to binary files')
-parser.add_argument('--spherical', action=argparse.BooleanOptionalAction, help='Plots spherical data')
+parser.add_argument('--write-png',   default=False,action="store_true", help='Write slices to png images')
+parser.add_argument('--only-lines',  default=False,action="store_true", help='Write only x lines')
+parser.add_argument('--write-movie', default=False,action="store_true", help='Write slices to gif movies')
+parser.add_argument('--write-bin',   default=False,action="store_true", help='Write slices to binary files')
+parser.add_argument('--spherical',   default=False,action="store_true", help='Plots spherical data')
 args = parser.parse_args()
 
 #Term colors
