@@ -56,7 +56,7 @@ drand()
 
 
 int
-main(void)
+main(int argc, char* argv[])
 {
     atexit(acAbort);
 
@@ -106,9 +106,9 @@ main(void)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    const int nx = 31;
-    const int ny = 31;
-    const int nz = 31;
+    const int nx = argc > 1 ? atoi(argv[1]): 31;
+    const int ny = argc > 2 ? atoi(argv[2]): 31;
+    const int nz = argc > 3 ? atoi(argv[3]): 31;
     
     //const int nx = 63;
     //const int ny = 63;
@@ -296,11 +296,12 @@ main(void)
     	int n_steps = 0;
     	while(residual > 1e-8)
     	{
-    	    ++n_steps;
             gmg_v_cycle(n_levels);
     	    acGridExecuteTaskGraph(residual_graph,1);
     	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
     	    fprintf(stderr,"Residual: %14e\n",residual);
+    	    acGridWriteSlicesToDiskCollectiveSynchronous("slices", n_steps, 0.0);
+    	    ++n_steps;
     	}
     	fprintf(stderr,"Final residual: %14e\n",residual);
     	fprintf(stderr,"Took %d steps\n",n_steps);
