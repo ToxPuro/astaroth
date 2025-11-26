@@ -2,10 +2,10 @@
 hostdefine AC_GMG_ENABLED (1)
 
 int3 AC_nlocal_gmg_level_0 = AC_nlocal
-int3 AC_nlocal_gmg_level_1 = ((AC_nlocal_gmg_level_0+1)/2)-1
-int3 AC_nlocal_gmg_level_2 = ((AC_nlocal_gmg_level_1+1)/2)-1
-int3 AC_nlocal_gmg_level_3 = ((AC_nlocal_gmg_level_2+1)/2)-1
-int3 AC_nlocal_gmg_level_4 = ((AC_nlocal_gmg_level_3+1)/2)-1
+int3 AC_nlocal_gmg_level_1 = AC_nlocal_gmg_level_0/2
+int3 AC_nlocal_gmg_level_2 = AC_nlocal_gmg_level_1/2
+int3 AC_nlocal_gmg_level_3 = AC_nlocal_gmg_level_2/2
+int3 AC_nlocal_gmg_level_4 = AC_nlocal_gmg_level_3/2
 
 int3 AC_mlocal_gmg_level_0 = AC_nlocal_gmg_level_0 + 2*NGHOST
 int3 AC_mlocal_gmg_level_1 = AC_nlocal_gmg_level_1 + 2*NGHOST
