@@ -412,7 +412,7 @@ AcResult
 acHostMeshDestroyVertexBuffer(AcReal** vtxbuf)
 {
 	if(*vtxbuf == NULL) return AC_SUCCESS;
-	free(*vtxbuf);
+	acFreeHost(*vtxbuf);
 	(*vtxbuf) = NULL;
 	return AC_SUCCESS;
 }
