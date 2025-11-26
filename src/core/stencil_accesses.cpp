@@ -530,6 +530,51 @@ get_d_mesh_info()
   	for(int i = 0; i < NUM_BOOL_PARAMS; ++i)
 	  res.bool_params[i] = true;
 	return res;
+    	[[maybe_unused]] auto ac_is_loaded = [&](auto param) -> bool
+    	{
+		return false;
+    	};
+    	[[maybe_unused]] auto ac_get_process_decomposition = [&]() -> int3
+    	{
+		return (int3){1,1,1};
+	};
+    	[[maybe_unused]] auto ac_get_dim_products = [&](const auto& dims)
+    	{
+    	    	   return (AcDimProducts){
+    	    	    	dims.x*dims.y,	
+    	    	    	dims.x*dims.z,	
+    	    	    	dims.y*dims.z,	
+    	    	    	dims.x*dims.y*dims.z,	
+    	    	    };
+    	};
+
+    	[[maybe_unused]] auto ac_get_dim_products_inv = [&](const auto& products)
+    	{
+    	    	   return (AcDimProductsInv){
+    	    	    	AcReal(1.0)/products.xy,
+    	    	    	AcReal(1.0)/products.xz,
+    	    	    	AcReal(1.0)/products.yz,
+    	    	    	AcReal(1.0)/products.xyz
+    	    	    };
+    	};
+
+    	[[maybe_unused]] auto DCONST = [&](const auto& param)
+    	{
+    		return res[param];
+    	};
+
+    	[[maybe_unused]] auto RCONST = [&](const auto& param)
+    	{
+    		return res[param];
+    	};
+
+    	[[maybe_unused]] auto push_val = [&](auto param, auto val)
+    	{
+		res[param] = val;
+    	};
+
+
+    	#include "user_config_loader.h"
 }
 
 static AcMeshInfo  d_mesh_info = get_d_mesh_info();
