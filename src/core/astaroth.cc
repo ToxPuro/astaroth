@@ -249,22 +249,30 @@ acGetNode(void)
     return nodes[0];
 }
 
+static
+AcReal*
+acCallocHostReal(const size_t n_cells)
+{
+    AcReal* res;
+    const size_t bytes = sizeof(AcReal)*n_cells;
+    ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&res, bytes));
+    ERRCHK_ALWAYS(res);
+    memset(res,0,bytes);
+    return res;
+}
+
 AcReal*
 acHostCreateVertexBufferVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
     const size_t n_cells = acVertexBufferSize(info,vtxbuf);
-    AcReal* res = (AcReal*)calloc(n_cells, sizeof(AcReal));
-    ERRCHK_ALWAYS(res);
-    return res;
+    return acCallocHostReal(n_cells);
 }
 
 AcReal*
 acHostCreateVertexBuffer(const AcMeshInfo info)
 {
     const size_t n_cells = acVertexBufferSize(info);
-    AcReal* res = (AcReal*)calloc(n_cells, sizeof(AcReal));
-    ERRCHK_ALWAYS(res);
-    return res;
+    return acCallocHostReal(n_cells);
 }
 
 AcResult
@@ -274,7 +282,7 @@ acHostMeshCreateProfiles(AcMesh* mesh)
     const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
     for(int p = 0; p < NUM_PROFILES; ++p)
     {
-	    mesh->profile[p] = (AcReal*)calloc(prof_size(Profile(p),counts), sizeof(AcReal));
+	    mesh->profile[p] = acCallocHostReal(prof_size(Profile(p),counts));
             ERRCHK_ALWAYS(mesh->profile[p]);
     }
     return AC_SUCCESS;
@@ -314,7 +322,7 @@ acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
     mesh->info = info;
     const size_t n_cells = acGridVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
+        mesh->vertex_buffer[w] = acCallocHostReal(n_cells);
         ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
     }
 
