@@ -3647,7 +3647,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
     for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i) if(!vtxbuf_is_auxiliary[i]) non_auxiliary_vtxbuf = i;
     if(non_auxiliary_vtxbuf == -1)
     {
-    	fatal("%s", "Can not read snapshot if all Fields are auxiliary!\n");
+    	fatal("%s", "Can not write snapshot if all Fields are auxiliary!\n");
     }
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         if(!vtxbuf_is_alive[i] || vtxbuf_is_device_only[i]) return AC_NOT_ALLOCATED;
@@ -3804,6 +3804,9 @@ acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const A
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
 
+	//For simplicity do not write the default sized vtxbufs out
+    	auto field_dims = acGetMeshDims(info,Field(field));
+	if(field_dims.nn != local_nn) continue;
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
@@ -3986,6 +3989,10 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
     const int color    = local_z >= 0 && local_z < (int)local_nn.z ? 0 : MPI_UNDEFINED;
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
+
+	//For simplicity do not write the default sized vtxbufs out
+    	auto field_dims = acGetMeshDims(info,Field(field));
+	if(field_dims.nn != local_nn) continue;
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
