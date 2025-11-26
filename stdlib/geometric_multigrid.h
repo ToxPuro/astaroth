@@ -99,7 +99,7 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     gmg_store_and_prolong(mesh,level);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_write_del2),1);
     
-    acDeviceStoreMesh(acGridGetDevice(),STREAM_ALL,&mesh);
+    acDeviceStoreMesh(acGridGetDevice(),STREAM_DEFAULT,&mesh);
     
     acGridSynchronizeStream(STREAM_ALL);
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
@@ -140,7 +140,7 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
         }
     }
     gmg_restrict_to_level(level);
-    acDeviceStoreMesh(acGridGetDevice(),STREAM_ALL,&mesh);
+    acDeviceStoreMesh(acGridGetDevice(),STREAM_DEFAULT,&mesh);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t x = coarse_dims.n0.x; x < coarse_dims.n1.x;++x)
     {
@@ -219,7 +219,10 @@ get_galerkin_operators(AcMeshInfo* info)
 void
 gmg_setup(AcMeshInfo* info)
 {
-	get_galerkin_operators(info);
+	if((*info)[AC_use_coarse_galerkin_operators])
+	{
+		get_galerkin_operators(info);
+	}
 }
 
 void
