@@ -329,8 +329,14 @@ gmg_laplace_neighbours_level_4
 	[1][1][1]    = -1.0 
 }
 
+run_const bool AC_use_coarse_galerkin_operators = true
 gmg_laplace(Field f, int level)
 {
+	if(!AC_use_coarse_galerkin_operators) 
+	{
+		inv_spacing_2 = AC_inv_ds_2/pow(4,int(level))
+		return laplace(f,inv_spacing_2)
+	}
 	if(level == 0) return laplace(f)
 	if(level == 1) return gmg_laplace_level_1(f)
 	if(level == 2) return gmg_laplace_level_2(f)
@@ -341,6 +347,11 @@ gmg_laplace(Field f, int level)
 
 gmg_laplace_neighbours(Field f, int level)
 {
+	if(!AC_use_coarse_galerkin_operators) 
+	{
+		inv_spacing_2 = AC_inv_ds_2/pow(4,int(level))
+		return laplace_neighbours(f,inv_spacing_2)
+	}
 	if(level == 0) return laplace_neighbours(f)
 	if(level == 1) return gmg_laplace_neighbours_level_1(f)
 	if(level == 2) return gmg_laplace_neighbours_level_2(f)
