@@ -194,7 +194,11 @@ static bool
 is_large_launch(const Volume dims)
 {
   const int3 ghosts = get_ghosts();
-  return ((int)dims.x > ghosts.x && (int)dims.y > ghosts.y && (int)dims.z > ghosts.z);
+  const auto prop = get_device_prop();
+  const size_t warp_size    = prop.warpSize;
+  return ((int)dims.x > ghosts.x && (int)dims.y > ghosts.y && (int)dims.z > ghosts.z
+		  && dims.x*dims.y*dims.z > warp_size
+		 );
 }
 
 static bool
