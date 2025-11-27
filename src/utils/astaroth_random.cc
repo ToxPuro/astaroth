@@ -14,6 +14,7 @@ get_rng()
     return rng;
 }
 
+/** Produces a uniformly random real number in the half-open interval [0,1). */
 AcReal
 random_uniform_real_01(void)
 {
