@@ -517,6 +517,8 @@ extern "C"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define tid  ((int3){0,0,0})
 #include "user_kernel_declarations.h"
+#include "user_built-in_constants.h"
+#include "user_builtin_non_scalar_constants.h"
 
 constexpr AcMeshInfo
 get_d_mesh_info()
@@ -532,6 +534,7 @@ get_d_mesh_info()
 	return res;
     	[[maybe_unused]] auto ac_is_loaded = [&](auto param) -> bool
     	{
+		(void)param;
 		return false;
     	};
     	[[maybe_unused]] auto ac_get_process_decomposition = [&]() -> int3
@@ -574,7 +577,9 @@ get_d_mesh_info()
     	};
 
 
-    	#include "user_config_loader.h"
+	{
+    		#include "user_config_loader.h"
+	}
 }
 
 static AcMeshInfo  d_mesh_info = get_d_mesh_info();
@@ -885,8 +890,6 @@ fatal_error_message(const bool error, const char* message)
 #undef  constexpr
 #undef size
 
-#include "user_built-in_constants.h"
-#include "user_builtin_non_scalar_constants.h"
 
 bool
 index_at_boundary(const int x, const int y, const int z)
