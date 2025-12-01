@@ -22,7 +22,7 @@ struct AcCommunicator
 };
 static MPI_Comm communicator{};
 #endif
-[[maybe_unused]] static int3 global_offset{};
+[[maybe_unused]] static Volume global_offset = (Volume){0,0,0};
 
 static  bool
 operator==(const Volume& a, const Volume& b)
@@ -87,12 +87,19 @@ get_rocfft_field(const Volume domain_size, const Volume subdomain_size)
     rocfft_field field_layout = nullptr;
     check_rocfft_status(rocfft_field_create(&field_layout));
 
-    size_t lower[3] = {0,0,0};
-    size_t upper[3] = {
+    size_t lower[3] = {global_offset.x,global_offset.y,global_offset.z};
+    size_t dims[3] = {
             subdomain_size.x,
             subdomain_size.y,
             subdomain_size.z,
     };
+
+    size_t upper[3] = {
+	    lower[0] + dims[0],
+	    lower[1] + dims[1],
+	    lower[2] + dims[2]
+    };
+
     size_t stride[3] = {
             1,
             (domain_size.x),
@@ -144,6 +151,12 @@ get_data_layout(const Volume domain_size, const Volume subdomain_size)
 
     check_rocfft_status(rocfft_plan_description_add_infield(desc,get_rocfft_field(domain_size,subdomain_size)));
     check_rocfft_status(rocfft_plan_description_add_outfield(desc,get_rocfft_field(domain_size,subdomain_size)));
+
+#if AC_MPI_ENABLED
+    //TP: has to be on comment for now since 1.) doesn't work
+    //                                       2.) requires at least rocm/6.3.0
+    //rocfft_plan_description_set_comm(desc,rocfft_comm_mpi,&communicator);
+#endif
 
     data_layouts[domain_size] = desc;
     return desc;
@@ -373,7 +386,7 @@ acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
 #if AC_MPI_ENABLED
 	communicator = astaroth_comm->handle;
 #endif
-	global_offset = (int3){global_offset_[0],global_offset_[1],global_offset_[2]};
+	global_offset = (Volume){(size_t)global_offset_[0],(size_t)global_offset_[1],(size_t)global_offset_[2]};
 
 	return AC_SUCCESS;
 }
