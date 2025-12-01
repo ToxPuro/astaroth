@@ -27,7 +27,7 @@ struct VolumeHash {
     }
 };
 
-#define check_rocfft_status(status) {print_rocfft_error(status); ERRCHK_ALWAYS(status == rocfft_status_success); }
+#define check_rocfft_status(expression) { const auto _status_ = expression; print_rocfft_error(_status_); ERRCHK_ALWAYS(_status_ == rocfft_status_success); }
 
 void
 print_rocfft_error(rocfft_status status)
@@ -72,33 +72,33 @@ print_rocfft_error(rocfft_status status)
     }
 }
 rocfft_field
-get_rocfft_field(const Volume domain_size)
+get_rocfft_field(const Volume domain_size, const Volume subdomain_size)
 {
-    rocfft_field field_layout{};
+    rocfft_field field_layout = nullptr;
     check_rocfft_status(rocfft_field_create(&field_layout));
 
-    size_t lower[4] = {0,0,0,0};
-    size_t upper[4] = {
-            domain_size.x,
-            domain_size.y,
-            domain_size.z,
-            1
+    size_t lower[3] = {0,0,0};
+    size_t upper[3] = {
+            subdomain_size.x,
+            subdomain_size.y,
+            subdomain_size.z,
     };
-    size_t stride[4] = {
+    size_t stride[3] = {
             1,
             (domain_size.x),
-            (domain_size.x)*(domain_size.y),
-            (domain_size.x)*(domain_size.y)*(domain_size.z),
+            (domain_size.x)*(domain_size.y)
     };
 
-    rocfft_brick brick_layout{};
+    rocfft_brick brick_layout = nullptr;
+    int device_id = -1;
+    acGetDevice(&device_id);
     check_rocfft_status(rocfft_brick_create(
                       &brick_layout,
                       lower,
                       upper,
                       stride,
-                      4,
-                      0
+                      3,
+                      device_id
                     ));
 
     check_rocfft_status(rocfft_field_add_brick(field_layout,brick_layout));
@@ -108,47 +108,32 @@ get_rocfft_field(const Volume domain_size)
 
 std::unordered_map<Volume,rocfft_plan_description,VolumeHash> data_layouts{};
 static rocfft_plan_description 
-get_data_layout(const Volume domain_size)
+get_data_layout(const Volume domain_size, const Volume subdomain_size)
 {
     if(data_layouts.find(domain_size) != data_layouts.end())
     {
 	    return data_layouts[domain_size];
     }
-    //TP: not sure are the offsets for rocfft in bytes or in number of elements so prefer to do the offseting via pointer arithmetic myself
-    size_t offsets[]  = {0,0,0};
-    size_t strides[]  = {domain_size.x*domain_size.y,domain_size.x,1};
-    size_t distance = domain_size.x*domain_size.y*domain_size.z;
     // Create plan description
     rocfft_plan_description desc = nullptr;
     check_rocfft_status(rocfft_plan_description_create(&desc));
+    //Most variables are not set when using Field-API
     check_rocfft_status(rocfft_plan_description_set_data_layout(
         desc,
         rocfft_array_type_complex_interleaved,  // in_array_type
         rocfft_array_type_complex_interleaved,  // out_array_type
-        offsets,
-        offsets,
-        3,
-        strides,
-        distance,
-        3,
-        strides,
-        distance
+        nullptr,
+        nullptr,
+        0,
+        nullptr,
+        0,
+        0,
+        nullptr,
+        0
         ));
-    //check_rocfft_status(rocfft_plan_description_set_data_layout(
-    //    desc,
-    //    rocfft_array_type_complex_interleaved,  // in_array_type
-    //    rocfft_array_type_complex_interleaved,  // out_array_type
-    //    nullptr,
-    //    nullptr,
-    //    0,
-    //    nullptr,
-    //    0,
-    //    0,
-    //    nullptr,
-    //    0
-    //    ));
-    //check_rocfft_status(rocfft_plan_description_add_infield(desc,get_rocfft_field(domain_size)));
-    //check_rocfft_status(rocfft_plan_description_add_outfield(desc,get_rocfft_field(domain_size)));
+
+    check_rocfft_status(rocfft_plan_description_add_infield(desc,get_rocfft_field(domain_size,subdomain_size)));
+    check_rocfft_status(rocfft_plan_description_add_outfield(desc,get_rocfft_field(domain_size,subdomain_size)));
 
     data_layouts[domain_size] = desc;
     return desc;
@@ -216,8 +201,8 @@ get_plan(const Volume domain_size, const Volume subdomain_size, const bool inver
     }
     // Create plan
     rocfft_plan plan = nullptr;
-    const rocfft_plan_description desc = get_data_layout(domain_size);
-    size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x,1};
+    const rocfft_plan_description desc = get_data_layout(domain_size,subdomain_size);
+    size_t lengths[] = {subdomain_size.x,subdomain_size.y,subdomain_size.z};
     const auto rocfft_type = inverse ? rocfft_transform_type_complex_inverse : rocfft_transform_type_complex_forward;
     check_rocfft_status(rocfft_plan_create(
         &plan,
