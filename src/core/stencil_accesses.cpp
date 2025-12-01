@@ -578,6 +578,7 @@ get_d_mesh_info()
 
 
 	{
+    		#include "kernel_user_constants.h"
     		#include "user_config_loader.h"
 	}
 }
