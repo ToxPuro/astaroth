@@ -1,4 +1,4 @@
-#define rocprim__warpSize() rocprim::warp_size()
+#define rocprim__warpSize() rocprim::device_warp_size()
 #define rocprim__warpId()   rocprim::warp_id()
 #define rocprim__warp_shuffle_down rocprim::warp_shuffle_down
 #define rocprim__warp_shuffle rocprim::warp_shuffle
