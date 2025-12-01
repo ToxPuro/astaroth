@@ -946,7 +946,9 @@ acGridInitBase(const AcMesh user_mesh)
     gen_postprocessing_metadata();
     acLogFromRootProc(ac_pid(), "acGridInit: Done\n");
     ac_restore_floating_point_exceptions();
-    acFFTInit();
+    AcCommunicator comm{astaroth_comm};
+    const int3 global_offset = acGridGetLocalMeshInfo()[AC_domain_coordinates];
+    acFFTInit(&comm, reinterpret_cast<const int*>(&global_offset));
 
     return AC_SUCCESS;
 }

@@ -248,7 +248,7 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
 }
 
 AcResult
-acFFTInit()
+acFFTInit(const AcCommunicator*, const int*)
 {
 	return AC_SUCCESS;
 }

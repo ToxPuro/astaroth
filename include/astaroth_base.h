@@ -233,4 +233,8 @@ acConstructInt3Param(const T1 a, const T2 b, const T3 c,
         info[c],
     };
 }
+#else
+struct AcCommunicator
+{
+};
 #endif

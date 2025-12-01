@@ -14,6 +14,16 @@
 #endif
 #include <rocfft.h>
 
+#if AC_MPI_ENABLED
+#include <mpi.h>
+struct AcCommunicator
+{
+	MPI_Comm handle;
+};
+static MPI_Comm communicator{};
+#endif
+[[maybe_unused]] static int3 global_offset{};
+
 static  bool
 operator==(const Volume& a, const Volume& b)
 {
@@ -357,8 +367,13 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
 }
 
 AcResult
-acFFTInit()
+acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
 {
 	check_rocfft_status(rocfft_setup());
+#if AC_MPI_ENABLED
+	communicator = astaroth_comm->handle;
+#endif
+	global_offset = (int3){global_offset_[0],global_offset_[1],global_offset_[2]};
+
 	return AC_SUCCESS;
 }

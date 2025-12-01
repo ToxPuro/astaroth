@@ -70,7 +70,7 @@ acFFTBackwardTransformPlanar2R(const AcReal*, const AcReal*,const Volume, const 
 	return AC_FAILURE;
 }
 AcResult
-acFFTInit()
+acFFTInit(const AcCommunicator*, const int*)
 {
 	return AC_SUCCESS;
 }
