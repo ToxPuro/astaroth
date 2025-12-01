@@ -155,7 +155,7 @@ get_data_layout(const Volume domain_size)
 }
 
 static rocfft_execution_info
-get_execution_info()
+get_execution_info(const rocfft_plan plan)
 {
 	static rocfft_execution_info info{};
 	static bool first_call = true;
@@ -164,6 +164,14 @@ get_execution_info()
     	        // Create execution info
     	        info = nullptr;
     	        check_rocfft_status(rocfft_execution_info_create(&info));
+		size_t work_buf_size = 0;
+		check_rocfft_status(rocfft_plan_get_work_buffer_size(plan,&work_buf_size));
+		if(work_buf_size)
+		{
+			void* work_buf = nullptr;
+			ERRCHK_CUDA_ALWAYS(acMalloc(&work_buf,work_buf_size));
+			check_rocfft_status(rocfft_execution_info_set_work_buffer(info,work_buf,work_buf_size));
+		}
 		first_call = false;
 	}
 	return info;
@@ -224,6 +232,7 @@ get_plan(const Volume domain_size, const Volume subdomain_size, const bool inver
     rocfft_plans[key] = plan;
     return plan;
 }
+
 static AcResult
 acFFTTransformC2C(const AcComplex* src, const Volume domain_size,
                                 const Volume subdomain_size, const Volume starting_point,
@@ -233,7 +242,7 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size,
     // Execute
     void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(src+starting_offset))};
     void* out_buffer[] = {reinterpret_cast<void*>(dst+starting_offset)};
-    check_rocfft_status(rocfft_execute(plan, in_buffer, out_buffer, get_execution_info()));
+    check_rocfft_status(rocfft_execute(plan, in_buffer, out_buffer, get_execution_info(plan)));
     // Scaling (just like CUFFT doesn't scale by default)
     size_t complex_domain_size = domain_size.x * domain_size.y * domain_size.z;
     const AcReal scale = AcReal(1.0) / (subdomain_size.x * subdomain_size.y * subdomain_size.z);
