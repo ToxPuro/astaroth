@@ -122,21 +122,39 @@ main(void)
     fprintf(stderr,"Magnitude at (%d,%d,%d): %14e\n",NGHOST+1,NGHOST+1,NGHOST+1,model.vertex_buffer[HEAT_FREQUENCY_MAGNITUDE][IDX(NGHOST+1,NGHOST+1,NGHOST+1)]);
     fprintf(stderr,"Magnitude at (%d,%d,%d): %14e\n",NGHOST+31,NGHOST+31,NGHOST+31,model.vertex_buffer[HEAT_FREQUENCY_MAGNITUDE][IDX(NGHOST+31,NGHOST+31,NGHOST+31)]);
     fprintf(stderr,"Magnitude at (%d,%d,%d): %14e\n",NGHOST+16,NGHOST+16,NGHOST+16,model.vertex_buffer[HEAT_FREQUENCY_MAGNITUDE][IDX(NGHOST+16,NGHOST+16,NGHOST+16)]);
-    for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+
+    AcReal epsilon  = 1*pow(10.0,-12.0);
+    auto relative_diff = [](const auto a, const auto b)
     {
-    	for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
-    	{
-    		for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
-    		{
-			;
-			//if(model.vertex_buffer[HEAT_FREQUENCY_MAGNITUDE][IDX(x,y,z)] != 0.0)
-			//{
-			//}
+            const auto abs_diff = fabs(a-b);
+            return  abs_diff/a;
+    };
+    auto in_eps_threshold = [&](const auto a, const auto b)
+    {
+       if(a == b) return true;
+            return relative_diff(a,b) < epsilon;
+    };
+
+    bool correct = true;
+     for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+     {
+        for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+        {
+                for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+                {
+                       const auto analytical_val = model.vertex_buffer[HEAT_INIT][IDX(x,y,z)]/(-3.0);
+                       const auto res_val  = model.vertex_buffer[HEAT_SOLUTION][IDX(x,y,z)];
+                       if(!in_eps_threshold(analytical_val,res_val))
+                       {
+                               correct = false;
+                               fprintf(stderr,"Wrong at %.14e vs. %.14e\n",analytical_val,res_val);
+                       }
 		}
 	}
-    }
+     }
+ 
+    int retval = correct ? AC_SUCCESS : AC_FAILURE;
 
-    int retval = AC_SUCCESS;
     acGridQuit();
     ac_MPI_Finalize();
     fflush(stdout);
