@@ -27,6 +27,52 @@ struct VolumeHash {
     }
 };
 
+#define check_rocfft_status(status) {print_rocfft_error(status); ERRCHK_ALWAYS(status == rocfft_status_success); }
+
+void
+print_rocfft_error(rocfft_status status)
+{
+    if(status != rocfft_status_success)
+    {
+            const char* msg = NULL;
+            if(status == rocfft_status_failure)
+            {
+                    msg ="Failure!\n";
+            }
+            if(status == rocfft_status_invalid_arg_value)
+            {
+                    msg ="Invalid arg value!\n";
+            }
+            if(status == rocfft_status_invalid_dimensions)
+            {
+                    msg ="Invalid dimensions!\n";
+            }
+            if(status == rocfft_status_invalid_array_type)
+            {
+                    msg ="Invalid array type!\n";
+            }
+            if(status == rocfft_status_invalid_strides)
+            {
+                    msg ="Invalid strides!\n";
+            }
+            if(status == rocfft_status_invalid_distance)
+            {
+                    msg ="Invalid distance!\n";
+            }
+            if(status == rocfft_status_invalid_offset)
+            {
+                    msg ="Invalid offset!\n";
+            }
+            if(status == rocfft_status_invalid_work_buffer)
+            {
+                    msg ="Invalid work buffer!\n";
+            }
+            fprintf(stderr,"Rocfft Error: %s\n",msg);
+            fflush(stderr);
+    }
+}
+
+
 std::unordered_map<Volume,rocfft_plan_description,VolumeHash> data_layouts{};
 static rocfft_plan_description 
 get_data_layout(const Volume domain_size)
@@ -41,9 +87,8 @@ get_data_layout(const Volume domain_size)
     size_t distance = domain_size.x*domain_size.y*domain_size.z;
     // Create plan description
     rocfft_plan_description desc = nullptr;
-    rocfft_status status = rocfft_plan_description_create(&desc);
-    ERRCHK_ALWAYS((status == rocfft_status_success));
-    status = rocfft_plan_description_set_data_layout(
+    check_rocfft_status(rocfft_plan_description_create(&desc));
+    check_rocfft_status(rocfft_plan_description_set_data_layout(
         desc,
         rocfft_array_type_complex_interleaved,  // in_array_type
         rocfft_array_type_complex_interleaved,  // out_array_type
@@ -55,9 +100,7 @@ get_data_layout(const Volume domain_size)
         3,
         strides,
         distance
-        );
-
-    ERRCHK_ALWAYS((status == rocfft_status_success));
+        ));
     data_layouts[domain_size] = desc;
     return desc;
 }
@@ -71,7 +114,7 @@ get_execution_info()
 	{
     	        // Create execution info
     	        info = nullptr;
-    	        ERRCHK_ALWAYS(rocfft_execution_info_create(&info) == rocfft_status_success)
+    	        check_rocfft_status(rocfft_execution_info_create(&info));
 		first_call = false;
 	}
 	return info;
@@ -119,7 +162,7 @@ get_plan(const Volume domain_size, const Volume subdomain_size, const bool inver
     const rocfft_plan_description desc = get_data_layout(domain_size);
     size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x};
     const auto rocfft_type = inverse ? rocfft_transform_type_complex_inverse : rocfft_transform_type_complex_forward;
-    ERRCHK_ALWAYS(rocfft_plan_create(
+    check_rocfft_status(rocfft_plan_create(
         &plan,
         rocfft_placement_notinplace,
         rocfft_type,
@@ -128,7 +171,7 @@ get_plan(const Volume domain_size, const Volume subdomain_size, const bool inver
         lengths,      // lengths
         1,            // batch
         desc)        // description
-	== rocfft_status_success);
+	);
     rocfft_plans[key] = plan;
     return plan;
 }
@@ -141,7 +184,7 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size,
     // Execute
     void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(src+starting_offset))};
     void* out_buffer[] = {reinterpret_cast<void*>(dst+starting_offset)};
-    ERRCHK_ALWAYS(rocfft_execute(plan, in_buffer, out_buffer, get_execution_info()) == rocfft_status_success);
+    check_rocfft_status(rocfft_execute(plan, in_buffer, out_buffer, get_execution_info()));
     // Scaling (just like CUFFT doesn't scale by default)
     size_t complex_domain_size = domain_size.x * domain_size.y * domain_size.z;
     const AcReal scale = AcReal(1.0) / (subdomain_size.x * subdomain_size.y * subdomain_size.z);
