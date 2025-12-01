@@ -246,3 +246,9 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
     acDeviceFree(&tmp2,0);
     return AC_SUCCESS;
 }
+
+AcResult
+acFFTInit()
+{
+	return AC_SUCCESS;
+}

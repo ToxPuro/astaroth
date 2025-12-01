@@ -71,6 +71,39 @@ print_rocfft_error(rocfft_status status)
             fflush(stderr);
     }
 }
+rocfft_field
+get_rocfft_field(const Volume domain_size)
+{
+    rocfft_field field_layout{};
+    check_rocfft_status(rocfft_field_create(&field_layout));
+
+    size_t lower[4] = {0,0,0,0};
+    size_t upper[4] = {
+            domain_size.x,
+            domain_size.y,
+            domain_size.z,
+            1
+    };
+    size_t stride[4] = {
+            1,
+            (domain_size.x),
+            (domain_size.x)*(domain_size.y),
+            (domain_size.x)*(domain_size.y)*(domain_size.z),
+    };
+
+    rocfft_brick brick_layout{};
+    check_rocfft_status(rocfft_brick_create(
+                      &brick_layout,
+                      lower,
+                      upper,
+                      stride,
+                      4,
+                      0
+                    ));
+
+    check_rocfft_status(rocfft_field_add_brick(field_layout,brick_layout));
+    return field_layout;
+}
 
 
 std::unordered_map<Volume,rocfft_plan_description,VolumeHash> data_layouts{};
@@ -101,6 +134,22 @@ get_data_layout(const Volume domain_size)
         strides,
         distance
         ));
+    //check_rocfft_status(rocfft_plan_description_set_data_layout(
+    //    desc,
+    //    rocfft_array_type_complex_interleaved,  // in_array_type
+    //    rocfft_array_type_complex_interleaved,  // out_array_type
+    //    nullptr,
+    //    nullptr,
+    //    0,
+    //    nullptr,
+    //    0,
+    //    0,
+    //    nullptr,
+    //    0
+    //    ));
+    //check_rocfft_status(rocfft_plan_description_add_infield(desc,get_rocfft_field(domain_size)));
+    //check_rocfft_status(rocfft_plan_description_add_outfield(desc,get_rocfft_field(domain_size)));
+
     data_layouts[domain_size] = desc;
     return desc;
 }
@@ -160,7 +209,7 @@ get_plan(const Volume domain_size, const Volume subdomain_size, const bool inver
     // Create plan
     rocfft_plan plan = nullptr;
     const rocfft_plan_description desc = get_data_layout(domain_size);
-    size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x};
+    size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x,1};
     const auto rocfft_type = inverse ? rocfft_transform_type_complex_inverse : rocfft_transform_type_complex_forward;
     check_rocfft_status(rocfft_plan_create(
         &plan,
@@ -311,4 +360,11 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
     acDeviceFree(&tmp,0);
     acDeviceFree(&tmp2,0);
     return AC_SUCCESS;
+}
+
+AcResult
+acFFTInit()
+{
+	check_rocfft_status(rocfft_setup());
+	return AC_SUCCESS;
 }

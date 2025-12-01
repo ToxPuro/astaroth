@@ -61,6 +61,7 @@
 #include "math_utils.h"
 #include "timer_hires.h"
 #include "astaroth_cuda_wrappers.h"
+#include "ac_fft.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
@@ -945,6 +946,7 @@ acGridInitBase(const AcMesh user_mesh)
     gen_postprocessing_metadata();
     acLogFromRootProc(ac_pid(), "acGridInit: Done\n");
     ac_restore_floating_point_exceptions();
+    acFFTInit();
 
     return AC_SUCCESS;
 }

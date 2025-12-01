@@ -69,3 +69,8 @@ acFFTBackwardTransformPlanar2R(const AcReal*, const AcReal*,const Volume, const 
 	exit(EXIT_FAILURE);
 	return AC_FAILURE;
 }
+AcResult
+acFFTInit()
+{
+	return AC_SUCCESS;
+}
