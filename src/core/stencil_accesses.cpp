@@ -517,8 +517,6 @@ extern "C"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define tid  ((int3){0,0,0})
 #include "user_kernel_declarations.h"
-#include "user_built-in_constants.h"
-#include "user_builtin_non_scalar_constants.h"
 
 constexpr AcMeshInfo
 get_d_mesh_info()
@@ -580,6 +578,8 @@ get_d_mesh_info()
 
 
 	{
+		#include "kernel_user_built-in_constants.h"
+		#include "kernel_user_builtin_non_scalar_constants.h"
     		#include "kernel_user_constants.h"
     		#include "user_config_loader.h"
 	}
