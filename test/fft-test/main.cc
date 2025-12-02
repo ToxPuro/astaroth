@@ -84,7 +84,6 @@ main(void)
     }
     acSetGridMeshDims(info[AC_ngrid].x,info[AC_ngrid].y,info[AC_ngrid].z, &info);
     const int3 decomp = acDecompose(nprocs,info);
-    fprintf(stderr,"Decomp: (%d,%d,%d)\n",decomp.x,decomp.y,decomp.z);
     acSetLocalMeshDims(info[AC_ngrid].x/decomp.x,info[AC_ngrid].y/decomp.y,info[AC_ngrid].z/decomp.z, &info);
 
     #if AC_RUNTIME_COMPILATION
