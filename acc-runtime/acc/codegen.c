@@ -8892,7 +8892,6 @@ gen_overloads(ASTNode* root)
 {
   bool overloaded_something = true;
   const dfunc_possibilities overload_possibilities = {dfunc_possible_types,dfunc_possible_names}; 
-  int overload_counter = 0;
 
   gen_type_info(root);
   transform_array_assignments(root);
@@ -8906,7 +8905,6 @@ gen_overloads(ASTNode* root)
   	transform_array_binary_ops(root);
 
 	overloaded_something |= resolve_overloaded_calls(root,overload_possibilities);
-	overload_counter++;
   	//for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
   	        //overloaded_something |= resolve_overloaded_calls(root,duplicate_dfuncs.data[i],dfunc_possible_types,i);
   }
@@ -10907,12 +10905,10 @@ generate_executed_nodes(ASTNode* root, bool gen_mem_accesses, FILE* stream)
   //bool eliminated_something = false;
   bool eliminated_something = true;
 
-  int round = 0;
   gen_constexpr_info(root,gen_mem_accesses);
   get_executed_nodes(0);
   while(eliminated_something)
   {
-  	++round;
   	clean_stream(stream);
 
   	symboltable_reset();

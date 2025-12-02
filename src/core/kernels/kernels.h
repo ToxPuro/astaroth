@@ -80,10 +80,6 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
 		      const int scratchpad_index
                    );
 
-/** */
-AcResult acKernelVolumeCopy(const cudaStream_t stream,                                    //
-                            const AcReal* in, const Volume in_offset, const Volume in_volume, //
-                            AcReal* out, const Volume out_offset, const Volume out_volume);
 
 
 AcResult acReduceReal(const cudaStream_t stream, const AcReduceOp, AcRealScalarReduceBuffer, const size_t count);

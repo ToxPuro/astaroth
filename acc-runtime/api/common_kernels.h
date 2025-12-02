@@ -22,4 +22,10 @@ acComplexToPlanar(const AcComplex* src,const size_t count,AcReal* real_dst,AcRea
 
 #ifdef __cplusplus
 }
+AcResult acKernelVolumeCopy(const cudaStream_t stream,                                    //
+                            const AcReal* in, const Volume in_offset, const Volume in_volume, //
+                            AcReal* out, const Volume out_offset, const Volume out_volume);
+AcResult acKernelVolumeCopyComplex(const cudaStream_t stream,                                    //
+                            const AcComplex* in, const Volume in_offset, const Volume in_volume, //
+                            AcComplex* out, const Volume out_offset, const Volume out_volume);
 #endif

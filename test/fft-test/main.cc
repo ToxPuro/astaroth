@@ -74,7 +74,7 @@ main(void)
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
     info.comm->handle = MPI_COMM_WORLD;
 
-    const int max_devices = 1;
+    const int max_devices = 64;
     if (nprocs > max_devices) {
         fprintf(stderr,
                 "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
@@ -83,7 +83,9 @@ main(void)
         return EXIT_FAILURE;
     }
     acSetGridMeshDims(info[AC_ngrid].x,info[AC_ngrid].y,info[AC_ngrid].z, &info);
-    acSetLocalMeshDims(info[AC_ngrid].x,info[AC_ngrid].y,info[AC_ngrid].z, &info);
+    const int3 decomp = acDecompose(nprocs,info);
+    fprintf(stderr,"Decomp: (%d,%d,%d)\n",decomp.x,decomp.y,decomp.z);
+    acSetLocalMeshDims(info[AC_ngrid].x/decomp.x,info[AC_ngrid].y/decomp.y,info[AC_ngrid].z/decomp.z, &info);
 
     #if AC_RUNTIME_COMPILATION
     const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
@@ -93,12 +95,10 @@ main(void)
     #endif
 
     AcMesh model, candidate;
-    if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
-    }
+    acHostMeshCreate(info, &model);
+    acHostMeshCreate(info, &candidate);
+    acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
 
     acGridInit(info);
     acGridExecuteTaskGraph(acGetDSLTaskGraph(fft_solve),1);
@@ -118,10 +118,6 @@ main(void)
     {
 	return acVertexBufferIdx(x,y,z,acGridGetLocalMeshInfo());
     };
-    fprintf(stderr,"AC_len: %14e,%14e,%14e\n",acDeviceGetLocalConfig(acGridGetDevice())[AC_len].x,acDeviceGetLocalConfig(acGridGetDevice())[AC_len].y,acDeviceGetLocalConfig(acGridGetDevice())[AC_len].z);
-    fprintf(stderr,"Magnitude at (%d,%d,%d): %14e\n",NGHOST+1,NGHOST+1,NGHOST+1,model.vertex_buffer[HEAT_FREQUENCY_MAGNITUDE][IDX(NGHOST+1,NGHOST+1,NGHOST+1)]);
-    fprintf(stderr,"Magnitude at (%d,%d,%d): %14e\n",NGHOST+31,NGHOST+31,NGHOST+31,model.vertex_buffer[HEAT_FREQUENCY_MAGNITUDE][IDX(NGHOST+31,NGHOST+31,NGHOST+31)]);
-    fprintf(stderr,"Magnitude at (%d,%d,%d): %14e\n",NGHOST+16,NGHOST+16,NGHOST+16,model.vertex_buffer[HEAT_FREQUENCY_MAGNITUDE][IDX(NGHOST+16,NGHOST+16,NGHOST+16)]);
 
     AcReal epsilon  = 1*pow(10.0,-12.0);
     auto relative_diff = [](const auto a, const auto b)
@@ -135,23 +131,42 @@ main(void)
             return relative_diff(a,b) < epsilon;
     };
 
-    bool correct = true;
-     for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
-     {
-        for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
-        {
-                for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
-                {
-                       const auto analytical_val = model.vertex_buffer[HEAT_INIT][IDX(x,y,z)]/(-3.0);
-                       const auto res_val  = model.vertex_buffer[HEAT_SOLUTION][IDX(x,y,z)];
-                       if(!in_eps_threshold(analytical_val,res_val))
-                       {
-                               correct = false;
-                               fprintf(stderr,"Wrong at %.14e vs. %.14e\n",analytical_val,res_val);
-                       }
-		}
-	}
-     }
+    bool forward_and_back_correct = true;
+    for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    {
+       for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+       {
+               for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+               {
+                      const auto original_val = model.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+                      const auto res_val      = model.vertex_buffer[HEAT_FORWARD_AND_BACK][IDX(x,y,z)];
+                      if(!in_eps_threshold(original_val,res_val))
+                      {
+                              if(forward_and_back_correct) fprintf(stderr,"forward and back wrong at %.14e vs. %.14e\n",original_val,res_val);
+			      forward_and_back_correct = false;
+                      }
+       	}
+       }
+    }
+
+    bool poisson_correct = true;
+    for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    {
+       for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+       {
+               for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+               {
+                      const auto analytical_val = model.vertex_buffer[HEAT_INIT][IDX(x,y,z)]/(-3.0);
+                      const auto res_val  = model.vertex_buffer[HEAT_SOLUTION][IDX(x,y,z)];
+                      if(!in_eps_threshold(analytical_val,res_val))
+                      {
+                              if(poisson_correct) fprintf(stderr,"Wrong at %.14e vs. %.14e\n",analytical_val,res_val);
+                              poisson_correct = false;
+                      }
+       	}
+       }
+    }
+    bool correct = forward_and_back_correct && poisson_correct;
  
     int retval = correct ? AC_SUCCESS : AC_FAILURE;
 
