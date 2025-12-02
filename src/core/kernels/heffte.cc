@@ -67,7 +67,7 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
 
     heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
     heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
-    heffte::fft3d<heffte::backend::rocfft>::buffer_container<std::complex<double>> workspace(fft.size_workspace());
+    heffte::fft3d<heffte::backend::rocfft>::buffer_container<std::complex<AcReal>> workspace(fft.size_workspace());
     //perform forward fft using arrays and the user-created workspace
     if(inverse)
     {
