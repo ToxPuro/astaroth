@@ -532,6 +532,8 @@ get_d_mesh_info()
   	for(int i = 0; i < NUM_BOOL_PARAMS; ++i)
 	  res.bool_params[i] = true;
 	return res;
+	//TP: enables to assume the DSL default at compile-time
+#if AC_STENCIL_ACCESSES_MAIN
     	[[maybe_unused]] auto ac_is_loaded = [&](auto param) -> bool
     	{
 		(void)param;
@@ -581,6 +583,7 @@ get_d_mesh_info()
     		#include "kernel_user_constants.h"
     		#include "user_config_loader.h"
 	}
+#endif
 }
 
 static AcMeshInfo  d_mesh_info = get_d_mesh_info();
