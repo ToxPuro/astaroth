@@ -25,6 +25,14 @@ get_fresh_complex_buffer(const size_t count)
     return res;
 }
 
+typedef struct
+{
+	AcComplex* in;
+	AcComplex* out;
+} AcComplexInAndOut;
+
+#include <unordered_map>
+
 
 AcResult
 acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
@@ -34,6 +42,8 @@ AcResult
 acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst,
 		  const bool inverse)
 {
+    static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
+    static std::unordered_map<size_t,AcComplex*> work_buffers{};
     ERRCHK_ALWAYS(src != NULL);
     ERRCHK_ALWAYS(dst != NULL);
     ERRCHK_ALWAYS(subdomain_size.x <= domain_size.x);
@@ -46,11 +56,7 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
     ERRCHK_ALWAYS(starting_point.y  + subdomain_size.y<= domain_size.y);
     ERRCHK_ALWAYS(starting_point.z  + subdomain_size.z<= domain_size.z);
     const size_t count = subdomain_size.x*subdomain_size.y*subdomain_size.z;
-    AcComplex* tmp_in  = get_fresh_complex_buffer(count);
-    AcComplex* tmp_out = get_fresh_complex_buffer(count);
-    acKernelVolumeCopyComplex(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size);
     //HeFFTe is surprisingly inclusive in the domain
-    //
     const int3 lower = (int3)
     {
 	    (int)global_offset.x,
@@ -67,19 +73,30 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
 
     heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
     heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
-    heffte::fft3d<heffte::backend::rocfft>::buffer_container<std::complex<AcReal>> workspace(fft.size_workspace());
+
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp_in  = get_fresh_complex_buffer(count);
+    	AcComplex* tmp_out = get_fresh_complex_buffer(count);
+    	tmp_buffers[count] = (AcComplexInAndOut){tmp_in,tmp_out};
+	work_buffers[count] = get_fresh_complex_buffer(fft.size_workspace());
+    }
+    AcComplex* tmp_in  = tmp_buffers[count].in;
+    AcComplex* tmp_out = tmp_buffers[count].out;
+    AcComplex* workspace = work_buffers[count];
+
+    acKernelVolumeCopyComplex(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size);
+
     //perform forward fft using arrays and the user-created workspace
     if(inverse)
     {
-    	fft.backward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, workspace.data(), heffte::scale::full);
+    	fft.backward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::full);
     }
     else
     {
-    	fft.forward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, workspace.data(), heffte::scale::none);
+    	fft.forward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::none);
     }
     acKernelVolumeCopyComplex(0,tmp_out,(Volume){0,0,0},subdomain_size,dst,starting_point,domain_size);
-    acDeviceFree(&tmp_in,0);
-    acDeviceFree(&tmp_out,0);
     return AC_SUCCESS;
 }
 
@@ -102,10 +119,15 @@ acFFTBackwardTransformC2C(const AcComplex* src,const Volume domain_size, const V
 AcResult
 acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp = get_fresh_complex_buffer(count);
+    static std::unordered_map<size_t,AcComplex*> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp = get_fresh_complex_buffer(count);
+	tmp_buffers[count] = tmp;
+    }
+    AcComplex* tmp = tmp_buffers[count];
     acFFTBackwardTransformC2C(transformed_in,domain_size,subdomain_size,starting_point,tmp);
     acComplexToReal(tmp,count,buffer);
-    acDeviceFree(&tmp,0);
     return AC_SUCCESS;
 }
 
@@ -113,10 +135,15 @@ acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_si
 AcResult
 acFFTForwardTransformR2C(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst) {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp = get_fresh_complex_buffer(count);
+    static std::unordered_map<size_t,AcComplex*> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp = get_fresh_complex_buffer(count);
+	tmp_buffers[count] = tmp;
+    }
+    AcComplex* tmp = tmp_buffers[count];
     acRealToComplex(src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,dst);
-    acDeviceFree(&tmp,0);
     return AC_SUCCESS;
 }
 
@@ -124,15 +151,22 @@ AcResult
 acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp  = get_fresh_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_complex_buffer(count);
+    static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp  = get_fresh_complex_buffer(count);
+    	AcComplex* tmp2 = get_fresh_complex_buffer(count);
+	tmp_buffers[count].in  = tmp;
+	tmp_buffers[count].out = tmp2;
+    }
+
+    AcComplex* tmp  = tmp_buffers[count].in;
+    AcComplex* tmp2 = tmp_buffers[count].out;
 
     acRealToComplex(src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
     acComplexToPlanar(tmp2,count,real_dst,imag_dst);
 
-    acDeviceFree(&tmp,0);
-    acDeviceFree(&tmp2,0);
     return AC_SUCCESS;
 }
 
@@ -141,15 +175,22 @@ AcResult
 acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp  = get_fresh_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_complex_buffer(count);
+    static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp  = get_fresh_complex_buffer(count);
+    	AcComplex* tmp2 = get_fresh_complex_buffer(count);
+	tmp_buffers[count].in  = tmp;
+	tmp_buffers[count].out = tmp2;
+    }
+
+    AcComplex* tmp  = tmp_buffers[count].in;
+    AcComplex* tmp2 = tmp_buffers[count].out;
 
     acPlanarToComplex(real_src,imag_src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
     acComplexToPlanar(tmp2,count,real_dst,imag_dst);
 
-    acDeviceFree(&tmp,0);
-    acDeviceFree(&tmp2,0);
     return AC_SUCCESS;
 }
 
@@ -157,15 +198,22 @@ AcResult
 acFFTBackwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp  = get_fresh_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_complex_buffer(count);
+    static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp  = get_fresh_complex_buffer(count);
+    	AcComplex* tmp2 = get_fresh_complex_buffer(count);
+	tmp_buffers[count].in  = tmp;
+	tmp_buffers[count].out = tmp2;
+    }
+
+    AcComplex* tmp  = tmp_buffers[count].in;
+    AcComplex* tmp2 = tmp_buffers[count].out;
 
     acPlanarToComplex(real_src,imag_src,count,tmp);
     acFFTBackwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
     acComplexToPlanar(tmp2,count,real_dst,imag_dst);
 
-    acDeviceFree(&tmp,0);
-    acDeviceFree(&tmp2,0);
     return AC_SUCCESS;
 }
 
