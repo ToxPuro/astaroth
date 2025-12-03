@@ -74,3 +74,9 @@ acFFTInit(const AcCommunicator*, const int*)
 {
 	return AC_SUCCESS;
 }
+
+AcResult
+acFFTQuit()
+{
+	return AC_SUCCESS;
+}

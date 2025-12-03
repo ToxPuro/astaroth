@@ -18,6 +18,7 @@
 */
 #include "kernels.h"
 #include "acc_runtime.cu"
+#include "ac_fft.h"
 
 static __global__ void
 dummy_kernel(void)
@@ -47,6 +48,7 @@ acKernelDummy(void)
 AcResult
 acKernelsClean()
 {
+    	acFFTQuit();
 	return acReduceClean();
 }
 

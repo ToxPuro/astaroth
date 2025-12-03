@@ -32,6 +32,7 @@ typedef struct
 } AcComplexInAndOut;
 
 #include <unordered_map>
+static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
 
 
 AcResult
@@ -44,7 +45,6 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
 {
     static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
     static std::unordered_map<size_t,AcComplex*> work_buffers{};
-    static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
     ERRCHK_ALWAYS(src != NULL);
     ERRCHK_ALWAYS(dst != NULL);
     ERRCHK_ALWAYS(subdomain_size.x <= domain_size.x);
@@ -92,11 +92,11 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
 
     if(inverse)
     {
-    	plans.at(count).backward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    	plans.at(count).backward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::none);
     }
     else
     {
-    	plans.at(count).forward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::none);
+    	plans.at(count).forward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::full);
     }
     acKernelVolumeCopyComplex(0,tmp_out,(Volume){0,0,0},subdomain_size,dst,starting_point,domain_size);
     return AC_SUCCESS;
@@ -242,4 +242,11 @@ acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
 	global_offset = (Volume){(size_t)global_offset_[0],(size_t)global_offset_[1],(size_t)global_offset_[2]};
 	return AC_SUCCESS;
 
+}
+
+AcResult
+acFFTQuit()
+{
+	plans.clear();
+	return AC_SUCCESS;
 }

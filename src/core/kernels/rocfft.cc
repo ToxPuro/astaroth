@@ -390,3 +390,9 @@ acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
 
 	return AC_SUCCESS;
 }
+
+AcResult
+acFFTQuit()
+{
+	return AC_SUCCESS;
+}
