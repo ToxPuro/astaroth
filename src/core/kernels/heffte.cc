@@ -44,6 +44,7 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
 {
     static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
     static std::unordered_map<size_t,AcComplex*> work_buffers{};
+    static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
     ERRCHK_ALWAYS(src != NULL);
     ERRCHK_ALWAYS(dst != NULL);
     ERRCHK_ALWAYS(subdomain_size.x <= domain_size.x);
@@ -71,11 +72,13 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
     };
     const int3 upper = lower+dims-(int3){1,1,1};
 
-    heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-    heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
 
     if (tmp_buffers.find(count) == tmp_buffers.end())
     {
+        heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
+        heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
+	plans.emplace(count,std::move(fft));
+
     	AcComplex* tmp_in  = get_fresh_complex_buffer(count);
     	AcComplex* tmp_out = get_fresh_complex_buffer(count);
     	tmp_buffers[count] = (AcComplexInAndOut){tmp_in,tmp_out};
@@ -87,14 +90,13 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
 
     acKernelVolumeCopyComplex(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size);
 
-    //perform forward fft using arrays and the user-created workspace
     if(inverse)
     {
-    	fft.backward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    	plans.at(count).backward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::full);
     }
     else
     {
-    	fft.forward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::none);
+    	plans.at(count).forward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::none);
     }
     acKernelVolumeCopyComplex(0,tmp_out,(Volume){0,0,0},subdomain_size,dst,starting_point,domain_size);
     return AC_SUCCESS;
