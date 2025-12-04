@@ -26,6 +26,7 @@
 #define __HIP_PLATFORM_AMD__
 #endif
 
+#define cudaSharedMemConfig hipSharedMemConfig
 #define CUresult hipError_t
 #define cudaError_t hipError_t
 #define cudaSuccess hipSuccess
@@ -60,18 +61,29 @@
 #define cudaMemcpyFromSymbol hipMemcpyFromSymbol
 #define cudaMemcpyToSymbolAsync hipMemcpyToSymbolAsync
 #define cudaMemcpyFromSymbolAsync hipMemcpyFromSymbolAsync
+#define cudaMemcpy2DAsync hipMemcpy2DAsync
 #define cudaMemcpyDefault hipMemcpyDefault
 #define cudaMemset hipMemset
 #define cudaMalloc hipMalloc
-#define cudaMallocHost hipMallocHost
+#define cudaMallocHost hipHostMalloc
+#define cudaFreeHost hipHostFree
 #define cudaFree hipFree
+#define cudaGetDevice hipGetDevice
+#define cudaDevAttrCooperativeLaunch hipDeviceAttributeCooperativeLaunch 
+#define cudaDevAttrClockRate hipDeviceAttributeClockRate
+#define cudaDevAttrMemoryClockRate hipDeviceAttributeMemoryClockRate
+#define cudaDevAttrSingleToDoublePrecisionPerfRatio hipDeviceAttributeSingleToDoublePrecisionPerfRatio 
+#define cudaDevAttrComputeMode hipDeviceAttributeComputeMode
+#define cudaDeviceAttr hipDeviceAttribute_t 
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount
+#define cudaLaunchCooperativeKernel hipLaunchCooperativeKernel
 #define cudaDeviceGetPCIBusId hipDeviceGetPCIBusId
 #define cudaMemGetInfo hipMemGetInfo
 #define cudaStreamNonBlocking hipStreamNonBlocking
 #define cudaMemcpyPeerAsync hipMemcpyPeerAsync
 #define cudaGetDeviceProperties hipGetDeviceProperties
+#define cudaDeviceGetAttribute hipDeviceGetAttribute
 
 #define cudaStreamQuery hipStreamQuery
 #define cudaErrorNotReady hipErrorNotReady
@@ -87,10 +99,17 @@
 #define cudaDeviceSetCacheConfig hipDeviceSetCacheConfig
 #define cudaFuncCachePreferShared hipFuncCachePreferShared
 #define cudaFuncCachePreferL1 hipFuncCachePreferL1
-
+#define cudaErrorInvalidConfiguration hipErrorInvalidConfiguration
+#define cudaErrorLaunchOutOfResources hipErrorLaunchOutOfResources
+#define cudaGetErrorName hipGetErrorName
+#define cudaMemGetInfo   hipMemGetInfo
+#define cudaOccupancyMaxActiveBlocksPerMultiprocessor hipOccupancyMaxActiveBlocksPerMultiprocessor
 #define curandStateXORWOW_t hiprandStateXORWOW_t
 #define curandStateMRG32k3a_t hiprandStateMRG32k3a_t
 #define curandState hiprandState
 #define curand_init hiprand_init
 #define curand_uniform hiprand_uniform
 #define curand_uniform_double hiprand_uniform_double
+#define cudaDriverGetVersion  hipDriverGetVersion
+#define cudaRuntimeGetVersion hipRuntimeGetVersion
+

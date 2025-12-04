@@ -25,7 +25,6 @@
  *
  */
 #include "host_forcing.h"
-#include "simulation_control.h"
 #include "simulation_rng.h"
 
 #include "astaroth_utils.h"
@@ -209,6 +208,7 @@ DEPRECATED_acForcingVec(const AcReal forcing_magnitude, const AcReal3 k_force,
                         const AcReal3 ff_hel_re, const AcReal3 ff_hel_im,
                         const AcReal forcing_phase, const AcReal kaver)
 {
+#if LFORCING
 #if AC_MPI_ENABLED
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_forcing_magnitude, forcing_magnitude);
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_forcing_phase, forcing_phase);
@@ -236,6 +236,15 @@ DEPRECATED_acForcingVec(const AcReal forcing_magnitude, const AcReal3 k_force,
     (void)kaver;
     ERROR("AC_MPI_ENABLED must be set to use DEPRECATED_acForcingVec");
 #endif // AC_MPI_ENABLED
+#else
+    (void)forcing_magnitude;
+    (void)k_force;
+    (void)ff_hel_re;
+    (void)ff_hel_im;
+    (void)k_force;
+    (void)forcing_phase;
+    (void)kaver;
+#endif
 }
 
 void
@@ -264,6 +273,7 @@ printForcingParams(const ForcingParams& forcing_params)
 void
 loadForcingParamsToGrid(const ForcingParams& forcing_params)
 {
+#if LFORCING
 #if AC_MPI_ENABLED
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_forcing_magnitude, forcing_params.magnitude);
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_forcing_phase, forcing_params.phase);
@@ -286,6 +296,9 @@ loadForcingParamsToGrid(const ForcingParams& forcing_params)
     (void)forcing_params;
     ERROR("AC_MPI_ENABLED must be set to use loadForcingParamsToGrid");
 #endif // AC_MPI_ENABLED
+#else
+    (void)forcing_params;
+#endif
 }
 
 /** This function would be used in autotesting to update the forcing params of the host
@@ -293,58 +306,70 @@ loadForcingParamsToGrid(const ForcingParams& forcing_params)
 void
 loadForcingParamsToHost(const ForcingParams& forcing_params, AcMesh* mesh)
 {
+#if LFORCING
     // %JP: Left some regex magic here in case we need to modify the ForcingParams struct
     // acLoadDeviceConstant\(([A-Za-z_]*), ([a-z_.]*)\);
     // mesh->info.real_params[$1] = $2;
-    mesh->info.real_params[AC_forcing_magnitude] = forcing_params.magnitude;
-    mesh->info.real_params[AC_forcing_phase]     = forcing_params.phase;
+    mesh->info[AC_forcing_magnitude] = forcing_params.magnitude;
+    mesh->info[AC_forcing_phase]     = forcing_params.phase;
 
-    mesh->info.real_params[AC_k_forcex] = forcing_params.k_force.x;
-    mesh->info.real_params[AC_k_forcey] = forcing_params.k_force.y;
-    mesh->info.real_params[AC_k_forcez] = forcing_params.k_force.z;
+    mesh->info[AC_k_forcex] = forcing_params.k_force.x;
+    mesh->info[AC_k_forcey] = forcing_params.k_force.y;
+    mesh->info[AC_k_forcez] = forcing_params.k_force.z;
 
-    mesh->info.real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
-    mesh->info.real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
-    mesh->info.real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+    mesh->info[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+    mesh->info[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+    mesh->info[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
 
-    mesh->info.real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
-    mesh->info.real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
-    mesh->info.real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+    mesh->info[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+    mesh->info[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+    mesh->info[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
 
-    mesh->info.real_params[AC_kaver] = forcing_params.kaver;
+    mesh->info[AC_kaver] = forcing_params.kaver;
+#else
+    (void)mesh;
+    (void)forcing_params;
+#endif
 }
 
 void
-loadForcingParamsToMeshInfo(const ForcingParams& forcing_params, AcMeshInfo* info)
+loadForcingParamsToMeshInfo(const ForcingParams& forcing_params, AcMeshInfo* info_ptr)
 {
-    info->real_params[AC_forcing_magnitude] = forcing_params.magnitude;
-    info->real_params[AC_forcing_phase]     = forcing_params.phase;
+#if LFORCING
+    AcMeshInfo& info = *info_ptr;
+    info[AC_forcing_magnitude] = forcing_params.magnitude;
+    info[AC_forcing_phase]     = forcing_params.phase;
 
-    info->real_params[AC_k_forcex] = forcing_params.k_force.x;
-    info->real_params[AC_k_forcey] = forcing_params.k_force.y;
-    info->real_params[AC_k_forcez] = forcing_params.k_force.z;
+    info[AC_k_forcex] = forcing_params.k_force.x;
+    info[AC_k_forcey] = forcing_params.k_force.y;
+    info[AC_k_forcez] = forcing_params.k_force.z;
 
-    info->real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
-    info->real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
-    info->real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+    info[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+    info[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+    info[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
 
-    info->real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
-    info->real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
-    info->real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+    info[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+    info[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+    info[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
 
-    info->real_params[AC_kaver] = forcing_params.kaver;
+    info[AC_kaver] = forcing_params.kaver;
+#else
+    (void)info_ptr;
+    (void)forcing_params;
+#endif
 }
 
 ForcingParams
 generateForcingParams(const AcMeshInfo& mesh_info)
 {
     ForcingParams params = {};
+#if LFORCING
 
     // Forcing properties
-    AcReal relhel    = mesh_info.real_params[AC_relhel];
-    params.magnitude = mesh_info.real_params[AC_forcing_magnitude];
-    AcReal kmin      = mesh_info.real_params[AC_kmin];
-    AcReal kmax      = mesh_info.real_params[AC_kmax];
+    AcReal relhel    = mesh_info[AC_relhel];
+    params.magnitude = mesh_info[AC_forcing_magnitude];
+    AcReal kmin      = mesh_info[AC_kmin];
+    AcReal kmax      = mesh_info[AC_kmax];
 
     params.kaver = (kmax - kmin) / AcReal(2.0);
 
@@ -367,5 +392,8 @@ generateForcingParams(const AcMeshInfo& mesh_info)
     helical_forcing_special_vector(&params.ff_hel_re, &params.ff_hel_im, params.k_force, e_force,
                                    relhel);
 
+#else
+    (void)mesh_info;
+#endif
     return params;
 }

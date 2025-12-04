@@ -22,6 +22,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "../../stdlib/reduction.h"
 
 #if AC_MPI_ENABLED
 
@@ -92,16 +93,17 @@ main(void)
         printf("Warning: testing only RTYPE_MAX and RTYPE_MIN\n");
         fflush(stdout);
     }
+    const AcReduction scalar_reductions[] = {RTYPE_MAX,RTYPE_MIN};
     for (size_t i = 0; i < 2; ++i) { // NOTE: 2 instead of NUM_RTYPES
         const VertexBufferHandle v0 = VTXBUF_UUX;
         AcReal candval;
-        acGridReduceScal(STREAM_DEFAULT, (ReductionType)i, v0, &candval);
+        acGridReduceScal(STREAM_DEFAULT, scalar_reductions[i], v0, &candval);
         if (pid == 0) {
-            const AcReal modelval   = acHostReduceScal(model, (ReductionType)i, v0);
+            const AcReal modelval   = acHostReduceScal(model, scalar_reductions[i], v0);
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceScal(model, RTYPE_MAX, v0);
             error.minimum_magnitude = acHostReduceScal(model, RTYPE_MIN, v0);
-            ERRCHK_ALWAYS(acEvalError(rtype_names[i], error));
+            ERRCHK_ALWAYS(acEvalError(scalar_reductions[i].name, error));
         }
     }
 
@@ -111,18 +113,19 @@ main(void)
         printf("Warning: testing only RTYPE_MAX and RTYPE_MIN\n");
         fflush(stdout);
     }
+    const AcReduction vector_reductions[] = {RTYPE_MAX,RTYPE_MIN};
     for (size_t i = 0; i < 2; ++i) { // NOTE: 2 instead of NUM_RTYPES
         const VertexBufferHandle v0 = VTXBUF_UUX;
         const VertexBufferHandle v1 = VTXBUF_UUY;
         const VertexBufferHandle v2 = VTXBUF_UUZ;
         AcReal candval;
-        acGridReduceVec(STREAM_DEFAULT, (ReductionType)i, v0, v1, v2, &candval);
+        acGridReduceVec(STREAM_DEFAULT, vector_reductions[i], v0, v1, v2, &candval);
         if (pid == 0) {
-            const AcReal modelval   = acHostReduceVec(model, (ReductionType)i, v0, v1, v2);
+            const AcReal modelval   = acHostReduceVec(model, vector_reductions[i], v0, v1, v2);
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceVec(model, RTYPE_MAX, v0, v1, v2);
             error.minimum_magnitude = acHostReduceVec(model, RTYPE_MIN, v0, v1, v1);
-            ERRCHK_ALWAYS(acEvalError(rtype_names[i], error));
+            ERRCHK_ALWAYS(acEvalError(vector_reductions[i].name, error));
         }
     }
 

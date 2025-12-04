@@ -22,14 +22,14 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "../../stdlib/reduction.h"
 
 #include <vector>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
-#define NUM_INTEGRATION_STEPS (100)
 
 int
-main(void)
+main(int argc, char* argv[])
 {
     int retval    = 0;
     const int pid = 0;
@@ -40,7 +40,13 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    acSetMeshDims(32, 32, 32, &info);
+    const size_t nx = argc >  1 ? (size_t)atoi(argv[1]) : 32;
+    const size_t ny = argc >  2 ? (size_t)atoi(argv[2]) : 32;
+    const size_t nz = argc >  3 ? (size_t)atoi(argv[3]) : 32;
+    const size_t NUM_INTEGRATION_STEPS = argc >  4 ? (size_t)atoi(argv[4]) : 100;
+    const long double max_ulp_error    = argc >  5 ? (long double)atoi(argv[5]) : 5;
+    acSetGridMeshDims(nx, ny, nz, &info);
+    acSetLocalMeshDims(nx, ny, nz, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
@@ -51,10 +57,10 @@ main(void)
     }
 
     //
-    const int3 mmin = (int3){0, 0, 0};
-    const int3 mmax = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
-    const int3 nmin = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-    const int3 nmax = acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
+    const Volume mmin = (Volume){0, 0, 0};
+    const Volume mmax = as_size_t(info[AC_mlocal]);
+    const Volume nmin = as_size_t(info[AC_nmin]);
+    const Volume nmax = as_size_t(info[AC_nlocal_max]);
 
     // GPU alloc & compute
     Device device;
@@ -102,7 +108,7 @@ main(void)
             acHostIntegrateStep(model, dt);
 
         acHostMeshApplyPeriodicBounds(&model);
-        const AcResult res = acVerifyMesh("Integration", model, candidate);
+        const AcResult res = acVerifyMeshWithMaximumError("Integration", model, candidate,max_ulp_error);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);
@@ -121,13 +127,13 @@ main(void)
     if (pid == 0)
         printf("---Test: Scalar reductions---\n");
 
-    const ReductionType scal_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
+    const AcReduction scal_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
                                              RTYPE_RMS_EXP};
     for (size_t i = 0; i < ARRAY_SIZE(scal_reductions); ++i) { // NOTE: not using NUM_RTYPES here
         const VertexBufferHandle v0 = (VertexBufferHandle)0;
         AcReal candval;
 
-        const ReductionType rtype = scal_reductions[i];
+        const AcReduction rtype = scal_reductions[i];
 
         acDeviceReduceScal(device, STREAM_DEFAULT, rtype, v0, &candval);
         if (pid == 0) {
@@ -136,7 +142,7 @@ main(void)
             error.maximum_magnitude = acHostReduceScal(model, RTYPE_MAX, v0);
             error.minimum_magnitude = acHostReduceScal(model, RTYPE_MIN, v0);
 
-            if (!acEvalError(rtype_names[rtype], error)) {
+            if (!acEvalErrorWithMaximumError(rtype.name, error, max_ulp_error)) {
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -148,7 +154,7 @@ main(void)
     if (pid == 0)
         printf("---Test: Vector reductions---\n");
 
-    const ReductionType vec_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
+    const AcReduction vec_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
                                             RTYPE_RMS_EXP};
     for (size_t i = 0; i < ARRAY_SIZE(vec_reductions); ++i) { // NOTE: 2 instead of NUM_RTYPES
         const VertexBufferHandle v0 = (VertexBufferHandle)0;
@@ -156,7 +162,7 @@ main(void)
         const VertexBufferHandle v2 = (VertexBufferHandle)2;
         AcReal candval;
 
-        const ReductionType rtype = vec_reductions[i];
+        const AcReduction rtype = vec_reductions[i];
         acDeviceReduceVec(device, STREAM_DEFAULT, rtype, v0, v1, v2, &candval);
         if (pid == 0) {
             const AcReal modelval   = acHostReduceVec(model, rtype, v0, v1, v2);
@@ -164,7 +170,7 @@ main(void)
             error.maximum_magnitude = acHostReduceVec(model, RTYPE_MAX, v0, v1, v2);
             error.minimum_magnitude = acHostReduceVec(model, RTYPE_MIN, v0, v1, v1);
 
-            if (!acEvalError(rtype_names[rtype], error)) {
+            if (!acEvalErrorWithMaximumError(rtype.name, error, max_ulp_error)) {
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -176,7 +182,7 @@ main(void)
     if (pid == 0)
         printf("---Test: Alfven reductions---\n");
 
-    const ReductionType alf_reductions[] = {RTYPE_ALFVEN_MAX, RTYPE_ALFVEN_MIN, RTYPE_ALFVEN_RMS};
+    const AcReduction alf_reductions[] = {RTYPE_ALFVEN_MAX, RTYPE_ALFVEN_MIN, RTYPE_ALFVEN_RMS};
     for (size_t i = 0; i < ARRAY_SIZE(alf_reductions); ++i) { // NOTE: 2 instead of NUM_RTYPES
         const VertexBufferHandle v0 = (VertexBufferHandle)0;
         const VertexBufferHandle v1 = (VertexBufferHandle)1;
@@ -184,7 +190,7 @@ main(void)
         const VertexBufferHandle v3 = (VertexBufferHandle)3;
         AcReal candval;
 
-        const ReductionType rtype = alf_reductions[i];
+        const AcReduction rtype = alf_reductions[i];
         acDeviceReduceVecScal(device, STREAM_DEFAULT, rtype, v0, v1, v2, v3, &candval);
         if (pid == 0) {
             const AcReal modelval   = acHostReduceVecScal(model, rtype, v0, v1, v2, v3);
@@ -192,7 +198,7 @@ main(void)
             error.maximum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MAX, v0, v1, v2, v3);
             error.minimum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MIN, v0, v1, v1, v3);
 
-            if (!acEvalError(rtype_names[rtype], error)) {
+            if (!acEvalErrorWithMaximumError(rtype.name, error, max_ulp_error)) {
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -205,7 +211,7 @@ main(void)
         acHostMeshDestroy(&candidate);
     }
 
-    acDeviceDestroy(device);
+    acDeviceDestroy(&device);
 
     fflush(stdout);
 

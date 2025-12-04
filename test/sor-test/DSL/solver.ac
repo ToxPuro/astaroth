@@ -1,0 +1,61 @@
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+Field HEAT_INIT
+Field HEAT_SOLUTION
+real AC_k = 1.0
+real AC_SOR_omega = 1.8
+Kernel init_kernel()
+{
+	pos = grid_position()
+	write(HEAT_INIT,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z))
+	write(HEAT_SOLUTION,0.0)
+}
+
+
+BoundConds boundconds{
+  periodic(BOUNDARY_XYZ)
+}
+
+output real AC_residual2
+Kernel residual_kernel()
+{
+	r = laplace(HEAT_SOLUTION)-HEAT_INIT
+	reduce_sum(r*r,AC_residual2)
+}
+
+ComputeSteps
+initcond(boundconds)
+{
+	init_kernel()
+}
+ComputeSteps
+empty_steps(boundconds)
+{
+}
+
+
+fixed_boundary Kernel sor_red()
+{
+	poisson_sor_red_black_extended(SOR_RED,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
+}
+fixed_boundary Kernel sor_black()
+{
+	poisson_sor_red_black_extended(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
+}
+
+ComputeSteps
+sor_red_black_step(boundconds)
+{
+	sor_red()
+	sor_black()
+}
+
+ComputeSteps
+get_residual(boundconds)
+{
+	residual_kernel()
+}
+

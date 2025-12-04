@@ -24,6 +24,7 @@
  * Detailed info.
  *
  */
+#include "astaroth_base.h"
 #include "astaroth_forcing.h"
 #include "astaroth_random.h"
 

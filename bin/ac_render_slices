@@ -1,0 +1,2 @@
+#!/bin/bash 
+$AC_HOME/analysis/viz_tools/render_slices.py "$@"

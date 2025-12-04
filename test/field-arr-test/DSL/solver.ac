@@ -1,0 +1,58 @@
+#define STENCIL_ORDER (6)
+#include "../../../acc-runtime/stdlib/math/funcs.h"
+#include "../../../acc-runtime/stdlib/math/stencils.h"
+Field Field_arr[3]
+const int ndustspec = 3
+Field Field_empty_arr[0]
+Field3 Field_empty_vec_arr[0]
+
+//TP: should produce fields that have auxiliary type qualifier and that are either not communicated or communicated respectively
+//TP: as of 4-11-2024 does produce the correct qualifiers
+const int mcom = 9
+auxiliary Field timestep_registers[mcom]
+communicated auxiliary Field communicated_registers[3*3]
+auxiliary Field3 DUST[ndustspec] 
+communicated FieldSymmetricTensor TEST_ARR[4]
+
+Kernel test_arr()
+{
+	real arr[3]
+	arr_base = [1.0,2.0,3.0]
+	arr = arr_base + Field_arr
+	write(Field_arr, arr)
+	real3 vec_arr[3]
+	vec_arr_base = [
+			real3(1.0,2.0,3.0),
+			real3(4.0,5.0,6.0),
+			real3(7.0,8.0,9.0)
+	]
+	vec_arr = vec_arr_base + DUST
+	write(DUST,vec_arr)
+	real_symmetric_tensor tensor = {
+		0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+	}
+	write(TEST_ARR,tensor)
+}
+Kernel test_kernel_field(Field f)
+{
+	write(f,gaussian_smooth_inplace(f))
+}
+Kernel test_kernel(FieldSymmetricTensor f)
+{
+	write(f,0.0)
+}
+Kernel test2()
+{
+	write(DUST,abs(DUST))
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+input int AC_input_int
+dconst int AC_dconst_int = 0
+ComputeSteps steps(bcs)
+{
+	test_kernel(TEST_ARR[AC_input_int])
+	test_kernel(TEST_ARR[AC_dconst_int])
+}

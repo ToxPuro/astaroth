@@ -27,7 +27,7 @@
 void
 achostupdatebuiltinparams_(AcMeshInfo* info)
 {
-    acHostUpdateBuiltinParams(info);
+    acHostUpdateParams(info);
 }
 
 void

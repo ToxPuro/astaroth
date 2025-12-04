@@ -17,8 +17,8 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "kernels.h"
-
 #include "acc_runtime.cu"
+#include "ac_fft.h"
 
 static __global__ void
 dummy_kernel(void)
@@ -29,37 +29,27 @@ dummy_kernel(void)
     DCONST((AcReal3Param)0);
     // Commented out until issues on lumi sorted
     // acComplex a = exp(acComplex(1, 1) * AcReal(1));
-    AcReal3 a = (AcReal)2.0 * (AcReal3){1, 2, 3};
-    (void)a;
+    //AcReal3 a = (AcReal)2.0 * (AcReal3){1, 2, 3};
+    //(void)a;
 }
 
 AcResult
 acKernelDummy(void)
 {
+    #if AC_CPU_BUILD
+    dummy_kernel();
+    #else
     dummy_kernel<<<1, 1>>>();
     ERRCHK_CUDA_KERNEL_ALWAYS();
+    #endif
     return AC_SUCCESS;
 }
-
-// Built-in kernels
-#include "boundconds.cuh"
-#include "boundconds_miikka_GBC.cuh"
-#include "packing.cuh"
-#include "reductions.cuh"
-#include "volume_copy.cuh"
 
 AcResult
-acKernel(const KernelParameters params, VertexBufferArray vba)
+acKernelsClean()
 {
-#ifdef AC_INTEGRATION_ENABLED
-    // TODO: Why is AC_step_number loaded here??
-    acLoadIntUniform(params.stream, AC_step_number, params.step_number);
-    acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
-    return AC_SUCCESS;
-#else
-    (void)params; // Unused
-    (void)vba;    // Unused
-    ERROR("acKernel() called but AC_step_number not defined!");
-    return AC_FAILURE;
-#endif
+    	acFFTQuit();
+	return acReduceClean();
 }
+
+#include "packing.cuh"

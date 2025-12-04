@@ -121,7 +121,6 @@ Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 #endif
 
 // Device constants
-real AC_dsx, AC_dsy, AC_dsz
 real AC_dt
 // int AC_step_number
 int AC_current_step
@@ -182,10 +181,6 @@ real AC_center_z
 real AC_window_radius
 
 // Stencils
-Stencil value {
-    [0][0][0] = 1
-}
-
 Stencil derx {
     [0][0][-3] = 1,
     [0][0][-2] = 1,

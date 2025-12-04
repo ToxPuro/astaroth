@@ -1,0 +1,31 @@
+#pragma once
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+AcResult acMultiplyInplace(const AcReal value, const size_t count,
+                           AcReal* array);
+AcResult
+acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* array);
+
+AcResult
+acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst);
+
+AcResult
+acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst);
+
+AcResult
+acPlanarToComplex(const AcReal* real_src, const AcReal* imag_src,const size_t count, AcComplex* dst);
+
+AcResult
+acComplexToPlanar(const AcComplex* src,const size_t count,AcReal* real_dst,AcReal* imag_dst);
+
+#ifdef __cplusplus
+}
+AcResult acKernelVolumeCopy(const cudaStream_t stream,                                    //
+                            const AcReal* in, const Volume in_offset, const Volume in_volume, //
+                            AcReal* out, const Volume out_offset, const Volume out_volume);
+AcResult acKernelVolumeCopyComplex(const cudaStream_t stream,                                    //
+                            const AcComplex* in, const Volume in_offset, const Volume in_volume, //
+                            AcComplex* out, const Volume out_offset, const Volume out_volume);
+#endif

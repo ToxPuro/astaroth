@@ -25,12 +25,13 @@ makefile~
 build/
 build*/
 benchmark-data/
-
 # Clangd files
 .cache/
 
 # Other
 compile_commands.json
+compilation_log.txt
+FAIL
 .DS_Store
 .vscode
 acc-comm/acm/detail/accruntime_wrapper_test.cc

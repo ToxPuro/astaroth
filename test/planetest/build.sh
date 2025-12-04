@@ -1,0 +1,5 @@
+#!/bin/bash
+#
+mkdir -p 2d-build && cd 2d-build && cmake -DCMAKE_BUILD_TYPE=Debug -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -D2D=ON -DLAGRANGIAN_GRID=ON -DBUILD_TESTS=ON -DDSL_MODULE_DIR=../DSL/2D $AC_HOME && make planetest -j
+cd ..
+mkdir -p 3d-build && cd 3d-build && cmake -DCMAKE_BUILD_TYPE=Debug -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -D2D=OFF -DLAGRANGIAN_GRID=ON -DBUILD_TESTS=ON -DDSL_MODULE_DIR=../DSL/3D $AC_HOME && make planetest -j
