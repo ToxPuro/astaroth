@@ -500,6 +500,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acDeviceFFTR2C,stream)
 	LOAD_DSYM(acDeviceFFTC2R,stream)
 	LOAD_DSYM(acDeviceFFTR2Planar,stream)
+	LOAD_DSYM(acDeviceFFTR2PlanarBatched,stream)
 	LOAD_DSYM(acDeviceFFTBackwardTransformPlanar,stream)
 	LOAD_DSYM(acDeviceFFTBackwardTransformPlanar2R,stream)
 #if AC_MPI_ENABLED

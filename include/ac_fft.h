@@ -10,6 +10,7 @@ AcResult acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_
 AcResult acFFTBackwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst);
 AcResult acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* dst);
 AcResult acFFTForwardTransformR2Planar(const AcReal* src,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst);
+AcResult acFFTForwardTransformR2PlanarBatched(const AcReal* src,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size);
 AcResult acFFTBackwardTransformC2R(const AcComplex* transformed_in, const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer);
 AcResult acFFTInit(const AcCommunicator* comm, const int* global_offset);
 AcResult acFFTQuit();

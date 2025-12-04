@@ -46,6 +46,15 @@ acFFTForwardTransformR2Planar(const AcReal*, const Volume, const Volume, const V
 }
 
 AcResult
+acFFTForwardTransformR2PlanarBatched(const AcReal*, const Volume, const Volume, const Volume, AcReal*, AcReal*, int)
+{
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransformR2PlanarBatched!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}
+
+AcResult
 acFFTForwardTransformPlanar(const AcReal*, const AcReal*,const Volume, const Volume, const Volume, AcReal*, AcReal*)
 {
 	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransformPlanar!\n");

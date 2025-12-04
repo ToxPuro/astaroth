@@ -334,6 +334,23 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
 }
 
 AcResult
+acFFTForwardTransformR2PlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size)
+{
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    for(int offset = 0; offset < batch_size; ++offset)
+    {
+	acFFTForwardTransformR2Planar(
+					src + offset*count,
+					domain_size,
+					subdomain_size,
+					starting_point,
+					real_dst + offset*count,
+					imag_dst + offset*count
+				);
+    }
+}
+
+AcResult
 acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
@@ -378,6 +395,7 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
     acDeviceFree(&tmp2,0);
     return AC_SUCCESS;
 }
+
 
 AcResult
 acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
