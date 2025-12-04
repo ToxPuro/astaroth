@@ -1,3 +1,9 @@
+struct in_and_out_indexes
+{
+	int in_index;
+	int out_index;
+};
+
 struct int3 
 {
 	int x;
