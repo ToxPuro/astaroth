@@ -53,13 +53,6 @@ split_diffusion_update(Field real_dst, Field imag_dst, Field real_src, Field ima
 	const real k2dt = dt*k2
 	const real decay = exp(-diffusion_coeff*k2dt)
         res  = decay*complex(real_src[vertexIdx.x][vertexIdx.y][vertexIdx.z], imag_src[vertexIdx.x][vertexIdx.y][vertexIdx.z])
-	if(vertexIdx == (int3){8,8,8})
-	{
-		print("Real input: %.14e\n",real_src[vertexIdx.x][vertexIdx.y][vertexIdx.z])
-		print("Imag input: %.14e\n",imag_src[vertexIdx.x][vertexIdx.y][vertexIdx.z])
-		print("Real res: %.14e\n",res.x)
-		print("Imag res: %.14e\n",res.y)
-	}
         write(real_dst,res.x)
         write(imag_dst,res.y)
 }
