@@ -358,14 +358,16 @@ main(int argc, char* argv[])
 {
     ac::mpi::init_funneled();
     try {
-        std::cerr << "Usage: ./bm_pack <dim> <radius> <ndims> <ninputs> <nsamples> <jobid>"
-                  << std::endl;
-        const size_t dim{(argc > 1) ? std::stoull(argv[1]) : 32};
-        const size_t radius{(argc > 2) ? std::stoull(argv[2]) : 3};
-        const size_t ndims{(argc > 3) ? std::stoull(argv[3]) : 3};
-        const size_t ninputs{(argc > 4) ? std::stoull(argv[4]) : 4};
-        const size_t nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
-        const size_t jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
+        std::cerr
+            << "Usage: ./bm_pack <dim> <radius> <ndims> <ninputs> <nsamples> <jobid> <jobname>"
+            << std::endl;
+        const size_t      dim{(argc > 1) ? std::stoull(argv[1]) : 32};
+        const size_t      radius{(argc > 2) ? std::stoull(argv[2]) : 3};
+        const size_t      ndims{(argc > 3) ? std::stoull(argv[3]) : 3};
+        const size_t      ninputs{(argc > 4) ? std::stoull(argv[4]) : 4};
+        const size_t      nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
+        const size_t      jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
+        const std::string jobname{(argc > 7) ? std::string(argv[7]) : "default"};
 
         const auto nn{ac::make_shape(ndims, dim)};
         const auto rr{ac::make_index(ndims, radius)};
@@ -377,18 +379,19 @@ main(int argc, char* argv[])
         PRINT_DEBUG(ninputs);
         PRINT_DEBUG(nsamples);
         PRINT_DEBUG(jobid);
+        PRINT_DEBUG(jobname);
         PRINT_DEBUG(mm);
         PRINT_DEBUG(nn);
         PRINT_DEBUG(rr);
 
         std::ostringstream filename_stream;
-        filename_stream << "bm-pack-" << jobid << "-" << getpid() << "-"
+        filename_stream << "bm-pack-" << jobname + "-" << jobid << "-" << getpid() << "-"
                         << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto filename{filename_stream.str()};
 
         std::ofstream file{filename};
         file.exceptions(~std::ios::goodbit);
-        file << "impl,dim,radius,ndims,ninputs,sample,nsamples,jobid,ns" << std::endl;
+        file << "impl,dim,radius,ndims,ninputs,sample,nsamples,jobid,jobname,ns" << std::endl;
         file.close();
 
         auto print = [&](const std::string&                                      label,
@@ -405,6 +408,7 @@ main(int argc, char* argv[])
                 file << i << ",";
                 file << nsamples << ",";
                 file << jobid << ",";
+                file << jobname << ",";
                 file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
                      << std::endl;
             }

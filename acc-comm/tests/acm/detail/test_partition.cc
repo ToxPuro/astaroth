@@ -42,6 +42,29 @@ main()
         ERRCHK(partition(mm, nn, nn_offset).size() == 4);
     }
     {
+        const ac::shape nn{2, 2};
+        const ac::shape nn_offset{1, 0};
+        const ac::shape mm{nn + 2 * nn_offset};
+        ERRCHK(partition(mm, nn, nn_offset).size() == 3);
+    }
+    {
+        const ac::shape nn{2, 2, 2};
+        const ac::shape nn_offset{1, 1, 0};
+        const ac::shape mm{nn + 2 * nn_offset};
+        ERRCHK(partition(mm, nn, nn_offset).size() == 3 * 3);
+    }
+    {
+        const ac::shape nn{2, 2, 2, 2};
+        const ac::shape nn_offset{1, 1, 1, 0};
+        const ac::shape mm{nn + 2 * nn_offset};
+        const auto      segments{partition(mm, nn, nn_offset)};
+        ERRCHK(segments.size() == 3 * 3 * 3);
+
+        std::cout << "4D r_4 = 0 partitioning" << std::endl;
+        for (const auto& segment : segments)
+            std::cout << segment << std::endl;
+    }
+    {
         const ac::shape mm{4, 4};
         const ac::shape nn{2, 2};
         const ac::index rr{1, 1};

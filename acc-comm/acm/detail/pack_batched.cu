@@ -99,25 +99,31 @@ pack_batched(const ac::shape& mm, const std::vector<ac::device_view<T>>& unpacke
     //                                                            segments,
     //                                                            packed,
     //                                                            do_pack);
-    // case 3:
-    //     return pack_batched_prototype<T, NDIMS, N_UNPACKED, 3>(mm,
-    //                                                            unpacked,
-    //                                                            segments,
-    //                                                            packed,
-    //                                                            do_pack);
-    // case 6:
-    //     return pack_batched_prototype<T, NDIMS, N_UNPACKED, 6>(mm,
-    //                                                            unpacked,
-    //                                                            segments,
-    //                                                            packed,
-    //                                                            do_pack);
+    case 2:
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 2>(mm,
+                                                               unpacked,
+                                                               segments,
+                                                               packed,
+                                                               do_pack);
+        // case 3:
+        //     return pack_batched_prototype<T, NDIMS, N_UNPACKED, 3>(mm,
+        //                                                            unpacked,
+        //                                                            segments,
+        //                                                            packed,
+        //                                                            do_pack);
+        // case 6:
+        //     return pack_batched_prototype<T, NDIMS, N_UNPACKED, 6>(mm,
+        //                                                            unpacked,
+        //                                                            segments,
+        //                                                            packed,
+        //                                                            do_pack);
 
-    // case 8:
-    //     return pack_batched_prototype<T, NDIMS, N_UNPACKED, 8>(mm,
-    //                                                            unpacked,
-    //                                                            segments,
-    //                                                            packed,
-    //                                                            do_pack);
+    case 8:
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 8>(mm,
+                                                               unpacked,
+                                                               segments,
+                                                               packed,
+                                                               do_pack);
     // case 9:
     //     return pack_batched_prototype<T, NDIMS, N_UNPACKED, 9>(mm,
     //                                                            unpacked,
@@ -136,12 +142,24 @@ pack_batched(const ac::shape& mm, const std::vector<ac::device_view<T>>& unpacke
     //                                                             segments,
     //                                                             packed,
     //                                                             do_pack);
+    case 80:
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 80>(mm,
+                                                                unpacked,
+                                                                segments,
+                                                                packed,
+                                                                do_pack);
     // case 81:
     //     return pack_batched_prototype<T, NDIMS, N_UNPACKED, 81>(mm,
     //                                                             unpacked,
     //                                                             segments,
     //                                                             packed,
     //                                                             do_pack);
+    case 242:
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 242>(mm,
+                                                                 unpacked,
+                                                                 segments,
+                                                                 packed,
+                                                                 do_pack);
     default:
         ERROR_DESC("Unhandled %zu", segments.size());
     }
@@ -154,20 +172,20 @@ pack_batched(const ac::shape& mm, const std::vector<ac::device_view<T>>& unpacke
              const bool do_pack)
 {
     switch (unpacked.size()) {
-    // case 1:
-    //     return pack_batched<T, NDIMS, 1>(mm, unpacked, segments, packed, do_pack);
-    // case 2:
-    //     return pack_batched<T, NDIMS, 2>(mm, unpacked, segments, packed, do_pack);
+    case 1:
+        return pack_batched<T, NDIMS, 1>(mm, unpacked, segments, packed, do_pack);
+    case 2:
+        return pack_batched<T, NDIMS, 2>(mm, unpacked, segments, packed, do_pack);
     // case 3:
     //     return pack_batched<T, NDIMS, 3>(mm, unpacked, segments, packed, do_pack);
     case 4:
         return pack_batched<T, NDIMS, 4>(mm, unpacked, segments, packed, do_pack);
-    // case 8:
-    //     return pack_batched<T, NDIMS, 8>(mm, unpacked, segments, packed, do_pack);
-    case 12:
-        return pack_batched<T, NDIMS, 12>(mm, unpacked, segments, packed, do_pack);
-    // case 16:
-    //     return pack_batched<T, NDIMS, 16>(mm, unpacked, segments, packed, do_pack);
+    case 8:
+        return pack_batched<T, NDIMS, 8>(mm, unpacked, segments, packed, do_pack);
+    // case 12:
+    //     return pack_batched<T, NDIMS, 12>(mm, unpacked, segments, packed, do_pack);
+    case 16:
+        return pack_batched<T, NDIMS, 16>(mm, unpacked, segments, packed, do_pack);
     default:
         ERROR(false, "Unhandled");
     }
@@ -180,14 +198,16 @@ pack_batched(const ac::shape& mm, const std::vector<ac::device_view<T>>& unpacke
              const bool do_pack)
 {
     switch (mm.size()) {
-    // case 1:
-    //     return pack_batched<T, 1>(mm, unpacked, segments, packed, do_pack);
-    // case 2:
-    //     return pack_batched<T, 2>(mm, unpacked, segments, packed, do_pack);
+    case 1:
+        return pack_batched<T, 1>(mm, unpacked, segments, packed, do_pack);
+    case 2:
+        return pack_batched<T, 2>(mm, unpacked, segments, packed, do_pack);
     case 3:
         return pack_batched<T, 3>(mm, unpacked, segments, packed, do_pack);
-    // case 4:
-    //     return pack_batched<T, 4>(mm, unpacked, segments, packed, do_pack);
+    case 4:
+        return pack_batched<T, 4>(mm, unpacked, segments, packed, do_pack);
+    case 5:
+        return pack_batched<T, 5>(mm, unpacked, segments, packed, do_pack);
     default:
         ERROR(false, "Unhandled");
     }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --account=project_462000987
-#SBATCH -t 00:10:00
-#SBATCH -p dev-g
+#SBATCH -t 00:15:00
+#SBATCH -p standard-g
 #SBATCH --gpus-per-node=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --nodes=1
@@ -22,28 +22,26 @@ cp $CONFIG config-$SLURM_JOB_ID.ini
 export MPICH_GPU_SUPPORT_ENABLED=1
 
 # Disabled for TFM tests (change to 'true' to enable)
-if false; then
-./bm_pack 256 3 3 1 100 $SLURM_JOB_ID
-./bm_pack 256 3 3 2 100 $SLURM_JOB_ID
-./bm_pack 256 3 3 4 100 $SLURM_JOB_ID
-./bm_pack 256 3 3 8 100 $SLURM_JOB_ID
-./bm_pack 256 3 3 16 100 $SLURM_JOB_ID
+if true; then
+./benchmarks/bm_pack 128 3 3 1 100 $SLURM_JOB_ID
+./benchmarks/bm_pack 128 3 3 2 100 $SLURM_JOB_ID
+./benchmarks/bm_pack 128 3 3 4 100 $SLURM_JOB_ID
+./benchmarks/bm_pack 128 3 3 8 100 $SLURM_JOB_ID
+./benchmarks/bm_pack 128 3 3 16 100 $SLURM_JOB_ID
 fi
 
+if true; then
+./benchmarks/bm_collective_comm 128 128 128 3 1 100
+./benchmarks/bm_collective_comm 128 128 128 3 2 100
+./benchmarks/bm_collective_comm 128 128 128 3 4 100
+./benchmarks/bm_collective_comm 128 128 128 3 8 100
+./benchmarks/bm_collective_comm 128 128 128 3 16 100
+fi
 
-#./bm_pack 256 3 3 32 100 $SLURM_JOB_ID
-
-#./bm_rank_reordering 256 256 256 3 100 $SLURM_JOB_ID
-#./bm_rank_reordering 256 256 128 3 100 $SLURM_JOB_ID
-#./bm_rank_reordering 128 256 256 3 100 $SLURM_JOB_ID
-#./bm_rank_reordering 512 512 32 3 100 $SLURM_JOB_ID
-
-# ./bm_pipelining 256 256 256 3 1 100
-# ./bm_pipelining 256 256 256 3 2 100
-# ./bm_pipelining 256 256 256 3 4 100
-# ./bm_pipelining 256 256 256 3 8 100
-# ./bm_pipelining 256 256 256 3 16 100
-# ./bm_pipelining 256 256 256 3 32 100
-
-# Strong and weak scaling
-./tfm-mpi --config $CONFIG --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID --benchmark 1
+if true; then
+# NOTE: takes a very long time (512^3 grid size, should go for smaller)
+./benchmarks/bm_rank_reordering 128 128 128 3 100 $SLURM_JOB_ID
+./benchmarks/bm_rank_reordering 256 128 64 3 100 $SLURM_JOB_ID
+./benchmarks/bm_rank_reordering 64 128 256 3 100 $SLURM_JOB_ID
+./benchmarks/bm_rank_reordering 512 512 8 3 100 $SLURM_JOB_ID
+fi

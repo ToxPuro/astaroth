@@ -85,57 +85,63 @@ main(int argc, char* argv[])
         using Allocator = ac::mr::device_allocator;
 
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0)
-            std::cerr << "Usage: ./bm_collective_comm <nx> <ny> <nz> <radius> <npack> <nsamples> "
-                         "<jobid>"
+            std::cerr << "Usage: ./bm_collective_comm <dim> <radius> <ndims> <npack> <nsamples> "
+                         "<jobid> <jobname>"
                       << std::endl;
-        const size_t nx{(argc > 1) ? std::stoull(argv[1]) : 32};
-        const size_t ny{(argc > 2) ? std::stoull(argv[2]) : 32};
-        const size_t nz{(argc > 3) ? std::stoull(argv[3]) : 32};
-        const size_t radius{(argc > 4) ? std::stoull(argv[4]) : 3};
-        const size_t npack{(argc > 5) ? std::stoull(argv[5]) : 1};
-        const size_t nsamples{(argc > 6) ? std::stoull(argv[6]) : 10};
-        const size_t jobid{(argc > 7) ? std::stoull(argv[7]) : 0};
+        const size_t      dim{(argc > 1) ? std::stoull(argv[1]) : 32};
+        const size_t      radius{(argc > 2) ? std::stoull(argv[2]) : 3};
+        const size_t      ndims{(argc > 3) ? std::stoull(argv[3]) : 3};
+        const size_t      npack{(argc > 4) ? std::stoull(argv[4]) : 1};
+        const size_t      nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
+        const size_t      jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
+        const std::string jobname{(argc > 7) ? std::string(argv[7]) : "default"};
 
-        const ac::shape global_nn{nx, ny, nz};
+        const ac::shape global_nn{ac::make_shape(ndims, dim)};
         const ac::index rr{ac::make_index(global_nn.size(), radius)};
 
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-            PRINT_DEBUG(nx);
-            PRINT_DEBUG(ny);
-            PRINT_DEBUG(nz);
+            PRINT_DEBUG(dim);
             PRINT_DEBUG(radius);
+            PRINT_DEBUG(ndims);
             PRINT_DEBUG(npack);
             PRINT_DEBUG(nsamples);
             PRINT_DEBUG(jobid);
+            PRINT_DEBUG(jobname);
         }
 
         std::ostringstream filename_stream;
-        filename_stream << "bm-collective-comm-" << jobid << "-" << getpid() << "-"
+        filename_stream << "bm-collective-comm-" << jobname + "-" << jobid << "-" << getpid() << "-"
                         << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto filename{filename_stream.str()};
 
-        std::ofstream file{filename};
-        file.exceptions(~std::ios::goodbit);
-        file << "impl,nx,ny,nz,radius,npack,sample,nsamples,rank,nprocs,jobid,ns" << std::endl;
-        file.close();
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+            std::ofstream file{filename};
+            file.exceptions(~std::ios::goodbit);
+            file << "impl,dim,radius,ndims,npack,sample,nsamples,rank,nprocs,jobid,jobname,ns"
+                 << std::endl;
+            file.close();
+        }
 
         auto print = [&](const std::string&                                      label,
                          const std::vector<std::chrono::steady_clock::duration>& results) {
-            file = std::ofstream{filename, std::ios_base::app};
+            if (ac::mpi::get_rank(MPI_COMM_WORLD) != 0)
+                return;
+
+            std::ofstream file{filename, std::ios_base::app};
             file.exceptions(~std::ios::goodbit);
 
             for (size_t i{0}; i < results.size(); ++i) {
                 file << label << ",";
-                file << nx << ",";
-                file << ny << ",";
-                file << nz << ",";
+                file << dim << ",";
                 file << radius << ",";
+                file << ndims << ",";
                 file << npack << ",";
                 file << i << ",";
                 file << nsamples << ",";
                 file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
                 file << ac::mpi::get_size(MPI_COMM_WORLD) << ",";
                 file << jobid << ",";
+                file << jobname << ",";
                 file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
                      << std::endl;
             }
@@ -147,7 +153,7 @@ main(int argc, char* argv[])
         const auto         local_nn{ac::mpi::get_local_nn(comm.get(), global_nn)};
         const auto         global_nn_offset{ac::mpi::get_global_nn_offset(comm.get(), global_nn)};
 
-        const int device_id{ac::mpi::select_device_lumi()};
+        const auto device_id{ac::mpi::select_device_generic()};
         MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
         PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
         PRINT_DEBUG(ac::mpi::get_rank(comm.get()));

@@ -7,9 +7,7 @@
 
 #include "acm/detail/allocator.h"
 #include "acm/detail/buffer.h"
-#include "acm/detail/convert.h"
 #include "acm/detail/errchk_mpi.h"
-#include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
@@ -27,7 +25,7 @@
 #include "acm/detail/experimental/mpi_utils_experimental.h"
 #include "acm/detail/experimental/random_experimental.h"
 
-namespace ac::mpi {
+namespace ac::mpi::decoupled {
 
 template <typename T, typename Allocator> class packet {
   private:
@@ -226,7 +224,7 @@ template <typename T, typename Allocator> class halo_exchange {
     }
 };
 
-} // namespace ac::mpi
+} // namespace ac::mpi::decoupled
 
 template <typename T, typename Allocator>
 static void
@@ -283,7 +281,7 @@ verify_results(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index
 template <typename T, typename Allocator>
 static void
 verify(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
-       ac::mpi::halo_exchange<T, Allocator>& task, const std::function<void()>& bench)
+       ac::mpi::decoupled::halo_exchange<T, Allocator>& task, const std::function<void()>& bench)
 {
     // Simple verification
     task.init();
@@ -323,27 +321,18 @@ main(int argc, char* argv[])
         using T         = uint64_t;
         using Allocator = ac::mr::device_allocator;
 
-#if defined(ACM_DEVICE_ENABLED)
-        int device_count{0};
-        ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
-        int device_id{ac::mpi::get_rank(MPI_COMM_WORLD) % device_count};
-        if (device_count == 8) { // Do manual GPU mapping for LUMI
-            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
-            device_id = device_ids[as<size_t>(device_id)];
-        }
-        ERRCHK_CUDA_API(cudaSetDevice(device_id));
-#endif
-
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0)
             std::cerr << "Usage: ./bm_rank_reordering <nx> <ny> <nz> <radius> <nsamples> "
-                         "<jobid>"
+                         "<jobid> <jobname> <bench_hierarchical>"
                       << std::endl;
-        const size_t nx{(argc > 1) ? std::stoull(argv[1]) : 32};
-        const size_t ny{(argc > 2) ? std::stoull(argv[2]) : 32};
-        const size_t nz{(argc > 3) ? std::stoull(argv[3]) : 32};
-        const size_t radius{(argc > 4) ? std::stoull(argv[4]) : 3};
-        const size_t nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
-        const size_t jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
+        const size_t      nx{(argc > 1) ? std::stoull(argv[1]) : 32};
+        const size_t      ny{(argc > 2) ? std::stoull(argv[2]) : 32};
+        const size_t      nz{(argc > 3) ? std::stoull(argv[3]) : 32};
+        const size_t      radius{(argc > 4) ? std::stoull(argv[4]) : 3};
+        const size_t      nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
+        const size_t      jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
+        const std::string jobname{(argc > 7) ? std::string(argv[7]) : "default"};
+        const size_t      bench_hierarchical{(argc > 8) ? std::stoull(argv[8]) : 0};
 
         const ac::shape global_nn{nx, ny, nz};
         const ac::index rr{ac::make_index(global_nn.size(), radius)};
@@ -355,21 +344,28 @@ main(int argc, char* argv[])
             PRINT_DEBUG(radius);
             PRINT_DEBUG(nsamples);
             PRINT_DEBUG(jobid);
+            PRINT_DEBUG(jobname);
         }
 
         std::ostringstream filename_stream;
-        filename_stream << "bm-rank-reordering-" << jobid << "-" << getpid() << "-"
+        filename_stream << "bm-rank-reordering-" << jobname + "-" << jobid << "-" << getpid() << "-"
                         << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto filename{filename_stream.str()};
 
-        std::ofstream file{filename};
-        file.exceptions(~std::ios::goodbit);
-        file << "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,ns" << std::endl;
-        file.close();
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+            std::ofstream file{filename};
+            file.exceptions(~std::ios::goodbit);
+            file << "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,jobname,ns"
+                 << std::endl;
+            file.close();
+        }
 
         auto print = [&](const std::string&                                      label,
                          const std::vector<std::chrono::steady_clock::duration>& results) {
-            file = std::ofstream{filename, std::ios_base::app};
+            if (ac::mpi::get_rank(MPI_COMM_WORLD) != 0)
+                return;
+
+            std::ofstream file{filename, std::ios_base::app};
             file.exceptions(~std::ios::goodbit);
 
             for (size_t i{0}; i < results.size(); ++i) {
@@ -383,6 +379,7 @@ main(int argc, char* argv[])
                 file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
                 file << ac::mpi::get_size(MPI_COMM_WORLD) << ",";
                 file << jobid << ",";
+                file << jobname << ",";
                 file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
                      << std::endl;
             }
@@ -390,11 +387,22 @@ main(int argc, char* argv[])
             file.close();
         };
 
-        auto bm = [&](const std::string& label, const ac::mpi::RankReorderMethod reorder_method) {
+        auto bm = [&](const std::string&               label,
+                      const ac::mpi::RankReorderMethod reorder_method,
+                      const size_t                     bench_hierarchical) {
+#if defined(ACM_DEVICE_ENABLED)
+            int device_count{0};
+            ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
+            auto device_id{ac::mpi::select_device_generic()};
+            if (bench_hierarchical)
+                device_id = ac::mpi::select_device_lumi();
+            ERRCHK_CUDA_API(cudaSetDevice(device_id));
+#endif
+
             ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD, global_nn, reorder_method};
-            ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
-            auto                                 init  = [&task]() { task.reset(); };
-            auto                                 bench = [&task]() {
+            ac::mpi::decoupled::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
+            auto                                            init  = [&task]() { task.reset(); };
+            auto                                            bench = [&task]() {
                 task.launch();
                 task.wait();
             };
@@ -413,11 +421,23 @@ main(int argc, char* argv[])
             print(label, bm::benchmark(init, bench, sync, nsamples));
         };
 
-        bm("hierarchical", ac::mpi::RankReorderMethod::hierarchical);
-        bm("mpi-default", ac::mpi::RankReorderMethod::default_mpi);
-        bm("mpi-no", ac::mpi::RankReorderMethod::no);
-        bm("mpi-no-custom-decomp", ac::mpi::RankReorderMethod::no_custom_decomp);
-        bm("mpi-default-custom-decomp", ac::mpi::RankReorderMethod::no_custom_decomp);
+        if (bench_hierarchical) {
+            // mpi-no-custom-decomp likely unnecessary: what would it show?
+            bm("mpi-no-custom-decomp",
+               ac::mpi::RankReorderMethod::no_custom_decomp,
+               bench_hierarchical);
+            //
+            // mpi-default-custom-decomp: shows comparison between a simple locality-preserving
+            // assignment vs. hierarchical
+            bm("mpi-default-custom-decomp",
+               ac::mpi::RankReorderMethod::default_custom_decomp,
+               bench_hierarchical);
+            bm("hierarchical", ac::mpi::RankReorderMethod::hierarchical, bench_hierarchical);
+        }
+        else {
+            bm("mpi-no", ac::mpi::RankReorderMethod::no, bench_hierarchical);
+            bm("mpi-default", ac::mpi::RankReorderMethod::default_mpi, bench_hierarchical);
+        }
     }
     catch (const std::exception& e) {
         ac::mpi::abort();

@@ -133,6 +133,14 @@ cart_comm_mpi_create(const MPI_Comm& parent_comm, const ac::shape& global_nn, co
     return cart_comm;
 }
 
+/**
+ * Returns the number of processes per layer, from finest granularity (processing element) to
+ * largest (node level).
+ *
+ * The input should be also in the order from finest to largest granularity
+ * e.g., (num_gcds_per_gpu, num_gpus_per_node). The final node count is calculated
+ * from nprocs and appended to the nprocs_per_layer vector.
+ */
 static std::vector<uint64_t>
 get_nprocs_per_layer(const uint64_t& nprocs, const std::vector<uint64_t>& max_per_layer)
 {
@@ -144,6 +152,7 @@ get_nprocs_per_layer(const uint64_t& nprocs, const std::vector<uint64_t>& max_pe
     }
     nprocs_per_layer.push_back(curr_nprocs); // Push remainder
     ERRCHK_MPI(vecprod(nprocs_per_layer) == nprocs);
+
     return nprocs_per_layer;
 }
 
@@ -201,6 +210,32 @@ test_get_nprocs_per_layer()
     return 0;
 }
 
+/** Get system topology
+ *
+ * Returns the maximum processes per layer, from fine to coarse
+ * E.g., {gcds_per_device, devices_per_node, ...}
+ *
+ * Example:
+ *   const auto max_nprocs_per_layer{get_topology_lumi()};
+ */
+static std::vector<uint64_t>
+get_topology_lumi()
+{
+    return std::vector<uint64_t>{2, 2, 2};
+}
+
+static std::vector<uint64_t>
+get_topology_mahti()
+{
+    return std::vector<uint64_t>{2, 2};
+}
+
+static std::vector<uint64_t>
+get_topology_puhti()
+{
+    return std::vector<uint64_t>{2, 2};
+}
+
 static MPI_Comm
 cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const ac::shape& global_nn)
 {
@@ -217,13 +252,10 @@ cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const ac::shape& glob
     const size_t ndims{global_nn.size()};
 
     // Get node hierarchy and decompose
-    // const std::vector<uint64_t> max_nprocs_per_layer{2, 2, 2};
-    // const auto                  nprocs_per_layer{
-    //     get_nprocs_per_layer(as<uint64_t>(ac::mpi::get_size(parent_comm)),
-    //     max_nprocs_per_layer)};
-    // const auto hierarchical_decomposition{decompose_hierarchical(global_nn, nprocs_per_layer)};
-    const auto hierarchical_decomposition{
-        decompose_hierarchical_alt(global_nn, as<size_t>(mpi_nprocs))};
+    const std::vector<uint64_t> max_nprocs_per_layer{get_topology_lumi()};
+    const auto                  nprocs_per_layer{
+        get_nprocs_per_layer(as<uint64_t>(ac::mpi::get_size(parent_comm)), max_nprocs_per_layer)};
+    const auto hierarchical_decomposition{decompose_hierarchical(global_nn, nprocs_per_layer)};
 
     // Get derived decompositions
     const auto global_decomposition{
