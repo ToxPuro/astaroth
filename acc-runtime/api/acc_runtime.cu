@@ -1172,7 +1172,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   //Previous failures should not affect autotuning. Up to the user do they fix the warnings or not
   catch_previous_errors(kernel,"starting autotuning");
   static bool firstprint=true;
-  if (grid_pid == 0 && firstprint)
+  if (firstprint && grid_pid == 0)
   {
 	fprintf(stderr,"\nStarted autotuning: watch progress in ac_autotuning.log\n");
 	firstprint=false;
