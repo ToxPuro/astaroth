@@ -7763,6 +7763,14 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 		{
 			node->is_constexpr = false;
 		}
+		//TP: this means we are writing to an input ptr
+		if(
+			strstr(node->buffer,"AC_INTERNAL")
+			&& strstr(node->buffer,"array_here")
+		  )
+		{
+			node->is_constexpr = false;
+		}
 		res |= node->is_constexpr;
 	}
 
