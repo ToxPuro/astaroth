@@ -15,13 +15,17 @@ typedef struct {
 extern "C" {
 #endif
 
-/** Generates PC-inspired forcing params (vaisala_interactionoflarge_2021: https://doi.org/10.3847/1538-4357/abceca) */
-// ForcingParams generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal kmin,
+/** Generates PC-inspired forcing params (vaisala_interactionoflarge_2021:
+ * https://doi.org/10.3847/1538-4357/abceca) */
+// ForcingParams generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal
+// kmin,
 //                                     const AcReal kmax);
 
-/** Generates exact PC forcing params based on PC user manual, brandenburg_crosshelically_2019 10.1002/asna.201913602, and used in pekkila_gpuaccelerated_2025 */
-ForcingParams generateHelicalForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal kmin,
-                                    const AcReal kmax);
+/** Generates exact PC forcing params based on PC user manual,
+ * brandenburg_crosshelically_2019 10.1002/asna.201913602, and used in pekkila_gpuaccelerated_2025
+ */
+ForcingParams generateHelicalForcingParams(const AcReal relhel, const AcReal magnitude,
+                                           const AcReal kmin, const AcReal kmax);
 
 int loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info);
 

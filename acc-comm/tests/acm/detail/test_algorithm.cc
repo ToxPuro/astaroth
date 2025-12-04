@@ -26,8 +26,7 @@ main()
             ERRCHK(pack_buffer[i] == as<int>(i) + 1);
 
         // Test transform
-        ac::transform(
-            pack_buffer.get(), [](const auto& elem) { return elem * elem; }, tst.get());
+        ac::transform(pack_buffer.get(), [](const auto& elem) { return elem * elem; }, tst.get());
         for (size_t i{0}; i < tst.size(); ++i)
             ERRCHK(tst[i] == as<int>((i + 1) * (i + 1)));
 
@@ -57,8 +56,7 @@ main()
         tst.display();
 
         // Transform (square)
-        ac::transform(
-            tst.get(), [](const int& a) { return a * a; }, tst.get());
+        ac::transform(tst.get(), [](const int& a) { return a * a; }, tst.get());
         tst.display();
 
         // Reduce
