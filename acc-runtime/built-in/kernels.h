@@ -103,8 +103,8 @@ utility Kernel AC_VOLUME_COPY_REAL_TO_COMPLEX(const real[] src,Volume in_offset,
     out[out_idx].y = 0.0;
 }
 
-utility Kernel AC_VOLUME_COPY_COMPLEX_TO_PLANAR(const complex[] src,Volume in_offset, Volume in_volume, 
-			      real[] real_out,real[] imag_out,Volume out_offset,Volume out_volume)
+utility Kernel AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED(const real[] src,Volume in_offset, Volume in_volume, 
+			      complex[] out,Volume out_offset,Volume out_volume, int batch_size)
 {
     const Volume local_idx = (Volume){
         threadIdx.x + blockIdx.x * blockDim.x,
@@ -121,8 +121,44 @@ utility Kernel AC_VOLUME_COPY_COMPLEX_TO_PLANAR(const complex[] src,Volume in_of
                            out_pos.y * out_volume.x + //
                            out_pos.z * out_volume.x * out_volume.y;
 
-    real_out[out_idx]   = src[in_idx].x;
-    imag_out[out_idx]   = src[in_idx].y;
+    const size_t in_size  = in_volume.x*in_volume.y*in_volume.z
+    const size_t out_size = out_volume.x*out_volume.y*out_volume.z
+    for i in 0:batch_size
+    {
+	const size_t idx_out = out_idx + i*out_size;
+	const size_t idx_in  = in_idx  + i*in_size;
+    	out[idx_out].x = src[idx_in];
+    	out[idx_out].y = 0.0;
+    }
+}
+
+utility Kernel AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED(const complex[] src,Volume in_offset, Volume in_volume, 
+			      real[] real_out,real[] imag_out,Volume out_offset,Volume out_volume, int batch_size)
+{
+    const Volume local_idx = (Volume){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    const Volume in_pos  = local_idx + in_offset;
+    const Volume out_pos = local_idx + out_offset;
+    const size_t in_idx = in_pos.x +               //
+                          in_pos.y * in_volume.x + //
+                          in_pos.z * in_volume.x * in_volume.y;
+    const size_t out_idx = out_pos.x +                //
+                           out_pos.y * out_volume.x + //
+                           out_pos.z * out_volume.x * out_volume.y;
+
+    const size_t in_size  = in_volume.x*in_volume.y*in_volume.z
+    const size_t out_size = out_volume.x*out_volume.y*out_volume.z
+    for i in 0:batch_size
+    {
+	const size_t idx_out = out_idx + i*out_size;
+	const size_t idx_in  = in_idx  + i*in_size;
+    	real_out[idx_out]   = src[idx_out].x;
+    	imag_out[idx_in]   = src[idx_in].y;
+    }
 }
 
 utility Kernel AC_FLUSH_REAL(real[] dst, real val)

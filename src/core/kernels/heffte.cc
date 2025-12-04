@@ -189,7 +189,7 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
     AcComplex* tmp_out = tmp_buffers[count].out;
     acKernelVolumeCopyRealToComplex(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size);
 
-    //acFFTTransformC2CBase(tmp_in,subdomain_size,tmp_out,false,1);
+    acFFTTransformC2CBase(tmp_in,subdomain_size,tmp_out,false,1);
     acKernelVolumeCopyComplexToPlanar(0,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size);
 
     return AC_SUCCESS;
@@ -198,18 +198,23 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
 AcResult
 acFFTForwardTransformR2PlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size)
 {
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    for(int offset = 0; offset < batch_size; ++offset)
+    const size_t count = subdomain_size.x*subdomain_size.y*subdomain_size.z*batch_size;
+    static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
     {
-        acFFTForwardTransformR2Planar(
-        				src + offset*count,
-        				domain_size,
-        				subdomain_size,
-        				starting_point,
-        				real_dst + offset*count,
-        				imag_dst + offset*count
-        			);
+    	AcComplex* tmp  = get_fresh_complex_buffer(count);
+    	AcComplex* tmp2 = get_fresh_complex_buffer(count);
+	tmp_buffers[count].in  = tmp;
+	tmp_buffers[count].out = tmp2;
     }
+
+    AcComplex* tmp_in  = tmp_buffers[count].in;
+    AcComplex* tmp_out = tmp_buffers[count].out;
+    acKernelVolumeCopyRealToComplexBatched(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,batch_size);
+
+    acFFTTransformC2CBase(tmp_in,subdomain_size,tmp_out,false,batch_size);
+    acKernelVolumeCopyComplexToPlanarBatched(0,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size,batch_size);
+
     return AC_SUCCESS;
 }
 
