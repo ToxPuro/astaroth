@@ -127,6 +127,11 @@ acFFTForwardTransformC2C(const AcComplex* src, const Volume domain_size, const V
 
 AcResult
 acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
+	(void)transformed_in;
+	(void)domain_size;
+	(void)subdomain_size;
+	(void)starting_point;
+	(void)buffer;
 	ERRCHK_ALWAYS(false); //Not implemented
 }
 
@@ -170,7 +175,7 @@ acFFTForwardTransformR2C(const AcReal* src, const Volume domain_size, const Volu
 AcResult
 acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
 {
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    const size_t count = subdomain_size.x*subdomain_size.y*subdomain_size.z;
     static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
     if (tmp_buffers.find(count) == tmp_buffers.end())
     {
@@ -180,12 +185,12 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
 	tmp_buffers[count].out = tmp2;
     }
 
-    AcComplex* tmp  = tmp_buffers[count].in;
-    AcComplex* tmp2 = tmp_buffers[count].out;
+    AcComplex* tmp_in  = tmp_buffers[count].in;
+    AcComplex* tmp_out = tmp_buffers[count].out;
+    acKernelVolumeCopyRealToComplex(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size);
 
-    acRealToComplex(src,count,tmp);
-    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
-    acComplexToPlanar(tmp2,count,real_dst,imag_dst);
+    //acFFTTransformC2CBase(tmp_in,subdomain_size,tmp_out,false,1);
+    acKernelVolumeCopyComplexToPlanar(0,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size);
 
     return AC_SUCCESS;
 }
