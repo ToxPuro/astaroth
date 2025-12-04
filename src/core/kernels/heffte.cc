@@ -37,6 +37,11 @@ static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{}
 
 AcResult
 acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+	(void)buffer;
+	(void)domain_size;
+	(void)subdomain_size;
+	(void)starting_point;
+	(void)transformed_in;
 	ERRCHK_ALWAYS(false); //Not implemented
 }
 AcResult
