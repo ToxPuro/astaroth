@@ -179,12 +179,30 @@ bool is_directory(const char *path) {
     return S_ISDIR(statbuf.st_mode);
 }
 
+static const char*
+get_compiler()
+{
+        const int gcc_not_available = system("gcc --version > /dev/null");
+        if(!gcc_not_available)
+        {
+        	return "gcc";
+        }
+        const int cc_not_available = system("cc --version > /dev/null");
+        if(!cc_not_available)
+        {
+        	return "cc";
+        }
+	fatal("%s","Unable to find a C/C++ compiler to preprocess and compile!!\n");
+	return NULL;
+}
+
+
 void
 expand_macros(const char* file_in, const char* file_out)
 {
           const size_t cmdlen = 4096;
 	  char* cmd = malloc(cmdlen*sizeof(char));
-          snprintf(cmd, cmdlen, "gcc -x c -E %s > %s", file_in, file_out);
+          snprintf(cmd, cmdlen, "%s -x c -E %s > %s",get_compiler(),file_in, file_out);
           const int retval = system(cmd);
 	  free(cmd);
           if (retval == -1) {
