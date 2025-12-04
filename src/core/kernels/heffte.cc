@@ -44,12 +44,51 @@ acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size
 	(void)transformed_in;
 	ERRCHK_ALWAYS(false); //Not implemented
 }
+
+AcResult
+acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex* dst,
+		  const bool inverse, const int batch_size)
+{
+    static std::unordered_map<size_t,AcComplex*> work_buffers{};
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    //HeFFTe is surprisingly inclusive in the domain
+    const int3 lower = (int3)
+    {
+	    (int)global_offset.x,
+	    (int)global_offset.y,
+	    (int)global_offset.z
+    };
+    const int3 dims = (int3)
+    {
+	    (int)domain_size.x,
+	    (int)domain_size.y,
+	    (int)domain_size.z
+    };
+    const int3 upper = lower+dims-(int3){1,1,1};
+    if(plans.find(count) == plans.end())
+    {
+        heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
+        heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
+	plans.emplace(count,std::move(fft));
+	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
+    }
+    AcComplex* workspace = work_buffers[count];
+    if(inverse)
+    {
+    	plans.at(count).backward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
+    }
+    else
+    {
+    	plans.at(count).forward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    }
+    return AC_SUCCESS;
+}
+
 AcResult
 acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst,
 		  const bool inverse)
 {
     static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
-    static std::unordered_map<size_t,AcComplex*> work_buffers{};
     ERRCHK_ALWAYS(src != NULL);
     ERRCHK_ALWAYS(dst != NULL);
     ERRCHK_ALWAYS(subdomain_size.x <= domain_size.x);
@@ -62,50 +101,24 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
     ERRCHK_ALWAYS(starting_point.y  + subdomain_size.y<= domain_size.y);
     ERRCHK_ALWAYS(starting_point.z  + subdomain_size.z<= domain_size.z);
     const size_t count = subdomain_size.x*subdomain_size.y*subdomain_size.z;
-    //HeFFTe is surprisingly inclusive in the domain
-    const int3 lower = (int3)
-    {
-	    (int)global_offset.x,
-	    (int)global_offset.y,
-	    (int)global_offset.z
-    };
-    const int3 dims = (int3)
-    {
-	    (int)subdomain_size.x,
-	    (int)subdomain_size.y,
-	    (int)subdomain_size.z
-    };
-    const int3 upper = lower+dims-(int3){1,1,1};
 
 
     if (tmp_buffers.find(count) == tmp_buffers.end())
     {
-        heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
-	plans.emplace(count,std::move(fft));
 
     	AcComplex* tmp_in  = get_fresh_complex_buffer(count);
     	AcComplex* tmp_out = get_fresh_complex_buffer(count);
     	tmp_buffers[count] = (AcComplexInAndOut){tmp_in,tmp_out};
-	work_buffers[count] = get_fresh_complex_buffer(fft.size_workspace());
     }
     AcComplex* tmp_in  = tmp_buffers[count].in;
     AcComplex* tmp_out = tmp_buffers[count].out;
-    AcComplex* workspace = work_buffers[count];
 
     acKernelVolumeCopyComplex(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size);
-
-    if(inverse)
-    {
-    	plans.at(count).backward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::none);
-    }
-    else
-    {
-    	plans.at(count).forward((std::complex<AcReal>*)tmp_in, (std::complex<AcReal>*)tmp_out, (std::complex<AcReal>*)workspace, heffte::scale::full);
-    }
+    acFFTTransformC2CBase(tmp_in, subdomain_size, tmp_out, inverse,1);
     acKernelVolumeCopyComplex(0,tmp_out,(Volume){0,0,0},subdomain_size,dst,starting_point,domain_size);
     return AC_SUCCESS;
 }
+
 
 AcResult
 acFFTForwardTransformC2C(const AcComplex* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst) {

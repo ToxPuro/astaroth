@@ -81,6 +81,50 @@ utility Kernel AC_VOLUME_COPY_COMPLEX(const complex[] src,Volume in_offset, Volu
     out[out_idx].y = src[in_idx].y;
 }
 
+utility Kernel AC_VOLUME_COPY_REAL_TO_COMPLEX(const real[] src,Volume in_offset, Volume in_volume, 
+			      complex[] out,Volume out_offset,Volume out_volume)
+{
+    const Volume local_idx = (Volume){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    const Volume in_pos  = local_idx + in_offset;
+    const Volume out_pos = local_idx + out_offset;
+    const size_t in_idx = in_pos.x +               //
+                          in_pos.y * in_volume.x + //
+                          in_pos.z * in_volume.x * in_volume.y;
+    const size_t out_idx = out_pos.x +                //
+                           out_pos.y * out_volume.x + //
+                           out_pos.z * out_volume.x * out_volume.y;
+
+    out[out_idx].x = src[in_idx];
+    out[out_idx].y = 0.0;
+}
+
+utility Kernel AC_VOLUME_COPY_COMPLEX_TO_PLANAR(const complex[] src,Volume in_offset, Volume in_volume, 
+			      real[] real_out,real[] imag_out,Volume out_offset,Volume out_volume)
+{
+    const Volume local_idx = (Volume){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    const Volume in_pos  = local_idx + in_offset;
+    const Volume out_pos = local_idx + out_offset;
+    const size_t in_idx = in_pos.x +               //
+                          in_pos.y * in_volume.x + //
+                          in_pos.z * in_volume.x * in_volume.y;
+    const size_t out_idx = out_pos.x +                //
+                           out_pos.y * out_volume.x + //
+                           out_pos.z * out_volume.x * out_volume.y;
+
+    real_out[out_idx]   = src[in_idx].x;
+    imag_out[out_idx]   = src[in_idx].y;
+}
+
 utility Kernel AC_FLUSH_REAL(real[] dst, real val)
 {
 	dst[vertexIdx.x] = val
