@@ -95,6 +95,13 @@ struct FieldSymmetricTensor
 	Field yz;
 };
 
+struct ProfileZ3
+{
+	Profile<Z> x;
+	Profile<Z> y;
+	Profile<Z> z;
+};
+
 //TP: do not make xy,xz and yz into long long since that 
 //will degrade performance (at least on AMD)
 struct AcDimProducts

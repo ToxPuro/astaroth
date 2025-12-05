@@ -29,11 +29,11 @@ int AC_TFM_magnetic_laplace_diff
 
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
-#define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+const Field3 UU = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ}
 
 #if LMAGNETIC
 Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
-#define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
+const Field3 AA = {VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ}
 #endif
 
 #if LENTROPY 
@@ -95,29 +95,29 @@ Field TF_bb22_x, TF_bb22_y, TF_bb22_z
 #define TF_bb22 Field3(TF_bb22_x, TF_bb22_y, TF_bb22_z)
 
 // Mean-field profiles
-Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
+Profile<Z> PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
 
-#define PROFILE_Umean Profile3(PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z)
+#define PROFILE_Umean ProfileZ3(PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z)
 
-Profile PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z
-Profile PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z
-Profile PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
-Profile PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
+Profile<Z> PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z
+Profile<Z> PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z
+Profile<Z> PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
+Profile<Z> PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
 
-#define PROFILE_uxb11mean Profile3(PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z)
-#define PROFILE_uxb12mean Profile3(PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z)
-#define PROFILE_uxb21mean Profile3(PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z)
-#define PROFILE_uxb22mean Profile3(PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z)
+const ProfileZ3 PROFILE_uxb11mean = {PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z}
+const ProfileZ3 PROFILE_uxb12mean = {PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z}
+const ProfileZ3 PROFILE_uxb21mean = {PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z}
+const ProfileZ3 PROFILE_uxb22mean = {PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z}
 
-Profile PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
-Profile PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
-Profile PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z
-Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
+Profile<Z> PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
+Profile<Z> PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
+Profile<Z> PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z
+Profile<Z> PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 
-#define PROFILE_B11mean Profile3(PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z)
-#define PROFILE_B12mean Profile3(PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z)
-#define PROFILE_B21mean Profile3(PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z)
-#define PROFILE_B22mean Profile3(PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z)
+const ProfileZ3 PROFILE_B11mean = {PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z}
+const ProfileZ3 PROFILE_B12mean = {PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z}
+const ProfileZ3 PROFILE_B21mean = {PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z}
+const ProfileZ3 PROFILE_B22mean = {PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z}
 #endif
 
 // Device constants
@@ -391,9 +391,9 @@ contract(mat) {
 }
 
 grid_position() {
-    return real3((globalVertexIdx.x - AC_nx_min + 0.5) * AC_dsx - AC_global_sx/2, 
-                 (globalVertexIdx.y - AC_ny_min + 0.5) * AC_dsy - AC_global_sy/2, 
-                 (globalVertexIdx.z - AC_nz_min + 0.5) * AC_dsz - AC_global_sz/2)
+    return real3((globalVertexIdx.x - config[AC_nmin].x + 0.5) * AC_dsx - AC_global_sx/2, 
+                 (globalVertexIdx.y - config[AC_nmin].y + 0.5) * AC_dsy - AC_global_sy/2, 
+                 (globalVertexIdx.z - config[AC_nmin].z + 0.5) * AC_dsz - AC_global_sz/2)
 }
 
 // Simulation functions
