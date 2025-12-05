@@ -73,16 +73,7 @@ utility Kernel AC_VOLUME_COPY_COMPLEX(const complex[] src,Volume in_offset, Volu
     out[indexes.out_index].y = src[indexes.in_index].y;
 }
 
-utility Kernel AC_VOLUME_COPY_REAL_TO_COMPLEX(const real[] src,Volume in_offset, Volume in_volume, 
-			      complex[] out,Volume out_offset,Volume out_volume)
-{
-    indexes = get_copy_indexes(in_offset,out_offset,in_volume,out_volume)
-    out[indexes.out_index].x = src[indexes.in_index];
-    out[indexes.out_index].y = 0.0;
-}
-
-utility Kernel AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED(const real[] src,Volume in_offset, Volume in_volume, 
-			      complex[] out,Volume out_offset,Volume out_volume, int batch_size)
+utility Kernel AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED(const real[] src,Volume in_offset, Volume in_volume, complex[] out,Volume out_offset,Volume out_volume, int batch_size)
 {
     const size_t in_size  = in_volume.x*in_volume.y*in_volume.z
     const size_t out_size = out_volume.x*out_volume.y*out_volume.z
@@ -106,8 +97,8 @@ utility Kernel AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED(const complex[] src,Volu
     {
 	const size_t idx_out = indexes.out_index + i*out_size;
 	const size_t idx_in  = indexes.in_index + i*in_size;
-    	real_out[idx_out]   = src[idx_out].x;
-    	imag_out[idx_in]    = src[idx_in].y;
+    	real_out[idx_out]    = src[idx_in].x;
+    	imag_out[idx_out]    = src[idx_in].y;
     }
 }
 
