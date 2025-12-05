@@ -45,8 +45,6 @@ static int3    max_tpb_for_reduce_kernels{100,100,100};
 #include "user_kernel_declarations.h"
 #include "kernel_reduce_info.h"
 
-
-
 #define USE_COMPRESSIBLE_MEMORY (0)
 
 //TP: unfortunately cannot use color output since it might not be supported in each env
@@ -152,14 +150,14 @@ acKernelLaunchGetLastTPB(void)
 int
 acGetKernelReduceScratchPadSize(const AcKernel kernel)
 {
-	if(AC_CPU_BUILD) return 1;
+	if (AC_CPU_BUILD) return 1;
 	return kernel_running_reduce_offsets[(int)kernel];
 }
 int
 acGetKernelReduceScratchPadMinSize()
 {
 	int res = 0; 
-	for(int i = 0; i < NUM_KERNELS; ++i)
+	for (int i = 0; i < NUM_KERNELS; ++i)
 		res = (res < kernel_running_reduce_offsets[i]) ? kernel_running_reduce_offsets[i] : res;
 	return res;
 }
@@ -170,7 +168,7 @@ acGetKernelReduceScratchPadMinSize()
 static Volume
 get_bpg(Volume dims, const AcKernel kernel, const int3 block_factors, const Volume tpb)
 {
-	if(kernel_has_block_loops(kernel)) return get_bpg(ceil_div(dims,block_factors), tpb);
+	if (kernel_has_block_loops(kernel)) return get_bpg(ceil_div(dims,block_factors), tpb);
 	return get_bpg(dims,tpb);
 }
 
@@ -205,19 +203,19 @@ static bool
 tpb_is_legal(const Volume tpb)
 {
   const auto prop = get_device_prop();
-  if((int)tpb.x > prop.maxThreadsDim[0]) return false;
-  if((int)tpb.y > prop.maxThreadsDim[1]) return false;
-  if((int)tpb.z > prop.maxThreadsDim[2]) return false;
+  if ((int)tpb.x > prop.maxThreadsDim[0]) return false;
+  if ((int)tpb.y > prop.maxThreadsDim[1]) return false;
+  if ((int)tpb.z > prop.maxThreadsDim[2]) return false;
   return true;
 }
 
 static bool
 is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kernel)
 {
-  if(!tpb_is_legal(tpb)) return false; 
-  if(dims.x == 1 && dims.y == 1) return true;
-  if(dims.x == 1 && dims.z == 1) return true;
-  if(dims.y == 1 && dims.z == 1) return true;
+  if (!tpb_is_legal(tpb)) return false; 
+  if (dims.x == 1 && dims.y == 1) return true;
+  if (dims.x == 1 && dims.z == 1) return true;
+  if (dims.y == 1 && dims.z == 1) return true;
   const auto prop = get_device_prop();
   const size_t warp_size    = prop.warpSize;
   const size_t xmax         = (size_t)(warp_size * ceil_div(dims.x,warp_size));
@@ -225,7 +223,7 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
   const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
   const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
-  if(is_coop_raytracing_kernel(kernel))
+  if (is_coop_raytracing_kernel(kernel))
   {
 	int maxBlocksPerSM{};
 	ERRCHK_CUDA_ALWAYS(
@@ -237,11 +235,11 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
 	));
   	const auto bpg = get_bpg(dims,to_volume(tpb));
 	const int totalMaxBlocks = get_device_prop().multiProcessorCount*maxBlocksPerSM;
-	if((int)(bpg.x*bpg.y*bpg.z) > totalMaxBlocks) return false;
+	if ((int)(bpg.x*bpg.y*bpg.z) > totalMaxBlocks) return false;
   }
-  if(raytracing_step_direction(kernel).x)
+  if (raytracing_step_direction(kernel).x)
   {
-	if(((int)tpb.y - (x_ray_shared_mem_block_size)) != 0) return false;
+	if (((int)tpb.y - (x_ray_shared_mem_block_size)) != 0) return false;
   }
 
   else
@@ -251,18 +249,18 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   	if (sparse_autotuning && (dims.x >= warp_size && tpb.x % warp_size != 0)) return false;
   }
 
-  if(kernel_reduces_profile(kernel))
+  if (kernel_reduces_profile(kernel))
   {
-	  if(tpb.y > (size_t)max_tpb_for_reduce_kernels.y) return false;
-	  if(tpb.z > (size_t)max_tpb_for_reduce_kernels.z) return false;
+	  if (tpb.y > (size_t)max_tpb_for_reduce_kernels.y) return false;
+	  if (tpb.z > (size_t)max_tpb_for_reduce_kernels.z) return false;
 	  //TP: if we enforce that tpb.x is a multiple of the warp size then 
 	  //can easily do warp reduce while doing a reduction whose result is not x-dependent --> major saving in memory and performance increase
-	  if(dims.x >= warp_size && tpb.x % warp_size != 0) return false;
+	  if (dims.x >= warp_size && tpb.x % warp_size != 0) return false;
   }
 //  const bool single_tb      = (tpb.x >= dims.x) && (tpb.y >= dims.y) && (tpb.z >= dims.z);
 
   //TP: if not utilizing the whole warp invalid, expect if dims are so small that could not utilize a whole warp 
-  if(not_full_warp && is_large_launch(dims)) return false;
+  if (not_full_warp && is_large_launch(dims)) return false;
 
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
@@ -316,12 +314,12 @@ size_t
 get_smem(const AcKernel kernel, const Volume tpb, const size_t stencil_order,
          const size_t bytes_per_elem)
 {
-  if(is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).x)
+  if (is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).x)
   {
 	//TP: we pad the y dimension by one to avoid bank conflicts
 	return bytes_per_elem*(tpb.y+1)*tpb.z*(x_ray_shared_mem_block_size+2)*num_fields_ray_accessed_read_and_written(kernel);
   }
-  if(is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).z && SHARED_MEM_Z_RAYS)
+  if (is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).z && SHARED_MEM_Z_RAYS)
   {
 	return bytes_per_elem*(tpb.x+2)*(tpb.y+2)*(z_ray_shared_mem_block_size+2)*num_fields_ray_accessed_read_and_written(kernel);
   }
@@ -391,7 +389,6 @@ __device__ __constant__ AcMeshInfoScalars d_mesh_info;
 #include "dconst_arrays_decl.h"
 #include "gmem_arrays_decl.h"
 
-
 typedef struct {
   AcKernel kernel;
   int3 dims;
@@ -400,18 +397,14 @@ typedef struct {
 
 static std::vector<TBConfig> tbconfigs;
 
-
 static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
-
 
 __device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
 __device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
 
-
 static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
 static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
 #include "reduce_helpers.h"
-
 
 void
 ac_resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
@@ -434,7 +427,6 @@ acGetRealScratchpadSize(const size_t i)
 // Astaroth 2.0 backwards compatibility START
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
 
-
 #include "dconst_decl.h"
 #include "output_value_decl.h"
 #include "get_address.h"
@@ -450,7 +442,6 @@ acGetRealScratchpadSize(const size_t i)
 #define PROFILE_Z_X_OR_Y_INDEX(i,j) \
   ((i) + (j)*VAL(AC_mlocal).z)
 
-
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*VAL(AC_mlocal).x + (k)*VAL(AC_mlocal_products).xy)
 
@@ -460,7 +451,7 @@ acGetRealScratchpadSize(const size_t i)
 #define LOCAL_COMPDOMAIN_IDX(coord) \
 	((coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy)
 
-#define print(...) {if(!DCONST(AC_autotuning_at_work)) printf(__VA_ARGS__);} //TODO is this a good idea?
+#define print(...) {if (!DCONST(AC_autotuning_at_work)) printf(__VA_ARGS__);} //TODO is this a good idea?
 // passes an array into a device function and then calls len (need to modify
 // the compiler to always pass arrays to functions as references before
 // re-enabling)
@@ -478,14 +469,14 @@ __device__
 AcReal
 safe_access(const AcReal* arr, const int dims, const int index, const char* name)
 {
-	if(arr == NULL)
+	if (arr == NULL)
 	{
 		printf("Trying to access %s which is NULL!\n",name);
 		//TP: assert is not defined on Mahti :(
 		//assert(false);
 		return 0.0;
 	}
-	else if(index < 0 || index >= dims)
+	else if (index < 0 || index >= dims)
 	{
 		printf("Trying to access %s out of bounds!: %d\n",name,index);
 		//TP: assert is not defined on Mahti :(
@@ -521,9 +512,7 @@ ac_field_has_default_dims(const Field& field)
 	return vtxbuf_device_dims[field] == AC_mlocal;
 }
 
-
 #define postprocess_reduce_result(DST,OP)
-
 
 #include "user_kernels.h"
 #undef size
@@ -546,18 +535,17 @@ static void
 acReadOptimTBConfigs(const Volume block_factors_volume)
 {
   const int3 block_factors = to_int3(block_factors_volume);
-  if(!file_exists(autotune_csv_path)) return;
+  if (!file_exists(autotune_csv_path)) return;
   const char* filename = autotune_csv_path;
   FILE *file = fopen ( filename, "r" );
   string_vec entries[1000];
   memset(entries,0,sizeof(string_vec)*1000);
   const int n_entries = get_csv_entries(entries,file);
 
-
-  for(int i = 0; i < n_entries; ++i)
+  for (int i = 0; i < n_entries; ++i)
   {
 	  string_vec entry = entries[i];
-	  if(entry.size == 17)
+	  if (entry.size == 17)
       	  {
       	     int kernel_index  = atoi(entry.data[1]);
       	     int3 read_dims = {atoi(entry.data[2]), atoi(entry.data[3]), atoi(entry.data[4])};
@@ -566,13 +554,13 @@ acReadOptimTBConfigs(const Volume block_factors_volume)
       	     int3 read_block_factors = {atoi(entry.data[10]), atoi(entry.data[11]), atoi(entry.data[12])};
       	     int3 read_raytracing_factors = {atoi(entry.data[13]), atoi(entry.data[14]), atoi(entry.data[15])};
 	     int  was_sparse = atoi(entry.data[16]);
-      	     if(read_block_factors == block_factors && read_raytracing_factors == raytracing_subblock && was_sparse == sparse_autotuning)
+      	     if (read_block_factors == block_factors && read_raytracing_factors == raytracing_subblock && was_sparse == sparse_autotuning)
       	     {
   		TBConfig c  =  (TBConfig){AcKernel(kernel_index),read_dims,(dim3){(uint32_t)tpb.x, (uint32_t)tpb.y, (uint32_t)tpb.z}};
   		tbconfigs.push_back(c);
 	     }
       	  }
-      	  for(size_t elem = 0; elem < entry.size; ++elem)
+      	  for (size_t elem = 0; elem < entry.size; ++elem)
       	         free((char*)entry.data[elem]);
       	  free_str_vec(&entry);
   }
@@ -591,6 +579,11 @@ acRuntimeInit(const AcMeshInfo config)
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   acAllocateArrays(config);
   acReadOptimTBConfigs(to_volume(config[AC_thread_block_loop_factors]));
+
+  // Empty ac_autotuning.log.
+  FILE *fp = fopen("ac_autotuning.log","w");
+  fclose(fp);
+
   initialized = true;
   return AC_SUCCESS;
 }
@@ -598,11 +591,11 @@ acRuntimeInit(const AcMeshInfo config)
 AcResult
 acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, bool perform_error_check)
 {
-  if(perform_error_check)
+  if (perform_error_check)
   {
   	catch_previous_errors_debug(kernel,"launching kernel");
   }
-  if(is_coop_raytracing_kernel(kernel) && acSupportsCooperativeLaunches())
+  if (is_coop_raytracing_kernel(kernel) && acSupportsCooperativeLaunches())
   {
 	void* args[] = {(void*)&start,(void*)&end,(void*)&vba.on_device};
 	ERRCHK_CUDA(acLaunchCooperativeKernel((void*)kernels[kernel],bpg,tpb,args,smem,stream));
@@ -610,7 +603,7 @@ acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, Vert
   else
   {
   	KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
-	if(perform_error_check)
+	if (perform_error_check)
 	{
   		ERRCHK_CUDA_KERNEL();
 	}
@@ -618,17 +611,15 @@ acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, Vert
   return AC_SUCCESS;
 }
 
-
-
 static const Volume 
 get_kernel_end(const AcKernel kernel, const Volume start, const Volume end)
 {
-	if(is_raytracing_kernel(kernel) && !AC_CPU_BUILD)
+	if (is_raytracing_kernel(kernel) && !AC_CPU_BUILD)
 	{
 		const auto step_direction = raytracing_step_direction(kernel);
-		if(step_direction.z) return (Volume){end.x,end.y,start.z+1};
-		if(step_direction.y) return (Volume){end.x,start.y+1,end.z};
-		if(step_direction.x) return (Volume){start.x+1,end.y,end.z};
+		if (step_direction.z) return (Volume){end.x,end.y,start.z+1};
+		if (step_direction.y) return (Volume){end.x,start.y+1,end.z};
+		if (step_direction.x) return (Volume){start.x+1,end.y,end.z};
 	}
 	return (Volume){end.x,end.y,end.z};
 
@@ -644,7 +635,6 @@ update_reduce_offsets_and_resize(const AcKernel kernel, const int3 start, const 
 	ac_resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
   }
 }
-
 
 AcResult
 acSetReduceOffset(AcKernel kernel, const Volume start_volume,
@@ -676,7 +666,7 @@ acLaunchKernelCommon(AcKernel kernel, const cudaStream_t stream, const int3 star
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
 	  //TP: is launched with the whole computational domain so it is fine
-	  if(dims == to_int3(vba.computational_dims.nn) && reduce_offsets[kernel].size() == 0)
+	  if (dims == to_int3(vba.computational_dims.nn) && reduce_offsets[kernel].size() == 0)
 	  {
   		update_reduce_offsets_and_resize(kernel,start,tpb,bpg,vba);
 	  }
@@ -689,7 +679,7 @@ acLaunchKernelCommon(AcKernel kernel, const cudaStream_t stream, const int3 star
   }
   const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
 
-  if(kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
+  if (kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
   acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,stream,true);
   ERRCHK_CUDA_KERNEL();
@@ -759,9 +749,6 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;
 }
-
-
-
 
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
@@ -880,7 +867,6 @@ acLoadUniform(const P param, const V value)
 #include "memcpy_to_gmem_arrays.h"
 #include "memcpy_from_gmem_arrays.h"
 
-
 template <typename P, typename V>
 AcResult
 acStoreUniform(const P param, V* value)
@@ -955,10 +941,10 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 }
 #include "load_and_store_uniform_funcs.h"
 
-
-//TP: best would be to use carriage return to have a single line that simple keeps growing but that seems not to be always supported in SLURM environments. 
-// Or at least requires actions from the user
+//TP: best would be to use carriage return to have a single line that keeps growing but that seems not always to be supported in SLURM environments. 
+// Or at least requires actions from the user.
 void printProgressBar(FILE* stream, const int progress) {
+
     int barWidth = 50;
     fprintf(stream,"[");  // Start a new line
     int pos = barWidth * progress / 100;
@@ -972,9 +958,9 @@ void printProgressBar(FILE* stream, const int progress) {
             fprintf(stream," ");
         }
     }
-    if(progress == 0)
+    if (progress == 0)
     	fprintf(stream,"] %d%%  ", progress);
-    else if(progress != 100)
+    else if (progress != 100)
     	fprintf(stream,"] %d%% ", progress);
     else
     	fprintf(stream,"] %d%%", progress);
@@ -983,12 +969,13 @@ void printProgressBar(FILE* stream, const int progress) {
 void
 printAutotuningStatus(const AcKernel kernel, const float best_time, const int progress)
 {
-   if(grid_pid != 0) return;
-   fprintf(stderr,"\nAutotuning %s ",kernel_names[kernel]);
-   printProgressBar(stderr,progress);
-   if(best_time != INFINITY) fprintf(stderr," %14e",(double)best_time);
-   if (progress == 100) fprintf(stderr,"\n");
-   fflush(stderr);
+   FILE *fp = fopen("ac_autotuning.log","a");
+   if (grid_pid != 0) return;
+   fprintf(fp,"\nAutotuning %s ",kernel_names[kernel]);
+   printProgressBar(fp,progress);
+   if (best_time != INFINITY) fprintf(fp," %14e",(double)best_time);
+   if (progress == 100) fprintf(fp,"\n");
+   fclose(fp);
 }
 
 void
@@ -1021,14 +1008,14 @@ make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel)
 static AcResult
 acResetScratchPadStates(VertexBufferArray vba)
 {
-  if(vba.scratchpad_states) memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
+  if (vba.scratchpad_states) memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
   return AC_SUCCESS;
 }
 
 static AcAutotuneMeasurement
 get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const int num_iters)
 {
-  if(AC_CPU_BUILD)
+  if (AC_CPU_BUILD)
   {
 	  return (AcAutotuneMeasurement)
 	  {
@@ -1046,8 +1033,6 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, size);
   // set-aside 3/4 of L2 cache for persisting accesses or the max allowed
 #endif
-
-
 
   //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
   const bool builtin_kernel = strlen(kernel_names[kernel]) > 2 && kernel_names[kernel][0] == 'A' && kernel_names[kernel][1] == 'C';
@@ -1074,17 +1059,17 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   // New: restrict tpb.x to be at most dims.x since launching threads that are known to be oob feels simply wasteful
 
   int3 tpb_end = dims; 
-  if(is_raytracing_kernel(kernel))
+  if (is_raytracing_kernel(kernel))
   {
 	const auto dir = raytracing_step_direction(kernel);
-	if(dir.z) tpb_end.z = 1;
-	if(dir.y) tpb_end.y = 1;
-	if(dir.x) tpb_end.x = 1;
+	if (dir.z) tpb_end.z = 1;
+	if (dir.y) tpb_end.y = 1;
+	if (dir.x) tpb_end.x = 1;
   }
   //TP: emprically and thinking about it y and z usually cannot be too big (since x is usually quite large) so we can limit then when performing sparse autotuning
-  if(sparse_autotuning)
+  if (sparse_autotuning)
   {
-	  if(!raytracing_step_direction(kernel).x)
+	  if (!raytracing_step_direction(kernel).x)
 	  {
 	  	tpb_end.y = min(tpb_end.y,32);
 	  }
@@ -1095,7 +1080,6 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
 					tpb_end.x
 		            );
 
-
   std::vector<int3> samples{};
   const auto add_sample = [&](const int x, const int y, const int z)
   {
@@ -1104,7 +1088,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
     samples.push_back((int3){x,y,z});
   };
 
-  if(dims.y == 1 && dims.z == 1)
+  if (dims.y == 1 && dims.z == 1)
   {
   	for (int x = x_increment;
   	         x <= min(max_threads_per_block,tpb_end.x); x += x_increment) {
@@ -1112,7 +1096,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
 	}
 
   }
-  else if(dims.x == 1 && dims.y == 1)
+  else if (dims.x == 1 && dims.y == 1)
   {
   	const int z_increment = min(
 		  			minimum_transaction_size_in_elems,
@@ -1149,7 +1133,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   	  }
   	}
   }
-  if(samples.size() == 0)
+  if (samples.size() == 0)
   {
 	fprintf(stderr,"Found no suitable thread blocks for Kernel %s!\n",kernel_names[kernel]);
 	fprintf(stderr,"Launch dims (%d:%d,%d:%d,%d:%d)",start.x,end.x,start.y,end.y,start.z,end.z);
@@ -1170,7 +1154,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
 	  (end.z >=  (int)vba.computational_dims.n1.z);
 
   const bool parallel_autotuning = !on_halos && AC_MPI_ENABLED;
-  if(parallel_autotuning)
+  if (parallel_autotuning)
   {
   	const size_t portion = ceil_div(samples.size(),nprocs);
   	start_samples = portion*grid_pid;
@@ -1187,9 +1171,14 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   if (log) logAutotuningStatus(counter,n_samples,kernel,best_measurement.time / num_iters);
   //Previous failures should not affect autotuning. Up to the user do they fix the warnings or not
   catch_previous_errors(kernel,"starting autotuning");
-
+  static bool firstprint=true;
+  if (firstprint && grid_pid == 0)
+  {
+	fprintf(stderr,"\nStarted autotuning: watch progress in ac_autotuning.log\n");
+	firstprint=false;
+  }
   acLoadUniform(AC_autotuning_at_work, true);
-  for(size_t sample  = start_samples; sample < end_samples; ++sample)
+  for (size_t sample  = start_samples; sample < end_samples; ++sample)
   {
         auto x = samples[sample].x;
         auto y = samples[sample].y;
@@ -1200,7 +1189,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
                                 to_volume(tpb)
                                 ));
 	const int n_warps = acGetNumOfWarps(bpg,tpb);
-	if(kernel_calls_reduce[kernel])
+	if (kernel_calls_reduce[kernel])
 		ac_resize_scratchpads_to_fit(n_warps,vba,kernel);
         const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
@@ -1230,8 +1219,8 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
         const auto err = acGetLastError();
         //TP: it is fine to simply skip invalid configuration values since it can be because of too large tpb's
         //We simply do not count them for finding the optim config
-        if(err == cudaErrorInvalidConfiguration) continue;
-        if(err == cudaErrorLaunchOutOfResources) continue;
+        if (err == cudaErrorInvalidConfiguration) continue;
+        if (err == cudaErrorLaunchOutOfResources) continue;
         if (err != cudaSuccess) {
           //TP: reset autotune results
           fprintf(stderr,"\nFailed while autotuning: %s\nReason: %s\n",kernel_names[kernel],acGetErrorName(err));
@@ -1251,10 +1240,9 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   }
   acLoadUniform(AC_autotuning_at_work, false);
   best_measurement =  parallel_autotuning ? gather_best_measurement(best_measurement) : best_measurement;
-  if(log) printAutotuningStatus(kernel,best_measurement.time/num_iters,100);
+  if (log) printAutotuningStatus(kernel,best_measurement.time/num_iters,100);
   return best_measurement;
 }
-
 
 static TBConfig
 autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
@@ -1267,7 +1255,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
       .dims   = dims,
       .tpb    = best_measurement.tpb
   };
-  if(grid_pid == 0)
+  if (grid_pid == 0)
   {
         FILE* fp = fopen(autotune_csv_path, "a");
         ERRCHK_ALWAYS(fp);
@@ -1299,9 +1287,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   acResetScratchPadStates(vba);
   return c;
 }
-
-
-
 
 static TBConfig
 getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
@@ -1347,7 +1332,7 @@ struct load_all_scalars_uniform
 {
 	void operator()(const AcMeshInfo& config)
 	{
-		for(P i : get_params<P>())
+		for (P i : get_params<P>())
 			acLoadUniform(0,  i, config[i]);
 	}
 };
@@ -1357,7 +1342,7 @@ struct load_all_arrays_uniform
 {
 	void operator()(const AcMeshInfo& config)
 	{
-		for(const P array : get_params<P>())
+		for (const P array : get_params<P>())
 		{
 			auto config_array = config[array];
       			if (config_array != nullptr)
@@ -1376,7 +1361,6 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t)
   AcArrayTypes::run<load_all_arrays_uniform>(info);
   return retval;
 }
-
 
 #include "load_ac_kernel_params.h"
 
@@ -1428,7 +1412,7 @@ acRuntimeQuit()
 {
   	ERRCHK_ALWAYS(initialized == true);
 	tbconfigs.clear();
-	for(int kernel = 0; kernel < NUM_KERNELS; ++kernel)
+	for (int kernel = 0; kernel < NUM_KERNELS; ++kernel)
 	{
 		reduce_offsets[kernel].clear();
 		kernel_running_reduce_offsets[kernel] = 0;

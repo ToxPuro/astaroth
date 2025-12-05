@@ -162,6 +162,12 @@ main(void)
                               if(poisson_correct) fprintf(stderr,"Wrong at %.14e vs. %.14e\n",analytical_val,res_val);
                               poisson_correct = false;
                       }
+                      const auto planar_res_val  = model.vertex_buffer[HEAT_PLANAR_SOLUTION][IDX(x,y,z)];
+                      if(!in_eps_threshold(analytical_val,planar_res_val))
+                      {
+                              if(poisson_correct) fprintf(stderr,"Planar solution wrong at %.14e vs. %.14e diff: %.14e\n",analytical_val,planar_res_val,relative_diff(analytical_val,planar_res_val));
+                              poisson_correct = false;
+                      }
        	}
        }
     }

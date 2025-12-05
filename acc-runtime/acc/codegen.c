@@ -7762,6 +7762,14 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 		{
 			node->is_constexpr = false;
 		}
+		//TP: this means we are writing to an input ptr
+		if(
+			strstr(node->buffer,"AC_INTERNAL")
+			&& strstr(node->buffer,"array_here")
+		  )
+		{
+			node->is_constexpr = false;
+		}
 		res |= node->is_constexpr;
 	}
 
@@ -10592,6 +10600,26 @@ print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
 {
 	print_nested_ints(fp,x,y,z,dims,1);
 }
+
+static const char*
+get_compiler(const bool cxx_compiler)
+{
+        const int gcc_not_available = system("gcc --version > /dev/null");
+        if(!gcc_not_available)
+        {
+		if(cxx_compiler) return "g++";
+        	return "gcc";
+        }
+        const int cc_not_available = system("cc --version > /dev/null");
+        if(!cc_not_available)
+        {
+		if(cxx_compiler) return "CC";
+        	return "cc";
+        }
+	fatal("%s","Unable to find a C/C++ compiler to preprocess and compile!!\n");
+	return NULL;
+}
+
 void
 gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE* stream)
 {
@@ -10707,7 +10735,7 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
   char build_cmd[4096];
   const int block_size = gen_mem_accesses ? 1 : 4;
   snprintf(build_cmd, 4096,
-           "gcc -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
+           "%s -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-Wfloat-conversion -Wshadow -I. %s -lm "
@@ -10719,7 +10747,7 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
 	   "-DYBLOCK_SIZE=%d "
 	   "-DZBLOCK_SIZE=%d "
            "-o %s",
-           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,AC_DOUBLE_PRECISION,
+           get_compiler(false),IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,AC_DOUBLE_PRECISION,
 	   BUFFERED_REDUCTIONS,
 	   AC_CPU_BUILD | gen_mem_accesses,
 	   block_size,block_size,block_size,
@@ -11365,9 +11393,9 @@ compile_helper(const bool log)
   }
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
+  sprintf(cmd, "%s -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
-  ,api_includes, AC_DOUBLE_PRECISION,HIP_ON 
+  ,get_compiler(true),api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );
 
   /*

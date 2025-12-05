@@ -470,7 +470,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 #include "astaroth_lib.h"
 
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
-			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
+			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
 
   static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream, const AcMeshInfo info)
   {
@@ -500,6 +500,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acDeviceFFTR2C,stream)
 	LOAD_DSYM(acDeviceFFTC2R,stream)
 	LOAD_DSYM(acDeviceFFTR2Planar,stream)
+	LOAD_DSYM(acDeviceFFTR2PlanarBatched,stream)
 	LOAD_DSYM(acDeviceFFTBackwardTransformPlanar,stream)
 	LOAD_DSYM(acDeviceFFTBackwardTransformPlanar2R,stream)
 #if AC_MPI_ENABLED
