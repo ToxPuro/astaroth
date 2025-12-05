@@ -581,9 +581,11 @@ acRuntimeInit(const AcMeshInfo config)
   acReadOptimTBConfigs(to_volume(config[AC_thread_block_loop_factors]));
 
   // Empty ac_autotuning.log.
-  FILE *fp = fopen("ac_autotuning.log","w");
-  fclose(fp);
-
+  if (grid_pid == 0)
+  {
+	FILE *fp = fopen("ac_autotuning.log","w");
+	fclose(fp);
+  }
   initialized = true;
   return AC_SUCCESS;
 }
