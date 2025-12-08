@@ -1,25 +1,28 @@
 #pragma once
+#include <cstring>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 #include <memory>
-#include <cstring>
+#include <sstream>
 
 #include "acm/detail/errchk.h"
 
 namespace ac {
 
-    template<typename T, typename U> T bit_cast(const U& in) {
-        static_assert(sizeof(T) == sizeof(U));
-        static_assert(std::is_pod_v<T>);
-        static_assert(std::is_pod_v<U>);
+template <typename T, typename U>
+T
+bit_cast(const U& in)
+{
+    static_assert(sizeof(T) == sizeof(U));
+    static_assert(std::is_pod_v<T>);
+    static_assert(std::is_pod_v<U>);
 
-        T out;
-        std::memcpy(std::addressof(out), std::addressof(in), sizeof(U));
-        return out;
-    }
-
+    T out;
+    std::memcpy(std::addressof(out), std::addressof(in), sizeof(U));
+    return out;
 }
+
+} // namespace ac
 
 namespace ac::fmt {
 
@@ -57,15 +60,17 @@ pull_token(std::istream& is, T& output)
     // Parse token
     std::istringstream iss{token};
     ERRCHK(iss);
-    //ERRCHK(iss >> output); // Reading from std::hexfloat bugged on Mahti
+    // ERRCHK(iss >> output); // Reading from std::hexfloat bugged on Mahti
     if constexpr (std::is_same_v<double, T>) {
-	    output = std::strtod(iss.str().c_str(), nullptr);
-	    ERRCHK(ac::bit_cast<uint64_t>(output) != 0);
-    } else if constexpr(std::is_same_v<float, T>) {
-	    output = std::strtof(iss.str().c_str(), nullptr);
-	    ERRCHK(ac::bit_cast<uint32_t>(output) != 0);
-    } else {
-	    ERRCHK(iss >> output);
+        output = std::strtod(iss.str().c_str(), nullptr);
+        ERRCHK(ac::bit_cast<uint64_t>(output) != 0);
+    }
+    else if constexpr (std::is_same_v<float, T>) {
+        output = std::strtof(iss.str().c_str(), nullptr);
+        ERRCHK(ac::bit_cast<uint32_t>(output) != 0);
+    }
+    else {
+        ERRCHK(iss >> output);
     }
     ERRCHK(!iss.fail());
 }

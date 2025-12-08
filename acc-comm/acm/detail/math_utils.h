@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <limits>
 #include <numeric>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 uint64_t prod(const size_t count, const uint64_t* arr);
 
