@@ -6,10 +6,11 @@
 #if defined(ACM_CUDA_ENABLED)
 #include <cuda_runtime.h>
 #elif defined(ACM_HIP_ENABLED)
-#include "hip.h"
 // #pragma gcc system_header // TODO check that this does not disable warnings elsewhere
 #pragma clang system_header // TODO check that this does not disable warnings elsewhere
 #include <hip/hip_runtime.h>
+
+#include "hip.h"
 #else
 #if !defined(ACM_HOST_ONLY_MODE_ENABLED)
 static_assert(false,
