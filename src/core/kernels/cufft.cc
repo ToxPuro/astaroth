@@ -212,7 +212,7 @@ acFFTForwardTransformR2PlanarBatched(const AcReal* src, const Volume domain_size
 					real_dst + offset*count,
 					imag_dst + offset*count
 				) == AC_FAILURE)
-		return AC_FAILURE
+		return AC_FAILURE;
     }
     return AC_SUCCESS;
 }
