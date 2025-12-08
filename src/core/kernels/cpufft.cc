@@ -146,15 +146,17 @@ acFFTForwardTransformR2PlanarBatched(const AcReal* src, const Volume domain_size
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
     for(int offset = 0; offset < batch_size; ++offset)
     {
-	acFFTForwardTransformR2Planar(
+	if(acFFTForwardTransformR2Planar(
 					src + offset*count,
 					domain_size,
 					subdomain_size,
 					starting_point,
 					real_dst + offset*count,
 					imag_dst + offset*count
-				);
+				) == AC_FAILURE)
+		return AC_FAILURE
     }
+    return AC_SUCCESS;
 }
 
 AcResult
