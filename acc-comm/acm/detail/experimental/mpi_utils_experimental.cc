@@ -96,9 +96,13 @@ select_device_lumi()
 int
 select_device_generic()
 {
+#if defined(ACM_DEVICE_ENABLED)
     int device_count{0};
     ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
     return ac::mpi::get_rank(MPI_COMM_WORLD) % device_count;
+#else
+    return -1;
+#endif
 }
 
 } // namespace ac::mpi
