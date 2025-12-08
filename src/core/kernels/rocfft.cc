@@ -405,6 +405,13 @@ acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
 	check_rocfft_status(rocfft_setup());
 #if AC_MPI_ENABLED
 	communicator = astaroth_comm->handle;
+        int nprocs{};
+        MPI_Comm_size(communicator,&nprocs);
+        if(nprocs > 1) 
+        {
+                fprintf(stderr,"RocFFT integration not yet working for multiple processes!\n");
+                exit(EXIT_FAILURE);
+        }
 #endif
 	global_offset = (Volume){(size_t)global_offset_[0],(size_t)global_offset_[1],(size_t)global_offset_[2]};
 

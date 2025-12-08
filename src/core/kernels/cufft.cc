@@ -270,6 +270,16 @@ AcResult
 acFFTInit(const AcCommunicator*, const int*)
 {
 	return AC_SUCCESS;
+#if AC_MPI_ENABLED
+	MPI_Comm communicator = astaroth_comm->handle;
+        int nprocs{};
+        MPI_Comm_size(communicator,&nprocs);
+        if(nprocs > 1) 
+        {
+                fprintf(stderr,"CuFFT integration not yet working for multiple processes!\n");
+                exit(EXIT_FAILURE);
+        }
+#endif
 }
 
 AcResult
