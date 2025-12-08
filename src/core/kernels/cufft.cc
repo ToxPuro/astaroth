@@ -17,6 +17,29 @@ using  cuFFTPrecision = cuDoubleComplex;
 using  cuFFTPrecision = cuFloatComplex;
 #endif
 
+#if AC_MPI_ENABLED
+#include <mpi.h>
+struct AcCommunicator
+{
+	MPI_Comm handle;
+};
+static MPI_Comm communicator{};
+#endif
+
+void
+check_if_distributed()
+{
+#if AC_MPI_ENABLED
+        int nprocs{};
+        MPI_Comm_size(communicator,&nprocs);
+        if(nprocs > 1) 
+        {
+                fprintf(stderr,"RocFFT integration not yet working for multiple processes!\n");
+                exit(EXIT_FAILURE);
+        }
+#endif
+}
+
 // cufft API error chekcing
 #ifndef CUFFT_CALL
 #define CUFFT_CALL( call )                                                                                             \
@@ -42,6 +65,7 @@ using  cuFFTPrecision = cuFloatComplex;
 // Padding as mentioned in the link: padded to (n/2 + 1) in the least significant dimension.
 AcResult
 acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+    check_if_distributed();
     buffer = buffer + (starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z));
     // Number of elements in each dimension to use
     int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
@@ -75,6 +99,7 @@ AcResult
 acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst,
 		  const bool inverse)
 {
+    check_if_distributed();
     ERRCHK_ALWAYS(src != NULL);
     ERRCHK_ALWAYS(dst != NULL);
     ERRCHK_ALWAYS(subdomain_size.x <= domain_size.x);

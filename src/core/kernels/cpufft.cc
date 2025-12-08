@@ -8,13 +8,36 @@
 #include "ac_helpers.h"
 #include "common_kernels.h"
 
+#if AC_MPI_ENABLED
+#include <mpi.h>
+struct AcCommunicator
+{
+	MPI_Comm handle;
+};
+static MPI_Comm communicator{};
+#endif
+
+void
+check_if_distributed()
+{
+#if AC_MPI_ENABLED
+        int nprocs{};
+        MPI_Comm_size(communicator,&nprocs);
+        if(nprocs > 1) 
+        {
+                fprintf(stderr,"RocFFT integration not yet working for multiple processes!\n");
+                exit(EXIT_FAILURE);
+        }
+#endif
+}
+
 static AcResult
 acFFTC2C(const AcComplex* src, const Volume domain_size,
                                 const Volume subdomain_size, const Volume starting_point,
                                 AcComplex* dst,  const bool inverse) {
+	check_if_distributed();
 	const size_t subdomain_count = subdomain_size.x*subdomain_size.y*subdomain_size.z;
- 	kiss_fft_cpx* tmp = (kiss_fft_cpx*)malloc(sizeof(kiss_fft_cpx) * subdomain_count);
- 	kiss_fft_cpx* res = (kiss_fft_cpx*)malloc(sizeof(kiss_fft_cpx) * subdomain_count);
+ 	kiss_fft_cpx* tmp = (kiss_fft_cpx*)malloc(sizeof(kiss_fft_cpx) * subdomain_count); kiss_fft_cpx* res = (kiss_fft_cpx*)malloc(sizeof(kiss_fft_cpx) * subdomain_count);
 	for(size_t i = 0; i < subdomain_size.x; ++i)
 	{
 		for(size_t j = 0; j < subdomain_size.y; ++j)
@@ -211,16 +234,6 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
 AcResult
 acFFTInit(const AcCommunicator*, const int*)
 {
-#if AC_MPI_ENABLED
-	MPI_Comm communicator = astaroth_comm->handle;
-        int nprocs{};
-        MPI_Comm_size(communicator,&nprocs);
-        if(nprocs > 1) 
-        {
-                fprintf(stderr,"CPUFFT integration not yet working for multiple processes!\n");
-                exit(EXIT_FAILURE);
-        }
-#endif
 	return AC_SUCCESS;
 }
 

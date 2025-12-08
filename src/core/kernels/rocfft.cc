@@ -40,6 +40,20 @@ struct VolumeHash {
 #define check_rocfft_status(expression) { const auto _status_ = expression; print_rocfft_error(_status_); ERRCHK_ALWAYS(_status_ == rocfft_status_success); }
 
 void
+check_if_distributed()
+{
+#if AC_MPI_ENABLED
+        int nprocs{};
+        MPI_Comm_size(communicator,&nprocs);
+        if(nprocs > 1) 
+        {
+                fprintf(stderr,"RocFFT integration not yet working for multiple processes!\n");
+                exit(EXIT_FAILURE);
+        }
+#endif
+}
+
+void
 print_rocfft_error(rocfft_status status)
 {
     if(status != rocfft_status_success)
@@ -217,6 +231,7 @@ static std::unordered_map<KeyType, rocfft_plan, KeyHash, KeyEqual> rocfft_plans{
 static rocfft_plan
 get_plan(const Volume domain_size, const Volume subdomain_size, const bool inverse)
 {
+    check_if_distributed();
     const KeyType key = (KeyType){domain_size,subdomain_size,inverse};
     if(rocfft_plans.find(key) != rocfft_plans.end())
     {
@@ -403,16 +418,7 @@ AcResult
 acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
 {
 	check_rocfft_status(rocfft_setup());
-#if AC_MPI_ENABLED
 	communicator = astaroth_comm->handle;
-        int nprocs{};
-        MPI_Comm_size(communicator,&nprocs);
-        if(nprocs > 1) 
-        {
-                fprintf(stderr,"RocFFT integration not yet working for multiple processes!\n");
-                exit(EXIT_FAILURE);
-        }
-#endif
 	global_offset = (Volume){(size_t)global_offset_[0],(size_t)global_offset_[1],(size_t)global_offset_[2]};
 
 	return AC_SUCCESS;
