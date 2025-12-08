@@ -2,8 +2,8 @@
 
 #if defined(ACM_DEVICE_ENABLED)
 
-#include <functional>
 #include <memory>
+#include <functional>
 
 #include "acm/detail/allocator.h"
 #include "acm/detail/cuda_utils.h" // TODO merge with device_utils.h

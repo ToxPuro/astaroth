@@ -101,9 +101,9 @@ errchk_print_log(const char* function, const long line, const char* fmt, ...)
 void
 errchk_print_stacktrace(void)
 {
-    void*     array[20];
-    const int count   = backtrace(array, 20);
-    char**    strings = backtrace_symbols(array, count);
+    void* array[20];
+    const int count = backtrace(array, 20);
+    char** strings  = backtrace_symbols(array, count);
     backtrace_symbols_fd(array, count, STDERR_FILENO);
     free(strings);
 }

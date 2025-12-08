@@ -37,12 +37,13 @@ ACM_Errorcode ACM_Get_local_nn(const MPI_Comm cart_comm, const size_t ndims,
 
 ACM_Errorcode ACM_Get_global_nn_offset(const MPI_Comm cart_comm, const size_t ndims,
                                        const uint64_t* global_nn_in,
-                                       uint64_t*       global_nn_offset_out);
+                                       uint64_t* global_nn_offset_out);
 
 ACM_Errorcode ACM_IO_Read_collective(const MPI_Comm parent_comm, const size_t ndims,
                                      const uint64_t* file_dims, const uint64_t* file_offset,
                                      const uint64_t* mesh_dims, const uint64_t* mesh_subdims,
-                                     const uint64_t* mesh_offset, const char* path, double* data);
+                                     const uint64_t* mesh_offset, const char* path,
+                                     double* data);
 
 ACM_Errorcode ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
                                       const uint64_t* file_dims, const uint64_t* file_offset,

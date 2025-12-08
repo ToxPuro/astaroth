@@ -78,7 +78,7 @@ template <typename T>
 void
 print_demangled(const T& obj)
 {
-    int                                    status;
+    int status;
     std::unique_ptr<char, void (*)(char*)> res{abi::__cxa_demangle(typeid(obj).name(),
                                                                    nullptr,
                                                                    nullptr,

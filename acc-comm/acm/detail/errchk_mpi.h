@@ -9,7 +9,7 @@ errchk_print_mpi_api_error(const int errorcode, const char* function, const char
                            const int line, const char* expression)
 {
     char description[MPI_MAX_ERROR_STRING];
-    int  resultlen;
+    int resultlen;
     MPI_Error_string(errorcode, description, &resultlen);
     errchk_print_error(function, file, line, expression, description);
 }
