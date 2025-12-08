@@ -977,6 +977,7 @@ printAutotuningStatus(const AcKernel kernel, const float best_time, const int pr
    printProgressBar(fp,progress);
    if (best_time != INFINITY) fprintf(fp," %14e",(double)best_time);
    if (progress == 100) fprintf(fp,"\n");
+   fflush(fp);
    fclose(fp);
 }
 
