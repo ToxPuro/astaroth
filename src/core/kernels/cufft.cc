@@ -294,17 +294,10 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
 AcResult
 acFFTInit(const AcCommunicator* astaroth_comm, const int*)
 {
-	return AC_SUCCESS;
 #if AC_MPI_ENABLED
-	MPI_Comm communicator = astaroth_comm->handle;
-        int nprocs{};
-        MPI_Comm_size(communicator,&nprocs);
-        if(nprocs > 1) 
-        {
-                fprintf(stderr,"CuFFT integration not yet working for multiple processes!\n");
-                exit(EXIT_FAILURE);
-        }
+	communicator = astaroth_comm->handle;
 #endif
+	return AC_SUCCESS;
 }
 
 AcResult

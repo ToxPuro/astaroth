@@ -234,6 +234,9 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
 AcResult
 acFFTInit(const AcCommunicator* astaroth_comm, const int*)
 {
+#if AC_MPI_ENABLED
+	communicator = astaroth_comm->handle;
+#endif
 	return AC_SUCCESS;
 }
 
