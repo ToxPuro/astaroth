@@ -322,7 +322,7 @@ acDeviceFFTR2HermitianPlanarBatched(const Device device, const Field src_start, 
   	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst_start);
 	ERRCHK_ALWAYS(input_dims == output_real_dims);
 	ERRCHK_ALWAYS(input_dims == output_imag_dims);
-	return acFFTForwardTransformR2PlanarBatched(
+	return acFFTForwardTransformR2HermitianPlanarBatched(
 				device->vba.on_device.in[src_start],
 				input_dims.m1,	
 				input_dims.nn,	
