@@ -53,7 +53,6 @@ else()
 			else()
 				if(USE_HIP)
 					add_library(ac_fft OBJECT rocfft.cc)
-					ac_link_mpi(ac_fft)
 	   			        target_link_libraries(ac_fft PUBLIC roc::rocfft)
 				        #TP: there could a cleaner way to do this put to enable debuging now on LUMI explicitly include
 				        target_include_directories(ac_fft PUBLIC /opt/rocm/include/rocfft)
