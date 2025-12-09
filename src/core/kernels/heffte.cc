@@ -33,6 +33,7 @@ typedef struct
 
 #include <unordered_map>
 static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
+static std::unordered_map<size_t,heffte::fft3d_r2c<heffte::backend::rocfft>> plans_r2c{};
 
 
 AcResult
@@ -43,6 +44,67 @@ acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size
 	(void)starting_point;
 	(void)transformed_in;
 	ERRCHK_ALWAYS(false); //Not implemented
+}
+
+AcResult
+acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domain_size, AcComplex* dst,
+		  const bool inverse, const int batch_size)
+{
+    static std::unordered_map<size_t,AcComplex*> work_buffers{};
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    //HeFFTe is surprisingly inclusive in the domain
+    const int3 lower = (int3)
+    {
+	    (int)global_offset.x,
+	    (int)global_offset.y,
+	    (int)global_offset.z
+    };
+    const int3 dims = (int3)
+    {
+	    (int)domain_size.x,
+	    (int)domain_size.y,
+	    (int)domain_size.z
+    };
+    const int3 upper = lower+dims-(int3){1,1,1};
+    const int3 output_lower = (int3)
+    {
+	    (int)global_offset.x,
+	    (int)global_offset.y,
+	    (int)global_offset.z/2
+    };
+    const int3 output_dims = (int3)
+    {
+	    (int)domain_size.x,
+	    (int)domain_size.y,
+	    (int)domain_size.z/2
+    };
+    const int3 output_upper = output_lower+output_dims-(int3){1,1,1};
+    if(plans_r2c.find(count) == plans_r2c.end())
+    {
+        heffte::box3d<> const input_box  = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
+        heffte::box3d<> const output_box = {{output_lower.x,output_lower.y,output_lower.z},{output_upper.x,output_upper.y,output_upper.z}};
+	heffte::plan_options options = heffte::default_options<heffte::backend::rocfft>();
+        options.algorithm = heffte::reshape_algorithm::p2p_plined;
+        //options.algorithm = heffte::reshape_algorithm::alltoall;
+        //options.algorithm = heffte::reshape_algorithm::p2p;
+	options.use_pencils = true;
+	options.use_reorder = true;
+        //options.algorithm = heffte::reshape_algorithm::alltoallv;
+	//options.use_gpu_aware = false;
+        heffte::fft3d_r2c<heffte::backend::rocfft> fft(stream, input_box, output_box, 2,communicator, options);
+	plans_r2c.emplace(count,std::move(fft));
+	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
+    }
+    AcComplex* workspace = work_buffers[count];
+    if(inverse)
+    {
+    	;//plans_r2c.at(count).backward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
+    }
+    else
+    {
+    	plans_r2c.at(count).forward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    }
+    return AC_SUCCESS;
 }
 
 AcResult
@@ -195,6 +257,31 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
     return AC_SUCCESS;
 }
 
+
+//This is not a correct implementation simply for benchmarking purposes
+AcResult
+acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size, const cudaStream_t stream)
+{
+    const size_t count = subdomain_size.x*subdomain_size.y*subdomain_size.z*batch_size;
+    static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp  = get_fresh_complex_buffer(count);
+    	AcComplex* tmp2 = get_fresh_complex_buffer(count);
+	tmp_buffers[count].in  = tmp;
+	tmp_buffers[count].out = tmp2;
+    }
+
+    AcComplex* tmp_in  = tmp_buffers[count].in;
+    AcComplex* tmp_out = tmp_buffers[count].out;
+    acKernelVolumeCopyRealToComplexBatched(stream,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,batch_size);
+
+    acFFTTransformR2CBase(stream,src,subdomain_size,tmp_out,false,batch_size);
+    acKernelVolumeCopyComplexToPlanarBatched(stream,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size,batch_size);
+
+    return AC_SUCCESS;
+}
+
 AcResult
 acFFTForwardTransformR2PlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size)
 {
@@ -294,5 +381,6 @@ AcResult
 acFFTQuit()
 {
 	plans.clear();
+	plans_r2c.clear();
 	return AC_SUCCESS;
 }

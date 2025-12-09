@@ -315,6 +315,26 @@ acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Fie
 }
 
 AcResult
+acDeviceFFTR2HermitianPlanarBatched(const Device device, const Field src_start, const Field real_dst_start, const Field imag_dst_start, const int batch_size, Stream stream)
+{
+  	const auto input_dims  = acGetMeshDims(device->local_config,src_start);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst_start);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst_start);
+	ERRCHK_ALWAYS(input_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_dims == output_imag_dims);
+	return acFFTForwardTransformR2PlanarBatched(
+				device->vba.on_device.in[src_start],
+				input_dims.m1,	
+				input_dims.nn,	
+				input_dims.n0,
+				device->vba.on_device.in[real_dst_start],
+				device->vba.on_device.in[imag_dst_start],
+				batch_size,
+				device->streams[stream]
+			);
+}
+
+AcResult
 acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, const Field imag_dst)
 {
         

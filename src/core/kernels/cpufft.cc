@@ -164,6 +164,12 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
 }
 
 AcResult
+acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size, cudaStream_t stream)
+{
+	return AC_FAILURE;
+}
+
+AcResult
 acFFTForwardTransformR2PlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
