@@ -9109,7 +9109,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 			const int j = all_real_structs.data[l];
 			const char* name  = s_info.user_structs.data[j];
 			const size_t num_members = s_info.user_struct_field_names[j].size;
-			fprintf(stream, "%s(%s s){ return real%zu(\n",dfunc_name,name,num_members);
+			fprintf(stream, "%s(%s s){ return %s(\n",dfunc_name,name,name);
 			for(size_t f = 0; f < num_members; ++f)
 			{
 				fprintf(stream,"  %s(s.%s)%s\n",dfunc_name,s_info.user_struct_field_names[j].data[f],f < num_members-1 ? "," : "");
@@ -9119,6 +9119,24 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		fprintf(stream,"inline %s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 		fprintf(stream,"inline %s(real3[] arr){\nreal3 res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 		free_int_vec(&all_real_structs);
+	}
+	if(info.types.size == 1 && info.types.data[0] == INT_STR)
+	{
+		if(!is_returning) fatal("Only returning real functions covered!\n");
+	        int_vec all_int_structs = get_all_same_structs(INT_STR);
+		for(size_t l = 0; l < all_int_structs.size; ++l)
+		{
+			const int j = all_int_structs.data[l];
+			const char* name  = s_info.user_structs.data[j];
+			const size_t num_members = s_info.user_struct_field_names[j].size;
+			fprintf(stream, "%s(%s s){ return %s(\n",dfunc_name,name,name);
+			for(size_t f = 0; f < num_members; ++f)
+			{
+				fprintf(stream,"  %s(s.%s)%s\n",dfunc_name,s_info.user_struct_field_names[j].data[f],f < num_members-1 ? "," : "");
+			}
+			fprintf(stream,"  )\n}\n");
+		}
+		free_int_vec(&all_int_structs);
 	}
 
 	else if(info.types.size == 1 && info.types.data[0] == FIELD_STR)
