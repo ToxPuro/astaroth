@@ -118,7 +118,7 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
     {
 	    (int)global_offset.x,
 	    (int)global_offset.y,
-	    (int)global_offset.z
+	    domain_size == 1 ? 0 : (int)global_offset.z
     };
     const int3 dims = (int3)
     {

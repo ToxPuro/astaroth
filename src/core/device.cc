@@ -354,6 +354,27 @@ acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, 
 }
 
 AcResult
+acDeviceFFTR2PlanarXY(const Device device, const Field src, const Field real_dst, const Field imag_dst, const size_t z_offset)
+{
+        
+  	const auto input_dims  = acGetMeshDims(device->local_config,src);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(input_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_dims == output_imag_dims);
+        const auto nn = (Volume){input_dims.nn.x,input_dims.nn.y,1};
+        const auto starting_point  = (Volume){input_dims.n0.x,input_dims.n0.y,z_offset};
+	return acFFTForwardTransformR2Planar(
+				device->vba.on_device.in[src],
+				input_dims.m1,	
+				nn,
+				starting_point,
+				device->vba.on_device.in[real_dst],
+				device->vba.on_device.in[imag_dst]
+			);
+}
+
+AcResult
 acDeviceFFTBackwardTransformPlanar2R(const Device device, const Field real_src, const Field imag_src, const Field dst)
 {
         
@@ -368,6 +389,27 @@ acDeviceFFTBackwardTransformPlanar2R(const Device device, const Field real_src, 
 				real_input_dims.m1,	
 				real_input_dims.nn,	
 				real_input_dims.n0,
+				device->vba.on_device.in[dst]
+			);
+}
+
+AcResult
+acDeviceFFTBackwardTransformPlanar2RXY(const Device device, const Field real_src, const Field imag_src, const Field dst, const size_t z_offset)
+{
+        
+  	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
+  	const auto imag_input_dims  = acGetMeshDims(device->local_config,imag_src);
+  	const auto output_dims = acGetMeshDims(device->local_config,dst);
+	ERRCHK_ALWAYS(real_input_dims == output_dims);
+	ERRCHK_ALWAYS(imag_input_dims == output_dims);
+        const auto nn = (Volume){output_dims.nn.x,output_dims.nn.y,1};
+        const auto starting_point  = (Volume){output_dims.n0.x,output_dims.n0.y,z_offset};
+	return acFFTBackwardTransformPlanar2R(
+				device->vba.on_device.in[real_src],
+				device->vba.on_device.in[imag_src],
+				real_input_dims.m1,	
+				nn,
+				starting_point,
 				device->vba.on_device.in[dst]
 			);
 }
