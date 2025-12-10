@@ -1917,6 +1917,8 @@ check_ops(const std::vector<AcTaskDefinition> ops)
         case TASKTYPE_RAY_UPDATE:
           task_graph_repr += "RayUpdate,";
 	  break;
+        case TASKTYPE_NO_OP:
+	  break;
 	}
     }
 
@@ -2171,6 +2173,9 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
             graph->periodic_boundaries = (AcBoundary)(graph->periodic_boundaries | op.boundary);
         }
         switch (op.task_type) {
+        case TASKTYPE_NO_OP: {
+	  break;
+        }
 
         case TASKTYPE_RAY_UPDATE: {
             acVerboseLogFromRootProc(rank, "Creating ray updates\n");

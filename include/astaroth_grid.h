@@ -195,6 +195,7 @@ typedef enum AcTaskType {
     TASKTYPE_REDUCE,
     TASKTYPE_SCAN,
     TASKTYPE_RAY_UPDATE,
+    TASKTYPE_NO_OP,
 } AcTaskType;
 
 

@@ -464,6 +464,12 @@ log_boundcond(FILE* stream, const BoundCond bc)
 static AcTaskDefinition
 gen_bc(FILE* stream, const BoundCond bc, const std::vector<facet_class_range> halo_types)
 {
+	if(bc.out.size() == 0)
+	{
+		AcTaskDefinition def{};
+		def.task_type = TASKTYPE_NO_OP;
+		return def;
+	}
 	log_boundcond(stream,bc);
 	const auto [bc_start,bc_end] = get_launch_bounds_from_fields(bc.in,bc.out);
 	return acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out,(Volume)bc_start,(Volume)bc_end,halo_types,bc.id);
