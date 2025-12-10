@@ -211,20 +211,24 @@ utility Kernel BOUNDCOND_INFLOW(Field f)
 }
 
 #ifdef AC_MATH_FFT_H
-ac_pot_z_bc(AcBoundary boundary, Field f_real, Field f_imag)
+ac_potential_bc(AcBoundary boundary, Field f_real, Field f_imag)
 {
 	const int3 normal = get_normal(boundary)
 	const int3 boundary_point = get_boundary(normal)
 	int3 domain = boundary_point
 	int3 ghost  = boundary_point
-	const real normal_direction = get_normal_direction(normal)
 	const complex boundary_value  = complex(f_real[boundary_point.x][boundary_point.y][boundary_point.z], f_imag[boundary_point.x][boundary_point.y][boundary_point.z])
 	k = get_wavevector()
-	kappa = sqrt(k.x*k.x + k.y*k.y)
+	//TP: will have 0 at the normal direction and 1 elsewhere
+	const int3 abs_normal = abs(normal)
+	const int3 non_normal_directions = (int3){1,1,1} - abs_normal
+	k_masked = non_normal_directions*k
+	kappa = sqrt(dot(k_masked,k_masked))
 	distance = 0.0
+	const real spacing = dot(abs_normal,AC_ds)
 	for i in 0:NGHOST
 	{
-		distance += AC_ds.z
+		distance += spacing
           	fac = exp(distance*kappa)
 		domain = domain - normal
 		ghost  = ghost  + normal
