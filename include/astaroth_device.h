@@ -41,8 +41,8 @@ FUNC_DEFINE(AcResult, acDeviceFFTR2PlanarBatched,(const Device device, const Fie
 FUNC_DEFINE(AcResult, acDeviceFFTR2HermitianPlanarBatched,(const Device device, const Field src, const Field real_dst, const Field imag_dst, const int batch_size, Stream stream));
 FUNC_DEFINE(AcResult, acDeviceFFTBackwardTransformPlanar,(const Device device, const Field real_src, const Field imag_src, const Field real_dst,const Field imag_dst));
 FUNC_DEFINE(AcResult, acDeviceFFTBackwardTransformPlanar2R,(const Device device, const Field real_src, const Field imag_src, const Field real));
-FUNC_DEFINE(AcResult, acDeviceFFTR2PlanarXY(const Device device, const Field src, const Field real_dst, const Field imag_dst, const size_t z_offset));
-FUNC_DEFINE(AcResult, acDeviceFFTBackwardTransformPlanar2RXY(const Device device, const Field real_src, const Field imag_src, const Field dst, const size_t z_offset));
+FUNC_DEFINE(AcResult, acDeviceFFTR2PlanarXY,(const Device device, const Field src, const Field real_dst, const Field imag_dst, const size_t z_offset));
+FUNC_DEFINE(AcResult, acDeviceFFTBackwardTransformPlanar2RXY,(const Device device, const Field real_src, const Field imag_src, const Field dst, const size_t z_offset));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadVectorUniform,(const Device device, const Stream stream,
