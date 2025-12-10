@@ -1257,20 +1257,21 @@ main(int argc, char* argv[])
   FILE* fp_ints_reduced = fopen("user_reduced_ints.bin","wb");
   FILE* fp_floats_reduced = fopen("user_reduced_floats.bin","wb");
 
-  int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
-  int  write_complex_output[NUM_KERNELS][NUM_COMPLEX_FIELDS+1]{};
-  int  value_complex_output[NUM_KERNELS][NUM_COMPLEX_FIELDS+1]{};
-  int  write_profile_output[NUM_KERNELS][NUM_PROFILES]{};
-  int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
-  int  output_incoming_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
-  int  output_outgoing_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
-  int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES+1]{};
-  int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS+1]{};
-  int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS+1]{};
+  //Static since otherwise can run out of stack space
+  static int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
+  static int  write_complex_output[NUM_KERNELS][NUM_COMPLEX_FIELDS+1]{};
+  static int  value_complex_output[NUM_KERNELS][NUM_COMPLEX_FIELDS+1]{};
+  static int  write_profile_output[NUM_KERNELS][NUM_PROFILES]{};
+  static int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
+  static int  output_incoming_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
+  static int  output_outgoing_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
+  static int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES+1]{};
+  static int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS+1]{};
+  static int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS+1]{};
 #if AC_DOUBLE_PRECISION
-  int  output_reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1]{};
+  static int  output_reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1]{};
 #endif
-  int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
+  static int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
 
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
