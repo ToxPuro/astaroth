@@ -2741,7 +2741,7 @@ BoundaryConditionTask::populate_boundary_region()
      		                         (region_id.z == 1 ? nmin.z + nn.z
      		                                           : region_id.z == -1 ? nmin.z-ghost.z : nmin.z)};
      		const Volume end = start + boundary_dims;
-     		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
+     		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba.on_device.kernel_input_params), params.stream, start, end, vba);
      	}
      }
      else
@@ -2754,7 +2754,7 @@ BoundaryConditionTask::populate_boundary_region()
      		                         (region_id.z == 1 ? nmin.z + nn.z
      		                                           : region_id.z == -1 ? nmin.z-ghost.z : nmin.z)};
      		const Volume end = start + boundary_dims;
-     		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
+     		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba.on_device.kernel_input_params), params.stream, start, end, vba);
      }
 }
 

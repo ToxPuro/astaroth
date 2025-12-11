@@ -345,7 +345,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   // Diagnostics
   FUNC_DEFINE(Volume, acKernelLaunchGetLastTPB,(void));
 
-  FUNC_DEFINE(AcKernel, acGetOptimizedKernel,(const AcKernel, const VertexBufferArray vba));
+  FUNC_DEFINE(AcKernel, acGetOptimizedKernel,(const AcKernel, const acKernelInputParams vba));
 
   FUNC_DEFINE(int, acGetKernelReduceScratchPadSize,(const AcKernel kernel));
 

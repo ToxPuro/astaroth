@@ -1321,11 +1321,10 @@ acGetOptimTPB(const AcKernel kernel, const Volume start, const Volume end)
 }
 
 AcKernel
-acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
+acGetOptimizedKernel(const AcKernel kernel_enum, const acKernelInputParams kernel_input_params)
 {
 	#include "user_kernels_ifs.h"
-	//silence unused warnings
-	(void)vba;
+	(void)kernel_input_params;
 	return kernel_enum;
 	//return kernels[(int) kernel_enum];
 }

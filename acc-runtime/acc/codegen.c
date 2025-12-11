@@ -4448,7 +4448,7 @@ gen_kernel_ifs_base(ASTNode* node, const param_combinations combinations, const 
 		fprintf(fp,"if(kernel_enum == %s ",get_node(NODE_FUNCTION_ID,node)->buffer);
 		for(size_t j = 0; j < combination_vals.size; ++j)
 		{
-			fprintf(fp, " && vba.on_device.kernel_input_params.%s.%s ==  %s ",get_node(NODE_FUNCTION_ID,node)->buffer,combination_params.data[j],combination_vals.data[j]);
+			fprintf(fp, " && kernel_input_params.%s.%s ==  %s ",get_node(NODE_FUNCTION_ID,node)->buffer,combination_params.data[j],combination_vals.data[j]);
 		}
 
 		fprintf(fp,

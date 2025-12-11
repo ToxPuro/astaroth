@@ -306,7 +306,6 @@ call_all_user_loaders(ParamLoadingInfo p)
 static AcKernel
 get_optimized_kernel(const AcDSLTaskGraph graph, const bool filter_unnecessary_ones, const int call_index)
 {
-	VertexBufferArray vba{};
 	const auto loader = get_loader(graph,call_index);
 	auto kernel_calls = DSLTaskGraphKernels[graph];
 	
@@ -315,9 +314,8 @@ get_optimized_kernel(const AcDSLTaskGraph graph, const bool filter_unnecessary_o
         acKernelInputParams params{};
 	ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
     	loader(p);
-	vba.on_device.kernel_input_params = params;
 
-	const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
+	const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],params);
 	const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),optimized_kernel,params);
 	if(filter_unnecessary_ones)
 	{
