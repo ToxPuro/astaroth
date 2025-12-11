@@ -264,9 +264,9 @@ main(void)
     	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
     	           {
 		      const AcReal3 spatial_pos = (AcReal3){(x-NGHOST)*info[AC_ds].x,(y-NGHOST)*info[AC_ds].y,(z-NGHOST)*info[AC_ds].z};
-		      //model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)*sin(k.y*spatial_pos.y)*sin(k.z*spatial_pos.z);
-		      //model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y)+sin(k.z*spatial_pos.z);
 		      model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y)+sin(k.z*spatial_pos.z);
+		      model.vertex_buffer[HEAT_PLANAR_REAL][IDX(x,y,z)] = 0.0;
+		      model.vertex_buffer[HEAT_PLANAR_IMAG][IDX(x,y,z)] = 0.0;
 		   }
 	   }
 	}
@@ -318,9 +318,9 @@ main(void)
     	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
     	           {
 		      const AcReal3 spatial_pos = (AcReal3){(x-NGHOST)*info[AC_ds].x,(y-NGHOST)*info[AC_ds].y,(z-NGHOST)*info[AC_ds].z};
-		      //model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)*sin(k.y*spatial_pos.y)*sin(k.z*spatial_pos.z);
-		      //model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y)+sin(k.z*spatial_pos.z);
 		      model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y);
+		      model.vertex_buffer[HEAT_PLANAR_REAL][IDX(x,y,z)] = 0.0;
+		      model.vertex_buffer[HEAT_PLANAR_IMAG][IDX(x,y,z)] = 0.0;
 		   }
 	   }
 	}
@@ -354,6 +354,10 @@ main(void)
 	   }
 	}
     	forward_and_back_correct &= (number_of_nonzero_components == 4);
+	if(number_of_nonzero_components != 4)
+	{
+		fprintf(stderr,"Expected four non-zero components but got %d\n",number_of_nonzero_components);
+	}
 
     	acHostMeshRandomize(&model);
     	acHostMeshRandomize(&candidate);
