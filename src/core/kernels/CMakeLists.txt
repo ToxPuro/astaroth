@@ -18,6 +18,8 @@ endif()
 
 if (RUNTIME_COMPILATION)
 	add_library(static_kernels STATIC empty.cc)
+	add_library(kernels empty.cc)
+	target_link_libraries(kernels PUBLIC static_kernels)
 else()
 	add_library(kernels_obj OBJECT kernels.cu reductions.cu)
         target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
@@ -77,6 +79,14 @@ else()
 	)
 	
 	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
+	add_library(kernels 
+    		$<TARGET_OBJECTS:kernels_obj>
+    		$<TARGET_OBJECTS:ac_fft>
+    		$<TARGET_OBJECTS:ac_transpose>
+    		$<TARGET_OBJECTS:ac_reindex>
+    		$<TARGET_OBJECTS:acc-runtime-driver>
+	)
+	target_link_libraries(kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
 endif()
 
 
@@ -93,5 +103,3 @@ else()
 endif()
 
 
-add_library(kernels empty.cc)
-target_link_libraries(kernels PRIVATE static_kernels)
