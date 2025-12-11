@@ -171,8 +171,44 @@ main(void)
        	}
        }
     }
-    bool correct = forward_and_back_correct && poisson_correct;
+    const bool test_2d = true;
+    bool xy_correct = true;
+    if(test_2d)
+    {
+    	acHostMeshRandomize(&model);
+    	acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+    	           {
+			acDeviceFFTR2PlanarXY(acGridGetDevice(), HEAT_INIT, HEAT_PLANAR_REAL, HEAT_PLANAR_IMAG, z);
+			acDeviceFFTBackwardTransformPlanar2RXY(acGridGetDevice(),  HEAT_PLANAR_REAL, HEAT_PLANAR_IMAG, HEAT_INIT, z);
+		   }
+	   }
+	}
+        acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+    	           {
+                      const auto src_val = model.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+                      const auto res_val = candidate.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+                      if(!in_eps_threshold(src_val,res_val))
+		      {
+                        if(xy_correct) fprintf(stderr,"XY back and forth not correct at %.14e vs. %.14e\n",src_val,res_val);
+			xy_correct = false;
+		      }
+		   }
+	   }
+	}
+    }
  
+    bool correct = forward_and_back_correct && poisson_correct && xy_correct;
     int retval = correct ? AC_SUCCESS : AC_FAILURE;
 
     acGridQuit();
