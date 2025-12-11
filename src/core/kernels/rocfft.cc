@@ -141,9 +141,9 @@ std::unordered_map<Volume,rocfft_plan_description,VolumeHash> data_layouts{};
 static rocfft_plan_description 
 get_data_layout(const Volume domain_size, const Volume subdomain_size)
 {
-    if(data_layouts.find(domain_size) != data_layouts.end())
+    if(data_layouts.find(subdomain_size) != data_layouts.end())
     {
-	    return data_layouts[domain_size];
+	    return data_layouts[subdomain_size];
     }
     // Create plan description
     rocfft_plan_description desc = nullptr;
@@ -172,29 +172,31 @@ get_data_layout(const Volume domain_size, const Volume subdomain_size)
     //rocfft_plan_description_set_comm(desc,rocfft_comm_mpi,&communicator);
 #endif
 
-    data_layouts[domain_size] = desc;
+    data_layouts[subdomain_size] = desc;
     return desc;
 }
 
 static rocfft_execution_info
-get_execution_info(const rocfft_plan plan)
+get_execution_info(const Volume subdomain, const rocfft_plan plan)
 {
-	static rocfft_execution_info info{};
-	static bool first_call = true;
-	if(first_call)
+	static std::unordered_map<size_t,void*> work_buffers{};
+    	rocfft_execution_info info = nullptr;
+    	check_rocfft_status(rocfft_execution_info_create(&info));
+	size_t work_buf_size = 0;
+	check_rocfft_status(rocfft_plan_get_work_buffer_size(plan,&work_buf_size));
+	if(work_buf_size)
 	{
-    	        // Create execution info
-    	        info = nullptr;
-    	        check_rocfft_status(rocfft_execution_info_create(&info));
-		size_t work_buf_size = 0;
-		check_rocfft_status(rocfft_plan_get_work_buffer_size(plan,&work_buf_size));
-		if(work_buf_size)
+		void* work_buf = nullptr;
+		if(work_buffers.find(work_buf_size) != work_buffers.end())
 		{
-			void* work_buf = nullptr;
-			ERRCHK_CUDA_ALWAYS(acMalloc(&work_buf,work_buf_size));
-			check_rocfft_status(rocfft_execution_info_set_work_buffer(info,work_buf,work_buf_size));
+			work_buf = work_buffers[work_buf_size];
 		}
-		first_call = false;
+		else
+		{
+			ERRCHK_CUDA_ALWAYS(acMalloc(&work_buf,work_buf_size));
+			work_buffers[work_buf_size] = work_buf;
+		}
+		check_rocfft_status(rocfft_execution_info_set_work_buffer(info,work_buf,work_buf_size));
 	}
 	return info;
 }
@@ -262,10 +264,11 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size,
                                 AcComplex* dst, const bool inverse) {
     const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
     const auto plan = get_plan(domain_size,subdomain_size,inverse);
+    const auto exec_info = get_execution_info(subdomain_size,plan);
     // Execute
     void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(src+starting_offset))};
     void* out_buffer[] = {reinterpret_cast<void*>(dst+starting_offset)};
-    check_rocfft_status(rocfft_execute(plan, in_buffer, out_buffer, get_execution_info(plan)));
+    check_rocfft_status(rocfft_execute(plan, in_buffer, out_buffer,exec_info));
     // Scaling (just like CUFFT doesn't scale by default)
     size_t complex_domain_size = domain_size.x * domain_size.y * domain_size.z;
     const AcReal scale = AcReal(1.0) / (subdomain_size.x * subdomain_size.y * subdomain_size.z);
@@ -343,8 +346,11 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
 
     acRealToComplex(src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
-    acComplexToPlanar(tmp2,count,real_dst,imag_dst);
-
+    acKernelVolumeCopyComplexToPlanar(0,tmp2
+		    			,starting_point,subdomain_size,domain_size
+					,real_dst,imag_dst
+		    			,starting_point,subdomain_size,domain_size
+		    );
     return AC_SUCCESS;
 }
 
