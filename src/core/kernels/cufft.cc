@@ -34,7 +34,7 @@ check_if_distributed()
         MPI_Comm_size(communicator,&nprocs);
         if(nprocs > 1) 
         {
-                fprintf(stderr,"RocFFT integration not yet working for multiple processes!\n");
+                fprintf(stderr,"CuFFT integration not yet working for multiple processes!\n");
                 exit(EXIT_FAILURE);
         }
 #endif
