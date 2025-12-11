@@ -47,10 +47,10 @@
   {                                                                            \
     time_t terr = 0;                                                           \
     time(&terr);                                                               \
-    fprintf(stderr, "\n\n\n\n┌──────────────────────── ERROR ───────────────────────────┐\n\n"); \
+    fprintf(stderr, "\n\n\n\n                          ERROR                             \n\n"); \
     fprintf(stderr, "%s", ctime(&terr));                                       \
     fprintf(stderr, "Error in file %s line %d: %s\n", __FILE__, __LINE__, str); \
-    fprintf(stderr, "\n└──────────────────────── ERROR ───────────────────────────┘\n\n\n\n"); \
+    fprintf(stderr, "\n                          ERROR                             \n\n\n\n"); \
     fflush(stderr);                                                            \
     abort();                                                                   \
   }
