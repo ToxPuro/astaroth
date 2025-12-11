@@ -184,7 +184,6 @@ main(void)
        	}
        }
     }
-    const bool test_2d = true;
     bool xy_correct = true;
     /**
     {
