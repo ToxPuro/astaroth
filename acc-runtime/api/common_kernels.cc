@@ -162,6 +162,21 @@ acKernelVolumeCopyRealToComplex(const cudaStream_t stream,                      
 }
 
 AcResult
+acKernelVolumeCopyComplexToReal(const cudaStream_t stream,                                    //
+                   const AcComplex* in, const Volume in_offset, const Volume in_volume, const Volume embemdded_in_volume,//
+                   AcReal* out,const Volume out_offset, const Volume out_volume, const Volume embemdded_out_volume)
+{
+    VertexBufferArray vba{};
+    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_COMPLEX_TO_REAL_BATCHED,(AcComplex*)in,in_offset,embemdded_in_volume,out,out_offset,embemdded_out_volume,1); 
+    const Volume start = {0,0,0};
+    const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
+    acLaunchKernel(AC_VOLUME_COPY_COMPLEX_TO_REAL_BATCHED,stream,start,nn,vba);
+    ERRCHK_CUDA_KERNEL();
+
+    return AC_SUCCESS;
+}
+
+AcResult
 acKernelVolumeCopyComplexToPlanar(const cudaStream_t stream,                                    //
                    const AcComplex* in, const Volume in_offset, const Volume in_volume, //
                    AcReal* real_out,AcReal* imag_out,const Volume out_offset, const Volume out_volume)

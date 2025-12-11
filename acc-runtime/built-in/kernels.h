@@ -102,6 +102,20 @@ utility Kernel AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED(const complex[] src,Volu
     }
 }
 
+utility Kernel AC_VOLUME_COPY_COMPLEX_TO_REAL_BATCHED(const complex[] src,Volume in_offset, Volume in_volume, 
+			      real[] out,Volume out_offset,Volume out_volume, int batch_size)
+{
+    const size_t in_size  = in_volume.x*in_volume.y*in_volume.z
+    const size_t out_size = out_volume.x*out_volume.y*out_volume.z
+    indexes = get_copy_indexes(in_offset,out_offset,in_volume,out_volume)
+    for i in 0:batch_size
+    {
+	const size_t idx_out = indexes.out_index + i*out_size;
+	const size_t idx_in  = indexes.in_index + i*in_size;
+    	out[idx_out]    = src[idx_in].x;
+    }
+}
+
 utility Kernel AC_FLUSH_REAL(real[] dst, real val)
 {
 	dst[vertexIdx.x] = val

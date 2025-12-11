@@ -40,4 +40,7 @@ AcResult acKernelVolumeCopyRealToComplexBatched(const cudaStream_t stream,      
 AcResult acKernelVolumeCopyComplexToPlanarBatched(const cudaStream_t stream,                                    //
                             const AcComplex* in, const Volume in_offset, const Volume in_volume, //
                             AcReal* real_out, AcReal* imag_out, const Volume out_offset, const Volume out_volume, const int batch_size);
+AcResult acKernelVolumeCopyComplexToReal(const cudaStream_t stream,                                    //
+                   const AcComplex* in, const Volume in_offset, const Volume in_volume, const Volume embedded_in_volume,//
+                   AcReal* out,const Volume out_offset, const Volume out_volume, const Volume embedded_out_volume);
 #endif

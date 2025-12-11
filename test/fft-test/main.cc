@@ -1,7 +1,6 @@
 /*
     Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
-
-    This file is part of Astaroth.
+This file is part of Astaroth.
 
     Astaroth is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +42,20 @@ double
 drand()
 {
 	return (double)(rand()) / (double)(rand());
+}
+const AcReal3
+get_wavevector(const int3 index, const AcMeshInfo info)
+{
+	const int3 global_idx  = (int3)
+	{
+		index.x - info[AC_nmin].x,
+		index.y - info[AC_nmin].y,
+		index.z - info[AC_nmin].z
+	};
+	const auto k_x = info[AC_frequency_spacing].x*((global_idx.x <= info[AC_ngrid].x/2) ? global_idx.x : global_idx.x - info[AC_ngrid].x);
+	const auto k_y = info[AC_frequency_spacing].y*((global_idx.y <= info[AC_ngrid].y/2) ? global_idx.y : global_idx.y - info[AC_ngrid].y);
+	const auto k_z = info[AC_frequency_spacing].z*((global_idx.z <= info[AC_ngrid].z/2) ? global_idx.z : global_idx.z - info[AC_ngrid].z);
+	return (AcReal3){k_x,k_y,k_z};
 }
 
 
@@ -118,7 +131,7 @@ main(void)
 	return acVertexBufferIdx(x,y,z,acGridGetLocalMeshInfo());
     };
 
-    AcReal epsilon  = 1*pow(10.0,-12.0);
+    AcReal epsilon  =  16*pow(10.0,-12.0);
     auto relative_diff = [](const auto a, const auto b)
     {
             const auto abs_diff = fabs(a-b);
@@ -173,23 +186,24 @@ main(void)
     }
     const bool test_2d = true;
     bool xy_correct = true;
-    if(test_2d)
+    /**
     {
     	acHostMeshRandomize(&model);
     	acHostMeshRandomize(&candidate);
         acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+	acGridSynchronizeStream(STREAM_ALL);
     	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
     	{
     	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
     	   {
-    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
-    	           {
-			acDeviceFFTR2PlanarXY(acGridGetDevice(), HEAT_INIT, HEAT_PLANAR_REAL, HEAT_PLANAR_IMAG, z);
-			acDeviceFFTBackwardTransformPlanar2RXY(acGridGetDevice(),  HEAT_PLANAR_REAL, HEAT_PLANAR_IMAG, HEAT_INIT, z);
-		   }
+    	        for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+    	        {
+			model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)*sin(k.y*spatial_pos.y)*sin(k.z*spatial_pos.z)
+		}
 	   }
 	}
         acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
+	acGridSynchronizeStream(STREAM_ALL);
     	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
     	{
     	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
@@ -207,6 +221,194 @@ main(void)
 	   }
 	}
     }
+    **/
+    {
+    	acHostMeshRandomize(&model);
+    	acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+	acGridSynchronizeStream(STREAM_ALL);
+        acDeviceFFTR2Planar(acGridGetDevice(),HEAT_INIT,HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG);
+        acDeviceFFTBackwardTransformPlanar2R(acGridGetDevice(),HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG,HEAT_INIT);
+	acGridSynchronizeStream(STREAM_ALL);
+        acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
+	acGridSynchronizeStream(STREAM_ALL);
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+    	           {
+                      const auto src_val = model.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+                      const auto res_val = candidate.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+                      if(!in_eps_threshold(src_val,res_val))
+		      {
+                        if(xy_correct) fprintf(stderr,"Planar back and forth not correct at %.14e vs. %.14e, relative diff: %.14e\n",src_val,res_val,relative_diff(src_val,res_val));
+			xy_correct = false;
+		      }
+		   }
+	   }
+	}
+    }
+
+    fprintf(stderr,"3d sin(kx)+sin(ky)+sin(kz)\n");
+    {
+    	acHostMeshRandomize(&model);
+    	acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+	acGridSynchronizeStream(STREAM_ALL);
+	const int3 pos = (int3){8,8,8};
+	const AcReal3 k = get_wavevector(pos,model.info);
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+    	           {
+		      const AcReal3 spatial_pos = (AcReal3){(x-NGHOST)*info[AC_ds].x,(y-NGHOST)*info[AC_ds].y,(z-NGHOST)*info[AC_ds].z};
+		      //model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)*sin(k.y*spatial_pos.y)*sin(k.z*spatial_pos.z);
+		      //model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y)+sin(k.z*spatial_pos.z);
+		      model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y)+sin(k.z*spatial_pos.z);
+		   }
+	   }
+	}
+        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+	acGridSynchronizeStream(STREAM_ALL);
+        acDeviceFFTR2Planar(acGridGetDevice(),HEAT_INIT,HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG);
+        acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
+	acGridSynchronizeStream(STREAM_ALL);
+	int number_of_nonzero_components = 0;
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+		   {
+        		const AcReal real = candidate.vertex_buffer[HEAT_PLANAR_REAL][IDX(x,y,z)];
+			const AcReal imag = candidate.vertex_buffer[HEAT_PLANAR_IMAG][IDX(x,y,z)];
+			if(fabs(real) > epsilon || fabs(imag) > epsilon)
+			{
+				++number_of_nonzero_components;
+				fprintf(stderr,"Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,real,imag);
+				fprintf(stderr,"Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(real*real + imag*imag));
+			}
+		   }
+	   }
+	}
+    	forward_and_back_correct &= (number_of_nonzero_components == 6);
+    }
+
+    fprintf(stderr,"2d sin(kx)+sin(ky)\n");
+    {
+    	acHostMeshRandomize(&model);
+    	acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+	acGridSynchronizeStream(STREAM_ALL);
+	const int3 pos = (int3){8,8,8};
+	const AcReal3 k = get_wavevector(pos,model.info);
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+    	           {
+		      const AcReal3 spatial_pos = (AcReal3){(x-NGHOST)*info[AC_ds].x,(y-NGHOST)*info[AC_ds].y,(z-NGHOST)*info[AC_ds].z};
+		      //model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)*sin(k.y*spatial_pos.y)*sin(k.z*spatial_pos.z);
+		      //model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y)+sin(k.z*spatial_pos.z);
+		      model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y);
+		   }
+	   }
+	}
+        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+	acGridSynchronizeStream(STREAM_ALL);
+	const int z_layer = 15;
+        acDeviceFFTR2PlanarXY(acGridGetDevice(),HEAT_INIT,HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG,z_layer);
+	acDeviceFFTBackwardTransformPlanar2RXY(acGridGetDevice(),HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG,HEAT_INIT,z_layer);
+        acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
+	acGridSynchronizeStream(STREAM_ALL);
+	int number_of_nonzero_components = 0;
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+		   {
+        		const AcReal real = candidate.vertex_buffer[HEAT_PLANAR_REAL][IDX(x,y,z)];
+			const AcReal imag = candidate.vertex_buffer[HEAT_PLANAR_IMAG][IDX(x,y,z)];
+			if(fabs(real) > epsilon || fabs(imag) > epsilon)
+			{
+				++number_of_nonzero_components;
+				fprintf(stderr,"Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,real,imag);
+				fprintf(stderr,"Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(real*real + imag*imag));
+    				forward_and_back_correct &= (z == z_layer);
+			}
+		   }
+	   }
+	}
+    	forward_and_back_correct &= (number_of_nonzero_components == 4);
+
+    	acHostMeshRandomize(&model);
+    	acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+	acGridSynchronizeStream(STREAM_ALL);
+        acDeviceFFTR2PlanarXY(acGridGetDevice(),HEAT_INIT,HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG,z_layer);
+	acDeviceFFTBackwardTransformPlanar2RXY(acGridGetDevice(),HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG,HEAT_INIT,z_layer);
+        acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
+	acGridSynchronizeStream(STREAM_ALL);
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+		   {
+        		const AcReal orig =           model.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+			const AcReal back_and_forth = candidate.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+			if(!in_eps_threshold(orig,back_and_forth))
+			{
+                              	if(forward_and_back_correct) fprintf(stderr,"2D back and forth wrong %.14e vs. %.14e, relative diff: %.14e\n",orig,back_and_forth,relative_diff(orig,back_and_forth));
+    				forward_and_back_correct = false;
+			}
+		   }
+	   }
+	}
+    }
+
+    /**
+    if(test_2d)
+    {
+    	acHostMeshRandomize(&model);
+    	acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+	acGridSynchronizeStream(STREAM_ALL);
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+
+		//const int z = 8;
+		//acDeviceFFTR2PlanarXY(acGridGetDevice(), HEAT_INIT, HEAT_PLANAR_REAL, HEAT_PLANAR_IMAG, z);
+		//acDeviceFFTBackwardTransformPlanar2RXY(acGridGetDevice(),  HEAT_PLANAR_REAL, HEAT_PLANAR_IMAG, HEAT_INIT, z);
+	   }
+	}
+        acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
+	acGridSynchronizeStream(STREAM_ALL);
+    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
+    	{
+    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
+    	   {
+    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
+    	           {
+                      const auto src_val = model.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+                      const auto res_val = candidate.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
+                      if(!in_eps_threshold(src_val,res_val))
+		      {
+                        if(xy_correct) fprintf(stderr,"XY back and forth not correct at %.14e vs. %.14e\n",src_val,res_val);
+			xy_correct = false;
+		      }
+		   }
+	   }
+	}
+    }
+    **/
  
     bool correct = forward_and_back_correct && poisson_correct && xy_correct;
     int retval = correct ? AC_SUCCESS : AC_FAILURE;

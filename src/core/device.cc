@@ -383,12 +383,13 @@ acDeviceFFTBackwardTransformPlanar2R(const Device device, const Field real_src, 
   	const auto output_dims = acGetMeshDims(device->local_config,dst);
 	ERRCHK_ALWAYS(real_input_dims == output_dims);
 	ERRCHK_ALWAYS(imag_input_dims == output_dims);
+	fprintf(stderr,"HIII\n");
 	return acFFTBackwardTransformPlanar2R(
 				device->vba.on_device.in[real_src],
 				device->vba.on_device.in[imag_src],
 				real_input_dims.m1,	
 				real_input_dims.nn,	
-				real_input_dims.n0,
+				real_input_dims.n0, 
 				device->vba.on_device.in[dst]
 			);
 }
