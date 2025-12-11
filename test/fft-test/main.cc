@@ -100,7 +100,7 @@ main(void)
     acSetLocalMeshDims(info[AC_ngrid].x/decomp.x,info[AC_ngrid].y/decomp.y,info[AC_ngrid].z/decomp.z, &info);
 
     #if AC_RUNTIME_COMPILATION
-    const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
+    const char* build_str = "-DFFT_ENABLED=ON -DUSE_HEFFTE=ON -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
     acCompile(build_str,info);
     acLoadLibrary(stdout,info);
     acLoadUtils(stdout,info);
@@ -154,7 +154,7 @@ main(void)
                       const auto res_val      = model.vertex_buffer[HEAT_FORWARD_AND_BACK][IDX(x,y,z)];
                       if(!in_eps_threshold(original_val,res_val))
                       {
-                              if(forward_and_back_correct) fprintf(stderr,"forward and back wrong at %.14e vs. %.14e\n",original_val,res_val);
+                              if(forward_and_back_correct) fprintf(stderr,"forward and back wrong at (%zu,%zu,%zu) %.14e vs. %.14e\n",x,y,z,original_val,res_val);
 			      forward_and_back_correct = false;
                       }
        	}
@@ -172,7 +172,7 @@ main(void)
                       const auto res_val  = model.vertex_buffer[HEAT_SOLUTION][IDX(x,y,z)];
                       if(!in_eps_threshold(analytical_val,res_val))
                       {
-                              if(poisson_correct) fprintf(stderr,"Wrong at %.14e vs. %.14e\n",analytical_val,res_val);
+                              if(poisson_correct) fprintf(stderr,"Poisson wrong at %.14e vs. %.14e\n",analytical_val,res_val);
                               poisson_correct = false;
                       }
                       const auto planar_res_val  = model.vertex_buffer[HEAT_PLANAR_SOLUTION][IDX(x,y,z)];
@@ -241,7 +241,7 @@ main(void)
                       const auto res_val = candidate.vertex_buffer[HEAT_INIT][IDX(x,y,z)];
                       if(!in_eps_threshold(src_val,res_val))
 		      {
-                        if(xy_correct) fprintf(stderr,"Planar back and forth not correct at %.14e vs. %.14e, relative diff: %.14e\n",src_val,res_val,relative_diff(src_val,res_val));
+                        if(xy_correct) fprintf(stderr,"Planar back and forth not correct at (%zu,%zu,%zu) %.14e vs. %.14e, relative diff: %.14e\n",x,y,z,src_val,res_val,relative_diff(src_val,res_val));
 			xy_correct = false;
 		      }
 		   }
@@ -287,13 +287,20 @@ main(void)
 			if(fabs(real) > epsilon || fabs(imag) > epsilon)
 			{
 				++number_of_nonzero_components;
-				fprintf(stderr,"Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,real,imag);
-				fprintf(stderr,"Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(real*real + imag*imag));
+				if(number_of_nonzero_components < 100)
+				{
+					fprintf(stderr,"3d Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,real,imag);
+					fprintf(stderr,"3d Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(real*real + imag*imag));
+				}
 			}
 		   }
 	   }
 	}
     	forward_and_back_correct &= (number_of_nonzero_components == 6);
+	if(number_of_nonzero_components != 6)
+	{
+		fprintf(stderr,"Expected six non-zero components but got %d\n",number_of_nonzero_components);
+	}
     }
 
     fprintf(stderr,"2d sin(kx)+sin(ky)\n");
@@ -336,8 +343,11 @@ main(void)
 			if(fabs(real) > epsilon || fabs(imag) > epsilon)
 			{
 				++number_of_nonzero_components;
-				fprintf(stderr,"Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,real,imag);
-				fprintf(stderr,"Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(real*real + imag*imag));
+				if(number_of_nonzero_components < 100)
+				{
+					fprintf(stderr,"2d Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,real,imag);
+					fprintf(stderr,"2d Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(real*real + imag*imag));
+				}
     				forward_and_back_correct &= (z == z_layer);
 			}
 		   }
