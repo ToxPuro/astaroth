@@ -250,10 +250,10 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
     AcComplex* tmp_in  = tmp_buffers[count].in;
     AcComplex* tmp_out = tmp_buffers[count].out;
 
-    acKernelVolumeCopyRealToComplex(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size);
+    acKernelVolumeCopyRealToComplex(0,src,starting_point,subdomain_size,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,subdomain_size);
     acFFTTransformC2CBase(tmp_in, subdomain_size, tmp_out, false,1);
 
-    acKernelVolumeCopyComplexToPlanar(0,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size);
+    acKernelVolumeCopyComplexToPlanar(0,tmp_out,(Volume){0,0,0},subdomain_size,subdomain_size,real_dst,imag_dst,starting_point,subdomain_size,domain_size);
     return AC_SUCCESS;
 }
 

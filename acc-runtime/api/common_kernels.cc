@@ -148,11 +148,11 @@ acKernelVolumeCopyComplex(const cudaStream_t stream,                            
 
 AcResult
 acKernelVolumeCopyRealToComplex(const cudaStream_t stream,                                    //
-                   const AcReal* in, const Volume in_offset, const Volume in_volume, //
-                   AcComplex* out, const Volume out_offset, const Volume out_volume)
+                   const AcReal* in, const Volume in_offset, const Volume in_volume, const Volume embedded_in_volume,//
+                   AcComplex* out, const Volume out_offset, const Volume out_volume, const Volume embedded_out_volume)
 {
     VertexBufferArray vba{};
-    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED,(AcReal*)in,in_offset,in_volume,out,out_offset,out_volume,1); 
+    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED,(AcReal*)in,in_offset,embedded_in_volume,out,out_offset,embedded_out_volume,1); 
     const Volume start = {0,0,0};
     const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
     acLaunchKernel(AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED,stream,start,nn,vba);
@@ -178,11 +178,14 @@ acKernelVolumeCopyComplexToReal(const cudaStream_t stream,                      
 
 AcResult
 acKernelVolumeCopyComplexToPlanar(const cudaStream_t stream,                                    //
-                   const AcComplex* in, const Volume in_offset, const Volume in_volume, //
-                   AcReal* real_out,AcReal* imag_out,const Volume out_offset, const Volume out_volume)
+                   const AcComplex* in, const Volume in_offset, const Volume in_volume, 
+		   const Volume embedded_in_volume, //
+                   AcReal* real_out,AcReal* imag_out,const Volume out_offset, const Volume out_volume,
+		   const Volume embedded_out_volume
+		   )
 {
     VertexBufferArray vba{};
-    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED,(AcComplex*)in,in_offset,in_volume,real_out,imag_out,out_offset,out_volume,1); 
+    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED,(AcComplex*)in,in_offset,embedded_in_volume,real_out,imag_out,out_offset,embedded_out_volume,1); 
     const Volume start = {0,0,0};
     const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
     acLaunchKernel(AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED,stream,start,nn,vba);
