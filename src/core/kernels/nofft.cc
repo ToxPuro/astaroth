@@ -83,6 +83,11 @@ acFFTInit(const AcCommunicator*, const int*)
 {
 	return AC_SUCCESS;
 }
+AcResult
+acFFTForwardTransformR2HermitianPlanarBatched(const AcReal*, const Volume, const Volume, const Volume, AcReal*, AcReal*, const int, cudaStream_t)
+{
+	return AC_FAILURE;
+}
 
 AcResult
 acFFTQuit()
