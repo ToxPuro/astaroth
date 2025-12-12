@@ -441,9 +441,9 @@ get_exchange_output_pos(const int id, const size_t start, const size_t ghost, co
       	    size_t res = id == -1  ? as_size_t((int)start-(int)ghost) : id == 1 ? start+nn : start;
 	    if(shift_down) res = res - ghost;
 	    if(shift_up)   res = res + nn;
-	    if(res >= nn+2*ghost)
+	    if(res >= nn+2*NGHOST)
 	    {
-		    fatal("Out of bounds: res=%zu,nn=%zu,ghost=%zu\n",res,nn,ghost);
+		    fatal("Out of bounds: res=%zu,nn=%zu,ghost=%zu,start=%zu,shift_down=%d,shift_up=%d\n",res,nn,ghost,start,shift_down,shift_up);
 	    }
 	    return res;
 }
