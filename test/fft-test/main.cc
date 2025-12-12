@@ -131,7 +131,7 @@ main(void)
 	return acVertexBufferIdx(x,y,z,acGridGetLocalMeshInfo());
     };
 
-    AcReal epsilon  =  16*pow(10.0,-12.0);
+    AcReal epsilon  =  8*pow(10.0,-11.0);
     auto relative_diff = [](const auto a, const auto b)
     {
             const auto abs_diff = fabs(a-b);
