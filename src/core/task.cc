@@ -2210,7 +2210,7 @@ PeriodicRayTask::communicate()
    auto packed_data = buffers.get_current_buffer();
    auto dst          = buffers.get_fresh_buffer();
    ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->data[0],packed_data->length/nprocs,AC_REAL_MPI_TYPE,
-			        &dst->data[0],dst->length,AC_REAL_MPI_TYPE,
+			        &dst->data[0],dst->length/nprocs,AC_REAL_MPI_TYPE,
 				gather_comm,&dst->requests[0]
 			   ) == MPI_SUCCESS);
 }

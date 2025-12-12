@@ -2376,7 +2376,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
         case TASKTYPE_PERIODIC_RAY: {
             acVerboseLogFromRootProc(rank, "Creating periodic ray task\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
-            auto task = std::make_shared<MPIScanTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
+            auto task = std::make_shared<PeriodicRayTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
                                                            device, swap_offset);
             graph->all_tasks.push_back(task);
 
