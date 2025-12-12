@@ -542,6 +542,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridDiskAccessSync,stream);
 	LOAD_DSYM(acGridReadVarfileToMesh,stream);
 	LOAD_DSYM(acHaloExchangeBoundary,stream);
+	LOAD_DSYM(acPeriodicRay,stream);
 	*(void**)(&BASE_FUNC_NAME(acRayUpdate)) = dlsym(handle,"acRayUpdate");
 	*(void**)(&BASE_FUNC_NAME(acComputeWithParams)) = dlsym(handle,"acComputeWithParams");
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");

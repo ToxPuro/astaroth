@@ -1914,6 +1914,9 @@ check_ops(const std::vector<AcTaskDefinition> ops)
         case TASKTYPE_SCAN:
           task_graph_repr += "Scan,";
 	  break;
+        case TASKTYPE_PERIODIC_RAY:
+          task_graph_repr += "PeriodicRay,";
+	  break;
         case TASKTYPE_RAY_UPDATE:
           task_graph_repr += "RayUpdate,";
 	  break;
@@ -2177,6 +2180,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	  break;
         }
 
+
         case TASKTYPE_RAY_UPDATE: {
             acVerboseLogFromRootProc(rank, "Creating ray updates\n");
 	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
@@ -2369,6 +2373,17 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
             break;
         }
 
+        case TASKTYPE_PERIODIC_RAY: {
+            acVerboseLogFromRootProc(rank, "Creating periodic ray task\n");
+            int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
+            auto task = std::make_shared<MPIScanTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
+                                                           device, swap_offset);
+            graph->all_tasks.push_back(task);
+
+            acVerboseLogFromRootProc(rank, "Periodic ray task created\n");
+            grid.mpi_tag_space_count++;
+            break;
+        }
         case TASKTYPE_SCAN: {
             acVerboseLogFromRootProc(rank, "Creating scan tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;

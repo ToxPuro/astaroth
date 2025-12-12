@@ -189,13 +189,14 @@ FUNC_DEFINE(AcResult, acGridAccessMeshOnDiskSynchronousCollective,(const VertexB
 
 /** */
 typedef enum AcTaskType {
+    TASKTYPE_NO_OP,
     TASKTYPE_COMPUTE,
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
     TASKTYPE_REDUCE,
     TASKTYPE_SCAN,
     TASKTYPE_RAY_UPDATE,
-    TASKTYPE_NO_OP,
+    TASKTYPE_PERIODIC_RAY,
 } AcTaskType;
 
 
@@ -370,6 +371,8 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const s
 FUNC_DEFINE(AcTaskDefinition, acHaloExchangeBoundary,(Field fields[], const size_t num_fields, const AcBoundary boundary));
 
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acScan,(Field fields[], const size_t num_fields, const int3 direction));
+
+FUNC_DEFINE(AcTaskDefinition, acPeriodicRay,(Field fields[], const size_t num_fields, const int3 direction));
 
 FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries,const facet_class_range halo_types[], const Volume halo_size));
 

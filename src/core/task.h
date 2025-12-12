@@ -261,7 +261,7 @@ typedef struct HaloMessage {
     int non_namespaced_tag;
     std::vector<int> counterpart_ranks;
 
-    HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessage(size_t size, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();
     void pin(const Device device, const cudaStream_t stream);
     void unpin(const Device device, const cudaStream_t stream);
@@ -273,7 +273,8 @@ typedef struct HaloMessageSwapChain {
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessageSwapChain(size_t size,const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessageSwapChain(Volume dims, size_t nvars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     void update_counterpart_ranks(const std::vector<int> counterpart_ranks);
 
     HaloMessage* get_current_buffer();
@@ -344,6 +345,28 @@ typedef class MPIScanTask : public Task {
     void advance(const TraceFile* trace_file);
     bool test();
 } MPIScanTask;
+
+enum class PeriodicRayTaskState { Waiting = Task::wait_state, Packing, Communicating, Unpacking };
+
+typedef class PeriodicRayTask : public Task {
+  private:
+    HaloMessageSwapChain buffers;
+    MPI_Comm gather_comm;
+    int nprocs;
+  public:
+    PeriodicRayTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
+                                   AcGridInfo grid_info, Device device_,
+                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+    ~PeriodicRayTask();
+    PeriodicRayTask(const PeriodicRayTask& other)            = delete;
+    PeriodicRayTask& operator=(const PeriodicRayTask& other) = delete;
+
+    void pack();
+    void unpack();
+    void communicate();
+    void advance(const TraceFile* trace_file);
+    bool test();
+} PeriodicRayTask;
 
 
 

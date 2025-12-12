@@ -244,6 +244,22 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
     return task_def;
 }
 
+AcTaskDefinition
+acPeriodicRay(Field fields[], const size_t num_fields, const int3 direction)
+{
+    AcTaskDefinition task_def{};
+    task_def.task_type      = TASKTYPE_PERIODIC_RAY;
+    task_def.fields_in      = ptr_copy(fields,num_fields);
+    task_def.num_fields_in  = num_fields;
+    task_def.fields_out = ptr_copy(fields,num_fields);
+    task_def.num_fields_out = num_fields;
+    task_def.halo_sizes = get_max_halo_size(fields,num_fields);
+    task_def.ray_direction = direction;
+    task_def.sending   = true;
+    task_def.receiving = true;
+    return task_def;
+}
+
 
 AcTaskDefinition
 acScan(Field fields[], const size_t num_fields, const int3 direction)
@@ -1384,10 +1400,10 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_)
+HaloMessage::HaloMessage(size_t length_, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_)
 {
     type         = type_;
-    length       = dims.x * dims.y * dims.z * num_vars;
+    length       = length_;
     counterpart_ranks = counterpart_ranks_;
 
     tag = tag0 + tag_;
@@ -1445,12 +1461,22 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
 
-HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
+HaloMessageSwapChain::HaloMessageSwapChain(size_t length, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(dims, num_vars,tag0, tag, counterpart_ranks,type);
+        buffers.emplace_back(length,tag0, tag, counterpart_ranks,type);
+    }
+}
+
+HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t nvars,const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
+    : buf_idx(SWAP_CHAIN_LENGTH - 1)
+{
+    const size_t length = dims.x*dims.y*dims.z*nvars;
+    buffers.reserve(SWAP_CHAIN_LENGTH);
+    for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
+        buffers.emplace_back(length,tag0, tag, counterpart_ranks,type);
     }
 }
 
@@ -2027,7 +2053,169 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
     }
 }
 
-// HaloExchangeTask
+int
+get_nprocs(const int3 ray_direction)
+{
+  if(ray_direction.x != 0)
+  {
+	  return ac_get_info()[AC_domain_decomposition].x;
+  }
+  if(ray_direction.y != 0)
+  {
+	  return ac_get_info()[AC_domain_decomposition].y;
+  }
+  if(ray_direction.z != 0)
+  {
+	  return ac_get_info()[AC_domain_decomposition].z;
+  }
+  return -1;
+}
+
+PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
+                                   AcGridInfo grid_info, Device device_,
+                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
+    : Task(order_,
+	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
+           Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
+           op, device_, swap_offset_),
+      buffers(input_regions[0].dims,  get_nprocs(op.ray_direction),  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
+{
+    const auto sub_comms = acGridMPISubComms();
+    gather_comm = MPI_COMM_NULL;
+    if(op.ray_direction == (int3){1,0,0})
+    {
+	    gather_comm = sub_comms.x;
+    }
+    if(op.ray_direction == (int3){-1,0,0})
+    {
+	    gather_comm = sub_comms.reverse_x;
+    }
+    if(op.ray_direction == (int3){0,1,0})
+    {
+	    gather_comm = sub_comms.y;
+    }
+    if(op.ray_direction == (int3){0,-1,0})
+    {
+	    gather_comm = sub_comms.reverse_y;
+    }
+    if(op.ray_direction == (int3){0,0,1})
+    {
+	    gather_comm = sub_comms.z;
+    }
+    if(op.ray_direction == (int3){0,0,-1})
+    {
+	    gather_comm = sub_comms.reverse_z;
+    }
+    // Create stream for packing/unpacking
+    (void)grid_info;
+    stream = get_stream(device);
+    nprocs = get_nprocs(op.ray_direction);
+}
+
+PeriodicRayTask::~PeriodicRayTask()
+{
+    auto msg = buffers.get_current_buffer();
+    for(auto& request : msg->requests)
+    {
+    	if (request != MPI_REQUEST_NULL) {
+    	    MPI_Cancel(&request);
+    	}
+    }
+
+    set_device(device);
+    destroy_stream(stream);
+}
+
+bool
+PeriodicRayTask::test()
+{
+    switch (static_cast<PeriodicRayTaskState>(state)) {
+    case PeriodicRayTaskState::Packing: {
+        return poll_stream();
+    }
+    case PeriodicRayTaskState::Unpacking: {
+        return poll_stream();
+    }
+    case PeriodicRayTaskState::Communicating: {
+        auto msg = buffers.get_current_buffer();
+        int request_complete;
+        ERRCHK_ALWAYS(MPI_Testall(msg->requests.size(), msg->requests.data(), &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
+        return request_complete ? true : false;
+    }
+    default: {
+        ERROR("MPIScanTask in an invalid state.");
+        return false;
+    }
+    }
+}
+
+
+void
+PeriodicRayTask::advance(const TraceFile* trace_file)
+{
+    switch (static_cast<PeriodicRayTaskState>(state)) {
+    case PeriodicRayTaskState::Waiting:
+        trace_file->trace(this, "waiting", "packing");
+        pack();
+        state = static_cast<int>(PeriodicRayTaskState::Packing);
+        break;
+    case PeriodicRayTaskState::Packing:
+    {
+        trace_file->trace(this, "packing", "communicating");
+        state = static_cast<int>(PeriodicRayTaskState::Communicating);
+	communicate();
+        break;
+    }
+    case PeriodicRayTaskState::Communicating:
+    {
+        trace_file->trace(this, "communicating", "unpacking");
+        state = static_cast<int>(PeriodicRayTaskState::Unpacking);
+	unpack();
+        break;
+    }
+    case PeriodicRayTaskState::Unpacking:
+    {
+        trace_file->trace(this, "unpacking", "waiting");
+        state = static_cast<int>(PeriodicRayTaskState::Waiting);
+        break;
+    }
+
+    default:
+        ERROR("PeriodicRayTask in an invalid state.");
+    }
+}
+
+void
+PeriodicRayTask::pack()
+{
+    auto msg = buffers.get_fresh_buffer();
+    acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
+                             msg->data, input_regions[0].memory.fields.data(),
+                             input_regions[0].memory.fields.size());
+}
+
+void
+PeriodicRayTask::unpack()
+{
+
+    auto msg = buffers.get_current_buffer();
+    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+                               vba, output_region.memory.fields.data(),
+        	    		output_region.memory.fields.size());
+}
+
+void
+PeriodicRayTask::communicate()
+{
+   auto packed_data = buffers.get_current_buffer();
+   auto dst          = buffers.get_fresh_buffer();
+   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->data[0],packed_data->length/nprocs,AC_REAL_MPI_TYPE,
+			        &dst->data[0],dst->length,AC_REAL_MPI_TYPE,
+				gather_comm,&dst->requests[0]
+			   ) == MPI_SUCCESS);
+}
+
+
 MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
