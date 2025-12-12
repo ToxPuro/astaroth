@@ -302,14 +302,26 @@ main(int argc, char* argv[])
     }
     check_f("Down",QRAD);
 
-    Field fields[1];
+    Field fields[2];
     fields[0] = QRAD;
-    const int3 domain_coordinates = acDeviceGetLocalConfig(acGridGetDevice())[AC_domain_coordinates];
-    reset_f_to_val(QRAD,AcReal(domain_coordinates.x));
+    fields[1] = TAU_PPP;
+    const int3 offset = acDeviceGetLocalConfig(acGridGetDevice())[AC_multigpu_offset];
+    for(size_t i = 0; i < dims.m1.x; ++i)
+    {
+      for(size_t j = 0; j < dims.m1.y; ++j)
+      {
+    	for(size_t k = 0; k < dims.m1.z;  ++k)
+        {
+        	model.vertex_buffer[QRAD][IDX(i,j,k)] = (i-NGHOST)+offset.x;
+        	model.vertex_buffer[TAU_PPP][IDX(i,j,k)] = -int((i-NGHOST)+offset.x);
+        }
+      }
+    }
+    acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT,model);
 
     acGridExecuteTaskGraph(
             acGridBuildTaskGraph({
-                        acPeriodicRay(fields, 1, (int3){0,0,+1})
+                        acPeriodicRay(fields, 2, (int3){+1,0,0})
                         })
                     ,1
                     );
@@ -318,6 +330,7 @@ main(int argc, char* argv[])
 
 
     acHostMeshDestroy(&model);
+    acGridSynchronizeStream(STREAM_ALL);
     fprintf(stderr,"DONE!\n");
 
     acGridQuit();

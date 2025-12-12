@@ -346,13 +346,15 @@ typedef class MPIScanTask : public Task {
     bool test();
 } MPIScanTask;
 
-enum class PeriodicRayTaskState { Waiting = Task::wait_state, Packing, Communicating, Unpacking };
+enum class PeriodicRayTaskState { Waiting = Task::wait_state, Packing, Communicating, Unpacking, Computing };
 
 typedef class PeriodicRayTask : public Task {
   private:
     HaloMessageSwapChain buffers;
     MPI_Comm gather_comm;
     int nprocs;
+    int3 ray_direction;
+    AcKernel kernel;
   public:
     PeriodicRayTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
                                    AcGridInfo grid_info, Device device_,
@@ -364,6 +366,7 @@ typedef class PeriodicRayTask : public Task {
     void pack();
     void unpack();
     void communicate();
+    void compute();
     void advance(const TraceFile* trace_file);
     bool test();
 } PeriodicRayTask;

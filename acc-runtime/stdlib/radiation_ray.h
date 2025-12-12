@@ -1,3 +1,4 @@
+hostdefine AC_RADIATION_RAY_INCLUDED (1)
 Raytrace (+0,+0,-1) backwards_ray
 Raytrace (+0,+0,+1) forwards_ray
 Raytrace (-1,+0,+0) left_ray
@@ -148,6 +149,19 @@ outgoing_ray_length(int3 direction)
 run_const real dtau_thresh_min = 1.6*pow(AC_REAL_EPSILON,0.25)
 run_const real dtau_thresh_max = -log(AC_REAL_MIN)
 
+get_one_m_negexp(x)
+{
+	if(x > dtau_thresh_max)
+	{
+		return 1.0
+	}
+	else if(x < dtau_thresh_min)
+	{
+		return x*(1-0.5*x*(1-x/3))
+	}
+	return 1-exp(-x)
+}
+
 ac_ray_func(int3 direction, Field kappa_rho, Field srad, Field Q, Field tau, real in_len, real out_len)
 {
 	dtau_m = sqrt(incoming_ray(kappa_rho,direction)*kappa_rho)*in_len
@@ -223,4 +237,74 @@ extrinsic_ray_update(int3 direction, Field Q, Field TAU)
 {
         incoming_Q = get_incoming_boundary_ray(Q,direction)
         return Q + incoming_Q*exp(-TAU)
+}
+Kernel sum_periodic_rays(int3 ray_direction, real[] Qrad_src, real[] Qrad_dst, real[] tau_src)
+{
+	Q_sum = 0.0
+	tau_sum  = 0.0
+	//If x ray then
+	//data is ny x nz x nprocx
+	//and we have launched ny x nz threads
+	//
+	//If y ray then
+	//data is ny x nz x nprocx
+	//and we have launched ny x nz threads
+	//
+	//One has to first sum downstream (in the direction of the ray)
+	//and then come back from the upstream direction after the ray has wrapped around
+	//
+	const bool x_ray = abs(ray_direction.x) != 0
+	const int first_index = x_ray ? vertexIdx.y : vertexIdx.x
+	const int second_index = vertexIdx.z
+	const int first_dim = x_ray ? AC_nlocal.y : AC_nlocal.x
+	const int second_dim = AC_nlocal.z
+	my_proc = x_ray ? AC_domain_coordinates.x : AC_domain_coordinates.y
+	nprocs = x_ray ? AC_domain_decomposition.x : AC_domain_decomposition.y
+	const int ray_dir = x_ray ? ray_direction.x : ray_direction.y;
+	if(ray_dir == 1)
+	{
+		//Sum up downstream (including current process)
+		for iproc in my_proc:nprocs
+		{
+			const int index = first_index + first_dim*(second_index + second_dim*iproc)
+			tau = tau_src[index]
+			Q_sum = Q_sum*exp(-tau)+Qrad_src[index]
+			tau_sum += tau
+		}
+		//Sum up from upstream one before this
+		for iproc in 0:my_proc
+		{
+			const int index = first_index + first_dim*(second_index + second_dim*iproc)
+			tau = tau_src[index]
+			Q_sum = Q_sum*exp(-tau)+Qrad_src[index]
+			tau_sum += tau
+		}
+	}
+	if(ray_dir == -1)
+	{
+		Q_sum = 0.0
+		tau_sum  = 0.0
+		//Sum up downstream (including current process)
+		int iproc = my_proc
+		while(iproc >= 0)
+		{
+			const int index = first_index + first_dim*(second_index + second_dim*iproc)
+			tau = tau_src[index]
+			Q_sum = Q_sum*exp(-tau)+Qrad_src[index]
+			tau_sum += tau
+			iproc -= 1
+		}
+		iproc = nprocs-1
+		while(iproc > my_proc)
+		{
+			const int index = first_index + first_dim*(second_index + second_dim*iproc)
+			tau = tau_src[index]
+			Q_sum = Q_sum*exp(-tau)+Qrad_src[index]
+			tau_sum += tau
+			iproc -= 1
+		}
+	}
+	emtau1_tot = get_one_m_negexp(tau_sum)
+	const int dst_index = first_index + first_dim*(second_index)
+	Qrad_dst[dst_index] = Q_sum/emtau1_tot
 }

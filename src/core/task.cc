@@ -2070,6 +2070,13 @@ get_nprocs(const int3 ray_direction)
   }
   return -1;
 }
+std::vector<int>
+get_ints_up_to(const size_t end)
+{
+	std::vector<int> res{};
+	for(size_t i = 0; i < end; ++i) res.push_back(i);
+	return res;
+}
 
 PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
                                    AcGridInfo grid_info, Device device_,
@@ -2078,10 +2085,12 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
 	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
            Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
            op, device_, swap_offset_),
-      buffers(input_regions[0].dims,  get_nprocs(op.ray_direction),  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
+      buffers(input_regions[0].dims, get_nprocs(op.ray_direction),  tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
 {
     const auto sub_comms = acGridMPISubComms();
     gather_comm = MPI_COMM_NULL;
+    ray_direction = op.ray_direction;
+    kernel = op.kernel_enum;
     if(op.ray_direction == (int3){1,0,0})
     {
 	    gather_comm = sub_comms.x;
@@ -2136,6 +2145,9 @@ PeriodicRayTask::test()
     case PeriodicRayTaskState::Unpacking: {
         return poll_stream();
     }
+    case PeriodicRayTaskState::Computing: {
+        return poll_stream();
+    }
     case PeriodicRayTaskState::Communicating: {
         auto msg = buffers.get_current_buffer();
         int request_complete;
@@ -2147,6 +2159,26 @@ PeriodicRayTask::test()
         return false;
     }
     }
+}
+
+void
+PeriodicRayTask::compute()
+{
+   //TP: this can be polished but at the moment assume we use the kernel coming from stdlib
+#if AC_RADIATION_RAY_INCLUDED
+   auto packed_data = buffers.get_current_buffer();
+   auto dst         = buffers.get_fresh_buffer();
+   //const size_t nvars = input_regions[0].memory.fields.size();
+   //const size_t buffer_length = (packed_data->length/nprocs)*nvars;
+   const size_t variable_len = (packed_data->length/nprocs);
+   vba.on_device.kernel_input_params.sum_periodic_rays.ray_direction = ray_direction;
+   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_src = &packed_data->data[0];
+   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_dst = &dst->data[0];
+   vba.on_device.kernel_input_params.sum_periodic_rays.tau_src = &packed_data->data[variable_len];
+   const Volume start{0,0,0};
+   const Volume end = input_regions[0].dims;
+   acLaunchKernel(sum_periodic_rays,stream,start,end,vba);
+#endif
 }
 
 
@@ -2168,7 +2200,14 @@ PeriodicRayTask::advance(const TraceFile* trace_file)
     }
     case PeriodicRayTaskState::Communicating:
     {
-        trace_file->trace(this, "communicating", "unpacking");
+        trace_file->trace(this, "communicating", "computing");
+        state = static_cast<int>(PeriodicRayTaskState::Computing);
+	compute();
+        break;
+    }
+    case PeriodicRayTaskState::Computing:
+    {
+        trace_file->trace(this, "computing", "unpacking");
         state = static_cast<int>(PeriodicRayTaskState::Unpacking);
 	unpack();
         break;
@@ -2197,11 +2236,13 @@ PeriodicRayTask::pack()
 void
 PeriodicRayTask::unpack()
 {
-
+    //TP: we only unpack to the first Field which is assumed to Qrad or similar
     auto msg = buffers.get_current_buffer();
     acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
                                vba, output_region.memory.fields.data(),
-        	    		output_region.memory.fields.size());
+			        1
+        	    		//output_region.memory.fields.size()
+		    );
 }
 
 void
@@ -2209,10 +2250,18 @@ PeriodicRayTask::communicate()
 {
    auto packed_data = buffers.get_current_buffer();
    auto dst          = buffers.get_fresh_buffer();
-   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->data[0],packed_data->length/nprocs,AC_REAL_MPI_TYPE,
-			        &dst->data[0],dst->length/nprocs,AC_REAL_MPI_TYPE,
-				gather_comm,&dst->requests[0]
-			   ) == MPI_SUCCESS);
+   const size_t nvars = input_regions[0].memory.fields.size();
+   const size_t buffer_length = (packed_data->length/nprocs)*nvars;
+   const size_t variable_len = (packed_data->length/nprocs);
+
+   for(size_t i = 0; i < nvars; ++i)
+   {
+	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->data[0]+i*variable_len,variable_len,AC_REAL_MPI_TYPE,
+				        &dst->data[0]+i*buffer_length,variable_len,AC_REAL_MPI_TYPE,
+					gather_comm
+					,&dst->requests[i]
+				   ) == MPI_SUCCESS);
+   }
 }
 
 

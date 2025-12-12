@@ -129,14 +129,14 @@ AcAutotuneMeasurement
 return_own_measurement(const AcAutotuneMeasurement local_measurement) {return local_measurement;}
 
 static int grid_pid = 0;
-[[maybe_unused]] static int nprocs   = 0;
+[[maybe_unused]] static int ac_nprocs   = 0;
 static AcMeasurementGatherFunc gather_func  = return_own_measurement;
 #if AC_MPI_ENABLED
 AcResult
 acInitializeRuntimeMPI(const int _grid_pid,const int _nprocs, const AcMeasurementGatherFunc mpi_gather_func)
 {
 	grid_pid = _grid_pid;
-	nprocs   = _nprocs;
+	ac_nprocs   = _nprocs;
 	gather_func = mpi_gather_func;
 	return AC_SUCCESS;
 }
@@ -1159,7 +1159,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   const bool parallel_autotuning = !on_halos && AC_MPI_ENABLED;
   if (parallel_autotuning)
   {
-  	const size_t portion = ceil_div(samples.size(),nprocs);
+  	const size_t portion = ceil_div(samples.size(),ac_nprocs);
   	start_samples = portion*grid_pid;
   	end_samples   = min(samples.size(), portion*(grid_pid+1));
   }
