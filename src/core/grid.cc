@@ -2350,6 +2350,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		included |= (Region::tag_to_id(tag).y == +1 && (op.boundary & BOUNDARY_Y_TOP) != 0);
 		included |= (Region::tag_to_id(tag).z == -1 && (op.boundary & BOUNDARY_Z_BOT) != 0);
 		included |= (Region::tag_to_id(tag).z == +1 && (op.boundary & BOUNDARY_Z_TOP) != 0);
+		included &= !(Region::tag_to_id(tag).z != 0 && (op.communicates_boundary & BOUNDARY_Z) != 0);
 		const AcBoundary boundary = op.ray_direction == (int3){0,0,0} ? BOUNDARY_XYZ : op.boundary;
 		if(!included) continue;
 		const int ray_facet_class = std::abs(op.ray_direction.x) + std::abs(op.ray_direction.y) + std::abs(op.ray_direction.z);

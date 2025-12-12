@@ -1,0 +1,28 @@
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+Field F_X
+Field F_Y
+
+position_bc(AcBoundary boundary_region)
+{
+        const int3 normal = get_normal(boundary_region)
+        const int3 boundary = get_boundary(normal)
+        int3 domain = boundary
+        int3 ghost  = boundary
+        for i in 0:NGHOST
+        {
+                domain = domain - normal
+                ghost  = ghost  + normal
+		F_X[ghost.x][ghost.y][ghost.z] = AC_domain_coordinates.x
+		F_Y[ghost.x][ghost.y][ghost.z] = AC_domain_coordinates.y
+        }
+}
+
+BoundConds boundconds{
+  periodic(BOUNDARY_X)
+  periodic(BOUNDARY_Y)
+  position_bc(BOUNDARY_Z_BOT)
+  position_bc(BOUNDARY_Z_TOP)
+}
+

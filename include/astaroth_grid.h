@@ -321,6 +321,7 @@ typedef struct AcTaskDefinition {
     facet_class_range* halo_types;
     int3 id;
     KernelAnalysisInfo analysis_info;
+    AcBoundary communicates_boundary;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -366,6 +367,7 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,(const AcKernel kernel, con
 #endif
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
+FUNC_DEFINE(AcTaskDefinition, acHaloExchangeBoundary,(Field fields[], const size_t num_fields, const AcBoundary boundary));
 
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acScan,(Field fields[], const size_t num_fields, const int3 direction));
 

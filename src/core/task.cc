@@ -285,6 +285,24 @@ acHaloExchange(Field fields[], const size_t num_fields)
 }
 
 AcTaskDefinition
+acHaloExchangeBoundary(Field fields[], const size_t num_fields, const AcBoundary boundary)
+{
+	//Does XY-exchange on the upper Z ghost zones
+	if(boundary != BOUNDARY_Z_TOP)
+	{
+		fatal("%s","Only Z_TOP boundary implemented!\n");
+	}
+	AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
+	task_def.include_boundaries = true;
+	task_def.communicates_boundary = boundary;
+        facet_class_range* halo_types = (facet_class_range*)malloc(sizeof(facet_class_range)*num_fields);
+        for(size_t i = 0; i < num_fields; ++i) halo_types[i].min = 1;
+        for(size_t i = 0; i < num_fields; ++i) halo_types[i].max = 3;
+        task_def.halo_types = halo_types;
+	return task_def;
+}
+
+AcTaskDefinition
 acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries, const facet_class_range halo_types[], const Volume halo_size)
 {
     AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
@@ -416,21 +434,30 @@ get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const 
 	return as_size_t(res);
 }
 static size_t
-get_exchange_output_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
+get_exchange_output_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included, const bool shift_down, const bool shift_up)
 {
 	    if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
 	    if(bottom_included) return 0;
-      	    return  id == -1  ? as_size_t((int)start-(int)ghost) : id == 1 ? start+nn : start;
+      	    size_t res = id == -1  ? as_size_t((int)start-(int)ghost) : id == 1 ? start+nn : start;
+	    if(shift_down) res = res - ghost;
+	    if(shift_up)   res = res + nn;
+	    if(res >= nn+2*ghost)
+	    {
+		    fatal("Out of bounds: res=%zu,nn=%zu,ghost=%zu\n",res,nn,ghost);
+	    }
+	    return res;
 }
 static size_t
-get_exchange_input_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
+get_exchange_input_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included, const bool shift_down, const bool shift_up)
 {
-	const auto output_pos = get_exchange_output_pos(id,start,ghost,nn,bottom_included);
-	return id == -1 ? output_pos + ghost : id == 1 ? output_pos - ghost : output_pos;
+	const auto output_pos = get_exchange_output_pos(id,start,ghost,nn,bottom_included,shift_down,shift_up);
+	size_t res = id == -1 ? output_pos + ghost : id == 1 ? output_pos - ghost : output_pos;
+	return res;
 }
 static size_t
-get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const bool bottom_included, const bool top_included)
+get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const bool bottom_included, const bool top_included, const bool shift_down, const bool shift_up)
 {
+	if(shift_down || shift_up) return ghost;
 	if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
 	if(top_included && id != 0) fatal("Top included but id was: %d\n",id);
 	size_t res = id == 0 ? nn : ghost;
@@ -622,29 +649,29 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       case RegionFamily::Exchange_output: {
       // clang-format off
       position = {
-	    get_exchange_output_pos(id.x,start.x,ghosts.x,nn.x,boundary_included & BOUNDARY_X_BOT),
-	    get_exchange_output_pos(id.y,start.y,ghosts.y,nn.y,boundary_included & BOUNDARY_Y_BOT),
-	    get_exchange_output_pos(id.z,start.z,ghosts.z,nn.z,boundary_included & BOUNDARY_Z_BOT),
+	    get_exchange_output_pos(id.x,start.x,ghosts.x,nn.x,boundary_included & BOUNDARY_X_BOT,depends_on_boundary & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_TOP),
+	    get_exchange_output_pos(id.y,start.y,ghosts.y,nn.y,boundary_included & BOUNDARY_Y_BOT,depends_on_boundary & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_TOP),
+	    get_exchange_output_pos(id.z,start.z,ghosts.z,nn.z,boundary_included & BOUNDARY_Z_BOT,depends_on_boundary & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_TOP),
       };
       // clang-format on
       dims = {
-	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP),
-	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP),
-	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP),
+	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP, depends_on_boundary & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_TOP),
+	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP, depends_on_boundary & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_TOP),
+	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP, depends_on_boundary & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_TOP),
       	    };
       break;
       }
       case RegionFamily::Exchange_input: {
       position = {
-	    get_exchange_input_pos(id.x,start.x,ghosts.x,nn.x,boundary_included & BOUNDARY_X_BOT),
-	    get_exchange_input_pos(id.y,start.y,ghosts.y,nn.y,boundary_included & BOUNDARY_Y_BOT),
-	    get_exchange_input_pos(id.z,start.z,ghosts.z,nn.z,boundary_included & BOUNDARY_Z_BOT),
+	    get_exchange_input_pos(id.x,start.x,ghosts.x,nn.x,boundary_included & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_TOP),
+	    get_exchange_input_pos(id.y,start.y,ghosts.y,nn.y,boundary_included & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_TOP),
+	    get_exchange_input_pos(id.z,start.z,ghosts.z,nn.z,boundary_included & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_TOP),
       };
       //TP: input and output have same dims
       dims = {
-	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP),
-	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP),
-	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP),
+	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP,depends_on_boundary & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_TOP),
+	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP,depends_on_boundary & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_TOP),
+	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP,depends_on_boundary & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_TOP),
       	    };
       break;
       }
@@ -1597,8 +1624,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
-	   {Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in + op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
-           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
+	   {Region(RegionFamily::Exchange_input, halo_region_tag,  op.communicates_boundary, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in + op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
+           Region(RegionFamily::Exchange_output, halo_region_tag, op.communicates_boundary, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
            op, device_, swap_offset_),
       sending(op.sending ? get_sending(op.ray_direction  ,input_regions[0].id)     : false),
       receiving(op.receiving ? get_receiving(op.ray_direction,input_regions[0].id) : false),
