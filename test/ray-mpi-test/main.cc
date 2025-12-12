@@ -302,10 +302,23 @@ main(int argc, char* argv[])
     }
     check_f("Down",QRAD);
 
+    Field fields[1];
+    fields[0] = QRAD;
+    const int3 domain_coordinates = acDeviceGetLocalConfig(acGridGetDevice())[AC_domain_coordinates];
+    reset_f_to_val(QRAD,AcReal(domain_coordinates.x));
+
+    acGridExecuteTaskGraph(
+            acGridBuildTaskGraph({
+                        acPeriodicRay(fields, 1, (int3){0,0,+1})
+                        })
+                    ,1
+                    );
+
 
 
 
     acHostMeshDestroy(&model);
+    fprintf(stderr,"DONE!\n");
 
     acGridQuit();
     ac_MPI_Finalize();
