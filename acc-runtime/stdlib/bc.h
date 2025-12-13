@@ -211,15 +211,39 @@ utility Kernel BOUNDCOND_INFLOW(Field f)
 }
 
 #ifdef AC_MATH_FFT_H
-ac_potential_bc(AcBoundary boundary, Field f_real, Field f_imag)
+//Corresponds to pwd in PC
+ac_potential_pwd_bc(AcBoundary boundary, Field f_real, Field f_imag)
 {
 	const int3 normal = get_normal(boundary)
 	const int3 boundary_point = get_boundary(normal)
 	int3 domain = boundary_point
 	int3 ghost  = boundary_point
-	const complex boundary_value  = complex(f_real[boundary_point.x][boundary_point.y][boundary_point.z], f_imag[boundary_point.x][boundary_point.y][boundary_point.z])
 	k = get_wavevector()
-	//TP: will have 0 at the normal direction and 1 elsewhere
+	const int3 abs_normal = abs(normal)
+	const int3 non_normal_directions = (int3){1,1,1} - abs_normal
+	k_masked = non_normal_directions*k
+	kappa = sqrt(dot(k_masked,k_masked))
+	distance = 0.0
+	const real spacing = 2*dot(abs_normal,AC_ds)
+	for i in 0:NGHOST
+	{
+		distance += spacing
+          	fac = exp(-distance*kappa)
+		domain = domain - normal
+		ghost  = ghost  + normal
+		f_real[ghost.x][ghost.y][ghost.z] = fac*f_real[domain.x][domain.y][domain.z] 
+		f_imag[ghost.x][ghost.y][ghost.z] = fac*f_imag[domain.x][domain.y][domain.z]
+	}
+}
+//Corresponds to pot in PC
+//TP: Not sure why they are different but they are
+ac_potential_pot_bc(AcBoundary boundary, Field f_real, Field f_imag)
+{
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 domain = boundary_point
+	int3 ghost  = boundary_point
+	k = get_wavevector()
 	const int3 abs_normal = abs(normal)
 	const int3 non_normal_directions = (int3){1,1,1} - abs_normal
 	k_masked = non_normal_directions*k
@@ -229,11 +253,10 @@ ac_potential_bc(AcBoundary boundary, Field f_real, Field f_imag)
 	for i in 0:NGHOST
 	{
 		distance += spacing
-          	fac = exp(distance*kappa)
-		domain = domain - normal
+          	fac = exp(-distance*kappa)
 		ghost  = ghost  + normal
-		f_real[ghost.x][ghost.y][ghost.z] = fac*boundary_value.x
-		f_imag[ghost.x][ghost.y][ghost.z] = fac*boundary_value.y
+		f_real[ghost.x][ghost.y][ghost.z] = fac*f_real[domain.x][domain.y][domain.z] 
+		f_imag[ghost.x][ghost.y][ghost.z] = fac*f_imag[domain.x][domain.y][domain.z]
 	}
 }
 #endif
