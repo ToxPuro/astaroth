@@ -74,7 +74,7 @@ main(void)
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
     info.comm->handle = MPI_COMM_WORLD;
 
-    const int max_devices = 1;
+    const int max_devices = 8;
     if (nprocs > max_devices) {
         fprintf(stderr,
                 "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
@@ -93,17 +93,17 @@ main(void)
     #endif
 
     AcMesh model, candidate;
-    if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
-    }
+    acHostMeshCreate(info, &model);
+    acHostMeshCreate(info, &candidate);
+    acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
 
     acGridInit(info);
-    //Test that can build test ComputeSteps
     const auto empty_graph = acGetOptimizedDSLTaskGraph(empty_steps);
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
+
+    //TP: this sets for the next graph that the halo exchange is red-black and only for it
+    //acDeviceSetInput(acGridGetDevice(),AC_red_black_halo_exchange,AC_RED_BLACK_STATE_RED);
     const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     acGridExecuteTaskGraph(initcond_graph,1);
@@ -115,9 +115,8 @@ main(void)
 	const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 	residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
     }
-    fprintf(stderr,"Final residual: %14e\n",residual);
+    if(pid == 0) fprintf(stderr,"Final residual: %14e\n",residual);
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
-    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &model);
     acGridSynchronizeStream(STREAM_ALL);
 
     int retval = AC_SUCCESS;

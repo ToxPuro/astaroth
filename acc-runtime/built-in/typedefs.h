@@ -214,3 +214,10 @@ struct Volume {
   size_t y;
   size_t z;
 };
+
+enum AcRedBlackState 
+{
+	AC_RED_BLACK_STATE_NONE,
+	AC_RED_BLACK_STATE_RED,
+	AC_RED_BLACK_STATE_BLACK
+}

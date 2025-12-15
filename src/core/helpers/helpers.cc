@@ -125,6 +125,12 @@ ceil_div(const size_t& a, const size_t& b)
 	return (size_t)ceil((AcReal)(1. * a) / b);
 }
 
+size3_t
+ceil_div(const size3_t& a, const int& b)
+{
+	return ceil_div(a,(int3){b,b,b});
+}
+
 cudaDeviceProp
 get_device_prop()
 {

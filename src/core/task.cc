@@ -70,6 +70,12 @@ ac_get_info()
         return acDeviceGetLocalConfig(acGridGetDevice());
 }
 
+AcRedBlackState
+get_red_black_state()
+{
+        return acDeviceGetInput(acGridGetDevice(),AC_red_black_halo_exchange);
+}
+
 #define fatal(MESSAGE, ...) \
         { \
 	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
@@ -297,6 +303,7 @@ acHaloExchange(Field fields[], const size_t num_fields)
     for(size_t i = 0; i < num_fields; ++i) halo_types[i].min = 1;
     for(size_t i = 0; i < num_fields; ++i) halo_types[i].max = 2;
     task_def.halo_types = halo_types;
+    task_def.red_black_state = get_red_black_state();
     return task_def;
 }
 
@@ -334,7 +341,7 @@ acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume s
     task_def.halo_sizes.y = min(task_def.halo_sizes.y,halo_size.y);
     task_def.halo_sizes.z = min(task_def.halo_sizes.z,halo_size.z);
     task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
-
+    task_def.red_black_state = get_red_black_state();
     return task_def;
 }
 
@@ -471,7 +478,7 @@ get_exchange_input_pos(const int id, const size_t start, const size_t ghost, con
 	return res;
 }
 static size_t
-get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const bool bottom_included, const bool top_included, const bool shift_down, const bool shift_up)
+get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const bool bottom_included, const bool top_included, const bool shift_down, const bool shift_up, const AcRedBlackState red_black_state)
 {
 	if(shift_down || shift_up) return ghost;
 	if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
@@ -479,6 +486,10 @@ get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const
 	size_t res = id == 0 ? nn : ghost;
 	if(bottom_included) res += ghost;
 	if(top_included)    res += ghost;
+    	if(red_black_state != AC_RED_BLACK_STATE_NONE)
+    	{
+		res = ceil_div(res,(size_t)2);
+    	}
 	return res;
 }
 
@@ -600,7 +611,7 @@ get_compute_input_dim(const int3 id, const Volume ghost, const Volume nn, const 
 	return res;
 }
 
-Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume start, Volume nn, const Volume ghosts, const RegionMemoryInputParams mem_, const int max_comp_facet_class)
+Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume start, Volume nn, const Volume ghosts, const RegionMemoryInputParams mem_, const int max_comp_facet_class, const AcRedBlackState red_black_state)
     : family(family_), tag(tag_) 
 {
     halo = ghosts;
@@ -671,9 +682,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       };
       // clang-format on
       dims = {
-	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP, depends_on_boundary & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_TOP),
-	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP, depends_on_boundary & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_TOP),
-	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP, depends_on_boundary & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_TOP),
+	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP, depends_on_boundary & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_TOP, red_black_state),
+	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP, depends_on_boundary & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_TOP, red_black_state),
+	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP, depends_on_boundary & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_TOP, red_black_state),
       	    };
       break;
       }
@@ -685,9 +696,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       };
       //TP: input and output have same dims
       dims = {
-	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP,depends_on_boundary & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_TOP),
-	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP,depends_on_boundary & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_TOP),
-	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP,depends_on_boundary & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_TOP),
+	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP,depends_on_boundary & BOUNDARY_X_BOT, depends_on_boundary & BOUNDARY_X_TOP, red_black_state),
+	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP,depends_on_boundary & BOUNDARY_Y_BOT, depends_on_boundary & BOUNDARY_Y_TOP, red_black_state),
+	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP,depends_on_boundary & BOUNDARY_Z_BOT, depends_on_boundary & BOUNDARY_Z_TOP, red_black_state),
       	    };
       break;
       }
@@ -699,7 +710,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
 }
       
       Region::Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, Volume halos, const RegionMemoryInputParams mem_)
-      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, position_, nn, halos,mem_,3}
+      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, position_, nn, halos,mem_,3, AC_RED_BLACK_STATE_NONE}
       {
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
@@ -1101,11 +1112,11 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 			 const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const int max_facet_class
 			 )
     : Task(order_,
-           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class)},
+           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class, op.red_black_state)},
            Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
-		   op.outputs_out, op.num_outputs_out},max_facet_class),
+		   op.outputs_out, op.num_outputs_out},max_facet_class,op.red_black_state),
            op, device_, swap_offset_)
 {
     stream = get_stream(device);
@@ -1240,7 +1251,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 
     const auto get_input_region = [&](const int3 id)
     {
-	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3);
+	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
     };
 
     const int ndir = abs(ray_direction.x) + abs(ray_direction.y) + abs(ray_direction.z);
@@ -1293,7 +1304,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 	    }
     }
 
-    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3);
+    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
     //TP: avoid computing on corner points twice
     if(boundary_id.x != 0)
     {
@@ -1473,6 +1484,7 @@ HaloMessageSwapChain::HaloMessageSwapChain(size_t length, const int tag0, const 
 HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t nvars,const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
+   
     const size_t length = dims.x*dims.y*dims.z*nvars;
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
@@ -1645,17 +1657,19 @@ get_communicated_subset(const std::vector<Field> fields, const facet_class_range
 }
 
 
+
 // HaloExchangeTask
 HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int halo_region_tag,
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
-	   {Region(RegionFamily::Exchange_input, halo_region_tag,  op.communicates_boundary, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in + op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
-           Region(RegionFamily::Exchange_output, halo_region_tag, op.communicates_boundary, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
+	   {Region(RegionFamily::Exchange_input, halo_region_tag,  op.communicates_boundary, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in + op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
+           Region(RegionFamily::Exchange_output, halo_region_tag, op.communicates_boundary, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
       sending(op.sending ? get_sending(op.ray_direction  ,input_regions[0].id)     : false),
       receiving(op.receiving ? get_receiving(op.ray_direction,input_regions[0].id) : false),
       shear_periodic(shear_periodic_),
+      red_black(op.red_black_state),
 
       // MPI tags are namespaced to avoid collisions with other MPI tasks
       //TP: in recv_buffers the dims of input is used instead of output since normally they are the same
@@ -1719,12 +1733,32 @@ HaloExchangeTask::~HaloExchangeTask()
     // dependents.clear();
     destroy_stream(stream);
 }
+int3
+get_red_black_offset(const Volume pos, const AcRedBlackState state)
+{
+	const int3 global_pos = pos + ac_get_info()[AC_multigpu_offset] - ac_get_info()[AC_nmin];
+	const int parity = state == AC_RED_BLACK_STATE_RED ? 0 : 1;
+	return
+	(int3)
+	{
+		global_pos.x % 2 == parity ? 0 : 1,
+		global_pos.y % 2 == parity ? 0 : 1,
+		global_pos.z % 2 == parity ? 0 : 1
+	};
+}
 
 void
 HaloExchangeTask::pack()
 {
     ERRCHK(sending);
     auto msg = send_buffers.get_fresh_buffer();
+    if(red_black != AC_RED_BLACK_STATE_NONE)
+    {
+	const int3 offset = (int3){0,0,0};
+    	acKernelPackDataRB(stream, vba, input_regions[0].position, input_regions[0].dims,
+    	                         msg->data, input_regions[0].memory.fields.data(),
+    	                         input_regions[0].memory.fields.size(),offset);
+    }
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
                              msg->data, input_regions[0].memory.fields.data(),
                              input_regions[0].memory.fields.size());
@@ -1733,6 +1767,12 @@ HaloExchangeTask::pack()
 void
 HaloExchangeTask::move()
 {
+	if(red_black)
+	{
+		fatal("%s","No implementation of the move kernel for red-black exchanges!\n"
+			   "Either set AC_skip_single_gpu_optim to true or use multiple procs!\n"
+				);
+	}
         ERRCHK(sending && receiving);
 	acKernelMoveData(stream, input_regions[0].position, output_region.position, input_regions[0].dims, output_region.dims, vba, input_regions[0].memory.fields.data(), input_regions[0].memory.fields.size());
 }
@@ -1769,6 +1809,13 @@ HaloExchangeTask::unpack()
 					shear_periodic_interpolation_coeffs(),
 					final_offset
 					);
+    }
+    else if(red_black != AC_RED_BLACK_STATE_NONE)
+    {
+	    const int3 offset = get_red_black_offset(input_regions[0].position,red_black);
+    	    acKernelPackDataRB(stream, vba, input_regions[0].position, input_regions[0].dims,
+    	                         msg->data, input_regions[0].memory.fields.data(),
+    	                         input_regions[0].memory.fields.size(),offset);
     }
     else
     {
@@ -2082,8 +2129,8 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
-           Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
+	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
+           Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
       buffers(input_regions[0].dims, get_nprocs(op.ray_direction),  tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
 {
@@ -2269,8 +2316,8 @@ MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, co
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
-           Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
+	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
+           Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
       reduce_buffers(input_regions[0].dims,  input_regions[0].memory.fields.size(),  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
 {
@@ -2423,8 +2470,8 @@ dup_sub_comms()
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           {Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in),op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in},3)},
-           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out},3),
+           {Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in),op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in},3,op.red_black_state)},
+           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_)
 {
     stream = get_stream(device);
@@ -2887,8 +2934,8 @@ BoundaryConditionTask::BoundaryConditionTask(
     AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           {Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in},3)},
-           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out},3),
+           {Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in},3,op.red_black_state)},
+           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)

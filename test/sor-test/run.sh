@@ -1,1 +1,1 @@
-mpiexec -n 1 build/sor-test
+mpiexec --oversubscribe -n 8 build/sor-test

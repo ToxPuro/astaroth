@@ -96,6 +96,9 @@ ceil_div(const int3& a, const int3& b);
 size_t
 ceil_div(const size_t& a, const size_t& b); 
 
+size3_t
+ceil_div(const size3_t& a, const int& b); 
+
 void
 acDeviceMalloc(void** dst, const size_t bytes);
 void

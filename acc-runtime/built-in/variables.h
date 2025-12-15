@@ -347,6 +347,11 @@ run_const bool AC_use_cuda_aware_mpi_for_profile_reductions  = false;
  */
 input real AC_shear_delta_y;
 /**
+ * Whether the next halo exchange should be optimized to communicate only red or black or all values.
+ * Naturally by default all values are communicated
+ */
+input AcRedBlackState AC_red_black_halo_exchange;
+/**
  * How to decompose the full 3d cube to smaller cubes for raytracing kernels.
  * Needed for large subdomains since raytracing uses co-operative kernel launches,
  * which require the full kernel launch to fit on the SMs at the same time.

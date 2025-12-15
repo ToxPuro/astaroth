@@ -626,6 +626,19 @@ get_opposite_boundary(const AcBoundary boundary)
 	if(boundary == BOUNDARY_Z_TOP) return BOUNDARY_Z_BOT;
 	return boundary;
 }
+static
+void swap_red_black_state()
+{
+	const auto red_black_state = acDeviceGetInput(acGridGetDevice(),AC_red_black_halo_exchange);
+	if(red_black_state == AC_RED_BLACK_STATE_RED)
+	{
+		acDeviceSetInput(acGridGetDevice(),AC_red_black_halo_exchange,AC_RED_BLACK_STATE_BLACK);
+	}
+	else if(red_black_state == AC_RED_BLACK_STATE_BLACK)
+	{
+		acDeviceSetInput(acGridGetDevice(),AC_red_black_halo_exchange,AC_RED_BLACK_STATE_RED);
+	}
+}
 static std::vector<AcTaskDefinition>
 gen_halo_exchange(
 		const std::vector<Field>& output_fields,
@@ -1649,6 +1662,8 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	}
 	if (!ac_pid()) fprintf(stream,"\n");
 	if (!ac_pid()) fclose(stream);
+	//The state is always reset after creating a taskgraph
+	acDeviceSetInput(acGridGetDevice(),AC_red_black_halo_exchange,AC_RED_BLACK_STATE_NONE);
 	return res;
 }
 
@@ -1767,7 +1782,9 @@ gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream,
 	if(!ac_pid())  fprintf(stream,",%d",onion_level);
 	if(!ac_pid()) fprintf(stream,")\n");
 	const auto [start,end] = get_launch_bounds_from_fields(fields.in,fields.out);
-	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,start,end,onion_level,call.loader);
+	const auto res = acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,start,end,onion_level,call.loader);
+	swap_red_black_state();
+	return res;
 }
 
 AcDSLTaskGraph 

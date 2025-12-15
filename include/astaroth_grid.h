@@ -323,6 +323,7 @@ typedef struct AcTaskDefinition {
     int3 id;
     KernelAnalysisInfo analysis_info;
     AcBoundary communicates_boundary;
+    AcRedBlackState red_black_state;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
