@@ -100,7 +100,7 @@ calculate_mlm_extended(Field src)
 calculate_expansion_with_mlm(Field lower, Field upper)
 {
 	r = AC_r[vertexIdx.x]
-
+	real r_factor
 	//Interior potential expansion
 	res = 0.0
 	for l in 0:AC_n_spherical_harmonics
@@ -148,6 +148,7 @@ calculate_expansion_with_mlm_extended(Field lower, Field upper)
 
 	//Interior potential expansion
 	res = 0.0
+	real r_factor
 	for l in 0:AC_n_spherical_harmonics
 	{
 		r_factor = 1.0/r

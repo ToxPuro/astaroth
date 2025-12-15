@@ -59,7 +59,7 @@ poisson_sor_red_black(int color, real density, Field potential, real omega, real
 }
 poisson_sor_red_black(int color, real density, Field potential, real omega,real3 inv_spacings)
 {
-	poisson_sor_red_black(color,density,potential,omega,1.0,inv_spacings)
+	return poisson_sor_red_black(color,density,potential,omega,1.0,inv_spacings)
 }
 
 
@@ -75,7 +75,7 @@ poisson_jacobi_update_extended(real b , Field x_prev, real laplace_sign)
 
 poisson_jacobi_update_extended(real b , Field x_prev)
 {
-	poisson_jacobi_update_extended(b,x_prev,1.0)
+	return poisson_jacobi_update_extended(b,x_prev,1.0)
 }
 
 poisson_jacobi_update_extended(real b , Field x_prev, real laplace_sign, real3 inv_spacings_2)
@@ -87,7 +87,7 @@ poisson_jacobi_update_extended(real b , Field x_prev, real laplace_sign, real3 i
 
 poisson_jacobi_update_extended(real b , Field x_prev, real3 inv_spacings)
 {
-	poisson_jacobi_update_extended(b,x_prev,1.0,inv_spacings_2)
+	return poisson_jacobi_update_extended(b,x_prev,1.0,inv_spacings_2)
 }
 
 poisson_sor_red_black_extended(int color, real density, Field potential, real omega, real laplace_sign)
