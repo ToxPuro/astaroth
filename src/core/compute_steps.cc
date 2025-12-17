@@ -942,7 +942,7 @@ gen_halo_exchange_and_boundconds(
 					bool modifies_computational_domain = field_boundconds[field][region].info.larger_output;
 					const bool need_to_call_it = (communicated || modifies_computational_domain) && field_boundconds[field][region].kernel != BOUNDCOND_PERIODIC;
 					field_boundconds_processed[field][region]  =  !need_to_call_it;
-					field_boundconds_dependencies_included[field][region]  =  !need_to_call_it
+					field_boundconds_dependencies_included[field][region]  =  !need_to_call_it;
 				}
 
 
