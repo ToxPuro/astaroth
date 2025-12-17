@@ -2305,6 +2305,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
         }
 
         case TASKTYPE_HALOEXCHANGE: {
+	    if(NGHOST == 0) continue;
 	    if(globally_imposed_bcs)
 	    {
 		    fatal("%s","Tried to generate taskgraph with globally imposed bcs and halo exchanges!\n");
@@ -2454,6 +2455,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		const bool is_on_boundary = Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy());
                 if (op.kernel_enum == BOUNDCOND_PERIODIC) {
 		    if(!is_on_boundary && !globally_imposed_bcs) continue;
+		    if(NGHOST == 0) continue;
 		    if(globally_imposed_bcs)
 		    {
 		    	fatal("%s","Can not use periodic bcs and globally imposed bcs at the same time!\n");
