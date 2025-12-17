@@ -939,8 +939,10 @@ gen_halo_exchange_and_boundconds(
                 	        for(const auto& field : fields)
 				{
 					bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end() && communicated_regions[region][field];
-                	                field_boundconds_processed[field][region]  =  !communicated  || field_boundconds[field][region].kernel == BOUNDCOND_PERIODIC;
-                	                field_boundconds_dependencies_included[field][region]  =  !communicated  || field_boundconds[field][region].kernel == BOUNDCOND_PERIODIC;
+					bool modifies_computational_domain = field_boundconds[field][region].info.larger_output;
+					const bool need_to_call_it = (communicated || modifies_computational_domain) && field_boundconds[field][region].kernel != BOUNDCOND_PERIODIC;
+					field_boundconds_processed[field][region]  =  !need_to_call_it;
+					field_boundconds_dependencies_included[field][region]  =  !need_to_call_it
 				}
 
 
@@ -1016,6 +1018,10 @@ gen_halo_exchange_and_boundconds(
 						for(auto field : processed_boundcond.out)
 						{
 							new_boundary |= (processed_boundcond.boundary & communicated_boundaries[field]);
+  							if(processed_boundcond.info.larger_output)
+                                                        {
+                                                               new_boundary |= processed_boundcond.boundary;
+                                                       	}
 						}
 						processed_boundcond.boundary = AcBoundary(new_boundary);
 						std::vector<facet_class_range> facet_classes{};
