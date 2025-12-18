@@ -594,14 +594,14 @@ get_slope_limited_divergence_and_average_fluxes(Field f, Field characteristic_sp
 get_slope_limited_heating(fluxes, Field f, Field lnrho)
 {
 	//TP: copy-paste TODO: refactor to a function
-	heat = 0.0
-	density_m1 = sld_get_left_exp(lnrho)
 	density = exp(lnrho)
+
+	density_m1 = sld_get_left_exp(lnrho)
 	density_p1 = sld_get_right_exp(lnrho)
 
 	f_m1 = sld_get_left(f)
 	f_p1 = sld_get_right(f)
-	heat += 0.5*(
+	heat_x_update = 0.5*(
 			  fluxes.x.left*(density*f-density_m1*f_m1)*AC_INV_MAPPING_FUNC_DER_X
 			+ fluxes.x.right*(density_p1*f_p1-density*f)*AC_inv_mapping_func_derivative_x[vertexIdx.x+1]
 		    )
@@ -620,7 +620,6 @@ get_slope_limited_heating(fluxes, Field f, Field lnrho)
 	{
 		heat_y_update *= AC_INV_R
 	}
-	heat += heat_y_update
 
 	density_m1 = sld_get_back_exp(lnrho)
 	density_p1 = sld_get_front_exp(lnrho)
@@ -635,8 +634,7 @@ get_slope_limited_heating(fluxes, Field f, Field lnrho)
 	{
 		heat_z_update *= AC_INV_R*AC_INV_SIN_THETA
 	}
-	heat += heat_z_update
-	return heat
+	return heat_x_update + heat_y_update + heat_z_update
 }
 
 get_slope_limited_divergence_and_heat(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, Field lnrho)
