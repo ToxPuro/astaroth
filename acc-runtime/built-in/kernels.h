@@ -1,4 +1,5 @@
-utility Kernel AC_NULL_KERNEL(){}
+fixed_boundary utility 
+Kernel AC_NULL_KERNEL(){}
 utility Kernel AC_BUILTIN_RESET()
 {
 	for field in 0:NUM_VTXBUF_HANDLES{

@@ -793,6 +793,7 @@ gen_halo_exchange_and_boundconds(
 		const std::array<std::vector<int3>,NUM_FIELDS> field_ray_directions,
 		const bool before_kernel_call,
 		const bool no_communication,
+		const bool fixed_boundary,
 		FILE* stream
 		)
 {
@@ -938,8 +939,13 @@ gen_halo_exchange_and_boundconds(
 			for(size_t region = 0; region < 27; ++region)
                 	        for(const auto& field : fields)
 				{
-					bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end() && communicated_regions[region][field];
-					bool modifies_computational_domain = field_boundconds[field][region].info.larger_output;
+					const bool communicated_field = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
+					bool communicated =  communicated_field && communicated_regions[region][field];
+					//TP: this ugly logics is basically because of PC: 
+					//PC is in some places slopy and does not apply bcs that update the comp domain at all places where it should happen.
+					//To get the same behaviour (e.g. for testing) one can declare a Kernel to use a fixed boundary and then the bcs are applied only if the field is communicated.
+					//(Although bcs purely updating ghost zones for non-communicated directions are skipped but this is not an observable effect so it is fine to do).
+					bool modifies_computational_domain = field_boundconds[field][region].info.larger_output && (communicated_field || !fixed_boundary);
 					const bool need_to_call_it = (communicated || modifies_computational_domain) && field_boundconds[field][region].kernel != BOUNDCOND_PERIODIC;
 					field_boundconds_processed[field][region]  =  !need_to_call_it;
 					field_boundconds_dependencies_included[field][region]  =  !need_to_call_it;
@@ -1018,7 +1024,9 @@ gen_halo_exchange_and_boundconds(
 						for(auto field : processed_boundcond.out)
 						{
 							new_boundary |= (processed_boundcond.boundary & communicated_boundaries[field]);
-  							if(processed_boundcond.info.larger_output)
+							const bool communicated_field = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
+							bool modifies_computational_domain = processed_boundcond.info.larger_output && (communicated_field || !fixed_boundary);
+  							if(modifies_computational_domain)
                                                         {
                                                                new_boundary |= processed_boundcond.boundary;
                                                        	}
@@ -1568,6 +1576,20 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 			else
 				communicated_fields_not_written_to.push_back(field);
 		}
+		bool level_set_has_fixed_boundary = true;
+		for(auto& call : current_level_set.calls)
+		{
+			level_set_has_fixed_boundary &= kernel_has_fixed_boundary[call.kernel];
+			fprintf(stderr, "%s has a fixed boundary: %d\n",kernel_names[call.kernel], kernel_has_fixed_boundary[call.kernel]);
+		}
+		if(level_set_has_fixed_boundary)
+		{
+			for(auto& call : current_level_set.calls)
+			{
+				if(call.kernel == AC_NULL_KERNEL) continue;
+				if(!kernel_has_fixed_boundary[call.kernel]) fatal("%s\n", "TODO: kernels that have fixed boundaries should not be in the same level set as those that do not have\n");
+			}
+		}
 		auto ops = gen_halo_exchange_and_boundconds(
 		  communicated_fields_written_to,
 		  current_level_set.fields_communicated_before,
@@ -1577,6 +1599,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		  field_ray_directions,
 		  true,
 		  no_communication,
+		  level_set_has_fixed_boundary,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
@@ -1589,18 +1612,11 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		  field_ray_directions,
 		  true,
 		  no_communication,
+		  level_set_has_fixed_boundary,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
 
-		bool level_set_has_fixed_boundary = true;
-		for(auto& call : current_level_set.calls)
-			level_set_has_fixed_boundary &= kernel_has_fixed_boundary[call.kernel];
-		if(level_set_has_fixed_boundary)
-		{
-			for(auto& call : current_level_set.calls)
-				if(!kernel_has_fixed_boundary[call.kernel]) fatal("%s\n", "TODO: kernels that have fixed boundaries should not be in the same level set as those that do not have\n");
-		}
 
 		std::vector<Field> input_fields_not_communicated{};
 		for(size_t i = 0; i < current_level_set.calls.size(); ++i)
@@ -1650,6 +1666,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		  field_ray_directions,
 		  false,
 		  no_communication,
+		  level_set_has_fixed_boundary,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
@@ -1662,6 +1679,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		  field_ray_directions,
 		  false,
 		  no_communication,
+		  level_set_has_fixed_boundary,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
