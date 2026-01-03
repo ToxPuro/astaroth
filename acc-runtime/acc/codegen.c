@@ -11041,7 +11041,8 @@ unroll_constant_loops(ASTNode* node)
 	if(is_number(start) && is_number(end))
 	{
 		const ASTNode* iterated_body = node->rhs;
-		if(iterated_body->type & NODE_BEGIN_SCOPE && iterated_body->lhs) iterated_body = iterated_body->lhs;
+                if(iterated_body->type & NODE_BEGIN_SCOPE && iterated_body->lhs) iterated_body = iterated_body->lhs;
+
 		const int start_value = atoi(start);
 		const int end_value   = atoi(end);
 		node_vec nodes = VEC_INITIALIZER;
@@ -11051,6 +11052,7 @@ unroll_constant_loops(ASTNode* node)
 			ASTNode* res = astnode_dup(iterated_body,NULL);
 			replace_variable_with_constant_int(res,loop_variable,replacement);
 			push_node(&nodes,res);
+
 		}
 		ASTNode* res = build_list_node(nodes,"");
 		//res is null if we have 0:0 loop then no need to replace
@@ -11058,6 +11060,9 @@ unroll_constant_loops(ASTNode* node)
 		if(res == NULL) return;
 		free_node_vec(&nodes);
 	    	replace_node(node,res);
+		if(node->parent->type == NODE_BEGIN_SCOPE)
+			node->parent->type = NODE_UNKNOWN;
+
 	}
 }
 void
