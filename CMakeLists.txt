@@ -96,11 +96,6 @@ if (NOT CPU_BUILD AND DEFINED ENV{AC_CPU_BUILD})
 	message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
 endif()
 
-if(CPU_BUILD)
-	add_definitions(-DAC_CPU_BUILD=1)
-else()
-	add_definitions(-DAC_CPU_BUILD=0)
-endif()
 
 if(NOT SUPPRESS_COMPILER_WARNINGS)
 add_compile_options(# C/CXX/CUDA/HIP
@@ -155,7 +150,14 @@ elseif (NOT CPU_BUILD AND (USE_HIP OR HIP_FOUND))
     message(STATUS "Enabled HIP architectures (Astaroth): " ${CMAKE_HIP_ARCHITECTURES})
     set(HIP_BUILD ON)
 else()
-    message(ERROR "Did not find CUDA or HIP")
+    set(CPU_BUILD ON)
+    message(WARNING "Did not find CUDA or HIP; Reverting to CPU-only build")
+endif()
+
+if(CPU_BUILD)
+	add_definitions(-DAC_CPU_BUILD=1)
+else()
+	add_definitions(-DAC_CPU_BUILD=0)
 endif()
 
 include(FetchContent)
