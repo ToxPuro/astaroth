@@ -1580,7 +1580,6 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		for(auto& call : current_level_set.calls)
 		{
 			level_set_has_fixed_boundary &= kernel_has_fixed_boundary[call.kernel];
-			fprintf(stderr, "%s has a fixed boundary: %d\n",kernel_names[call.kernel], kernel_has_fixed_boundary[call.kernel]);
 		}
 		if(level_set_has_fixed_boundary)
 		{
