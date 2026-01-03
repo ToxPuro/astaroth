@@ -265,14 +265,17 @@ main(void)
     {
     	//acGridExecuteTaskGraph(jacobi_graph,1);
     	acGridExecuteTaskGraph(sor_rb_graph,1);
-	if(i % 10000 == 0)
+	if(i % 1000 == 0)
 	{
     		acGridExecuteTaskGraph(residual_graph,1);
 		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
-		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
+		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
 		printf("Residual: %zu,%7e\n",i,residual_norm);
 	}
     }
+    acGridExecuteTaskGraph(residual_graph,1);
+    AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+    printf("Final residual: %7e\n",residual_norm);
 
     acGridExecuteTaskGraph(acGetDSLTaskGraph(get_potential_with_sph),1);
     AcReal M_00 = ((4*AC_REAL_PI*R*R*R)/3.0)*sqrt(4*AC_REAL_PI);
@@ -299,6 +302,11 @@ main(void)
 
 
     int retval = AC_SUCCESS;
+    if(residual_norm > 4e-8)
+    {
+	    fprintf(stderr,"Residual is too large: %.14e\n",residual_norm);
+	    retval = AC_FAILURE;
+    }
     acGridQuit();
     ac_MPI_Finalize();
     fflush(stdout);
@@ -308,7 +316,7 @@ main(void)
         fprintf(stderr, "POISSON_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
-    return EXIT_SUCCESS;
+    return retval;
 }
 
 #else
