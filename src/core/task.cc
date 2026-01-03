@@ -1991,6 +1991,20 @@ HaloExchangeTask::exchange()
     	exchangeHost();
     }
 }
+//We use this instead of MPI_Testall since MPI_Testall does not always allow null requests (Cray MPICH on LUMI for instance)
+bool
+mpi_test_all(const size_t n, MPI_Request* requests)
+{
+	bool requests_completed = true;
+	for(size_t i = 0; i < n; ++i)
+	{
+		if(requests[i] == MPI_REQUEST_NULL) continue;
+		int completed;
+		ERRCHK_ALWAYS(MPI_Test(&requests[i],&completed, MPI_STATUS_IGNORE) == MPI_SUCCESS);
+		requests_completed &= (completed == 1);
+	}
+	return requests_completed;
+}
 
 bool
 HaloExchangeTask::test()
@@ -2007,9 +2021,7 @@ HaloExchangeTask::test()
     }
     case HaloExchangeState::Exchanging: {
         auto msg = recv_buffers.get_current_buffer();
-        int request_complete;
-        ERRCHK_ALWAYS(MPI_Testall(msg->requests.size(), msg->requests.data(), &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
-        return request_complete ? true : false;
+	return mpi_test_all(msg->requests.size(), msg->requests.data());
     }
     default: {
         ERROR("HaloExchangeTask in an invalid state.");
@@ -2197,9 +2209,7 @@ PeriodicRayTask::test()
     }
     case PeriodicRayTaskState::Communicating: {
         auto msg = buffers.get_current_buffer();
-        int request_complete;
-        ERRCHK_ALWAYS(MPI_Testall(msg->requests.size(), msg->requests.data(), &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
-        return request_complete ? true : false;
+	return mpi_test_all(msg->requests.size(), msg->requests.data());
     }
     default: {
         ERROR("MPIScanTask in an invalid state.");
@@ -2379,9 +2389,7 @@ MPIScanTask::test()
     }
     case MPIScanTaskState::Communicating: {
         auto msg = reduce_buffers.get_current_buffer();
-        int request_complete;
-        ERRCHK_ALWAYS(MPI_Testall(msg->requests.size(), msg->requests.data(), &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
-        return request_complete ? true : false;
+	return mpi_test_all(msg->requests.size(), msg->requests.data());
     }
     default: {
         ERROR("MPIScanTask in an invalid state.");
@@ -2544,9 +2552,7 @@ ReduceTask::test()
         return poll_stream();
     }
     case ReduceState::Communicating: {
-        int requests_completed;
-	ERRCHK_ALWAYS(MPI_Testall(NUM_OUTPUTS+NUM_PROFILES,requests,&requests_completed, MPI_STATUS_IGNORE) == MPI_SUCCESS);
-        return requests_completed ? true : false;
+	return mpi_test_all((size_t)NUM_OUTPUTS+NUM_PROFILES,requests);
     }
     default: {
         ERROR("ReduceTask in an invalid state.");
