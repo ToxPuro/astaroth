@@ -240,7 +240,7 @@ gmg_level_step(const int level, const int max_level)
 				       //
   if(level == max_level)
   {
-	acGridExecuteTaskGraph(sor_graph,100);
+	acGridExecuteTaskGraph(sor_graph,1000);
   }
   else
   {
@@ -250,7 +250,6 @@ gmg_level_step(const int level, const int max_level)
           const Volume launch_end = launch_dims + launch_start;
           const auto restrict_graph = acGetOptimizedDSLTaskGraph(gmg_restrict_residual, launch_start, launch_end); 
           acGridExecuteTaskGraph(restrict_graph,1); //Restrict residual to the next level
-  	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 	  gmg_level_step(level+1,max_level);
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level

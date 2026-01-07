@@ -45,6 +45,27 @@ int3 AC_nlocal_gmg_level_4 =
 				       				  (AC_nlocal_gmg_level_3.z)/level_divisor.z
 			     }
 
+get_gmg_level_dims(int level)
+{
+	if(level == 1)
+	{
+		return AC_nlocal_gmg_level_1
+	}
+	if(level == 2)
+	{
+		return AC_nlocal_gmg_level_2
+	}
+	if(level == 3)
+	{
+		return AC_nlocal_gmg_level_3
+	}
+	if(level == 4)
+	{
+		return AC_nlocal_gmg_level_4
+	}
+	return AC_nlocal_gmg_level_0
+}
+
 int3 AC_mlocal_gmg_level_0 = AC_nlocal_gmg_level_0 + 2*AC_nmin
 int3 AC_mlocal_gmg_level_1 = AC_nlocal_gmg_level_1 + 2*AC_nmin
 int3 AC_mlocal_gmg_level_2 = AC_nlocal_gmg_level_2 + 2*AC_nmin
@@ -112,7 +133,7 @@ input GMG_LEVEL AC_GMG_LEVEL
 
 Kernel gmg_restrict_residual_kernel(GMG_LEVEL level)
 {
-	restrict_full_weighting(GMG_RESIDUALS[level],GMG_RHS[level+1])
+	restrict_full_weighting(GMG_RESIDUALS[level],GMG_RHS[level+1],get_gmg_level_dims(level))
 	//The residual is most likely small so zero is a meaningful starting value
 	write(GMG_SOLUTIONS[level+1],0.0)
 }

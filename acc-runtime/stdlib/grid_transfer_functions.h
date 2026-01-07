@@ -97,7 +97,7 @@ restrict_full_weighting_3d_odd(Field fine_residual, Field coarse_residual)
 /*
  * Meant to be launched on the coarse grid
  */
-restrict_full_weighting(Field fine_residual, Field coarse_residual)
+restrict_full_weighting(Field fine_residual, Field coarse_residual, int3 fine_dimensions)
 {
 	const int3 launch_dims = end-start;
 	if(AC_dimension_inactive == (bool3){false,true,true})
@@ -105,7 +105,7 @@ restrict_full_weighting(Field fine_residual, Field coarse_residual)
 		restrict_full_weighting_1d(fine_residual,coarse_residual)
 	}
 	//Assumes a cube
-	else if(launch_dims.x % 2 == 0)
+	else if(fine_dimensions.x % 2 == 0)
 	{
 		restrict_full_weighting_3d_even(fine_residual,coarse_residual)
 	}
@@ -145,41 +145,40 @@ linear_prolongation(Field coarse_residual)
 trilinear_prolongation_even(Field coarse_residual)
 {
 	coarse_vertexIdx = localCompdomainVertexIdx/2 + AC_nmin
-	res = 0.0
 	real x_weights[2]
 	real y_weights[2]
 	real z_weights[2]
 	if(localCompdomainVertexIdx.x % 2 == 0)
 	{
-		x_weights[1] = 3.0
-		x_weights[2] = 1.0
+		x_weights[0] = 3.0
+		x_weights[1] = 1.0
 	}
 	else
 	{
-		x_weights[1] = 1.0
-		x_weights[2] = 3.0
+		x_weights[0] = 1.0
+		x_weights[1] = 3.0
 	}
 
 	if(localCompdomainVertexIdx.y % 2 == 0)
 	{
-		y_weights[1] = 3.0
-		y_weights[2] = 1.0
+		y_weights[0] = 3.0
+		y_weights[1] = 1.0
 	}
 	else
 	{
-		y_weights[1] = 1.0
-		y_weights[2] = 3.0
+		y_weights[0] = 1.0
+		y_weights[1] = 3.0
 	}
 
 	if(localCompdomainVertexIdx.z % 2 == 0)
 	{
-		z_weights[1] = 3.0
-		z_weights[2] = 1.0
+		z_weights[0] = 3.0
+		z_weights[1] = 1.0
 	}
 	else
 	{
-		z_weights[1] = 1.0
-		z_weights[2] = 3.0
+		z_weights[0] = 1.0
+		z_weights[1] = 3.0
 	}
 	res = 0.0
 	for di in -1:1
@@ -189,29 +188,19 @@ trilinear_prolongation_even(Field coarse_residual)
 			for dk in -1:1
 			{
 				weight = x_weights[di+1]*y_weights[dj+1]*z_weights[dk+1]	
-				res   += weight*coarse_residual[coarse_vertexIdx.x+di][coarse_vertexIdx.x+dj][coarse_vertexIdx.x+dk]
+				res   += weight*coarse_residual[coarse_vertexIdx.x+di][coarse_vertexIdx.y+dj][coarse_vertexIdx.z+dk]
 			}
 		}
 	}
+	res /= 64.0
 	return res
 }
-
 /*
  * Meant to be launched on the fine grid
  */
-trilinear_prolongation(Field coarse_residual)
+trilinear_prolongation_odd(Field coarse_residual)
 {
-	const int3 launch_dims = end-start;
-	if(AC_dimension_inactive == (bool3){false,true,true})
-	{
-		return linear_prolongation(coarse_residual)
-	}
-	//Assumes a cube
-	else if(launch_dims.x % 2 == 0)
-	{
-		trilinear_prolongation_even(coarse_residual)
-	}
-	const int3 shifted_index = vertexIdx - NGHOST + 1
+	const int3 shifted_index = localCompdomainVertexIdx + 1
 	const bool I_even = (shifted_index.x % 2 == 0)
 	const bool J_even = (shifted_index.y % 2 == 0)
 	const bool K_even = (shifted_index.z % 2 == 0)
@@ -284,5 +273,25 @@ trilinear_prolongation(Field coarse_residual)
 				)
 	}
 	return 0.0
+}
+/*
+ * Meant to be launched on the fine grid
+ */
+trilinear_prolongation(Field coarse_residual)
+{
+	const int3 launch_dims = end-start;
+	if(AC_dimension_inactive == (bool3){false,true,true})
+	{
+		return linear_prolongation(coarse_residual)
+	}
+	//Assumes a cube
+	else if(launch_dims.x % 2 == 0)
+	{
+		return trilinear_prolongation_even(coarse_residual)
+	}
+	else
+	{
+		return trilinear_prolongation_odd(coarse_residual)
+	}
 }
 #endif

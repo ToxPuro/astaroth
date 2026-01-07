@@ -299,7 +299,8 @@ Kernel gmg_copy_rhs_to_residual_kernel(GMG_LEVEL level)
 
 Kernel gmg_restrict_solution_kernel(GMG_LEVEL level)
 {
-	restrict_full_weighting(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level+1])
+	int l = level
+	restrict_full_weighting(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level+1],get_gmg_level_dims(level))
 }
 
 

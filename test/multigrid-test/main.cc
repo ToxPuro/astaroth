@@ -173,6 +173,78 @@ main(int argc, char* argv[])
 	    if(a != 0.0 && b == 0.0) return false;
 	    return relative_diff(a,b) < epsilon;
     };
+    int3 n_local = info[level_dims[0]];
+    for(int x = NGHOST; x < n_local.x+2*NGHOST;++x)
+    {
+    	for(int y = NGHOST; y < n_local.y+2*NGHOST;++y)
+    	{
+    		for(int z = NGHOST; z < n_local.z+2*NGHOST;++z)
+    		{
+    	    		const int index = acVertexBufferIdx(x,y,z,info,GMG_SOLUTIONS[0]);
+    	    		model.vertex_buffer[GMG_SOLUTIONS[0]][index] = 0.0;
+
+		}
+	}
+    }
+    n_local = info[level_dims[1]];
+    for(int x = NGHOST; x < n_local.x+2*NGHOST;++x)
+    {
+    	for(int y = NGHOST; y < n_local.y+2*NGHOST;++y)
+    	{
+    		for(int z = NGHOST; z < n_local.z+2*NGHOST;++z)
+    		{
+    	    		const int index = acVertexBufferIdx(x,y,z,info,GMG_SOLUTIONS[1]);
+    	    		model.vertex_buffer[GMG_SOLUTIONS[1]][index] = 0.0;
+
+		}
+	}
+    }
+
+    for(int x = NGHOST; x < n_local.x+NGHOST;++x)
+    {
+    	for(int y = NGHOST; y < n_local.y+NGHOST;++y)
+    	{
+    		for(int z = NGHOST; z < n_local.z+NGHOST;++z)
+    		{
+    	    		const int index = acVertexBufferIdx(x,y,z,info,GMG_SOLUTIONS[1]);
+    	    		model.vertex_buffer[GMG_SOLUTIONS[1]][index] = 1.0;
+		}
+	}
+    }
+    acDeviceLoadMesh(acGridGetDevice(),STREAM_DEFAULT,model);
+    acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1);
+    acDeviceStoreMesh(acGridGetDevice(),STREAM_DEFAULT,&model);
+    n_local = info[level_dims[0]];
+    for(int x = NGHOST; x < n_local.x+NGHOST;++x)
+    {
+    	for(int y = NGHOST; y < n_local.y+NGHOST;++y)
+    	{
+    		for(int z = NGHOST; z < n_local.z+NGHOST;++z)
+    		{
+    	    		const int index = acVertexBufferIdx(x,y,z,info,GMG_SOLUTIONS[0]);
+			if(x == 12 && y == 12 && z == 12)
+			{
+				fprintf(stderr,"Prolonged values at (%d,%d,%d): %.14e\n",x,y,z,model.vertex_buffer[GMG_SOLUTIONS[0]][index]);
+			}
+		}
+	}
+    }
+    n_local = info[level_dims[1]];
+    for(int x = NGHOST; x < n_local.x+NGHOST;++x)
+    {
+    	for(int y = NGHOST; y < n_local.y+NGHOST;++y)
+    	{
+    		for(int z = NGHOST; z < n_local.z+NGHOST;++z)
+    		{
+    	    		const int index = acVertexBufferIdx(x,y,z,info,GMG_SOLUTIONS[1]);
+			//fprintf(stderr,"Coarse values: %.14e\n",model.vertex_buffer[GMG_SOLUTIONS[1]][index]);
+		}
+	}
+    }
+    //exit(EXIT_SUCCESS);
+
+
     const auto test_restriction = [&]()
     {
     	//Test restriction operator on random data
@@ -351,7 +423,7 @@ main(int argc, char* argv[])
 
 
     bool prolongation_correct = true;
-    const int3 n_local = info[level_dims[1]];
+    n_local = info[level_dims[1]];
     const int3 m_local = n_local + 2*NGHOST;
     for(int x = NGHOST; x < n_local.x+NGHOST;++x)
     {
