@@ -474,7 +474,15 @@ dryrun(void)
     acDeviceSetInput(acGridGetDevice(), AC_dt,0.0);
     acDeviceSetInput(acGridGetDevice(), AC_current_time,0.0);
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
+    //If we would all of them together
+    //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
+    const int num_substeps = 3;
+    for(int substep = 0; substep < num_substeps;  ++substep)
+    {
+	    acDeviceSetInput(acGridGetDevice(),(AC_SUBSTEP_NUMBER)substep);
+    	    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
+
+    }
     acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0, dims.n1);
     acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
 
@@ -1554,7 +1562,14 @@ main(int argc, char** argv)
         // Execute the active task graph for 3 iterations (default graph has three subtasks)
         // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
         // to acGridIntegrate(STREAM_DEFAULT, dt)
-        acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
+	//
+	// If we would do all substeps together
+        //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
+    	for(int substep = 0; substep < num_substeps;  ++substep)
+    	{
+    	        acDeviceSetInput(acGridGetDevice(),(AC_SUBSTEP_NUMBER)substep);
+    		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
+    	}
         simulation_time += dt;
 
         if (log_progress) {
