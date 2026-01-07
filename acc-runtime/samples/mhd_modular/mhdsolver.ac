@@ -832,6 +832,8 @@ BoundConds boundconds{
   periodic(BOUNDARY_Z)
 }
 
+input AC_SUBSTEP_NUMBER AC_SUBSTEP
+
 ComputeSteps AC_rhs_substep(boundconds)
 {
         twopass_solve_intermediate((AC_SUBSTEP_NUMBER)AC_ITERATION_NUMBER,AC_dt)

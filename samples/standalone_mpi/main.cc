@@ -479,7 +479,7 @@ dryrun(void)
     const int num_substeps = 3;
     for(int substep = 0; substep < num_substeps;  ++substep)
     {
-	    acDeviceSetInput(acGridGetDevice(),(AC_SUBSTEP_NUMBER)substep);
+	    acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
     	    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
 
     }
@@ -1567,7 +1567,7 @@ main(int argc, char** argv)
         //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
-    	        acDeviceSetInput(acGridGetDevice(),(AC_SUBSTEP_NUMBER)substep);
+    	        acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
     		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
     	}
         simulation_time += dt;
