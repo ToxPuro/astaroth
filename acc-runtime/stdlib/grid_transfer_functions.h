@@ -1,9 +1,62 @@
 #ifndef AC_GRID_TRANSFER_FUNCTIONS_H
 #define AC_GRID_TRANSFER_FUNCTIONS_H
+
 /*
  * Meant to be launched on the coarse grid
  */
-restrict_full_weighting(Field fine_residual, Field coarse_residual)
+restrict_full_weighting_1d(Field fine_residual, Field coarse_residual)
+{
+		i = 2*vertexIdx.x + 1 - NGHOST 
+		j = vertexIdx.y 
+		k = vertexIdx.z 
+		res = 0.0
+		int di
+		for di in -1:2
+		{
+			//Facet class 3 has the weight 1
+			weight = 1
+			facet_class = abs(di)
+			if(facet_class == 0)
+			{
+				weight = 2.0
+			}
+			else if(facet_class == 1)
+			{
+				weight = 1.0
+			}
+			res += weight*fine_residual[i+di][j][k]
+		}
+		res /= 4.0
+		write(coarse_residual,res);
+}
+
+/*
+ * Meant to be launched on the coarse grid
+ */
+restrict_full_weighting_3d_even(Field fine_residual, Field coarse_residual)
+{
+	fine_vertexIdx = localCompdomainVertexIdx*2 + AC_nmin
+	interpolation_weights = [1,3,3,1]
+	res = 0.0
+	for di in 0:3
+	{
+		for dj in 0:3
+		{
+			for dk in 0:3
+			{
+				weight = interpolation_weights[di]*interpolation_weights[dj]*interpolation_weights[dk]
+				res    += weight*fine_residual[fine_vertexIdx.x+di][fine_vertexIdx.y+dj][fine_vertexIdx.z+dk]
+			}
+		}
+	}
+	res /= 512.0
+	write(coarse_residual,res);
+}
+
+/*
+ * Meant to be launched on the coarse grid
+ */
+restrict_full_weighting_3d_odd(Field fine_residual, Field coarse_residual)
 {
 	i = 2*vertexIdx.x + 1 - NGHOST 
 	j = 2*vertexIdx.y + 1 - NGHOST 
@@ -42,11 +95,122 @@ restrict_full_weighting(Field fine_residual, Field coarse_residual)
 }
 
 /*
+ * Meant to be launched on the coarse grid
+ */
+restrict_full_weighting(Field fine_residual, Field coarse_residual)
+{
+	const int3 launch_dims = end-start;
+	if(AC_dimension_inactive == (bool3){false,true,true})
+	{
+		restrict_full_weighting_1d(fine_residual,coarse_residual)
+	}
+	//Assumes a cube
+	else if(launch_dims.x % 2 == 0)
+	{
+		restrict_full_weighting_3d_even(fine_residual,coarse_residual)
+	}
+	else
+	{
+		restrict_full_weighting_3d_odd(fine_residual,coarse_residual)
+	}
+}
+
+/*
+ * Meant to be launched on the fine grid
+ */
+linear_prolongation(Field coarse_residual)
+{
+	const int3 shifted_index = vertexIdx - NGHOST + 1
+	const bool I_even = (shifted_index.x % 2 == 0)
+	const int3 coarse_vertexIdx = (shifted_index/ 2) + NGHOST - 1
+
+	if(I_even) 
+	{
+		return coarse_residual[coarse_vertexIdx.x][vertexIdx.y][vertexIdx.z]
+	}
+	else
+	{
+		return 
+			0.5*(  coarse_residual[coarse_vertexIdx.x][vertexIdx.y][vertexIdx.z]
+			     + coarse_residual[coarse_vertexIdx.x+1][vertexIdx.y][vertexIdx.z]
+			    )
+
+	}
+	return 0.0
+}
+
+/*
+ * Meant to be launched on the fine grid
+ */
+trilinear_prolongation_even(Field coarse_residual)
+{
+	coarse_vertexIdx = localCompdomainVertexIdx/2 + AC_nmin
+	res = 0.0
+	real x_weights[2]
+	real y_weights[2]
+	real z_weights[2]
+	if(localCompdomainVertexIdx.x % 2 == 0)
+	{
+		x_weights[1] = 3.0
+		x_weights[2] = 1.0
+	}
+	else
+	{
+		x_weights[1] = 1.0
+		x_weights[2] = 3.0
+	}
+
+	if(localCompdomainVertexIdx.y % 2 == 0)
+	{
+		y_weights[1] = 3.0
+		y_weights[2] = 1.0
+	}
+	else
+	{
+		y_weights[1] = 1.0
+		y_weights[2] = 3.0
+	}
+
+	if(localCompdomainVertexIdx.z % 2 == 0)
+	{
+		z_weights[1] = 3.0
+		z_weights[2] = 1.0
+	}
+	else
+	{
+		z_weights[1] = 1.0
+		z_weights[2] = 3.0
+	}
+	res = 0.0
+	for di in -1:1
+	{
+		for dj in -1:1
+		{
+			for dk in -1:1
+			{
+				weight = x_weights[di+1]*y_weights[dj+1]*z_weights[dk+1]	
+				res   += weight*coarse_residual[coarse_vertexIdx.x+di][coarse_vertexIdx.x+dj][coarse_vertexIdx.x+dk]
+			}
+		}
+	}
+	return res
+}
+
+/*
  * Meant to be launched on the fine grid
  */
 trilinear_prolongation(Field coarse_residual)
 {
-
+	const int3 launch_dims = end-start;
+	if(AC_dimension_inactive == (bool3){false,true,true})
+	{
+		return linear_prolongation(coarse_residual)
+	}
+	//Assumes a cube
+	else if(launch_dims.x % 2 == 0)
+	{
+		trilinear_prolongation_even(coarse_residual)
+	}
 	const int3 shifted_index = vertexIdx - NGHOST + 1
 	const bool I_even = (shifted_index.x % 2 == 0)
 	const bool J_even = (shifted_index.y % 2 == 0)
