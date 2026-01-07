@@ -183,7 +183,7 @@ derzz_central_coeff_helper(real coef, real inv_spacing2)
 
 derzz_2nd_central_coeff()
 {
-	return derzz_central_coeff_helper(DER2_2nd_0,AC_inv_ds_2.x)
+	return derzz_central_coeff_helper(DER2_2nd_0,AC_inv_ds_2.z)
 }
 
 derzz_2nd_central_coeff(real inv_spacing_2)
