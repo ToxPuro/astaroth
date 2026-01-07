@@ -1,3 +1,5 @@
+#ifndef AC_GRID_FUNCS_H
+#define AC_GRID_FUNCS_H
 
 grid_position() {
 //MR: generalize, using x,y,z?
@@ -16,3 +18,4 @@ grid_center() {
 //TP: implicitly assumes equidistant grid
     return (0.5*AC_len) + AC_first_gridpoint;
 }
+#endif
