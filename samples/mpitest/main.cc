@@ -214,7 +214,7 @@ main(int argc, char* argv[])
     acGridIntegrate(STREAM_DEFAULT, dt);
     acGridSynchronizeStream(STREAM_DEFAULT);
 
-    AcTaskGraph* dsl_graph = acGetOptimizedDSLTaskGraph(AC_test_rhs);
+    AcTaskGraph* dsl_graph = acGetOptimizedDSLTaskGraph(AC_rhs_substep);
     acGridExecuteTaskGraph(dsl_graph,1);
     acGridSynchronizeStream(STREAM_DEFAULT);
 
