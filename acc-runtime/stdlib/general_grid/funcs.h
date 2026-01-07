@@ -10,6 +10,10 @@
 grid_position() {
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
 	{
+	    	if(AC_equidistant_in_all_directions)
+	    	{
+    	    	    return ((globalVertexIdx - AC_nmin)*AC_ds) + AC_first_gridpoint
+	    	}
 		return 
 			real3(
 				AC_x[vertexIdx.x],
@@ -142,8 +146,14 @@ grid_position_extended(int3 local_point) {
 }
 
 grid_center() {
+//MR: generalize, using x,y,z?
+//TP: implicitly assumes equidistant grid
     if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
     {
+	    if(AC_equidistant_in_all_directions)
+	    {
+    		return (0.5*AC_len) + AC_first_gridpoint;
+	    }
 	    return real3(
 			    AC_x[AC_ngrid.x/2],
 			    AC_y[AC_ngrid.y/2],
