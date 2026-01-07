@@ -145,9 +145,9 @@ grid_center() {
     if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
     {
 	    return real3(
-			    AC_x[AC_nxgrid.x/2],
-			    AC_y[AC_nxgrid.y/2],
-			    AC_z[AC_nzgrid.z/2]
+			    AC_x[AC_ngrid.x/2],
+			    AC_y[AC_ngrid.y/2],
+			    AC_z[AC_ngrid.z/2]
 			)
     }
     fatal_error_message(false,"grid_center only implemented in Cartesian!\n");
