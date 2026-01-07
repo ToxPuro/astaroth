@@ -3123,15 +3123,17 @@ gen_user_structs()
 		bool all_ints  = true;
 		bool all_scalar_types = true;
 		bool all_fields = true;
+		bool all_boolean_types = true;
 		for(size_t j = 0; j < s_info.user_struct_field_types[i].size; ++j)
 		{
+			all_boolean_types &= s_info.user_struct_field_types[i].data[j] == BOOL_STR;
 			all_reals        &=  s_info.user_struct_field_types[i].data[j] == REAL_STR;
 			all_ints         &=  s_info.user_struct_field_types[i].data[j] == INT_STR;
 			all_fields       &=  s_info.user_struct_field_types[i].data[j] == FIELD_STR;
 			all_scalar_types &= s_info.user_struct_field_types[i].data[j] == REAL_STR || s_info.user_struct_field_types[i].data[j] == INT_STR;
 		}
 
-		if(all_fields)
+		if(all_fields || all_boolean_types)
 		{
 			fprintf(fp,"#ifdef __cplusplus\n");
 			create_comp_op(s_info,i,fp);
