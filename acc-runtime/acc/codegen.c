@@ -707,6 +707,7 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("threadIdx"));       // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("blockIdx"));        // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("vertexIdx"));       // TODO REMOVE
+  add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("localCompdomainVertexIdx"));       // TODO REMOVE
   //add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("idx"));       // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("tid"));       // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("start"));       // TODO REMOVE
