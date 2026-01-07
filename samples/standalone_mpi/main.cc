@@ -1565,6 +1565,7 @@ main(int argc, char** argv)
 	//
 	// If we would do all substeps together
         //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
+	const int num_substeps = 3;
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
     	        acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
