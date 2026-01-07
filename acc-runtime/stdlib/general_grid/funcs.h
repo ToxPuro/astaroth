@@ -146,8 +146,6 @@ grid_position_extended(int3 local_point) {
 }
 
 grid_center() {
-//MR: generalize, using x,y,z?
-//TP: implicitly assumes equidistant grid
     if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
     {
 	    if(AC_equidistant_in_all_directions)
