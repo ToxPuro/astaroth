@@ -315,7 +315,10 @@ run_const AcCoordinateSystem AC_coordinate_system = AC_CARTESIAN_COORDINATES;
  * Specifies are the given dimensions equidistant or not.
  */
 run_const bool3 AC_nonequidistant_grid = (bool3){false,false,false};
-
+/**
+ * Helper variable to know are we fully equidistant
+ */
+run_const bool AC_equidistant_in_all_directions = AC_nonequidistant_grid.x && AC_nonequidistant_grid.y && AC_nonequidistant_grid.z
 /**
  * Option to make the autotuning faster by considering less possible configurations.
  */
