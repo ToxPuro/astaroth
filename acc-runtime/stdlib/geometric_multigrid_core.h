@@ -6,9 +6,11 @@ int3 level_divisor = (int3)
 	AC_dimension_inactive.z ? 1 : 2
 }
 
+bool AC_power_of_two_minus_one_grid = false;
+
 int3 AC_nlocal_gmg_level_0 = AC_nlocal
 int3 AC_nlocal_gmg_level_1 =
-			     (int3){
+			     AC_power_of_two_minus_one_grid ? AC_nlocal_gmg_level_0/2 : (int3){
 			       AC_nlocal_gmg_level_0.x % 2 == 0 ? (AC_nlocal_gmg_level_0.x-2)/level_divisor.x :
 				       				  (AC_nlocal_gmg_level_0.x)/level_divisor.x,
 			       AC_nlocal_gmg_level_0.y % 2 == 0 ? (AC_nlocal_gmg_level_0.y-2)/level_divisor.y :
@@ -18,7 +20,7 @@ int3 AC_nlocal_gmg_level_1 =
 			     }
 
 int3 AC_nlocal_gmg_level_2 =
-			     (int3){
+			     AC_power_of_two_minus_one_grid ? AC_nlocal_gmg_level_1/2 : (int3){
 			       AC_nlocal_gmg_level_1.x % 2 == 0 ? (AC_nlocal_gmg_level_1.x-2)/level_divisor.x :
 				       		       	  (AC_nlocal_gmg_level_1.x)/level_divisor.x,
 			       AC_nlocal_gmg_level_1.y % 2 == 0 ? (AC_nlocal_gmg_level_1.y-2)/level_divisor.y :
@@ -27,7 +29,7 @@ int3 AC_nlocal_gmg_level_2 =
 				       				  (AC_nlocal_gmg_level_1.z)/level_divisor.z
 			     }
 int3 AC_nlocal_gmg_level_3 =
-			     (int3){
+			     AC_power_of_two_minus_one_grid ? AC_nlocal_gmg_level_2/2 : (int3){
 			       AC_nlocal_gmg_level_2.x % 2 == 0 ? (AC_nlocal_gmg_level_2.x-2)/level_divisor.x :
 				       		       	  (AC_nlocal_gmg_level_2.x)/level_divisor.x,
 			       AC_nlocal_gmg_level_2.y % 2 == 0 ? (AC_nlocal_gmg_level_2.y-2)/level_divisor.y :
@@ -36,7 +38,7 @@ int3 AC_nlocal_gmg_level_3 =
 				       				  (AC_nlocal_gmg_level_2.z)/level_divisor.z
 			     }
 int3 AC_nlocal_gmg_level_4 =
-			     (int3){
+			     AC_power_of_two_minus_one_grid ? AC_nlocal_gmg_level_3/2 : (int3){
 			       AC_nlocal_gmg_level_3.x % 2 == 0 ? (AC_nlocal_gmg_level_3.x-2)/level_divisor.x :
 				       		      	  (AC_nlocal_gmg_level_3.x)/level_divisor.x,
 			       AC_nlocal_gmg_level_3.y % 2 == 0 ? (AC_nlocal_gmg_level_3.y-2)/level_divisor.y :
