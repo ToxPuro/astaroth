@@ -421,3 +421,7 @@ dconst bool AC_autotuning_at_work = false
  * Helps to save memory but will have performance effect
  */
 run_const bool AC_only_default_stream_for_taskgraphs = false
+/**
+ * By default the grid has to be divisible evenly to processes
+ */
+run_const bool AC_allow_non_divisible_grid = false

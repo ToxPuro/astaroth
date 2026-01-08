@@ -339,21 +339,25 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 
     const uint3_64 decomp = get_decomp(global_config);
 
-    ERRCHK_ALWAYS(submesh_config[AC_ngrid].x % decomp.x == 0);
-    ERRCHK_ALWAYS(submesh_config[AC_ngrid].y % decomp.y == 0);
-    ERRCHK_ALWAYS(submesh_config[AC_ngrid].z % decomp.z == 0);
 
-    const Volume nn = acGetGridNN(submesh_config);
-    const auto submesh_n_size_t = nn / decomp;
-    int3 submesh_n = (int3){(int)submesh_n_size_t.x,(int)submesh_n_size_t.y,(int)submesh_n_size_t.z};
+    if(!global_config[AC_allow_non_divisible_grid])
+    {
+    	ERRCHK_ALWAYS(submesh_config[AC_ngrid].x % decomp.x == 0);
+    	ERRCHK_ALWAYS(submesh_config[AC_ngrid].y % decomp.y == 0);
+    	ERRCHK_ALWAYS(submesh_config[AC_ngrid].z % decomp.z == 0);
 
-    set_info_val(submesh_config,AC_nlocal,submesh_n);
+    	const Volume nn = acGetGridNN(submesh_config);
+    	const auto submesh_n_size_t = nn / decomp;
+    	int3 submesh_n = (int3){(int)submesh_n_size_t.x,(int)submesh_n_size_t.y,(int)submesh_n_size_t.z};
+    	set_info_val(submesh_config,AC_nlocal,submesh_n);
+    }
+
     const int3 pid3d = getPid3D(global_config);
     const int3 offset =
     (int3){
-	    (int)pid3d.x*submesh_n.x,
-	    (int)pid3d.y*submesh_n.y,
-	    (int)pid3d.z*submesh_n.z
+	    (int)pid3d.x*submesh_config[AC_nlocal].x,
+	    (int)pid3d.y*submesh_config[AC_nlocal].y,
+	    (int)pid3d.z*submesh_config[AC_nlocal].z
     };
     set_info_val(submesh_config,AC_multigpu_offset,offset);
     submesh_config[AC_multigpu_offset] = offset;
@@ -374,6 +378,7 @@ get_global_nn()
 static void
 check_that_decomp_valid(const AcMeshInfo info)
 {
+    if(info[AC_allow_non_divisible_grid]) return;
     const uint3_64 decomp = get_decomp(info);
     const Volume nn = acGetGridNN(info);
     const bool nx_valid = nn.x % decomp.x == 0;
@@ -858,9 +863,9 @@ acGridInitBase(const AcMesh user_mesh)
 
     const int pid = ac_pid();
     acLogFromRootProc(pid, "acGridInit: n[xyz]grid: (%d,%d,%d) n[xyz]local (%d,%d,%d)\n",
-		    submesh_info[AC_ngrid].x,submesh_info[AC_ngrid].y,submesh_info[AC_ngrid].z,
-		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
-		    );
+    		    submesh_info[AC_ngrid].x,submesh_info[AC_ngrid].y,submesh_info[AC_ngrid].z,
+    		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
+    		    );
     acLogFromRootProc(pid, "acGridInit: Calling acDeviceCreate\n");
     acVerboseLogFromRootProc(pid,"memusage before acDeviceCreate = %f MBytes\n",acMemUsage()/1024.0);
 
@@ -2152,8 +2157,15 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	if(old_tpb == (int3){-1,-1,-1})
 	{
     		AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    		acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
-    		acGridSynchronizeStream(STREAM_ALL);
+    		if(!acGridGetLocalMeshInfo()[AC_allow_non_divisible_grid])
+		{
+    			acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
+    			acGridSynchronizeStream(STREAM_ALL);
+		}
+		else
+		{
+    			acDeviceLaunchKernel(acGridGetDevice(),STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
+		}
 	}
 
     };

@@ -29,6 +29,7 @@ typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcComplex(x,y)   (AcComplex){x,y}
 static bool initialized = false;
 static AcBool3 dimension_inactive{};
+static bool uneven_grid_decomp{};
 static int3 raytracing_subblock{};
 static int  x_ray_shared_mem_block_size{};
 static int  z_ray_shared_mem_block_size{};
@@ -579,6 +580,7 @@ acRuntimeInit(const AcMeshInfo config)
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   acAllocateArrays(config);
   acReadOptimTBConfigs(to_volume(config[AC_thread_block_loop_factors]));
+  uneven_grid_decomp = config[AC_allow_non_divisible_grid];
 
   // Empty ac_autotuning.log.
   if (grid_pid == 0)
@@ -1156,7 +1158,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
 	  (end.y >=  (int)vba.computational_dims.n1.y) ||
 	  (end.z >=  (int)vba.computational_dims.n1.z);
 
-  const bool parallel_autotuning = !on_halos && AC_MPI_ENABLED;
+  const bool parallel_autotuning = !on_halos && AC_MPI_ENABLED && !uneven_grid_decomp;
   if (parallel_autotuning)
   {
   	const size_t portion = ceil_div(samples.size(),ac_nprocs);
