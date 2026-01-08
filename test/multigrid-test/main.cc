@@ -70,7 +70,7 @@ main(int argc, char* argv[])
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acLoadConfig("mg.conf", &info);
     acPushToConfig(info,AC_ds,
     (AcReal3){
     	    (2.0*AC_REAL_PI)/info[AC_ngrid].x,
@@ -356,7 +356,7 @@ main(int argc, char* argv[])
     **/
 
 
-    const int n_levels = 3;
+    const int n_levels = info[AC_gmg_number_of_levels];
     gmg_v_cycle(n_levels);
     test_restriction();
     fprintf(stderr,"GMG\n");

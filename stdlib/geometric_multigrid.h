@@ -208,10 +208,10 @@ get_galerkin_operators(AcMeshInfo* info)
 {
     (*info)[AC_GMG_CENTRAL_COEFFS] = &gmg_central_coeffs[0];
     AcMeshInfo& modifiable_info = *info;
-    get_galerkin_operator(modifiable_info,1);
-    get_galerkin_operator(modifiable_info,2);
-    get_galerkin_operator(modifiable_info,3);
-    get_galerkin_operator(modifiable_info,4);
+    for(int level = 0; level < (*info)[AC_gmg_number_of_levels]; ++level)
+    {
+    	get_galerkin_operator(modifiable_info,level);
+    }
     acDeviceLoad(acGridGetDevice(), STREAM_DEFAULT, *info, AC_GMG_CENTRAL_COEFFS);
     acDeviceSynchronizeStream(acGridGetDevice(),STREAM_DEFAULT);
 }
@@ -226,7 +226,7 @@ gmg_setup(AcMeshInfo* info)
 }
 
 void
-gmg_level_step(const int level, const int max_level)
+gmg_level_step(const int level, const int number_of_levels)
 {
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
@@ -238,7 +238,7 @@ gmg_level_step(const int level, const int max_level)
   ///
   acGridExecuteTaskGraph(sor_graph,1); //Pre-smooth step
 				       //
-  if(level == max_level)
+  if(level == number_of_levels-1)
   {
 	acGridExecuteTaskGraph(sor_graph,1000);
   }
@@ -250,7 +250,7 @@ gmg_level_step(const int level, const int max_level)
           const Volume launch_end = launch_dims + launch_start;
           const auto restrict_graph = acGetOptimizedDSLTaskGraph(gmg_restrict_residual, launch_start, launch_end); 
           acGridExecuteTaskGraph(restrict_graph,1); //Restrict residual to the next level
-	  gmg_level_step(level+1,max_level);
+	  gmg_level_step(level+1,number_of_levels);
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level
   	  acGridExecuteTaskGraph(sor_graph,1); //Post-smooth step
@@ -258,7 +258,7 @@ gmg_level_step(const int level, const int max_level)
 }
 
 void
-gmg_v_cycle(const int max_level)
+gmg_v_cycle(const int number_of_levels)
 {
-	gmg_level_step(0,max_level);
+	gmg_level_step(0,number_of_levels);
 }
