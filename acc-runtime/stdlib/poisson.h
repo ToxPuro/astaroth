@@ -12,7 +12,7 @@ poisson_jacobi_update(real b, Field x_prev, real laplace_sign)
 
 poisson_jacobi_update(real b, potential)
 {
-	poisson_jacobi_update(b,potential,1.0)
+	return poisson_jacobi_update(b,potential,1.0)
 }
 
 poisson_jacobi_update(real b, Field x_prev, real laplace_sign,real3 inv_spacings_2)
@@ -24,7 +24,7 @@ poisson_jacobi_update(real b, Field x_prev, real laplace_sign,real3 inv_spacings
 
 poisson_jacobi_update(real b, potential, real3 inv_spacings_2)
 {
-	poisson_jacobi_update(b,potential,1.0,inv_spacings_2)
+	return poisson_jacobi_update(b,potential,1.0,inv_spacings_2)
 }
 
 
