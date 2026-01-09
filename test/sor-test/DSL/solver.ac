@@ -3,10 +3,10 @@
 #include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
 #include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
 #include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
 Field HEAT_INIT
 Field HEAT_SOLUTION
 real AC_k = 1.0
-real AC_SOR_omega = 1.8
 Kernel init_kernel()
 {
 	pos = grid_position()
@@ -17,6 +17,7 @@ Kernel init_kernel()
 
 BoundConds boundconds{
   periodic(BOUNDARY_XYZ)
+  //ac_const_bc(BOUNDARY_XYZ,0.0)
 }
 
 output real AC_residual2
@@ -37,20 +38,31 @@ empty_steps(boundconds)
 }
 
 
-fixed_boundary Kernel sor_red()
+fixed_boundary Kernel sor_red(real omega)
 {
-	poisson_sor_red_black_extended(SOR_RED,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_RED,HEAT_INIT,HEAT_SOLUTION,omega)
 }
-fixed_boundary Kernel sor_black()
+fixed_boundary Kernel sor_black(real omega)
 {
-	poisson_sor_red_black_extended(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,omega)
 }
 
 ComputeSteps
 sor_red_black_step(boundconds)
 {
-	sor_red()
-	sor_black()
+	sor_red(AC_SOR_omega)
+	sor_black(AC_SOR_omega)
+}
+
+fixed_boundary Kernel jacobi_kernel()
+{
+	write(HEAT_SOLUTION,poisson_jacobi_update(HEAT_INIT,HEAT_SOLUTION))
+}
+
+ComputeSteps
+jacobi_step(boundconds)
+{
+	jacobi_kernel()
 }
 
 ComputeSteps
