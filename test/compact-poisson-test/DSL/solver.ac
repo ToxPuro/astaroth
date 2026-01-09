@@ -1,0 +1,77 @@
+#define STENCIL_ORDER (6)
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+Field HEAT_INIT
+Field HEAT_SOLUTION
+real AC_k = 1.0
+Kernel init_kernel()
+{
+	pos = grid_position()
+	write(HEAT_INIT,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z))
+	write(HEAT_SOLUTION,0.0)
+}
+
+
+BoundConds boundconds{
+  periodic(BOUNDARY_XYZ)
+  //ac_const_bc(BOUNDARY_XYZ,0.0)
+}
+
+
+ComputeSteps
+initcond(boundconds)
+{
+	init_kernel()
+}
+ComputeSteps
+empty_steps(boundconds)
+{
+}
+
+fixed_boundary Kernel jacobi_kernel()
+{
+	Mx = compact_poisson_lhs_neighbours(HEAT_SOLUTION)
+	a  = compact_poisson_lhs_central_coeff()
+	f  = compact_poisson_rhs(HEAT_INIT)
+	write(HEAT_SOLUTION,(f-Mx)/a)
+}
+
+ComputeSteps jacobi_step(boundconds)
+{
+	jacobi_kernel()
+}
+
+
+fixed_boundary Kernel sor_red(real omega)
+{
+	poisson_sor_red_black_extended(SOR_RED,HEAT_INIT,HEAT_SOLUTION,omega)
+}
+fixed_boundary Kernel sor_black(real omega)
+{
+	poisson_sor_red_black_extended(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,omega)
+}
+
+ComputeSteps
+sor_red_black_step(boundconds)
+{
+	sor_red(AC_SOR_omega)
+	sor_black(AC_SOR_omega)
+}
+
+output real AC_residual2
+Kernel residual_kernel()
+{
+	r = compact_poisson_rhs(HEAT_INIT)-compact_poisson_lhs(HEAT_SOLUTION)
+	reduce_sum(r*r,AC_residual2)
+}
+
+ComputeSteps
+get_residual(boundconds)
+{
+	residual_kernel()
+}
+

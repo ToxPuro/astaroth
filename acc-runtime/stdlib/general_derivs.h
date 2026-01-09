@@ -67,6 +67,7 @@ Stencil derz_2nd_stencil {
 #define DER2_2nd_1 (1)
 #define DER2_2nd_0 (-2)
 
+
 Stencil derxx_2nd_neighbours_stencil {
     [0][0][-1] = DER2_2nd_1,
     [0][0][1]  = DER2_2nd_1,
@@ -85,6 +86,42 @@ Stencil derxx_2nd_stencil {
     [0][0][-1]  = DER2_2nd_1,
     [0][0][0 ]  = DER2_2nd_0,
     [0][0][1 ]  = DER2_2nd_1
+}
+
+Stencil der2x2y_2nd_stencil {
+    [0][-1][-1]  = DER2_2nd_1*DER2_2nd_1,
+    [0][-1][0 ]  = DER2_2nd_0*DER2_2nd_1,
+    [0][-1][1 ]  = DER2_2nd_1*DER2_2nd_1,
+    [0][ 0][-1]  = DER2_2nd_1*DER2_2nd_1,
+    [0][ 0][0 ]  = DER2_2nd_0*DER2_2nd_1,
+    [0][ 0][1 ]  = DER2_2nd_1*DER2_2nd_1,
+    [0][ 1][-1]  = DER2_2nd_1*DER2_2nd_1,
+    [0][ 1][0 ]  = DER2_2nd_0*DER2_2nd_1,
+    [0][ 1][1 ]  = DER2_2nd_1*DER2_2nd_1
+}
+
+Stencil der2x2z_2nd_stencil {
+    [-1][0][-1]  = DER2_2nd_1*DER2_2nd_1,
+    [-1][0][0 ]  = DER2_2nd_0*DER2_2nd_1,
+    [-1][0][1 ]  = DER2_2nd_1*DER2_2nd_1,
+    [ 0][0][-1]  = DER2_2nd_1*DER2_2nd_1,
+    [ 0][0][0 ]  = DER2_2nd_0*DER2_2nd_1,
+    [ 0][0][1 ]  = DER2_2nd_1*DER2_2nd_1,
+    [ 1][0][-1]  = DER2_2nd_1*DER2_2nd_1,
+    [ 1][0][0 ]  = DER2_2nd_0*DER2_2nd_1,
+    [ 1][0][1 ]  = DER2_2nd_1*DER2_2nd_1
+}
+
+Stencil der2y2z_2nd_stencil {
+    [-1][-1][0]  = DER2_2nd_1*DER2_2nd_1,
+    [-1][0 ][0]  = DER2_2nd_0*DER2_2nd_1,
+    [-1][1 ][0]  = DER2_2nd_1*DER2_2nd_1,
+    [ 0][-1][0]  = DER2_2nd_1*DER2_2nd_1,
+    [ 0][0 ][0]  = DER2_2nd_0*DER2_2nd_1,
+    [ 0][1 ][0]  = DER2_2nd_1*DER2_2nd_1,
+    [ 1][-1][0]  = DER2_2nd_1*DER2_2nd_1,
+    [ 1][0 ][0]  = DER2_2nd_0*DER2_2nd_1,
+    [ 1][1 ][0]  = DER2_2nd_1*DER2_2nd_1
 }
 
 Stencil deryy_2nd_stencil {
@@ -191,8 +228,12 @@ derzz_2nd_central_coeff(real inv_spacing_2)
 	return derzz_central_coeff_helper(DER2_2nd_0,inv_spacing_2)
 }
 
+#define UPWIND_FACTOR (1.0/60.0)
+
 #if STENCIL_ORDER == 2
 
+#undef UPWIND_FACTOR
+#define UPWIND_FACTOR (1.0/2.0)
 #define DER2_0 DER2_2nd_0
 #define derx_stencil  derx_2nd_stencil
 #define dery_stencil  dery_2nd_stencil
@@ -761,6 +802,27 @@ der4x2y_stencil(Field f)
 	return 0.0
 }
 
+der2x2y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der2x2y not implemented with Stencil order 10!\n");
+	return 0.0
+}
+
+der2x2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der2x2z not implemented with Stencil order 10!\n");
+	return 0.0
+}
+
+der2y2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der2y2z not implemented with Stencil order 10!\n");
+	return 0.0
+}
+
 der4x2z_stencil(Field f)
 {
 	suppress_unused_warning(f)
@@ -1245,6 +1307,238 @@ Stencil der3z_stencil {
     [0][0][1]  = AC_inv_ds_3.z * DER3_1,
     [0][0][2]  = AC_inv_ds_3.z * DER3_2,
     [0][0][3]  = AC_inv_ds_3.z * DER3_3
+}
+
+Stencil der2x2y_stencil {
+    [0][-3][-3] = DER2_3 * DER2_3,
+    [0][-2][-3] = DER2_2 * DER2_3,
+    [0][-1][-3] = DER2_1 * DER2_3,
+    [0][ 0][-3] = DER2_0 * DER2_3,
+    [0][ 1][-3] = DER2_1 * DER2_3,
+    [0][ 2][-3] = DER2_2 * DER2_3,
+    [0][ 3][-3] = DER2_3 * DER2_3,
+    [0][-3][-2] = DER2_3 * DER2_2,
+    [0][-2][-2] = DER2_2 * DER2_2,
+    [0][-1][-2] = DER2_1 * DER2_2,
+    [0][ 0][-2] = DER2_0 * DER2_2,
+    [0][ 1][-2] = DER2_1 * DER2_2,
+    [0][ 2][-2] = DER2_2 * DER2_2,
+    [0][ 3][-2] = DER2_3 * DER2_2,
+    [0][-3][-1] = DER2_3 * DER2_1,
+    [0][-2][-1] = DER2_2 * DER2_1,
+    [0][-1][-1] = DER2_1 * DER2_1,
+    [0][ 0][-1] = DER2_0 * DER2_1,
+    [0][ 1][-1] = DER2_1 * DER2_1,
+    [0][ 2][-1] = DER2_2 * DER2_1,
+    [0][ 3][-1] = DER2_3 * DER2_1,
+    [0][-3][ 0] = DER2_3 * DER2_0,
+    [0][-2][ 0] = DER2_2 * DER2_0,
+    [0][-1][ 0] = DER2_1 * DER2_0,
+    [0][ 0][ 0] = DER2_0 * DER2_0,
+    [0][ 1][ 0] = DER2_1 * DER2_0,
+    [0][ 2][ 0] = DER2_2 * DER2_0,
+    [0][ 3][ 0] = DER2_3 * DER2_0,
+    [0][-3][ 1] = DER2_3 * DER2_1,
+    [0][-2][ 1] = DER2_2 * DER2_1,
+    [0][-1][ 1] = DER2_1 * DER2_1,
+    [0][ 0][ 1] = DER2_0 * DER2_1,
+    [0][ 1][ 1] = DER2_1 * DER2_1,
+    [0][ 2][ 1] = DER2_2 * DER2_1,
+    [0][ 3][ 1] = DER2_3 * DER2_1,
+    [0][-3][ 2] = DER2_3 * DER2_2,
+    [0][-2][ 2] = DER2_2 * DER2_2,
+    [0][-1][ 2] = DER2_1 * DER2_2,
+    [0][ 0][ 2] = DER2_0 * DER2_2,
+    [0][ 1][ 2] = DER2_1 * DER2_2,
+    [0][ 2][ 2] = DER2_2 * DER2_2,
+    [0][ 3][ 2] = DER2_3 * DER2_2,
+    [0][-3][ 3] = DER2_3 * DER2_3,
+    [0][-2][ 3] = DER2_2 * DER2_3,
+    [0][-1][ 3] = DER2_1 * DER2_3,
+    [0][ 0][ 3] = DER2_0 * DER2_3,
+    [0][ 1][ 3] = DER2_1 * DER2_3,
+    [0][ 2][ 3] = DER2_2 * DER2_3,
+    [0][ 3][ 3] = DER2_3 * DER2_3
+}
+
+Stencil der2x2z_stencil {
+    [-3][0][-3] = DER2_3 * DER2_3,
+    [-2][0][-3] = DER2_2 * DER2_3,
+    [-1][0][-3] = DER2_1 * DER2_3,
+    [ 0][0][-3] = DER2_0 * DER2_3,
+    [ 1][0][-3] = DER2_1 * DER2_3,
+    [ 2][0][-3] = DER2_2 * DER2_3,
+    [ 3][0][-3] = DER2_3 * DER2_3,
+    [-3][0][-2] = DER2_3 * DER2_2,
+    [-2][0][-2] = DER2_2 * DER2_2,
+    [-1][0][-2] = DER2_1 * DER2_2,
+    [ 0][0][-2] = DER2_0 * DER2_2,
+    [ 1][0][-2] = DER2_1 * DER2_2,
+    [ 2][0][-2] = DER2_2 * DER2_2,
+    [ 3][0][-2] = DER2_3 * DER2_2,
+    [-3][0][-1] = DER2_3 * DER2_1,
+    [-2][0][-1] = DER2_2 * DER2_1,
+    [-1][0][-1] = DER2_1 * DER2_1,
+    [ 0][0][-1] = DER2_0 * DER2_1,
+    [ 1][0][-1] = DER2_1 * DER2_1,
+    [ 2][0][-1] = DER2_2 * DER2_1,
+    [ 3][0][-1] = DER2_3 * DER2_1,
+    [-3][0][ 0] = DER2_3 * DER2_0,
+    [-2][0][ 0] = DER2_2 * DER2_0,
+    [-1][0][ 0] = DER2_1 * DER2_0,
+    [ 0][0][ 0] = DER2_0 * DER2_0,
+    [ 1][0][ 0] = DER2_1 * DER2_0,
+    [ 2][0][ 0] = DER2_2 * DER2_0,
+    [ 3][0][ 0] = DER2_3 * DER2_0,
+    [-3][0][ 1] = DER2_3 * DER2_1,
+    [-2][0][ 1] = DER2_2 * DER2_1,
+    [-1][0][ 1] = DER2_1 * DER2_1,
+    [ 0][0][ 1] = DER2_0 * DER2_1,
+    [ 1][0][ 1] = DER2_1 * DER2_1,
+    [ 2][0][ 1] = DER2_2 * DER2_1,
+    [ 3][0][ 1] = DER2_3 * DER2_1,
+    [-3][0][ 2] = DER2_3 * DER2_2,
+    [-2][0][ 2] = DER2_2 * DER2_2,
+    [-1][0][ 2] = DER2_1 * DER2_2,
+    [ 0][0][ 2] = DER2_0 * DER2_2,
+    [ 1][0][ 2] = DER2_1 * DER2_2,
+    [ 2][0][ 2] = DER2_2 * DER2_2,
+    [ 3][0][ 2] = DER2_3 * DER2_2,
+    [-3][0][ 3] = DER2_3 * DER2_3,
+    [-2][0][ 3] = DER2_2 * DER2_3,
+    [-1][0][ 3] = DER2_1 * DER2_3,
+    [ 0][0][ 3] = DER2_0 * DER2_3,
+    [ 1][0][ 3] = DER2_1 * DER2_3,
+    [ 2][0][ 3] = DER2_2 * DER2_3,
+    [ 3][0][ 3] = DER2_3 * DER2_3
+}
+
+Stencil der2y2z_stencil {
+    [-3][-3][0] = DER2_3 * DER2_3,
+    [-2][-3][0] = DER2_2 * DER2_3,
+    [-1][-3][0] = DER2_1 * DER2_3,
+    [ 0][-3][0] = DER2_0 * DER2_3,
+    [ 1][-3][0] = DER2_1 * DER2_3,
+    [ 2][-3][0] = DER2_2 * DER2_3,
+    [ 3][-3][0] = DER2_3 * DER2_3,
+    [-3][-2][0] = DER2_3 * DER2_2,
+    [-2][-2][0] = DER2_2 * DER2_2,
+    [-1][-2][0] = DER2_1 * DER2_2,
+    [ 0][-2][0] = DER2_0 * DER2_2,
+    [ 1][-2][0] = DER2_1 * DER2_2,
+    [ 2][-2][0] = DER2_2 * DER2_2,
+    [ 3][-2][0] = DER2_3 * DER2_2,
+    [-3][-1][0] = DER2_3 * DER2_1,
+    [-2][-1][0] = DER2_2 * DER2_1,
+    [-1][-1][0] = DER2_1 * DER2_1,
+    [ 0][-1][0] = DER2_0 * DER2_1,
+    [ 1][-1][0] = DER2_1 * DER2_1,
+    [ 2][-1][0] = DER2_2 * DER2_1,
+    [ 3][-1][0] = DER2_3 * DER2_1,
+    [-3][ 0][0] = DER2_3 * DER2_0,
+    [-2][ 0][0] = DER2_2 * DER2_0,
+    [-1][ 0][0] = DER2_1 * DER2_0,
+    [ 0][ 0][0] = DER2_0 * DER2_0,
+    [ 1][ 0][0] = DER2_1 * DER2_0,
+    [ 2][ 0][0] = DER2_2 * DER2_0,
+    [ 3][ 0][0] = DER2_3 * DER2_0,
+    [-3][ 1][0] = DER2_3 * DER2_1,
+    [-2][ 1][0] = DER2_2 * DER2_1,
+    [-1][ 1][0] = DER2_1 * DER2_1,
+    [ 0][ 1][0] = DER2_0 * DER2_1,
+    [ 1][ 1][0] = DER2_1 * DER2_1,
+    [ 2][ 1][0] = DER2_2 * DER2_1,
+    [ 3][ 1][0] = DER2_3 * DER2_1,
+    [-3][ 2][0] = DER2_3 * DER2_2,
+    [-2][ 2][0] = DER2_2 * DER2_2,
+    [-1][ 2][0] = DER2_1 * DER2_2,
+    [ 0][ 2][0] = DER2_0 * DER2_2,
+    [ 1][ 2][0] = DER2_1 * DER2_2,
+    [ 2][ 2][0] = DER2_2 * DER2_2,
+    [ 3][ 2][0] = DER2_3 * DER2_2,
+    [-3][ 3][0] = DER2_3 * DER2_3,
+    [-2][ 3][0] = DER2_2 * DER2_3,
+    [-1][ 3][0] = DER2_1 * DER2_3,
+    [ 0][ 3][0] = DER2_0 * DER2_3,
+    [ 1][ 3][0] = DER2_1 * DER2_3,
+    [ 2][ 3][0] = DER2_2 * DER2_3,
+    [ 3][ 3][0] = DER2_3 * DER2_3
+}
+
+//Assumes isotropic uniform spacing
+Stencil compact_poisson_lhs
+{
+	[ 0][ 0][ 0]  = (-128.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 0][ 1]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 0][-1]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 1][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[ 0][-1][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 0][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 0][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
+
+	[-1][-1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 1][-1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
+
+	[-1][ 0][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 0][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 0][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 0][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
+
+	[ 0][-1][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 1][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 0][-1][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 1][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
+
+	[-1][-1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[-1][-1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[ 1][-1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[ 1][-1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x
+}
+
+Stencil compact_poisson_lhs_neighbours
+{
+	[ 0][ 0][ 1]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 0][-1]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 1][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[ 0][-1][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 0][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 0][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
+
+	[-1][-1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 1][-1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
+
+	[-1][ 0][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 0][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 0][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 0][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
+
+	[ 0][-1][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 1][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 0][-1][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
+	[ 0][ 1][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
+
+	[-1][-1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[-1][-1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[-1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[ 1][-1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[ 1][-1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
+	[ 1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x
+}
+
+//Assumes isotropic uniform spacing
+compact_poisson_lhs_central_coeff()
+{
+	return (-128.0/30.0)*AC_inv_ds_2.x
 }
 
 Stencil der4x_stencil {
@@ -3189,7 +3483,7 @@ derx_upwd(Field f)
 	}
 	else
 	{
-		grid_factor = (1.0/60.0)
+		grid_factor = UPWIND_FACTOR
 		if (AC_nonequidistant_grid.x)
 		{
 			grid_factor *= AC_INV_MAPPING_FUNC_DER_X
@@ -3198,7 +3492,11 @@ derx_upwd(Field f)
 		{
 			grid_factor *= AC_inv_ds.x
 		}
+#if STENCIL_ORDER == 2
+		return derxx_stencil(f)*grid_factor
+#else
 		return der6x_stencil(f)*grid_factor
+#endif
 	}
 }
 dery_upwd(Field f)
@@ -3221,7 +3519,7 @@ dery_upwd(Field f)
 			coordinate_factor = AC_INV_CYL_R
 
 		}
-		grid_factor = (1.0/60.0)
+		grid_factor = UPWIND_FACTOR
 		if (AC_nonequidistant_grid.y)
 		{
 			grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
@@ -3230,7 +3528,11 @@ dery_upwd(Field f)
 		{
 			grid_factor *= AC_inv_ds.y
 		}
+#if STENCIL_ORDER == 2
+		return deryy_stencil(f)*coordinate_factor*grid_factor
+#else
 		return der6y_stencil(f)*coordinate_factor*grid_factor
+#endif
 	}
 }
 
@@ -3248,7 +3550,7 @@ derz_upwd(Field f)
 		{
 			coordinate_factor *= AC_INV_R*AC_INV_SIN_THETA
 		}
-		grid_factor = (1.0/60.0)
+		grid_factor = UPWIND_FACTOR
 		if (AC_nonequidistant_grid.z)
 		{
 			grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
@@ -3257,7 +3559,11 @@ derz_upwd(Field f)
 		{
 			grid_factor *= AC_inv_ds.z
 		}
+#if STENCIL_ORDER == 2
+		return derzz_stencil(f)*coordinate_factor*grid_factor
+#else
 		return der6z_stencil(f)*coordinate_factor*grid_factor
+#endif
 	}
 }
 
@@ -3323,6 +3629,21 @@ derz_upwind(Field f, real vec)
 	front = derz_upwind_front(f)
 	if (vec.z > 0.0) back
 	return front
+}
+
+der2x2y(Field f)
+{
+	return der2x2y_stencil(f)*AC_inv_ds_2.x*AC_inv_ds_2.y
+}
+
+der2x2z(Field f)
+{
+	return der2x2y_stencil(f)*AC_inv_ds_2.x*AC_inv_ds_2.z
+}
+
+der2y2z(Field f)
+{
+	return der2x2y_stencil(f)*AC_inv_ds_2.y*AC_inv_ds_2.z
 }
 
 //derx(Field f)

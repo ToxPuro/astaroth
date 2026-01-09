@@ -70,6 +70,10 @@ main(int argc, char* argv[])
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     acPushToConfig(info,AC_allow_non_divisible_grid,true);
+    acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
+    acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_LINEAR);
+    acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_EXTERNAL);
+    acPushToConfig(info,AC_domain_decomposition,(int3){1,2,1});
 
     const int max_devices = 8;
     if (nprocs > max_devices) {
@@ -81,16 +85,16 @@ main(int argc, char* argv[])
     }
     const int nx = argc > 1 ? atoi(argv[1]): 8;
     const int ny = argc > 2 ? atoi(argv[2]): 8;
-    const int nz = argc > 3 ? atoi(argv[2]): 8;
-    acSetGridMeshDims(nx, ny, 1, &info);
+    const int nz = argc > 3 ? atoi(argv[3]): 8;
+    acSetGridMeshDims(15, 15, 15, &info);
     //TP: backwards compatibility
     if(pid == 1)
     {
-    	acSetLocalMeshDims(16, 9, 16, &info);
+    	acSetLocalMeshDims(15, 7, 15, &info);
     }
     else
     {
-    	acSetLocalMeshDims(16, 7, 16, &info);
+    	acSetLocalMeshDims(15, 8, 15, &info);
     }
     fprintf(stderr,"nlocal: (%d,%d)\n",info[AC_nlocal].x,info[AC_nlocal].y);
     //acSetMeshDims(44, 44, 44, &info);
@@ -118,7 +122,7 @@ main(int argc, char* argv[])
     acDeviceSetInput(acGridGetDevice(), AC_dt,dt);
     AcTaskDefinition periodic_ops[] = {
             acHaloExchange(all_fields),
-            acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,all_fields)
+            acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,all_fields)
     };
     AcTaskGraph* comm_graph = acGridBuildTaskGraph(periodic_ops);
     AcTaskGraph* graph = acGetDSLTaskGraph(rhs);
