@@ -92,7 +92,11 @@ grid_xyz() {
 
 
 grid_position(int3 local_point) {
-    global_point = local_point + AC_multigpu_offset
+	if(AC_all_are_equidistant)
+	{
+    		global_point = (local_point-AC_nmin) + AC_multigpu_offset
+    		return global_point*AC_ds + AC_first_gridpoint
+	}
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
 	{
 		return 
