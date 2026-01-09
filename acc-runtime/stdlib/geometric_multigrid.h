@@ -1,4 +1,5 @@
 #include "$AC_HOME/acc-runtime/stdlib/geometric_multigrid_core.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
 hostdefine AC_GMG_ENABLED (1)
 
 run_const int AC_gmg_number_of_levels = 5
@@ -379,8 +380,8 @@ Kernel gmg_sor_black(GMG_LEVEL level, real omega)
 ComputeSteps
 gmg_poisson_sor_red_black_step(gmg_boundconds)
 {
-	gmg_sor_red(AC_GMG_LEVEL, AC_SOR_OMEGA)
-	gmg_sor_black(AC_GMG_LEVEL, AC_SOR_OMEGA)
+	gmg_sor_red(AC_GMG_LEVEL, AC_SOR_omega)
+	gmg_sor_black(AC_GMG_LEVEL, AC_SOR_omega)
 }
 
 //Optimized smoother across all of the 7-point stencils

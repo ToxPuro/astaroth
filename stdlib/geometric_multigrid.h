@@ -1,3 +1,5 @@
+#include "math_utils.h"
+
 AcReal gmg_central_coeffs[5]{};
 const std::array<AcInt3Param,5> level_dims = 
 {
@@ -20,6 +22,9 @@ gmg_restrict_to_level(const int level)
     	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)restrict_level);
 	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_restrict_residual,launch_start,launch_end),1);
     	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)(restrict_level+1));
+
+	acDeviceLaunchKernel(acGridGetDevice(),STREAM_DEFAULT,gmg_copy_rhs_to_residual_kernel,launch_start,launch_end);
+	acDeviceSynchronizeStream(acGridGetDevice(),STREAM_DEFAULT);
 	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_copy_rhs_to_residual,launch_start,launch_end),1);
     	++restrict_level;
     }
@@ -28,7 +33,7 @@ gmg_restrict_to_level(const int level)
 void
 gmg_store_and_prolong(AcMesh mesh, int level)
 {
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_boundconds),1);
+    //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_boundconds),1);
     const auto info = acGridGetLocalMeshInfo();
     --level;
     acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, mesh);
@@ -95,7 +100,6 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
         	}
         }
     }
-    
     gmg_store_and_prolong(mesh,level);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_write_del2),1);
     
@@ -245,9 +249,22 @@ gmg_level_step(const int level, const int number_of_levels)
   else
   {
   	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual),1); //Get residual
+										  //
+	  {
+          	const Volume launch_start = to_volume(info[AC_nmin]);
+          	const Volume launch_dims = to_volume(info[level_dims[level+1]]);
+          	const Volume launch_end = launch_dims + launch_start;
+    	  	AcTaskDefinition periodic_ops[] = {
+    	  	        acHaloExchange({GMG_RESIDUALS[level]}),
+    	  	};
+	  	const auto halo_exchange = acGridBuildTaskGraphWithBounds(periodic_ops,launch_start,launch_end);
+		acGridExecuteTaskGraph(halo_exchange,1);
+	  }
+
           const Volume launch_start = to_volume(info[AC_nmin]);
           const Volume launch_dims = to_volume(info[level_dims[level+1]]);
           const Volume launch_end = launch_dims + launch_start;
+	  
           const auto restrict_graph = acGetOptimizedDSLTaskGraph(gmg_restrict_residual, launch_start, launch_end); 
           acGridExecuteTaskGraph(restrict_graph,1); //Restrict residual to the next level
 	  gmg_level_step(level+1,number_of_levels);

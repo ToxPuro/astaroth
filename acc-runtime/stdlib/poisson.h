@@ -1,3 +1,7 @@
+#ifndef AC_POISSON_H
+#define AC_POISSON_H
+
+input real AC_SOR_omega = 1.0
 enum SOR_STEP
 {
 	SOR_RED,
@@ -123,4 +127,6 @@ poisson_sor_red_black_extended(int color, real density, Field potential, real om
 {
 	poisson_sor_red_black_extended(color,density,potential,omega,1.0,inv_spacings)
 }
+#endif
+
 #endif

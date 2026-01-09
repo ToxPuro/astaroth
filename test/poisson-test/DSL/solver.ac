@@ -42,15 +42,14 @@ fixed_boundary Kernel jacobi_step_kernel()
 	write(POTENTIAL,poisson_jacobi_update_extended(DENSITY,POTENTIAL))
 }
 
-real AC_SOR_omega
 
-fixed_boundary Kernel sor_red()
+fixed_boundary Kernel sor_red(omega)
 {
-	poisson_sor_red_black_extended(SOR_RED,DENSITY,POTENTIAL,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_RED,DENSITY,POTENTIAL,omega)
 }
-fixed_boundary Kernel sor_black()
+fixed_boundary Kernel sor_black(omega)
 {
-	poisson_sor_red_black_extended(SOR_BLACK,DENSITY,POTENTIAL,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_BLACK,DENSITY,POTENTIAL,omega)
 }
 output real AC_residual2
 Kernel residual_kernel()
@@ -195,18 +194,18 @@ jacobi_step(jacobi_bcs)
 ComputeSteps
 sor_red_black_step(jacobi_bcs)
 {
-	sor_red()
-	sor_black()
+	sor_red(AC_SOR_omega)
+	sor_black(AC_SOR_omega)
 }
 ComputeSteps
 sor_red_step(jacobi_bcs)
 {
-	sor_red()
+	sor_red(AC_SOR_omega)
 }
 ComputeSteps
 sor_black_step(jacobi_bcs)
 {
-	sor_black()
+	sor_black(AC_SOR_omega)
 }
 ComputeSteps
 get_residual(jacobi_bcs)
