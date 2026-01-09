@@ -9,7 +9,6 @@ hostdefine STENCIL_ORDER (2)
 #include "$AC_HOME/acc-runtime/stdlib/geometric_multigrid.h"
 
 real AC_k = 1.0
-real AC_SOR_omega = 1.8
 real AC_laplace_sign = -1.0
 
 Kernel init_kernel()
