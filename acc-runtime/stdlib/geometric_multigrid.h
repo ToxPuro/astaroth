@@ -366,21 +366,21 @@ gmg_prolong_solution(gmg_boundconds)
 	gmg_prolong_solution_kernel(AC_GMG_LEVEL)
 }
 
-Kernel gmg_sor_red(GMG_LEVEL level)
+Kernel gmg_sor_red(GMG_LEVEL level, real omega)
 {
-	gmg_poisson_sor_red_black(SOR_RED,level,AC_SOR_omega)
+	gmg_poisson_sor_red_black(SOR_RED,level,omega)
 }
 
-Kernel gmg_sor_black(GMG_LEVEL level)
+Kernel gmg_sor_black(GMG_LEVEL level, real omega)
 {
-	gmg_poisson_sor_red_black(SOR_BLACK,level,AC_SOR_omega)
+	gmg_poisson_sor_red_black(SOR_BLACK,level,omega)
 }
 
 ComputeSteps
 gmg_poisson_sor_red_black_step(gmg_boundconds)
 {
-	gmg_sor_red(AC_GMG_LEVEL)
-	gmg_sor_black(AC_GMG_LEVEL)
+	gmg_sor_red(AC_GMG_LEVEL, AC_SOR_OMEGA)
+	gmg_sor_black(AC_GMG_LEVEL, AC_SOR_OMEGA)
 }
 
 //Optimized smoother across all of the 7-point stencils
@@ -484,7 +484,7 @@ gmg_write_del2(gmg_boundconds)
 	gmg_write_del2_kernel()
 }
 
-output real AC_GMG_residual2
+global output real AC_GMG_residual2
 Kernel gmg_get_residual_norm_kernel()
 {
 	const real res = -laplace(GMG_SOLUTIONS[0])
