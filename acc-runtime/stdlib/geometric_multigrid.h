@@ -486,15 +486,15 @@ gmg_write_del2(gmg_boundconds)
 }
 
 global output real AC_GMG_residual2
-Kernel gmg_get_residual_norm_kernel()
+Kernel gmg_get_residual_norm_kernel(GMG_LEVEL level)
 {
-	const real res = -laplace(GMG_SOLUTIONS[0])
-	r = GMG_INITIAL_RHS - res
+	const real res = -laplace(GMG_SOLUTIONS[level])
+	r = GMG_RHS[level]- res
 	reduce_sum(r*r,AC_GMG_residual2)
 }
 
 ComputeSteps
 gmg_get_residual_norm(gmg_boundconds)
 {
-	gmg_get_residual_norm_kernel()
+	gmg_get_residual_norm_kernel(AC_GMG_LEVEL)
 }
