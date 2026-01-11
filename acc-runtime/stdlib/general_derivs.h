@@ -245,6 +245,9 @@ derzz_2nd_central_coeff(real inv_spacing_2)
 #define derxx_neighbours_stencil derxx_2nd_neighbours_stencil
 #define deryy_neighbours_stencil deryy_2nd_neighbours_stencil
 #define derzz_neighbours_stencil derzz_2nd_neighbours_stencil
+#define der2x2y_stencil der2x2y_2nd_stencil
+#define der2x2z_stencil der2x2z_2nd_stencil
+#define der2y2z_stencil der2y2z_2nd_stencil
 
 #define DERX_1 (0.25)
 
