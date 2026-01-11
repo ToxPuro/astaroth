@@ -752,4 +752,15 @@ laplace_neighbours_extended(Field s, real3 inv_spacings_2) {
     }
     return del2f
 }
+
+#if STENCIL_ORDER == 6
+compact_poisson_rhs(Field f)
+{
+	//Assumes equidistant grid
+	h2 = AC_ds_2.x
+	h4 = AC_ds_4.x
+	return f + (h2/12.0)*laplace(f) + (h4/360.0)*del4(f)
+	       + (h4/180.0)*(der2x2y(f) + der2y2z(f) + der2x2z(f))
+}
+#endif
 #endif
