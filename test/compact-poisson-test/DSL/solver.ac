@@ -7,6 +7,7 @@
 #include "$AC_HOME/acc-runtime/stdlib/bc.h"
 Field HEAT_INIT
 Field HEAT_SOLUTION
+Field HEAT_RHS
 real AC_k = 1.0
 Kernel init_kernel()
 {
@@ -14,11 +15,15 @@ Kernel init_kernel()
 	write(HEAT_INIT,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z))
 	write(HEAT_SOLUTION,0.0)
 }
+Kernel init_2nd_kernel()
+{
+	write(HEAT_RHS,compact_poisson_rhs(HEAT_INIT))
+}
 
 
 BoundConds boundconds{
-  periodic(BOUNDARY_XYZ)
-  //ac_const_bc(BOUNDARY_XYZ,0.0)
+  //periodic(BOUNDARY_XYZ)
+  ac_const_bc(BOUNDARY_XYZ,0.0)
 }
 
 
@@ -26,6 +31,7 @@ ComputeSteps
 initcond(boundconds)
 {
 	init_kernel()
+	init_2nd_kernel()
 }
 ComputeSteps
 empty_steps(boundconds)
@@ -65,7 +71,7 @@ sor_red_black_step(boundconds)
 output real AC_residual2
 Kernel residual_kernel()
 {
-	r = compact_poisson_rhs(HEAT_INIT)-compact_poisson_lhs(HEAT_SOLUTION)
+	r = HEAT_RHS-compact_poisson_lhs(HEAT_SOLUTION)
 	reduce_sum(r*r,AC_residual2)
 }
 
