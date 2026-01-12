@@ -8,6 +8,37 @@ int3 level_divisor = (int3)
 
 bool AC_power_of_two_minus_one_grid = false;
 
+int3 AC_ngrid_gmg_level_0 = AC_ngrid
+int3 AC_ngrid_gmg_level_1 = 
+				(int3)
+				{
+					AC_ngrid_gmg_level_0.x/level_divisor.x,
+					AC_ngrid_gmg_level_0.y/level_divisor.y,
+					AC_ngrid_gmg_level_0.z/level_divisor.z
+				}
+int3 AC_ngrid_gmg_level_2 = 
+				(int3)
+				{
+					AC_ngrid_gmg_level_1.x/level_divisor.x,
+					AC_ngrid_gmg_level_1.y/level_divisor.y,
+					AC_ngrid_gmg_level_1.z/level_divisor.z
+				}
+int3 AC_ngrid_gmg_level_3 = 
+				(int3)
+				{
+					AC_ngrid_gmg_level_2.x/level_divisor.x,
+					AC_ngrid_gmg_level_2.y/level_divisor.y,
+					AC_ngrid_gmg_level_2.z/level_divisor.z
+				}
+
+int3 AC_ngrid_gmg_level_4 = 
+				(int3)
+				{
+					AC_ngrid_gmg_level_3.x/level_divisor.x,
+					AC_ngrid_gmg_level_3.y/level_divisor.y,
+					AC_ngrid_gmg_level_3.z/level_divisor.z
+				}
+
 int3 AC_nlocal_gmg_level_0 = AC_nlocal
 int3 AC_nlocal_gmg_level_1 =
 			     AC_power_of_two_minus_one_grid ? AC_nlocal_gmg_level_0/2 : (int3){
@@ -47,25 +78,25 @@ int3 AC_nlocal_gmg_level_4 =
 				       				  (AC_nlocal_gmg_level_3.z)/level_divisor.z
 			     }
 
-get_gmg_level_dims(int level)
+get_global_gmg_level_dims(int level)
 {
 	if(level == 1)
 	{
-		return AC_nlocal_gmg_level_1
+		return AC_ngrid_gmg_level_1
 	}
 	if(level == 2)
 	{
-		return AC_nlocal_gmg_level_2
+		return AC_ngrid_gmg_level_2
 	}
 	if(level == 3)
 	{
-		return AC_nlocal_gmg_level_3
+		return AC_ngrid_gmg_level_3
 	}
 	if(level == 4)
 	{
-		return AC_nlocal_gmg_level_4
+		return AC_ngrid_gmg_level_4
 	}
-	return AC_nlocal_gmg_level_0
+	return AC_ngrid_gmg_level_0
 }
 
 int3 AC_mlocal_gmg_level_0 = AC_nlocal_gmg_level_0 + 2*AC_nmin
@@ -135,14 +166,14 @@ input GMG_LEVEL AC_GMG_LEVEL
 
 Kernel gmg_restrict_residual_kernel(GMG_LEVEL level)
 {
-	restrict_full_weighting(GMG_RESIDUALS[level],GMG_RHS[level+1],get_gmg_level_dims(level))
+	restrict_full_weighting(GMG_RESIDUALS[level],GMG_RHS[level+1],get_global_gmg_level_dims(level))
 	//The residual is most likely small so zero is a meaningful starting value
 	write(GMG_SOLUTIONS[level+1],0.0)
 }
 
 Kernel gmg_get_correction_from_next_level_kernel(GMG_LEVEL level)
 {
-	e = trilinear_prolongation(GMG_SOLUTIONS[level+1])
+	e = trilinear_prolongation(GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
 	write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level]+e)
 }
 

@@ -277,7 +277,7 @@ trilinear_prolongation_odd(Field coarse_residual)
 /*
  * Meant to be launched on the fine grid
  */
-trilinear_prolongation(Field coarse_residual)
+trilinear_prolongation(Field coarse_residual, int3 global_mesh_dims)
 {
 	const int3 launch_dims = end-start;
 	if(AC_dimension_inactive == (bool3){false,true,true})
@@ -285,7 +285,7 @@ trilinear_prolongation(Field coarse_residual)
 		return linear_prolongation(coarse_residual)
 	}
 	//Assumes a cube
-	else if(launch_dims.x % 2 == 0)
+	else if(global_mesh_dims.x % 2 == 0)
 	{
 		return trilinear_prolongation_even(coarse_residual)
 	}

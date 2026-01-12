@@ -9,13 +9,13 @@ hostdefine STENCIL_ORDER (2)
 #include "$AC_HOME/acc-runtime/stdlib/geometric_multigrid.h"
 
 real AC_k = 1.0
-real AC_SOR_omega = 1.8
 real AC_laplace_sign = -1.0
 
 Kernel init_kernel()
 {
 	pos = grid_position()
-	write(GMG_INITIAL_RHS,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z))
+	val = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+	write(GMG_INITIAL_RHS,val)
 	write(GMG_SOLUTIONS[0],0.0)
 }
 
@@ -87,3 +87,18 @@ randomize_residual_and_solution(gmg_boundconds)
 }
 
 
+Kernel print_kernel(GMG_LEVEL level)
+{
+	if(vertexIdx.x == NGHOST && vertexIdx.y == NGHOST)
+	{
+		print("RHS: %d, %d %.14e\n",AC_domain_coordinates.z,vertexIdx.z,value(GMG_RHS[level]))
+		print("Solution: %d, %d %.14e\n",AC_domain_coordinates.z,vertexIdx.z,value(GMG_SOLUTIONS[level]))
+	}
+	write(GMG_RHS[level],GMG_RHS[level])
+	write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level])
+}
+ComputeSteps 
+print_values(gmg_boundconds)
+{
+	print_kernel(AC_GMG_LEVEL)
+}

@@ -1,1 +1,1 @@
-mpiexec -n 2 build/parallel-multigrid-test
+mpiexec -n 8 --oversubscribe build/parallel-multigrid-test

@@ -301,7 +301,7 @@ Kernel gmg_copy_rhs_to_residual_kernel(GMG_LEVEL level)
 Kernel gmg_restrict_solution_kernel(GMG_LEVEL level)
 {
 	int l = level
-	restrict_full_weighting(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level+1],get_gmg_level_dims(level))
+	restrict_full_weighting(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
 }
 
 
@@ -357,7 +357,7 @@ gmg_poisson_sor_red_black(int color, int level, real omega)
 
 Kernel gmg_prolong_solution_kernel(GMG_LEVEL level)
 {
-	e = trilinear_prolongation(GMG_SOLUTIONS[level+1])
+	e = trilinear_prolongation(GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
 	write(GMG_SOLUTIONS[level],e)
 }
 
@@ -413,11 +413,20 @@ optimized_smoother_stencil
 */
 
 //This is the full 3x3x3 smoother with numerically derived coeffs that achieve smoothing factor of approx 0.285 which is better than the theoretical best when including only cardinals
+//
 run_const real AC_omega_for_optimized_smoother = 1.3699
 run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.1432
 run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0284
 run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0081
 run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0025
+
+//TODO: test that these coeffs give good smoothing for compact 6th order laplacian 
+//run_const real AC_omega_for_optimized_smoother = 0.6540
+//run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.3828
+//run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0544
+//run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0197
+//run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0082
+
 Stencil
 optimized_smoother_stencil
 {
@@ -462,7 +471,7 @@ Kernel gmg_optimized_smoother_kernel(GMG_LEVEL level)
 {
 	Field u = GMG_SOLUTIONS[level]
 	Field r = GMG_RESIDUALS[level]
-	write(u, u + AC_omega_for_optimized_smoother*optimized_smoother(r,level))
+	write(u,u + AC_omega_for_optimized_smoother*optimized_smoother(r,level))
 }
 
 ComputeSteps gmg_optimized_smoother(gmg_boundconds)

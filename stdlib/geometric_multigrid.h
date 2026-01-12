@@ -87,6 +87,7 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     		,hat_basis_position.z
           );
     **/
+
     for(size_t x = 0; x < coarse_dims.m1.x;++x)
     {
        for(size_t y = 0; y < coarse_dims.m1.y;++y)
@@ -228,7 +229,6 @@ gmg_setup(AcMeshInfo* info)
 		get_galerkin_operators(info);
 	}
 }
-
 void
 gmg_level_step(const int level, const int number_of_levels)
 {
@@ -239,9 +239,7 @@ gmg_level_step(const int level, const int number_of_levels)
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step);
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(sor_red_black_step);
   //const auto sor_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
-  ///
   acGridExecuteTaskGraph(sor_graph,1); //Pre-smooth step
-				       //
   if(level == number_of_levels-1)
   {
 	acGridExecuteTaskGraph(sor_graph,1000);
@@ -249,15 +247,11 @@ gmg_level_step(const int level, const int number_of_levels)
   else
   {
   	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual),1); //Get residual
-										  //
 	  {
-          	const Volume launch_start = to_volume(info[AC_nmin]);
-          	const Volume launch_dims = to_volume(info[level_dims[level+1]]);
-          	const Volume launch_end = launch_dims + launch_start;
     	  	AcTaskDefinition periodic_ops[] = {
     	  	        acHaloExchange({GMG_RESIDUALS[level]}),
     	  	};
-	  	const auto halo_exchange = acGridBuildTaskGraphWithBounds(periodic_ops,launch_start,launch_end);
+	  	const auto halo_exchange = acGridBuildTaskGraph(periodic_ops);
 		acGridExecuteTaskGraph(halo_exchange,1);
 	  }
 
@@ -269,6 +263,13 @@ gmg_level_step(const int level, const int number_of_levels)
           acGridExecuteTaskGraph(restrict_graph,1); //Restrict residual to the next level
 	  gmg_level_step(level+1,number_of_levels);
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
+	  {
+    	  	AcTaskDefinition periodic_ops[] = {
+    	  	        acHaloExchange({GMG_SOLUTIONS[level+1]}),
+    	  	};
+	  	const auto halo_exchange = acGridBuildTaskGraphWithBounds(periodic_ops,launch_start,launch_end);
+		acGridExecuteTaskGraph(halo_exchange,1);
+	  }
 	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level
   	  acGridExecuteTaskGraph(sor_graph,1); //Post-smooth step
   }
