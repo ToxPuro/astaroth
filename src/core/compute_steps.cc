@@ -666,7 +666,7 @@ gen_halo_exchange(
 		}
 		const std::tuple<Volume,Volume> bounds = get_launch_bounds_from_fields(output_fields,output_fields);
 		const Volume start = std::get<0>(bounds);
-		const Volume end = std::get<0>(bounds);
+		const Volume end = std::get<1>(bounds);
 		const bool sending   = (direction == (int3){0,0,0} || !before_kernel_call); 
 		const bool receiving = (direction == (int3){0,0,0} || before_kernel_call); 
 		if(sending && direction != (int3){0,0,0}) boundary = get_opposite_boundary(boundary);
