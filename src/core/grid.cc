@@ -595,11 +595,7 @@ check_that_device_allocation_valid()
     int device_count = -1;
     acGetDeviceCount(&device_count);
     if (device_count > ac_nprocs()) {
-        fprintf(stderr,
-                "Invalid device-task allocation: Must allocate one MPI task per GPU but got %d "
-                "devices per node and only %d task(s).",
-                device_count, ac_nprocs());
-        ERRCHK_ALWAYS(device_count <= ac_nprocs());
+        WARNING("\n\nMore devices than MPI tasks: Non-optimal usage\n \n")
     }
     MPI_Barrier(astaroth_comm);
 }
