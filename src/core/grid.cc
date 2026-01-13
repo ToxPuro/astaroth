@@ -595,7 +595,9 @@ check_that_device_allocation_valid()
     int device_count = -1;
     acGetDeviceCount(&device_count);
     if (device_count > ac_nprocs()) {
-        WARNING("\n\nMore devices than MPI tasks: Non-optimal usage\n \n")
+        WARNING("\n\nMore devices than MPI tasks: Non-optimal usage!!\n \n")
+	fprintf(stderr,"%d devices and %d MPI tasks!!\n");
+	fflush(stderr);
     }
     MPI_Barrier(astaroth_comm);
 }
