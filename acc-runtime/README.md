@@ -592,12 +592,15 @@ For reductions the kernel has to be invoked at each vertex point of the domain.
 ```
 output real max_derux
 Field ux,f
-Profile<X> X_PROFILE
+Profile<X>  X_PROFILE
+Profile<XY> XY_PROFILE
 Kernel reduce_kernel()
 {
-	reduce_max(true,derx(ux),max_derux) //scalar reduction
-    reduce_sum(true,ux,X_PROFILE) //Reduction along y and z resulting in array that is x-dependent.
+	reduce_max(derx(ux),max_derux) //scalar reduction
+    reduce_sum(ux,X_PROFILE) //Reduction along y and z resulting in array that is x-dependent.
+    reduce_sum(ux,XY_PROFILE) //Reduction along z resulting in array that is xy-dependent.
 }
+
 Kernel read_output()
 {
     write(ux,max_derux) //One can read directly the results of reductions in the DSL. The value of max_derux in this kernel would be the result of the reduction in the previous kernel.
@@ -611,6 +614,7 @@ Kernel read_output()
 
 After executing the kernels reductions are finalized by the taskgraph behind the scenes.
 One can access the reduced value on the DSL similar to other varibles as in the example above.
+On the host side one can access the values with the appropriate API functions.
 
 The reduced scalar values can be accessed with `acDeviceGetOutput` or for `Profiles` with the corresponding API functions.
 
