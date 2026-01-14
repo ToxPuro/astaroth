@@ -685,6 +685,68 @@ You can access the generated `TaskGraph` with `acGetDSLTaskGraph`.
 To pass input values from the host side call `acDeviceSetInput`. 
 With the example above to pass `2.0` to the first parameter of `kernel_call_1` one should call `acDeviceSetInput(device,ac_input_val,2.0)`
 
+### Rays
+Some computations of interest are not as embarrassingly parallel as applying stencils or reductions.
+For example integration of rays along integer directions have sequential dependencies along two-dimensional wavefronts.
+Take for example rays moving in the positive x-directions, to compute the update because of the moving ray at `(x,y,z)`
+the incoming value at `(x-1,y,z)` has to be computed and in more general for a ray moving in direction `(i,j,k)` one has to
+first compute the incoming value at `(x-i,y-j,z-k)`. When the incoming values at the boundaries of the local subdomain are set this has
+the effect that it is sufficient to have sequential dependency only in one of the cardinal directions and one thus has a slice of two-dimensional points for which the values can be computed in parallel.
+Rays are declared using the construct `Raytrace` and the direction in which the ray traverses.
+For example the following would declare rays moving in the positive x-direction and negative y-direction.
+```
+Raytrace (+1,+0,+0) x_ray
+Raytrace (+0,-1,+0) y_ray
+```
+And the following would compute the sum of a `Field` along lines in the x-direction.
+```
+Field f
+Kernel sum_along_x_lines() {
+    write(f,f + incoming_x_ray(f))
+}
+```
+And the following along lines in the y-direction.
+```
+Field f
+Kernel sum_along_y_lines() {
+    write(f,f + incoming_y_ray(f))
+}
+```
+Notice an important details, these `Kernels` that have dependencies that are in different directions
+were separate. Understandable rays that have dependencies in different directions have to be in separate kernels.
+Rays that have the same dependencies can be naturally combined. The following is the maximal example of nine rays in a single kernel.
+```
+Raytrace (+1,+1,+1) ppp_ray
+Raytrace (+0,+1,+1) zpp_ray
+Raytrace (-1,+1,+1) mpp_ray
+
+Raytrace (+1,+0,+1) pzp_ray
+Raytrace (+0,+0,+1) zzp_ray
+Raytrace (-1,+0,+1) mzp_ray
+
+Raytrace (+1,-1,+1) pmp_ray
+Raytrace (+0,-1,+1) zmp_ray
+Raytrace (-1,-1,+1) mmp_ray
+Kernel nine_rays()
+{
+	write(Q_PPP,incoming_ppp_ray(Q_PPP)+1.0)
+	write(Q_ZPP,incoming_zpp_ray(Q_ZPP)+1.0)
+	write(Q_MPP,incoming_mpp_ray(Q_MPP)+1.0)
+
+	write(Q_PZP,incoming_pzp_ray(Q_PZP)+1.0)
+	write(Q_ZZP,incoming_zzp_ray(Q_ZZP)+1.0)
+	write(Q_MZP,incoming_mzp_ray(Q_MZP)+1.0)
+
+	write(Q_PMP,incoming_pmp_ray(Q_PMP)+1.0)
+	write(Q_ZMP,incoming_zmp_ray(Q_ZMP)+1.0)
+	write(Q_MMP,incoming_mmp_ray(Q_MMP)+1.0)
+}
+```
+Since all the rays were moving in the positive z-direction they depend on the -z vertex before them.
+Thus there are 9 rays depending on -z,9 depending on +z,3 on -y, 3 on +y, 1 on -x and 1 on +x.
+We favour grouping rays in the z and y-directions since they are more performant since dependencies in the x-direction
+are less performant due to x being the fastest growing index.
+
 ### 1D and 2D setups.
 Dimensions can be set as inactive using the `bool3` variable `AC_dimension_inactive`.
 The operators and derivative stencils in `stdlib/general_operators.h` and `stdlib/general_derivs.h` take the inactive dimensions correctly into account (namely derivatives across inactive dimensions are always unity). Additionally the ghost layers in the direction of inactive dimensions will not be allocated, which produces a memory saving of a times 7 in 2d.
