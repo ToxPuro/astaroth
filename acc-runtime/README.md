@@ -681,14 +681,9 @@ You can access the generated `TaskGraph` with `acGetDSLTaskGraph`.
 To pass input values from the host side call `acDeviceSetInput`. 
 With the example above to pass `2.0` to the first parameter of `kernel_call_1` one should call `acDeviceSetInput(device,ac_input_val,2.0)`
 
-### 2D-setups
-By setting `2D=ON` one can build Astaroth specifically for a two-dimensional setup.
-Currently the missing dimension is always the z-dimension. The main difference between setting `AC_nzgrid=1` and an explicit two-dimensional setup is that in the latter no halo regions are allocated in the z-dimension, which is an considerable memory saving.
-`Stencils` work the same as usual, expect when declaring them one uses only the x and y -offsets.
-Some API functions that previously took three-dimensional arrays or three parameters related to the spatial dimensions now take two-dimensional arrays and only two parameters.
-Additionally those built-in variables related to the z spatial dimension (e.g. `AC_nz`)  are suppressed.
-When using `BoundConds` one does not need to declare boundary conditions on the z-boundaries and if they are they will be skipped.
-One can find in `acc-runtime/samples/2d/2d-test.ac` and `test/2d-test/main.cc` a simple two-dimensional test setup.
+### 1D and 2D setups.
+Dimensions can be set as inactive using the `bool3` variable `AC_dimension_inactive`.
+The operators in `stdlib` take the inactive dimensions correctly into account (namely derivatives across inactive dimensions are always unity). Additionally the ghost layers in the direction of inactive dimensions will not be allocated, which produces a memory saving of a times 7 in 2d.
 
 
 
