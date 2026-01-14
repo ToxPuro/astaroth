@@ -10,14 +10,14 @@ real AC_k = 1.0
 Kernel init_kernel()
 {
 	pos = grid_position()
-	write(HEAT_INIT,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z))
+	write(HEAT_INIT,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)+2.0)
 	write(HEAT_SOLUTION,0.0)
 }
 
 
 BoundConds boundconds{
-  periodic(BOUNDARY_XYZ)
-  //ac_const_bc(BOUNDARY_XYZ,0.0)
+  //periodic(BOUNDARY_XYZ)
+  ac_const_bc(BOUNDARY_XYZ,2.0)
 }
 
 output real AC_residual2

@@ -72,6 +72,7 @@ main(void)
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
     info.comm->handle = MPI_COMM_WORLD;
 
     const int max_devices = 8;
@@ -99,6 +100,7 @@ main(void)
     acHostMeshRandomize(&candidate);
 
     acGridInit(info);
+    acDeviceSetInput(acGridGetDevice(),AC_SOR_omega,1.0);
     const auto empty_graph = acGetOptimizedDSLTaskGraph(empty_steps);
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
 
@@ -108,12 +110,15 @@ main(void)
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     acGridExecuteTaskGraph(initcond_graph,1);
     AcReal residual = 10e8;
-    while(residual > 1e-8)
+    const int max_step = 100000;
+    int step = 0;
+    while(residual > 1e-8 && step < max_step)
     {
     	acGridExecuteTaskGraph(sor_graph,1);
     	acGridExecuteTaskGraph(residual_graph,1);
 	const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 	residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
+	++step;
     }
     if(pid == 0) fprintf(stderr,"Final residual: %14e\n",residual);
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
