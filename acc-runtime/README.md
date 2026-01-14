@@ -746,6 +746,7 @@ Since all the rays were moving in the positive z-direction they depend on the -z
 Thus there are 9 rays depending on -z,9 depending on +z,3 on -y, 3 on +y, 1 on -x and 1 on +x.
 We favour grouping rays in the z and y-directions since they are more performant since dependencies in the x-direction
 are less performant due to x being the fastest growing index.
+For a more expansive test case using rays see `test/ray-test`.
 
 ### 1D and 2D setups.
 Dimensions can be set as inactive using the `bool3` variable `AC_dimension_inactive`.
