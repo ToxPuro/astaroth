@@ -1,20 +1,31 @@
-u_dot_grad(Field3 f, Matrix m,real3 v){
+/**
+ * Calculates u·(∇f),
+ * where f and u are vector fields
+ * and m = ∇f.
+ * f is needed for corrections for curvilinear coordinates.
+ */
+u_dot_grad(Field3 f, Matrix m,real3 u){
 	suppress_unused_warning(f)
-	real3 res = m*v
+	real3 res = m*u
 	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
-		res.x = res.x - AC_INV_R*(v.y*f.y+v.z*f.z)
-		res.y = res.y + AC_INV_R*(v.y*f.x-v.z*f.z*AC_COT)
-		res.z = res.z + AC_INV_R*(v.z*f.x+v.z*f.y*AC_COT)
+		res.x = res.x - AC_INV_R*(u.y*f.y+u.z*f.z)
+		res.y = res.y + AC_INV_R*(u.y*f.x-u.z*f.z*AC_COT)
+		res.z = res.z + AC_INV_R*(u.z*f.x+u.z*f.y*AC_COT)
 	}
 	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 	{
-		res.x = res.x - AC_INV_CYL_R*(v.y*f.y)
-		res.y = res.y + AC_INV_CYL_R*(v.y*f.x)
+		res.x = res.x - AC_INV_CYL_R*(u.y*f.y)
+		res.y = res.y + AC_INV_CYL_R*(u.y*f.x)
 	}
 	return res;
 }
 
+/**
+ * Calculates u·(∇f),
+ * where f and u are vector fields and where m = ∇f.
+ * Works only in Cartesian.
+ */
 u_dot_grad(Matrix m,real3 v){
   if(AC_coordinate_system == AC_SPHERICAL_COORDINATES || AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
   {
@@ -24,17 +35,30 @@ u_dot_grad(Matrix m,real3 v){
 }
 
 
-u_dot_grad_alt(Field f,real3 gradf,real3 uu,int advec_type){
+/**
+ * Calculates u·(∇f),
+ * with a special implementation based on the advection type
+ * where u is a vector field and f is a scalar field and gradf = ∇f.
+ * At the moment only normal advection implemented.
+ */
+u_dot_grad_alt(Field f,real3 gradf,real3 u,int advec_type){
 	suppress_unused_warning(f)
 	if(advec_type == 0)
 	{
-		return dot(uu,gradf)
+		return dot(u,gradf)
 	}
 	fatal_error_message(true,"u_dot_grad_alt: Upwinding and Kurganov-Tadmor not yet implemented")
 	return 0.0
 }
+
+/**
+ * Calculates u·(∇M),
+ * where u is a vector field, M is 3x3 tensor field and c = ∇M.
+ * (TODO: remove k since not used)
+ */
 u_dot_grad_mat(k,AcTensor c,real3 uu)
 {
+	suppress_unused_warning(k)
         Matrix res
         res[0][0] = c[0][0][0]*uu.x + c[0][0][1]*uu.y + c[0][0][2]*uu.z
         res[0][1] = c[0][1][0]*uu.x + c[0][1][1]*uu.y + c[0][1][2]*uu.z
@@ -49,6 +73,12 @@ u_dot_grad_mat(k,AcTensor c,real3 uu)
         res[2][2] = c[2][2][0]*uu.x + c[2][2][1]*uu.y + c[2][2][2]*uu.z
         return res
 }
+
+/**
+ * Calculates u·(∇M),
+ * where u is a vector field, M is 3x3 tensor field and c = ∇M with an upwind correction.
+ * Not implemented
+ */
 u_dot_grad_mat_upwd(k,c,uu)
 {
 	fatal_error_message(true,"u_dot_grad_mat_upwd: Not implemented")
@@ -56,9 +86,17 @@ u_dot_grad_mat_upwd(k,c,uu)
 	return res
 }
 
+/**
+ * Calculates ∇f
+ * ,where f is a scalar field
+ */
 gradient(Field s) {
     return real3(derx(s), dery(s), derz(s))
 }
+/**
+ * Calculates ∇v
+ * ,where v is a vector field
+ */
 gradient_tensor(Field3 v) {
 	return Matrix(
 			gradient(v.x),
@@ -67,12 +105,22 @@ gradient_tensor(Field3 v) {
 		     )
 }
 
+/**
+ * Calculates c(∇^k)v, to achieve the effect of upwinding.
+ * ,where v is a vector field.
+ * c and k depend on the order of stencil used for the advection term
+ * where upwinding is to be applied.
+ */
 elemental gradient_upwd(Field s) {
     return real3(derx_upwd(s), dery_upwd(s), derz_upwd(s))
 }
 
 
 
+/**
+ * Calculates g,
+ * where g_i = (∂^2/∂_i)s
+ */
 elemental gradient2(Field s) {
     return real3(derxx(s), deryy(s), derzz(s))
 }
@@ -87,16 +135,28 @@ elemental gradient4(Field s) {
 }
 **/
 
+/**
+ * Calculates g,
+ * where g_i = (∂^5/∂_i)s
+ */
 elemental gradient5(Field s) {
     return real3(der5x(s), der5y(s), der5z(s))
 }
 
 
+/**
+ * Calculates g,
+ * where g_i = c(∂^k/∂_i)s and c and k are chosen to
+ * achieve the effect of upwinding for the stencil employed for the advective term.
+ */
 elemental gradient6_upwd(s) {
     return real3(derx_upwd(s), dery_upwd(s), derz_upwd(s))
 }
 
 
+/**
+ * Calculates ∇·v
+ */
 divergence(Field3 v) {
     g = derx(v.x) + dery(v.y) + derz(v.z)
 
@@ -112,6 +172,9 @@ divergence(Field3 v) {
     return g
 }
 
+/**
+ * Calculates ∇^2·v
+ */
 divergence_2nd(Field3 v) {
     g = derx_2nd(v.x) + dery_2nd(v.y) + derz_2nd(v.z)
 
@@ -126,11 +189,25 @@ divergence_2nd(Field3 v) {
     }
     return g
 }
+/**
+ * Calculates (∇^2·v),
+ * where m = ∇(v).
+ * Only works in Cartesian
+ */
 divergence(Matrix m)
 {
 	b = m[0][0] + m[1][1] + m[2][2];
+        if(AC_coordinate_system == AC_SPHERICAL_COORDINATES || AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+        {
+        	fatal_error_message(true,"divergence requires the vector field itself to perform corrections for curvilinear coordinates!\ņ");
+        }
 	return b;
 }
+
+/**
+ * Calculates (∇^2·a),
+ * where m = ∇(v).
+ */
 divergence(Matrix m, real3 a)
 {
 	suppress_unused_warning(a)
@@ -147,6 +224,9 @@ divergence(Matrix m, real3 a)
 	return b;
 }
 
+/**
+ * Computes ∇ × v
+ */
 curl(Field3 v) {
     g = real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
     if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
@@ -162,6 +242,11 @@ curl(Field3 v) {
     return g
 }
 
+/**
+ * Computes ∇ × v,
+ * where m = ∇v.
+ * Works only in Cartesian, see the other version for more general.
+ */
 curl(Matrix m) {
   if(AC_coordinate_system != AC_CARTESIAN_COORDINATES)
   {
@@ -170,6 +255,10 @@ curl(Matrix m) {
   return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
 }
 
+/**
+ * Computes ∇ × v,
+ * where m = ∇v.
+ */
 curl(Matrix m, real3 v) {
   suppress_unused_warning(v)
   g = real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
@@ -186,12 +275,22 @@ curl(Matrix m, real3 v) {
   return g
 }
 
+/**
+ * Computes ∇ × v,
+ * where m = ∇v.
+ * Works only in Cartesian.
+ * (TODO: why is this needed isn't the normal curl already covariant?)
+ */
 covariant_curl(Matrix m, real3 v)
 {
   return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
 }
 
 
+/**
+ * Computes the Hessian of v,
+ * where v is a scalar field.
+ */
 hessian(Field v)
 {
 	return Matrix(
@@ -201,6 +300,10 @@ hessian(Field v)
 		     )
 }
 
+/**
+ * Computes a 3x3x3 tensor T,
+ * where T_ijk = (∂^2/∂_j∂_k)v_i and v is a vector field.
+ */
 del2fi_dxjk(Field3 v)
 {
 	return Tensor(
@@ -209,6 +312,11 @@ del2fi_dxjk(Field3 v)
 			hessian(v.z)
 		     )
 }
+/**
+ * Computes a 3x3x3 a contravariant tensor T,
+ * where T_ijk = (∇j∇k)v_i,
+ * m = ∇v (not contravariant) and v is a vector field.
+ */
 get_d2A(Field3 v, Matrix m)
 {
 	Tensor res = del2fi_dxjk(v)
@@ -235,6 +343,10 @@ get_d2A(Field3 v, Matrix m)
 
 	return res
 }
+/**
+ * Computes a 3x3x3 a contravariant tensor T,
+ * where T_ijk = (∇j∇k)v_i and v is a vector field.
+ */
 get_d2A(Field3 v)
 {
 	Tensor res = del2fi_dxjk(v)
@@ -262,6 +374,10 @@ get_d2A(Field3 v)
 	return res
 }
 
+/**
+ * Computes the jacobian of b,
+ * where b = ∇ × v
+ */
 bij(Field3 v)
 {
     	d2A = get_d2A(v)
@@ -299,10 +415,18 @@ bij(Field3 v)
 }
 
 
+/**
+ * Computes (∇^4)s,
+ * where s is a scalar field. 
+ */
 elemental del4(Field s) {
   return der4x(s) + der4y(s) + der4z(s)
 }
 
+/**
+ * Computes (∇^6)s,
+ * where s is a scalar field. 
+ */
 elemental del6(Field s) {
   return der6x(s) + der6y(s) + der6z(s)
 }
@@ -368,11 +492,20 @@ der6z_exp(Field f) {
 
 }
 **/
+
+/**
+ * Computes (∇^6)exp(s),
+ * where s is a scalar field. 
+ */
 elemental del6_exp(Field f)
 {
 	return der6x_exp(f) + der6y_exp(f) + der6z_exp(f)
 }
 
+/**
+ * Computes (∇^6)(s),
+ * where s is a scalar field and one of the directions is masked out
+ */
 del6_masked(Field s, int mask)
 {
 	x = mask == 1 ? 0.0 : der6x(s)
@@ -381,6 +514,11 @@ del6_masked(Field s, int mask)
 	return x + y + z
 }
 
+/**
+ * Computes c(∇^k)(s),
+ * where c and k are chosen to achieve upwinding and depend on the order of the advective term
+ * s is a scalar field and one of the directions is masked out
+ */
 del_upwd_masked(real3 velo, Field s, int mask)
 {
         x = mask == 1 ? 0.0 : abs(velo.x)*derx_upwd(s)
@@ -389,17 +527,29 @@ del_upwd_masked(real3 velo, Field s, int mask)
         return x + y + z
 }
 
+/**
+ * Computes (∇^6)(s) in a 'strict' manner.
+ * Not implemented
+ */
 elemental del6_strict(Field s) {
 	suppress_unused_warning(s)
 	fatal_error_message(true,"NOT IMPLEMENTED del6_strict\n")
 	return 0.
 }
 
+/**
+ * Calculates u·(∇f) in a upwinded manner,
+ * where f is a scalar field and u is a vector field
+ */
 elemental ugrad_upw(Field field, real3 velo){
 
         return dot(velo,gradient(field)) - dot(abs(velo),gradient_upwd(field))
 }
 
+/**
+ * Calculates u·(∇f) in a upwinded manner,
+ * where f and u are vector fields.
+ */
 elemental ugrad_upw(Field3 field, real3 velo){
 
         return real3( dot(velo,gradient(field.x)) - dot(abs(velo),gradient_upwd(field.x)),
@@ -407,6 +557,10 @@ elemental ugrad_upw(Field3 field, real3 velo){
 		      dot(velo,gradient(field.z)) - dot(abs(velo),gradient_upwd(field.z)))
 }
 
+/**
+ * Calculates the upwind correction to u·(∇f),
+ * where u is a vector and f a  scalar field.
+ */
 del_upwd(real3 velo,Field field)
 {
 
@@ -423,13 +577,19 @@ del_upwd(real3 velo,Field field)
 	return sum(res)
 }
 
+/**
+ * Calculates the upwind correction to u·(∇f),
+ * where u and f are vector fields.
+ */
 del_upwd(real3 velo, Field3 field) {
         return real3( dot(abs(velo),gradient_upwd(field.x)),
                       dot(abs(velo),gradient_upwd(field.y)),
                       dot(abs(velo),gradient_upwd(field.z)))
 }
 
-
+/**
+ * Calculates laplacian of s.
+ */
 laplace(Field s) {
     del2f = derxx(s) + deryy(s) + derzz(s)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
@@ -443,6 +603,10 @@ laplace(Field s) {
     }
     return del2f
 }
+/**
+ * Calculates laplacian of s given the squares of the inverse spacings.
+ * Most likely only correct in Cartesian.
+ */
 laplace(Field s, real3 inv_spacing_2) {
     del2f = derxx(s,inv_spacing_2.x) + deryy(s,inv_spacing_2.y) + derzz(s,inv_spacing_2.z)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
@@ -456,6 +620,9 @@ laplace(Field s, real3 inv_spacing_2) {
     }
     return del2f
 }
+/**
+ * Calculates laplacian of s with 2nd order discretization.
+ */
 laplace_2nd(Field s) {
     del2f = derxx_2nd(s) + deryy_2nd(s) + derzz_2nd(s)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
@@ -470,6 +637,10 @@ laplace_2nd(Field s) {
     return del2f
 }
 
+/**
+ * Calculates laplacian of s without the central point included.
+ * (Useful for Jacobi and SOR)
+ */
 laplace_neighbours(Field s) {
     del2f = derxx_neighbours(s) + deryy_neighbours(s) + derzz_neighbours(s)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
@@ -484,6 +655,10 @@ laplace_neighbours(Field s) {
     return del2f
 }
 
+/**
+ * Calculates laplacian of s in 2nd order without the central point included.
+ * (Useful for Jacobi and SOR)
+ */
 laplace_2nd_neighbours(Field s) {
     del2f = derxx_2nd_neighbours(s) + deryy_2nd_neighbours(s) + derzz_2nd_neighbours(s)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
@@ -498,41 +673,72 @@ laplace_2nd_neighbours(Field s) {
     return del2f
 }
 
+/**
+ * Calculates laplacian of s in 2nd order without the central point included.
+ * (Useful for Jacobi and SOR)
+ * Uses the given spacings.
+ */
 laplace_2nd_neighbours(Field s, real3 inv_spacings_2) {
     del2f = derxx_2nd_neighbours(s,inv_spacings_2.x) + deryy_2nd_neighbours(s,inv_spacings_2.y) + derzz_2nd_neighbours(s,inv_spacings_2.z)
     return del2f
 }
 
+/**
+ * Calculates laplacian of s without the central point included.
+ * (Useful for Jacobi and SOR)
+ * Uses the given spacings.
+ */
 laplace_neighbours(Field s, real3 inv_spacings_2) {
     del2f = derxx_neighbours(s,inv_spacings_2.x) + deryy_neighbours(s,inv_spacings_2.y) + derzz_neighbours(s,inv_spacings_2.z)
     return del2f
 }
 
+/**
+ * Gives the coefficient for the central point of the Laplacian.
+ */
 laplace_central_coeff() {
     return derxx_central_coeff() + deryy_central_coeff() + derzz_central_coeff()
 }
 
+/**
+ * Gives the coefficient for the central point of the Laplacian as discretized in 2nd order.
+ */
 laplace_2nd_central_coeff() {
     return derxx_2nd_central_coeff() + deryy_2nd_central_coeff() + derzz_2nd_central_coeff()
 }
 
+/**
+ * Gives the coefficient for the central point of the Laplacian.
+ */
 laplace_central_coeff(real3 inv_spacings_2) {
     return derxx_central_coeff(inv_spacings_2.x) + deryy_central_coeff(inv_spacings_2.y) + derzz_central_coeff(inv_spacings_2.z)
 }
 
+/**
+ * Gives the coefficient for the central point of the Laplacian as discretized in 2nd order.
+ */
 laplace_2nd_central_coeff(real3 inv_spacings_2) {
     return derxx_2nd_central_coeff(inv_spacings_2.x) + deryy_2nd_central_coeff(inv_spacings_2.y) + derzz_2nd_central_coeff(inv_spacings_2.z)
 }
 
+/**
+ * Gives the coefficient for the central point of the Laplacian.
+ */
 laplace_central_coeff_extended() {
     return derxx_central_coeff_extended() + deryy_central_coeff_extended() + derzz_central_coeff_extended()
 }
 
+/**
+ * Gives the coefficient for the central point of the Laplacian.
+ */
 laplace_central_coeff_extended(real3 inv_spacings_2) {
     return derxx_central_coeff_extended(inv_spacings_2.x) + deryy_central_coeff_extended(inv_spacings_2.y) + derzz_central_coeff_extended(inv_spacings_2.z)
 }
 
 
+/**
+ * Calculates the vector Laplacian of s
+ */
 laplace(Field3 s) {
 	d2A = get_d2A(s)
 	del2f = real3(
@@ -685,13 +891,24 @@ contract(Matrix a, Matrix b) {
            dot(a.row(2), b.row(2))
 }
 
+/**
+ * Calculates the Euclidean norm of the vector v squared
+ */
 norm2(real3 v) {
     return ( dot(v,v) )
 }
 
+/**
+ * Calculates the Euclidean norm of the vector v
+ */
 length(v) {
     return sqrt( norm2(v) )
 }
+/**
+ * Computes M where
+ * M_ij = (∂^2/∂_i)v_j,
+ * and v is a vector field.
+ */
 d2fi_dxj(Field3 v)
 {
 	return Matrix(
@@ -701,16 +918,27 @@ d2fi_dxj(Field3 v)
 		     )
 }
 
+/**
+ * Computes v·(∇f),
+ * where v is a vector and f is a scalar field.
+ */
 del6fj(Field f, real3 vec)
 {
 	return vec.x*der6x(f) + vec.y*der6y(f) + vec.z*der6z(f)
 }
+
+/**
+ * Computes ∇ × (∇ × v)
+ */
 curlcurl(Field3 v)
 {
 	return gradient_of_divergence(v) - laplace(v)
 }
 
 #ifdef AC_GENERAL_DERIVS_H
+/**
+ * Computes the Laplacian of s on the extended grid
+ */
 laplace_extended(Field s) {
     del2f = derxx_extended(s) + deryy_extended(s) + derzz_extended(s)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
@@ -725,6 +953,9 @@ laplace_extended(Field s) {
     return del2f
 }
 
+/**
+ * Computes the Laplacian of s (without taking the central point into account) on the extended grid
+ */
 laplace_neighbours_extended(Field s) {
     del2f = derxx_neighbours_extended(s) + deryy_neighbours_extended(s) + derzz_neighbours_extended(s)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
@@ -739,6 +970,9 @@ laplace_neighbours_extended(Field s) {
     return del2f
 }
 
+/**
+ * Computes the Laplacian of s (without taking the central point into account) on the extended grid
+ */
 laplace_neighbours_extended(Field s, real3 inv_spacings_2) {
     del2f = derxx_neighbours_extended(s,inv_spacings_2.x) + deryy_neighbours_extended(s,inv_spacings_2.y) + derzz_neighbours_extended(s,inv_spacings_2.z)
     if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
@@ -753,6 +987,10 @@ laplace_neighbours_extended(Field s, real3 inv_spacings_2) {
     return del2f
 }
 
+/**
+ * Computes the rhs needed when solving the Poisson equation
+ * with a compact stencil (e.g. radius 1 stencil for 6th order Laplacian).
+ */
 #if STENCIL_ORDER == 6
 compact_poisson_rhs(Field f)
 {
