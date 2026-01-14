@@ -776,8 +776,18 @@ laplace(Field3 s) {
 	return del2f
 }
 
+/**
+ * Computes the rate-of-strain tensor,
+ * where uij is the Jacobian of the the velocity
+ * and divu is the divergence of it.
+ * Works only in Cartesian.
+ */
 traceless_strain(Matrix uij,divu)
 {
+  if(AC_coordinate_system == AC_SPHERICAL_COORDINATES || AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+  {
+  	fatal_error_message(true,"traceless_strain needs the velocity for curvilinear coordinates");
+  }
   Matrix sij
   for row in 0:3{
     sij[row][row] = uij[row][row] - (1.0/3.0)*divu
@@ -789,11 +799,19 @@ traceless_strain(Matrix uij,divu)
   return sij
 }
 
+/**
+ * Computes 3x3 tensor of 5th order derivatives of v.
+ */
 gij5(v) {
     return Matrix(real3( der5x(v.x), der5y(v.x), der5z(v.x) ), 
 		  real3( der5x(v.y), der5y(v.y), der5z(v.y) ), 
 		  real3( der5x(v.z), der5y(v.z), der5z(v.z) ))
 }
+/**
+ * Computes the rate-of-strain tensor,
+ * where uu is the velocity, uij is the Jacobian of it,
+ * divu is the divergence.
+ */
 traceless_strain(Matrix uij,divu,uu)
 {
   suppress_unused_warning(uu)
@@ -826,7 +844,10 @@ traceless_strain(Matrix uij,divu,uu)
   return sij
 }
 
-
+/**
+ * Computes the rate-of-strain tensor,
+ * where v is the velocity.
+ */
 traceless_rateof_strain(Field3 v) {
     Matrix S
 
@@ -845,6 +866,10 @@ traceless_rateof_strain(Field3 v) {
     return S
 }
 
+/**
+ * Computes ∇(∇·v),
+ * and m = ∇(v)
+ */
 gradient_of_divergence(Field3 v,Matrix m) {
     d2A = get_d2A(v,m)
     graddiv =
@@ -862,6 +887,9 @@ gradient_of_divergence(Field3 v,Matrix m) {
     return graddiv
 }
 
+/**
+ * Computes ∇(∇·v),
+ */
 gradient_of_divergence(Field3 v) {
 
     d2A = get_d2A(v)
@@ -879,12 +907,18 @@ gradient_of_divergence(Field3 v) {
     }
     return graddiv
 }
-
+/**
+ * ∑a²_ij i.e. the Frobenius norm squared of the matrix
+ */
 contract(Matrix mat) {
     return dot(mat.row(0), mat.row(0)) +
            dot(mat.row(1), mat.row(1)) +
            dot(mat.row(2), mat.row(2))
 }
+
+/**
+ * Computes A_ij.B_ij
+ */
 contract(Matrix a, Matrix b) {
     return dot(a.row(0), b.row(0)) +
            dot(a.row(1), b.row(1)) +
