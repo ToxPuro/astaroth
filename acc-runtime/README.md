@@ -687,8 +687,7 @@ With the example above to pass `2.0` to the first parameter of `kernel_call_1` o
 
 ### 1D and 2D setups.
 Dimensions can be set as inactive using the `bool3` variable `AC_dimension_inactive`.
-The operators in `stdlib` take the inactive dimensions correctly into account (namely derivatives across inactive dimensions are always unity). Additionally the ghost layers in the direction of inactive dimensions will not be allocated, which produces a memory saving of a times 7 in 2d.
-
+The operators and derivative stencils in `stdlib/general_operators.h` and `stdlib/general_derivs.h` take the inactive dimensions correctly into account (namely derivatives across inactive dimensions are always unity). Additionally the ghost layers in the direction of inactive dimensions will not be allocated, which produces a memory saving of a times 7 in 2d.
 
 
 # Interaction with the Astaroth Core and Utils libraries
