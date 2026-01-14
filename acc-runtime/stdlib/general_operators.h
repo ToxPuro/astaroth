@@ -762,5 +762,11 @@ compact_poisson_rhs(Field f)
 	return f + (h2/12.0)*laplace(f) + (h4/360.0)*del4(f)
 	       + (h4/180.0)*(der2x2y(f) + der2y2z(f) + der2x2z(f))
 }
+#else
+compact_poisson_rhs(Field f)
+{
+  	fatal_error_message(true,"Compact stencils for Poisson exist only for sixth-order!\n");
+	return 0.0
+}
 #endif
 #endif
