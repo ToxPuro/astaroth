@@ -1024,6 +1024,9 @@ laplace_neighbours_extended(Field s, real3 inv_spacings_2) {
 /**
  * Computes the rhs needed when solving the Poisson equation
  * with a compact stencil (e.g. radius 1 stencil for 6th order Laplacian).
+ * Requires isotropic spacing.
+ * See reference: A High-Order Compact Formulation for the 3D Poisson Equation.
+ * For test case see test/compact-poisson-test
  */
 #if STENCIL_ORDER == 6
 compact_poisson_rhs(Field f)

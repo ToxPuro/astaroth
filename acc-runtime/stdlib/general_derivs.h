@@ -1468,7 +1468,13 @@ Stencil der2y2z_stencil {
     [ 3][ 3][0] = DER2_3 * DER2_3
 }
 
-//Assumes isotropic uniform spacing
+/**
+ * Computes the lhs needed when solving the Poisson equation
+ * with a compact stencil (e.g. radius 1 stencil for 6th order Laplacian).
+ * Requires isotropic spacing.
+ * See reference: A High-Order Compact Formulation for the 3D Poisson Equation.
+ * For test case see test/compact-poisson-test
+ */
 Stencil compact_poisson_lhs
 {
 	[ 0][ 0][ 0]  = (-128.0/30.0)*AC_inv_ds_2.x,
@@ -1504,6 +1510,10 @@ Stencil compact_poisson_lhs
 	[ 1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x
 }
 
+/**
+ * The same as compact_poisson_lhs
+ * (Useful for Jacobi or SOR).
+ */
 Stencil compact_poisson_lhs_neighbours
 {
 	[ 0][ 0][ 1]  = (14.0/30.0)*AC_inv_ds_2.x,
@@ -1538,7 +1548,10 @@ Stencil compact_poisson_lhs_neighbours
 	[ 1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x
 }
 
-//Assumes isotropic uniform spacing
+/**
+ * The central coefficient of the compact Poisson matrix
+ * used for Jacobi or SOR
+ */
 compact_poisson_lhs_central_coeff()
 {
 	return (-128.0/30.0)*AC_inv_ds_2.x
