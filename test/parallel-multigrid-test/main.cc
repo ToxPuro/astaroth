@@ -98,10 +98,13 @@ main(int argc, char* argv[])
 
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
+    //acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_LINEAR);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
+    //acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_EXTERNAL);
+    //acPushToConfig(info,AC_domain_decomposition,(int3){2,1,1});
     info.comm->handle = MPI_COMM_WORLD;
 
-    const int max_devices = 2;
+    const int max_devices = 8;
     if (nprocs > max_devices) {
         fprintf(stderr,
                 "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
@@ -125,6 +128,13 @@ main(int argc, char* argv[])
     acPushToConfig(info,AC_power_of_two_minus_one_grid,true);
     acPushToConfig(info,AC_allow_non_divisible_grid,true);
     acSetLocalMeshDims(nx,ny,nz,&info);
+
+    fprintf(stderr,"%d Local Mesh: (%d,%d,%d)\n"
+		    ,pid
+		    ,info[AC_nlocal].x
+		    ,info[AC_nlocal].y
+		    ,info[AC_nlocal].z
+	   );
 
     #if AC_RUNTIME_COMPILATION
     const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";

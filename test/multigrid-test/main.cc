@@ -362,7 +362,11 @@ main(int argc, char* argv[])
     fprintf(stderr,"GMG\n");
     {
     	acGridExecuteTaskGraph(initcond_graph,1);
-    	acGridExecuteTaskGraph(residual_graph,1);
+	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
+	{
+    		const auto res_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
+    		acGridExecuteTaskGraph(res_graph,1);
+	}
     	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
     	int n_steps = 0;
