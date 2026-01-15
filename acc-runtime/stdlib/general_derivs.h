@@ -7,6 +7,13 @@ hostdefine AC_GENERAL_DERIVS_ENABLED (1)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
 
+//Sixth-order values.
+//To be redefined by other orders
+#define COMPACT_POISSON_CENTRAL (-128.0/30.0)
+#define COMPACT_POISSON_FACE (14.0/30.0)
+#define COMPACT_POISSON_DIAGONAL (3.0/30.0)
+#define COMPACT_POISSON_CUBICAL (1.0/30.0)
+
 
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)
@@ -525,6 +532,405 @@ derz_upwind_front(Field f)
 
 #else
 
+#if STENCIL_ORDER == 4
+
+derxx_neighbours_stencil(Field f)
+{
+	fatal_error_message(true,"derxx_neighbours_stencil not implemented with order 4!\n");
+	return 0.0
+}
+deryy_neighbours_stencil(Field f)
+{
+	fatal_error_message(true,"deryy_neighbours_stencil not implemented with order 4!\n");
+	return 0.0
+}
+derzz_neighbours_stencil(Field f)
+{
+	fatal_error_message(true,"derzz_neighbours_stencil not implemented with order 4!\n");
+	return 0.0
+}
+//Redefining the sixth-order coeffs to 4th order
+#define COMPACT_POISSON_CENTRAL (-24.0/6.0)
+#define COMPACT_POISSON_FACE (2.0/6.0)
+#define COMPACT_POISSON_DIAGONAL (1.0/6.0)
+#define COMPACT_POISSON_CUBICAL (0.0)
+
+#define DER1_2 ( -1.0 / 12.0)
+#define DER1_1 (2.0/3.0)
+#define DER1_0 (0)
+
+
+Stencil derx_stencil {
+	[0][0][-2]  = -DER1_2,
+	[0][0][-1]  = -DER1_1,
+	[0][0][ 1]  =  DER1_1,
+	[0][0][ 2]  =  DER1_2
+}
+Stencil dery_stencil {
+	[0][-2][0]  = -DER1_2,
+	[0][-1][0]  = -DER1_1,
+	[0][ 1][0]  =  DER1_1,
+	[0][ 2][0]  =  DER1_2
+}
+
+Stencil derz_stencil {
+	[-2][0][0]  = -DER1_2,
+	[-1][0][0]  = -DER1_1,
+	[ 1][0][0]  =  DER1_1,
+	[ 2][0][0]  =  DER1_2
+}
+
+#define DERX_2 (-1.0/144.0)
+#define DERX_1 (64.0/144.0)
+Stencil derxy_stencil {
+    [0][-2][-2] =  DERX_2,
+    [0][-1][-1] =  DERX_1,
+    [0][ 1][ 1] =  DERX_1,
+    [0][ 2][ 2] =  DERX_2,
+    [0][-2][ 2] = -DERX_2,
+    [0][-1][ 1] = -DERX_1,
+    [0][ 1][-1] = -DERX_1,
+    [0][ 2][-2] = -DERX_2,
+}
+
+#define deryx derxy
+
+Stencil derxz_stencil {
+    [-2][0][-2] =  DERX_2,
+    [-1][0][-1] =  DERX_1,
+    [ 1][0][ 1] =  DERX_1,
+    [ 2][0][ 2] =  DERX_2,
+    [-2][0][ 2] = -DERX_2,
+    [-1][0][ 1] = -DERX_1,
+    [ 1][0][-1] = -DERX_1,
+    [ 2][0][-2] = -DERX_2,
+}
+
+Stencil deryz_stencil {
+    [-2][-2][0] =  DERX_2,
+    [-1][-1][0] =  DERX_1,
+    [ 1][ 1][0] =  DERX_1,
+    [ 2][ 2][0] =  DERX_2,
+    [-2][ 2][0] = -DERX_2,
+    [-1][ 1][0] = -DERX_1,
+    [ 1][-1][0] = -DERX_1,
+    [ 2][-2][0] = -DERX_2,
+}
+
+#define derzy deryz
+
+#define DER2_2 (-1.0/12.0)
+#define DER2_1 (4.0/3.0)
+#define DER2_0 (-5.0/2.0)
+Stencil derxx_stencil {
+	[0][0][-2]  =  DER2_2,
+	[0][0][-1]  =  DER2_1,
+	[0][0][ 0]  =  DER2_0,
+	[0][0][ 1]  =  DER2_1,
+	[0][0][ 2]  =  DER2_2
+}
+
+Stencil deryy_stencil {
+	[0][-2][0]  =  DER2_2,
+	[0][-1][0]  =  DER2_1,
+	[0][ 0][0]  =  DER2_0,
+	[0][ 1][0]  =  DER2_1,
+	[0][ 2][0]  =  DER2_2
+}
+
+Stencil derzz_stencil {
+	[-2][0][0]  =  DER2_2,
+	[-1][0][0]  =  DER2_1,
+	[ 0][0][0]  =  DER2_0,
+	[ 1][0][0]  =  DER2_1,
+	[ 2][0][0]  =  DER2_2
+}
+
+derxy_non_diagonal_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derxy_non_diagonal stencil not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+derxz_non_diagonal_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derxz_non_diagonal stencil not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+deryz_non_diagonal_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"deryz_non_diagonal stencil not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+#define DER3_2 (1.0/2.0)
+#define DER3_1 (-1.0)
+#define DER3_0 (0)
+
+
+Stencil der3x_stencil {
+	[0][0][-2]  =  -DER3_2,
+	[0][0][-1]  =  -DER3_1,
+	[0][0][ 1]  =  +DER3_1,
+	[0][0][ 2]  =  +DER3_2
+}
+
+Stencil der3y_stencil {
+	[0][-2][0]  =  -DER3_2,
+	[0][-1][0]  =  -DER3_1,
+	[0][ 1][0]  =  +DER3_1,
+	[0][ 2][0]  =  +DER3_2
+}
+
+Stencil der3z_stencil {
+	[-2][0][0]  =  -DER3_2,
+	[-1][0][0]  =  -DER3_1,
+	[ 1][0][0]  =  +DER3_1,
+	[ 2][0][0]  =  +DER3_2
+}
+
+#define DER4_2 (1)
+#define DER4_1 (-4.0)
+#define DER4_0 (6.0)
+
+Stencil der4x_stencil {
+	[0][0][-2]  =  DER4_2,
+	[0][0][-1]  =  DER4_1,
+	[0][0][ 0]  =  DER4_0,
+	[0][0][ 1]  =  DER4_1,
+	[0][0][ 2]  =  DER4_2
+}
+
+Stencil der4y_stencil {
+	[0][0][-2]  =  DER4_2,
+	[0][0][-1]  =  DER4_1,
+	[0][0][ 0]  =  DER4_0,
+	[0][0][ 1]  =  DER4_1,
+	[0][0][ 2]  =  DER4_2
+}
+
+Stencil der4z_stencil {
+	[0][0][-2]  =  DER4_2,
+	[0][0][-1]  =  DER4_1,
+	[0][0][ 0]  =  DER4_0,
+	[0][0][ 1]  =  DER4_1,
+	[0][0][ 2]  =  DER4_2
+}
+
+der4x2y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4x2y not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der2x2y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der2x2y not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der2x2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der2x2z not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der2y2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der2y2z not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der4x2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4x2z not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der4y2x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4y2x not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der4y2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4y2z not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der4z2x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4z2x not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der4z2y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4z2y not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5x not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5y not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5z not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5x1y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5x1y not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5x1z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5x1z not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5y1x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5y1x not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5y1z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5y1z not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5z1x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5z1x not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der5z1y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5z1y not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der6x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6x not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der6x_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6x_exp not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der6y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6y not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der6y_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6y_exp not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der6z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6z not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+der6z_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6z_exp not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+derx_upwind_left(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derx_upwind_left not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+derx_upwind_right(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derx_upwind_right not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+dery_upwind_down(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"dery_upwind_down not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+dery_upwind_up(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"dery_upwind_up not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+derz_upwind_back(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derz_upwind_back not implemented with Stencil order 4!\n");
+	return 0.0
+}
+
+derz_upwind_front(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derz_upwind_front not implemented with Stencil order 4!\n");
+	return 0.0
+}
+#else
 #if STENCIL_ORDER == 10
 
 #define DER10_1_1 (2100.0/2520.0)
@@ -1468,94 +1874,8 @@ Stencil der2y2z_stencil {
     [ 3][ 3][0] = DER2_3 * DER2_3
 }
 
-/**
- * Computes the lhs needed when solving the Poisson equation
- * with a compact stencil (e.g. radius 1 stencil for 6th order Laplacian).
- * Requires isotropic spacing.
- * See reference: A High-Order Compact Formulation for the 3D Poisson Equation.
- * For test case see test/compact-poisson-test
- */
-Stencil compact_poisson_lhs
-{
-	[ 0][ 0][ 0]  = (-128.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 0][ 1]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 0][-1]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 1][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[ 0][-1][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 0][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 0][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
 
-	[-1][-1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 1][-1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
 
-	[-1][ 0][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 0][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 0][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 0][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
-
-	[ 0][-1][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 1][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 0][-1][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 1][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
-
-	[-1][-1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[-1][-1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[ 1][-1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[ 1][-1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x
-}
-
-/**
- * The same as compact_poisson_lhs
- * (Useful for Jacobi or SOR).
- */
-Stencil compact_poisson_lhs_neighbours
-{
-	[ 0][ 0][ 1]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 0][-1]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 1][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[ 0][-1][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 0][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 0][ 0]  = (14.0/30.0)*AC_inv_ds_2.x,
-
-	[-1][-1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 1][-1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 1][ 0]  = (3.0/30.0)*AC_inv_ds_2.x,
-
-	[-1][ 0][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 0][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 0][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 0][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
-
-	[ 0][-1][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 1][-1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 0][-1][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
-	[ 0][ 1][ 1]  = (3.0/30.0)*AC_inv_ds_2.x,
-
-	[-1][-1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[-1][-1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[-1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[ 1][-1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[ 1][-1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 1][-1]  = (1.0/30.0)*AC_inv_ds_2.x,
-	[ 1][ 1][ 1]  = (1.0/30.0)*AC_inv_ds_2.x
-}
-
-/**
- * The central coefficient of the compact Poisson matrix
- * used for Jacobi or SOR
- */
-compact_poisson_lhs_central_coeff()
-{
-	return (-128.0/30.0)*AC_inv_ds_2.x
-}
 
 Stencil der4x_stencil {
     [0][0][-3] = AC_inv_ds_4.x * DER4_3,
@@ -2308,6 +2628,7 @@ Stencil derz_upwind_front
     [ 0][0][0] = +DER_UPWD_0 
 }
 
+#endif
 #endif
 #endif
 
@@ -3727,3 +4048,92 @@ der2y2z(Field f)
 //	res += DER2_1*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z+1];
 //	return res;
 //}
+//
+/**
+ * Computes the lhs needed when solving the Poisson equation
+ * with a compact stencil (e.g. radius 1 stencil for 6th order Laplacian).
+ * Requires isotropic spacing.
+ * See reference: A High-Order Compact Formulation for the 3D Poisson Equation.
+ * For test case see test/compact-poisson-test
+ */
+Stencil compact_poisson_lhs
+{
+	[ 0][ 0][ 0]  = (-COMPACT_POISSON_CENTRAL)*AC_inv_ds_2.x,
+	[ 0][ 0][ 1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[ 0][ 0][-1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[ 0][ 1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[ 0][-1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[ 1][ 0][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[-1][ 0][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+
+	[-1][-1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 1][-1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[-1][ 1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 1][ 1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+
+	[-1][ 0][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 1][ 0][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[-1][ 0][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 1][ 0][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+
+	[ 0][-1][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 0][ 1][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 0][-1][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 0][ 1][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+
+	[-1][-1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[-1][-1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[-1][ 1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[-1][ 1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[ 1][-1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[ 1][-1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[ 1][ 1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[ 1][ 1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x
+}
+
+/**
+ * The same as compact_poisson_lhs
+ * (Useful for Jacobi or SOR).
+ */
+Stencil compact_poisson_lhs_neighbours
+{
+	[ 0][ 0][ 1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[ 0][ 0][-1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[ 0][ 1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[ 0][-1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[ 1][ 0][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+	[-1][ 0][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
+
+	[-1][-1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 1][-1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[-1][ 1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 1][ 1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+
+	[-1][ 0][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 1][ 0][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[-1][ 0][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 1][ 0][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+
+	[ 0][-1][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 0][ 1][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 0][-1][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+	[ 0][ 1][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
+
+	[-1][-1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[-1][-1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[-1][ 1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[-1][ 1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[ 1][-1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[ 1][-1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[ 1][ 1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
+	[ 1][ 1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x
+}
+
+/**
+ * The central coefficient of the compact Poisson matrix
+ * used for Jacobi or SOR
+ */
+compact_poisson_lhs_central_coeff()
+{
+	return (-COMPACT_POISSON_CENTRAL)*AC_inv_ds_2.x
+}

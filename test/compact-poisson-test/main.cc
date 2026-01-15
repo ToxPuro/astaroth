@@ -62,7 +62,7 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    //acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
+    acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
     acPushToConfig(info,AC_ds,
     (AcReal3){
 	    (2*AC_REAL_PI)/info[AC_ngrid].x,
