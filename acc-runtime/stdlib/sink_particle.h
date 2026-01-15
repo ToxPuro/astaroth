@@ -1,19 +1,21 @@
 #ifdef AC_GENERAL_GRID_VARS_H
 global output real AC_central_sink_particle_momentum
-feed_sink_particle(real velocity, real density, real dt)
+feed_sink_particle(real radial_velocity, real density, real dt)
 {
 	r = AC_r[vertexIdx.x]
-	momentum_flux = density*velocity*r*r*sin(AC_sin_theta[vertexIdx.y])*dt
+	momentum_flux = density*radial_velocity*r*r*sin(AC_sin_theta[vertexIdx.y])*dt
 	//Only flux at the inner radius goes to the central sink particle
-	flux_going_to_sink_particle  = (globalVertexIdx.x == NGHOST)*momentum_flux
+	flux_going_to_sink_particle  = (radial_velocity < 0.0 && globalVertexIdx.x == NGHOST)*momentum_flux
 	//Hack to increase the sink momentum instead of overwriting it
 	resum_particle_momentum = AC_ngrid_products_inv.xyz*AC_central_sink_particle_momentum
 	reduce_sum(resum_particle_momentum + flux_going_to_sink_particle,AC_central_sink_particle_momentum)
 }
+
 force_from_sink_particle(real G)
 {
+	r = AC_r[vertexIdx.x]*AC_r[vertexIdx.x]
 	return -real3(
-			(G*AC_central_sink_particle_momentum)/AC_r[vertexIdx.x],
+			(G*AC_central_sink_particle_momentum)/(r*r),
 			0.0,
 			0.0
 		    )
