@@ -4058,7 +4058,7 @@ der2y2z(Field f)
  */
 Stencil compact_poisson_lhs
 {
-	[ 0][ 0][ 0]  = (-COMPACT_POISSON_CENTRAL)*AC_inv_ds_2.x,
+	[ 0][ 0][ 0]  = (COMPACT_POISSON_CENTRAL)*AC_inv_ds_2.x,
 	[ 0][ 0][ 1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
 	[ 0][ 0][-1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
 	[ 0][ 1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
@@ -4135,5 +4135,5 @@ Stencil compact_poisson_lhs_neighbours
  */
 compact_poisson_lhs_central_coeff()
 {
-	return (-COMPACT_POISSON_CENTRAL)*AC_inv_ds_2.x
+	return (COMPACT_POISSON_CENTRAL)*AC_inv_ds_2.x
 }
