@@ -163,7 +163,11 @@ grid_center() {
 			    AC_z[AC_ngrid.z/2]
 			)
     }
-    fatal_error_message(false,"grid_center only implemented in Cartesian!\n");
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    return real3(0.,0.,0.)
+    }
+    fatal_error_message(false,"grid_center only implemented in Cartesian and spherical!\n");
 }
 get_integration_weight()
 {
