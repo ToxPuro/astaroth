@@ -339,6 +339,7 @@ gmg_laplace_central_coeff(int level)
 	return AC_GMG_CENTRAL_COEFFS[level]
 }
 
+/**
 gmg_poisson_jacobi_update(int level)
 {
 	Ax = -gmg_laplace_neighbours(GMG_SOLUTIONS[level],level)
@@ -358,6 +359,7 @@ gmg_poisson_sor_red_black(int color, int level, real omega)
 		write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level])
 	}
 }
+**/
 
 Kernel gmg_prolong_solution_kernel(GMG_LEVEL level)
 {
@@ -371,6 +373,7 @@ gmg_prolong_solution(gmg_boundconds)
 	gmg_prolong_solution_kernel(AC_GMG_LEVEL)
 }
 
+/**
 Kernel gmg_sor_red(GMG_LEVEL level, real omega)
 {
 	gmg_poisson_sor_red_black(SOR_RED,level,omega)
@@ -387,6 +390,7 @@ gmg_poisson_sor_red_black_step(gmg_boundconds)
 	gmg_sor_red(AC_GMG_LEVEL, AC_SOR_omega)
 	gmg_sor_black(AC_GMG_LEVEL, AC_SOR_omega)
 }
+**/
 
 //Optimized smoother across all of the 7-point stencils
 //When going to sixth-order can numerically find optimized
@@ -425,7 +429,14 @@ run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0284
 run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0081
 run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0025
 #else
+#if STENCIL_ORDER == 4
+run_const real AC_omega_for_optimized_smoother = 0.9363
+run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.2807
+run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0329
+run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0166
+run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0044
 
+#else
 //For compact sixth-order laplacian
 run_const real AC_omega_for_optimized_smoother = 0.3543
 run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.7064
@@ -433,7 +444,7 @@ run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.1005
 run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0363
 run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0151
 
-
+#endif
 #endif
 
 Stencil

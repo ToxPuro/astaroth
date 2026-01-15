@@ -143,7 +143,6 @@ main(int argc, char* argv[])
     	const Volume full_launch_start = to_volume(info[AC_nmin]);
 	const Volume full_launch_dims = to_volume(info[level_dims[i]]);
     	const Volume full_launch_end = full_launch_dims + full_launch_start;
-    	const auto gm_sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step,full_launch_start,full_launch_end);
     	const auto mg_residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual,full_launch_start,full_launch_end);
 
 	if(i < 4-1)

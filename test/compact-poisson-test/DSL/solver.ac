@@ -1,4 +1,4 @@
-#define STENCIL_ORDER (6)
+#define STENCIL_ORDER (4)
 #include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
 #include "$AC_HOME/acc-runtime/stdlib/math"
 #include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
@@ -51,22 +51,6 @@ ComputeSteps jacobi_step(boundconds)
 	jacobi_kernel()
 }
 
-
-fixed_boundary Kernel sor_red(real omega)
-{
-	poisson_sor_red_black_extended(SOR_RED,HEAT_INIT,HEAT_SOLUTION,omega)
-}
-fixed_boundary Kernel sor_black(real omega)
-{
-	poisson_sor_red_black_extended(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,omega)
-}
-
-ComputeSteps
-sor_red_black_step(boundconds)
-{
-	sor_red(AC_SOR_omega)
-	sor_black(AC_SOR_omega)
-}
 
 output real AC_residual2
 Kernel residual_kernel()
