@@ -194,8 +194,6 @@ multipole_expansion_bc_inner(AcBoundary boundary_region, Field f)
     const int3 boundary = get_boundary(normal)
     int3 domain = boundary
     int3 ghost  = boundary
-    R = AC_r[AC_charge_radius_points]
-    M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
     for i in 0:NGHOST
     {
             domain = domain - normal
@@ -233,8 +231,6 @@ multipole_expansion_bc_outer(AcBoundary boundary_region, Field f)
     const int3 boundary = get_boundary(normal)
     int3 domain = boundary
     int3 ghost  = boundary
-	R = AC_r[AC_charge_radius_points]
-	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
     for i in 0:NGHOST
     {
         domain = domain - normal
