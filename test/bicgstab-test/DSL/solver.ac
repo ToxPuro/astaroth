@@ -1,0 +1,175 @@
+hostdefine STENCIL_ORDER (6)
+
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/bicgstab.h"
+Field HEAT_INIT
+Field HEAT_SOLUTION
+real AC_k = 1.0
+Field TEST_SOLUTION
+Field TEST_HEAT
+
+Field RESIDUAL
+input real AC_laplace_sign
+
+Kernel init_kernel(real init_sign)
+{
+	//Not using the sine wave example since due to being eigensolution would converge in a single step
+	pos = grid_position()
+	write(HEAT_INIT,init_sign*(pos.x + pos.y + pos.z))
+	write(HEAT_SOLUTION,0.0)
+	write(TEST_SOLUTION, (1.0/6.0)*(pos.x*pos.x*pos.x + pos.y*pos.y*pos.y + pos.z*pos.z*pos.z))
+}
+
+bc_heat(AcBoundary boundary, Field f) 
+{
+   const int3 normal = get_normal(boundary)
+   const int3 boundary_point = get_boundary(normal)
+   int3 ghost  = boundary_point
+   for i in 0:NGHOST
+   {
+           ghost  = ghost  + normal
+	   pos = grid_position(ghost)
+           f[ghost.x][ghost.y][ghost.z] = (1.0/6.0)*((pos.x*pos.x*pos.x) + (pos.y*pos.y*pos.y) + (pos.z*pos.z*pos.z));
+   }
+
+}
+
+bc_heat_source(AcBoundary boundary, Field f)
+{
+   const int3 normal = get_normal(boundary)
+   const int3 boundary_point = get_boundary(normal)
+   int3 ghost  = boundary_point
+   for i in 0:NGHOST
+   {
+           ghost  = ghost  + normal
+	   pos = grid_position(ghost)
+           f[ghost.x][ghost.y][ghost.z] = pos.x + pos.y + pos.z;
+   }
+
+}
+
+
+BoundConds boundconds{
+	bc_heat(BOUNDARY_XYZ,HEAT_SOLUTION)
+	bc_heat(BOUNDARY_XYZ,TEST_SOLUTION)
+	ac_const_bc(BOUNDARY_XYZ,BICGSTAB_P,0.0)
+	ac_const_bc(BOUNDARY_XYZ,BICGSTAB_S,0.0)
+}
+
+output real AC_residual2
+Kernel residual_kernel(real laplace_sign)
+{
+	r = HEAT_INIT-(laplace_sign*laplace(HEAT_SOLUTION))
+	write(RESIDUAL,r)
+	reduce_sum(r*r,AC_residual2)
+	write(TEST_HEAT,(-laplace_sign*laplace(TEST_SOLUTION)))
+}
+
+ComputeSteps
+initcond(boundconds)
+{
+	init_kernel(AC_laplace_sign)
+}
+
+
+ComputeSteps
+empty_steps(boundconds)
+{
+}
+Kernel
+init_solution()
+{
+	write(HEAT_SOLUTION,0.0)
+}
+
+Kernel
+init_residual()
+{
+	r = HEAT_INIT -(-laplace(HEAT_SOLUTION))
+	write(BICGSTAB_R,r)
+	write(BICGSTAB_R0,r)
+	write(BICGSTAB_P,r)
+}
+
+Kernel bicgstab_step0()
+{
+	bicgstab_compute_rho_prev()
+}
+Kernel bicgstab_step1()
+{
+	v = -laplace(BICGSTAB_P)
+	bicgstab_compute_v_and_r0Tv(v)
+}
+
+Kernel bicgstab_step2()
+{
+	bicgstab_compute_h_and_s(HEAT_SOLUTION)
+}
+
+Kernel bicgstab_step3()
+{
+	t = -laplace(BICGSTAB_S)
+	bicgstab_compute_t(t)
+}
+Kernel bicgstab_step4()
+{
+	bicgstab_compute_next_solution(HEAT_SOLUTION)
+}
+
+Kernel bicgstab_step5()
+{
+	bicgstab_compute_rho_next() 
+}
+
+Kernel bicgstab_step6()
+{
+	bicgstab_update_p() 
+}
+
+
+ComputeSteps
+init(boundconds)
+{
+	init_solution()
+	init_residual()
+}
+
+ComputeSteps
+bicgstab_step(boundconds)
+{
+	bicgstab_step0()
+	bicgstab_step1()
+	bicgstab_step2()
+	bicgstab_step3()
+	bicgstab_step4()
+	bicgstab_step5()
+	bicgstab_step6()
+}
+
+fixed_boundary Kernel sor_red(real laplace_sign, real omega)
+{
+	poisson_sor_red_black_extended(SOR_RED,value(HEAT_INIT),HEAT_SOLUTION,omega,laplace_sign)
+}
+fixed_boundary Kernel sor_black(real laplace_sign, real omega)
+{
+	poisson_sor_red_black_extended(SOR_BLACK,value(HEAT_INIT),HEAT_SOLUTION,omega,laplace_sign)
+}
+
+ComputeSteps
+sor_red_black_step(boundconds)
+{
+	sor_red(AC_laplace_sign,1.0)
+	sor_black(AC_laplace_sign,1.0)
+}
+
+ComputeSteps
+get_residual(boundconds)
+{
+	residual_kernel(AC_laplace_sign)
+}
+
