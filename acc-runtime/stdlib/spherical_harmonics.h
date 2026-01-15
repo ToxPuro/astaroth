@@ -21,7 +21,7 @@ negative_real_spherical_harmonic(int m, int l)
 	return AC_PLM[vertexIdx.y][l][m]*AC_sin_m_phis[vertexIdx.z][m]
 }
 
-calculate_mlm(Field src)
+calculate_mlm(real src)
 {
 	r = AC_r[vertexIdx.x]
 	w = get_integration_weight()
@@ -59,7 +59,7 @@ calculate_mlm(Field src)
 	}
 }
 
-calculate_mlm_extended(Field src)
+calculate_mlm_extended(real src)
 {
 	r = AC_r_extended[vertexIdx.x]
 	w = get_integration_weight_extended()
