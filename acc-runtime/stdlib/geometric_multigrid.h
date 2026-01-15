@@ -268,7 +268,11 @@ gmg_laplace(Field f, int level)
 		inv_spacing_2 = AC_inv_ds_2/pow(4,int(level))
 		return laplace(f,inv_spacing_2)
 	}
+#if STENCIL_ORDER == 2
 	if(level == 0) return laplace(f)
+#else
+	if(level == 0) return compact_poisson_lhs(f)
+#endif
 	if(level == 1) return gmg_laplace_level_1(f)
 	if(level == 2) return gmg_laplace_level_2(f)
 	if(level == 3) return gmg_laplace_level_3(f)
@@ -414,18 +418,23 @@ optimized_smoother_stencil
 
 //This is the full 3x3x3 smoother with numerically derived coeffs that achieve smoothing factor of approx 0.285 which is better than the theoretical best when including only cardinals
 //
+#if STENCIL_ORDER == 2
 run_const real AC_omega_for_optimized_smoother = 1.3699
 run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.1432
 run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0284
 run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0081
 run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0025
+#else
 
-//TODO: test that these coeffs give good smoothing for compact 6th order laplacian 
-//run_const real AC_omega_for_optimized_smoother = 0.6540
-//run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.3828
-//run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0544
-//run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0197
-//run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0082
+//For compact sixth-order laplacian
+run_const real AC_omega_for_optimized_smoother = 0.3543
+run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.7064
+run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.1005
+run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0363
+run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0151
+
+
+#endif
 
 Stencil
 optimized_smoother_stencil
@@ -484,7 +493,11 @@ ComputeSteps gmg_optimized_smoother(gmg_boundconds)
 
 Kernel gmg_write_del2_kernel()
 {
+#if STENCIL_ORDER == 2
 	write(GMG_RESIDUALS[0],laplace(GMG_SOLUTIONS[0]))
+#else
+	write(GMG_RESIDUALS[0],compact_poisson_lhs(GMG_SOLUTIONS[0]))
+#endif
 }
 
 
