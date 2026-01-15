@@ -20,6 +20,11 @@ force_from_sink_particle(real G)
 			0.0
 		    )
 }
+initialize_sink_particle(real initial_value)
+{
+	value_to_sum = (vertexIdx == (int3){NGHOST,NGHOST,NGHOST})*initial_value
+	reduce_sum(value_to_sum,AC_central_sink_particle_momentum)
+}
 #else
 Sink particle requires general grid vars for sin
 #endif
