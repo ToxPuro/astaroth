@@ -130,3 +130,39 @@ poisson_sor_red_black_extended(int color, real density, Field potential, real om
 #endif
 
 #endif
+#ifdef AC_GENERAL_GRID_VARS_H
+//For spherical grids
+local_jacobi_spectral_radius_estimate()
+{
+	inv_dx = AC_INV_MAPPING_FUNC_DER_X
+	inv_dy = AC_INV_MAPPING_FUNC_DER_Y
+	inv_dz = AC_INV_MAPPING_FUNC_DER_Z
+
+	inv_dx2 = inv_dx*inv_dx
+	inv_dy2 = inv_dy*inv_dy
+	inv_dz2 = inv_dz*inv_dz
+
+	inv_r = AC_INV_R
+	inv_r2 = inv_r*inv_r
+
+	inv_sin_theta = AC_INV_SIN_THETA
+	inv_sin_theta2 = inv_sin_theta*inv_sin_theta
+	return (2.0/laplace_central_coeff())*
+		(
+		   cos(AC_REAL_PI/AC_ngrid.x)*inv_dx2
+		  +cos(AC_REAL_PI/AC_ngrid.y)*inv_dy2*inv_r2
+		  +cos(AC_REAL_PI/AC_ngrid.z)*inv_dz2*inv_r2*inv_sin_theta2
+		)
+}
+initial_sor_omega()
+{
+	jacobi_radius = local_jacobi_spectral_radius_estimate()
+	return (1.0)/(1.0 - 0.5*jacobi_radius)
+}
+update_sor_omega(Field omega)
+{
+	jacobi_radius = local_jacobi_spectral_radius_estimate()
+	jacobi_radius2 = jacobi_radius*jacobi_radius
+	return (1.0)/(1.0 - 0.25*jacobi_radius2*omega)
+}
+#endif
