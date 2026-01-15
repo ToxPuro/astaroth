@@ -28,6 +28,7 @@
 #include "../../stdlib/reduction.h"
 
 #include "timer_hires.h"
+#include "../../stdlib/grid.h"
 
 #include <getopt.h>
 #include <mpi.h>
@@ -1090,6 +1091,18 @@ main(int argc, char** argv)
     //  allocate mesh                     //
     //  load config to GPU                //
     ////////////////////////////////////////
+
+#ifdef AC_GENERAL_GRID_INCLUDED
+    ac_compute_inv_sin_theta(&info);
+    ac_compute_cot_theta(&info);
+    ac_compute_theta(&info);
+    ac_compute_phi(&info);
+    ac_compute_spherical_harmonics(&info);
+    ac_compute_sin_theta(&info);
+    ac_compute_sin_phi(&info);
+    ac_compute_cos_phi(&info);
+    ac_compute_phi(&info);
+#endif
 
     acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
     //these are the defaults but better to state them explicitly
