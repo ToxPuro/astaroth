@@ -1,0 +1,3 @@
+#!/bin/bash
+#
+mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DMPI_ENABLED=ON -DFFT_ENABLED=OFF -DOPTIMIZE_INPUT_PARAMS=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_TESTS=ON -DRUNTIME_COMPILATION=OFF -DDSL_MODULE_DIR=../DSL $AC_HOME && make compact-stencil-multigrid-test -j
