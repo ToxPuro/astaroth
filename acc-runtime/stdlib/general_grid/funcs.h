@@ -1,5 +1,6 @@
 #ifndef AC_GENERAL_GRID_FUNCS_H
 
+hostdefine AC_GENERAL_GRID_INCLUDED (1)
 #define AC_GENERAL_GRID_FUNCS_H
 
 #ifdef AC_HOME
