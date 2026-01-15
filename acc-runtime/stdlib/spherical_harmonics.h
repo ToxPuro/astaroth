@@ -34,7 +34,7 @@ calculate_mlm(Field src)
 		}
 		for m in 0:l+1
 		{
-			rest     = src*r_factor*w
+			rest     = src*r_factor*w*sqrt(4*AC_REAL_PI/(2*l+1))
 			reduce_sum(positive_real_spherical_harmonic(m,l)*rest,AC_upper_positive_MLM[l + m*AC_n_spherical_harmonics])
 			if(m > 0)
 			{
@@ -49,7 +49,7 @@ calculate_mlm(Field src)
 		}
 		for m in 0:l+1
 		{
-			rest     = src*r_factor*w
+			rest     = src*r_factor*w*sqrt(4*AC_REAL_PI/(2*l+1))
 			reduce_sum(positive_real_spherical_harmonic(m,l)*rest,AC_lower_positive_MLM[l + m*AC_n_spherical_harmonics])
 			if(m > 0)
 			{
