@@ -10,6 +10,14 @@ feed_sink_particle(real velocity, real density, real dt)
 	resum_particle_momentum = AC_ngrid_products_inv.xyz*AC_central_sink_particle_momentum
 	reduce_sum(resum_particle_momentum + flux_going_to_sink_particle,AC_central_sink_particle_momentum)
 }
+force_from_sink_particle(real G)
+{
+	return -real3(
+			(G*AC_central_sink_particle_momentum)/AC_r[vertexIdx.x],
+			0.0,
+			0.0
+		    )
+}
 #else
 Sink particle requires general grid vars for sin
 #endif
