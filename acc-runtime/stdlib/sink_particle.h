@@ -7,7 +7,7 @@ feed_sink_particle(real radial_velocity, real density, real dt)
 	//Only flux at the inner radius goes to the central sink particle
 	flux_going_to_sink_particle  = (radial_velocity < 0.0 && globalVertexIdx.x == NGHOST)*momentum_flux
 	//Hack to increase the sink momentum instead of overwriting it
-	resum_particle_momentum = AC_ngrid_products_inv.xyz*AC_central_sink_particle_momentum
+	resum_particle_momentum = (vertexIdx == (int3){NGHOST,NGHOST,NGHOST})*AC_central_sink_particle_momentum
 	reduce_sum(resum_particle_momentum + flux_going_to_sink_particle,AC_central_sink_particle_momentum)
 }
 
