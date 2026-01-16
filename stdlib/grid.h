@@ -24,64 +24,27 @@ ac_grid_position(const int3 localVertexIdx, const AcMeshInfo config)
 		};
 }
 
-std::vector<AcReal> ac_get_r_vec(const AcMeshInfo config)
-{
-	std::vector<AcReal> res{};
-	{
-		for(int x = 0; x < config[AC_mlocal].x; ++x)
-		{
-			const AcReal3 pos = ac_grid_position((int3){x,0,0},config);
-			res.push_back(pos.x);
-		}
-	}
-	return res;
-}
 
-std::vector<AcReal> ac_get_y_vec(const AcMeshInfo config, const std::function<AcReal(const AcReal pos)> map)
+AcReal ac_get_cos_theta(const AcMeshInfo config, const int y)
 {
-	std::vector<AcReal> res{};
-	{
-		for(int y = 0; y < config[AC_mlocal].y; ++y)
-		{
-			const AcReal3 pos = ac_grid_position((int3){0,y,0},config);
-			res.push_back(map(pos.y));
-		}
-	}
-	return res;
-}
-
-std::vector<AcReal> ac_get_cos_theta_vec(const AcMeshInfo config)
-{
-	return ac_get_y_vec(config,[](const AcReal pos){return cos(pos);});
-}
-
-std::vector<AcReal> ac_get_sin_theta_vec(const AcMeshInfo config)
-{
-	return ac_get_y_vec(config,[](const AcReal pos){return sin(pos);});
-}
-
-std::vector<AcReal> ac_get_theta_vec(const AcMeshInfo config)
-{
-	return ac_get_y_vec(config,[](const AcReal pos){return pos;});
+	const AcReal3 pos = ac_grid_position((int3){0,y,0},config);
+	return cos(pos.y);
 }
 
 
-std::vector<AcReal> ac_get_z_vec(const AcMeshInfo config, const std::function<AcReal(const AcReal pos)> map)
+AcReal ac_get_sin_theta(const AcMeshInfo config, const int y)
 {
-	std::vector<AcReal> res{};
-	{
-		for(int z = 0; z < config[AC_mlocal].z; ++z)
-		{
-			const AcReal3 pos = ac_grid_position((int3){0,0,z},config);
-			res.push_back(map(pos.z));
-		}
-	}
-	return res;
+	const AcReal3 pos = ac_grid_position((int3){0,y,0},config);
+	return sin(pos.y);
 }
-std::vector<AcReal> ac_get_phi_vec(const AcMeshInfo config)
+
+AcReal ac_get_theta(const AcMeshInfo config, const int y)
 {
-	return ac_get_z_vec(config,[](const AcReal pos){return pos;});
+	const AcReal3 pos = ac_grid_position((int3){0,y,0},config);
+	return pos.y;
 }
+
+
 
 AcResult 
 ac_compute_cos_m_phis(AcMeshInfo* dst)
@@ -92,10 +55,11 @@ ac_compute_cos_m_phis(AcMeshInfo* dst)
 	int offset = 0;
 	for(int m = 0; m < N; ++m)
 	{
-			const auto cos_m_phi = ac_get_z_vec(config,[m](const AcReal pos){return cos(m*pos);});
 			for(int z = 0; z < config[AC_mlocal].z; ++z)
 			{
-				res[z + offset] = cos_m_phi[z];
+				const AcReal3 pos = ac_grid_position((int3){0,0,z},config);
+				const auto cos_m_phi = cos(m*pos.z);
+				res[z + offset] = cos_m_phi;
 			}
 			offset += config[AC_mlocal].z;
 	}
@@ -112,10 +76,11 @@ ac_compute_sin_m_phis(AcMeshInfo* dst)
 	int offset = 0;
 	for(int m = 0; m < N; ++m)
 	{
-			const auto sin_m_phi = ac_get_z_vec(config,[m](const AcReal pos){return sin(m*pos);});
 			for(int z = 0; z < config[AC_mlocal].z; ++z)
 			{
-				res[z + offset] = sin_m_phi[z];
+				const AcReal3 pos = ac_grid_position((int3){0,0,z},config);
+				const auto sin_m_phi = sin(m*pos.z);
+				res[z + offset] = sin_m_phi;
 			}
 			offset += config[AC_mlocal].z;
 	}
@@ -152,10 +117,6 @@ ac_get_normalized_plm(const AcReal x, const int l, const int m)
 	if(m != 0 && m %2 == 1) res *= -1;
 	return res;
 }
-std::vector<AcReal> ac_get_normalized_plm_vec(const AcMeshInfo config, const int l, const int m)
-{
-	return ac_get_y_vec(config,[l,m](const AcReal pos){return ac_get_normalized_plm(cos(pos),l,m);});
-}
 
 AcResult ac_compute_normalized_plms(AcMeshInfo* dst)
 {
@@ -166,10 +127,11 @@ AcResult ac_compute_normalized_plms(AcMeshInfo* dst)
 	{
 		for(int m = 0; m <= l; ++m)
 		{
-			const auto plm = ac_get_normalized_plm_vec(config,l,m);
 			for(int y = 0; y < config[AC_mlocal].y; ++y)
 			{
-				res[y + config[AC_mlocal].y*(l + N*m)] = plm[y];
+				const AcReal3 pos = ac_grid_position((int3){0,y,0},config);
+				const auto plm = ac_get_normalized_plm(cos(pos.y),l,m);
+				res[y + config[AC_mlocal].y*(l + N*m)] = plm;
 			}
 		}
 	}
@@ -184,29 +146,18 @@ AcResult ac_compute_spherical_harmonics(AcMeshInfo* dst)
 	return AC_SUCCESS;
 }
 
-
-std::vector<AcReal> ac_get_sin_phi_vec(const AcMeshInfo config)
-{
-	return ac_get_z_vec(config,[](const AcReal pos){return sin(pos);});
-}
-
-std::vector<AcReal> ac_get_cos_phi_vec(const AcMeshInfo config)
-{
-	return ac_get_z_vec(config,[](const AcReal pos){return cos(pos);});
-}
-
 AcResult
 ac_compute_inv_r(AcMeshInfo* dst)
 {
 	AcMeshInfo& config = *dst;
 	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_nlocal].x);
-	const std::vector R = ac_get_r_vec(config);
 	for(auto x = NGHOST; x < config[AC_nlocal].x+NGHOST; ++x)
 	{
-		if(R[x] == 0.0)
+		const AcReal R = ac_grid_position((int3){x,0,0},config).x;
+		if(R == 0.0)
 			res[x-NGHOST] = 0.0;
 		else
-			res[x-NGHOST] = 1.0/R[x];
+			res[x-NGHOST] = 1.0;
 	}
 	config[AC_inv_r] = res;
 	return AC_SUCCESS;
@@ -217,10 +168,10 @@ ac_compute_r(AcMeshInfo* dst)
 {
 	AcMeshInfo& config = *dst;
 	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-	const std::vector R = ac_get_r_vec(config);
 	for(auto x = 0; x < config[AC_mlocal].x; ++x)
 	{
-		res[x] = R[x];
+		const AcReal R = ac_grid_position((int3){x,0,0},config).x;
+		res[x] = R;
 	}
 	config[AC_r] = res;
 	return AC_SUCCESS;
@@ -263,43 +214,46 @@ ac_get_inv_sin_theta(const AcReal sin_theta)
 AcReal
 ac_map_inv_sin_theta(const AcMeshInfo info, const int y)
 {
-	return ac_get_inv_sin_theta(ac_get_sin_theta_vec(info)[y]);
+	return ac_get_inv_sin_theta(ac_get_sin_theta(info,y));
 }
 
 AcReal
 ac_map_sin_theta(const AcMeshInfo info, const int y)
 {
-	return ac_get_sin_theta_vec(info)[y];
+	return ac_get_sin_theta(info,y);
 }
 
 AcReal
 ac_map_theta(const AcMeshInfo info, const int y)
 {
-	return ac_get_theta_vec(info)[y];
+	return ac_get_theta(info,y);
 }
 
 AcReal
 ac_map_phi(const AcMeshInfo info, const int z)
 {
-	return ac_get_phi_vec(info)[z];
+	const AcReal3 pos = ac_grid_position((int3){0,0,z},info);
+	return pos.z;
 }
 
 AcReal
 ac_map_cos_theta(const AcMeshInfo info, const int y)
 {
-	return ac_get_cos_theta_vec(info)[y];
+	return ac_get_cos_theta(info,y);
 }
 
 AcReal
 ac_map_sin_phi(const AcMeshInfo info, const int z)
 {
-	return ac_get_sin_phi_vec(info)[z];
+	const AcReal3 pos = ac_grid_position((int3){0,0,z},info);
+	return sin(pos.z);
 }
 
 AcReal
 ac_map_cos_phi(const AcMeshInfo info, const int z)
 {
-	return ac_get_cos_phi_vec(info)[z];
+	const AcReal3 pos = ac_grid_position((int3){0,0,z},info);
+	return cos(pos.z);
 }
 
 AcReal
@@ -318,14 +272,15 @@ ac_get_cot_theta(const AcReal cos_theta, const AcReal sin_theta)
 AcReal
 ac_map_cot_theta(const AcMeshInfo info, const int y)
 {
-	return ac_get_cot_theta(ac_get_cos_theta_vec(info)[y],ac_get_sin_theta_vec(info)[y]);
+	return ac_get_cot_theta(ac_get_cos_theta(info,y),ac_get_sin_theta(info,y));
 }
 
 AcResult
-ac_compute_y(AcMeshInfo& config, const AcRealArrayParam param, const std::function<AcReal(const AcMeshInfo config, const int y)> map)
+ac_compute_y(AcMeshInfo& config, const AcRealArrayParam param, const std::function<AcReal(const AcMeshInfo config, const int y)> map, const int start, const int end)
 {
-	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].y);
-	for(int y = 0; y < config[AC_mlocal].y; ++y)
+	const int m = end-start;
+	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*m);
+	for(int y = start; y < end; ++y)
 	{
 		res[y] = map(config,y);
 	}
@@ -349,8 +304,8 @@ ac_compute_z(AcMeshInfo& config, const AcRealArrayParam param, const std::functi
 AcResult
 ac_compute_inv_sin_theta(AcMeshInfo* dst)
 {
-	ac_compute_y(*dst,AC_inv_sin_theta,ac_map_inv_sin_theta);
 	auto& config = *dst;
+	ac_compute_y(*dst,AC_inv_sin_theta,ac_map_inv_sin_theta,0,config[AC_mlocal].y);
 	if(config[AC_left_extended_halo].y + config[AC_right_extended_halo].y == 0)
 	{
 		config.real_arrays[AC_inv_sin_theta_extended] = config[AC_inv_sin_theta];
@@ -361,7 +316,7 @@ ac_compute_inv_sin_theta(AcMeshInfo* dst)
 AcResult
 ac_compute_theta(AcMeshInfo* dst)
 {
-	return ac_compute_y(*dst,AC_theta,ac_map_theta);
+	return ac_compute_y(*dst,AC_theta,ac_map_theta,0,(*dst)[AC_mlocal].y);
 }
 
 AcResult
@@ -373,13 +328,13 @@ ac_compute_phi(AcMeshInfo* dst)
 AcResult
 ac_compute_sin_theta(AcMeshInfo* dst)
 {
-	return ac_compute_y(*dst,AC_sin_theta,ac_map_sin_theta);
+	return ac_compute_y(*dst,AC_sin_theta,ac_map_sin_theta,0,(*dst)[AC_mlocal].y);
 }
 
 AcResult
 ac_compute_cos_theta(AcMeshInfo* dst)
 {
-	return ac_compute_y(*dst,AC_cos_theta,ac_map_cos_theta);
+	return ac_compute_y(*dst,AC_cos_theta,ac_map_cos_theta,0,(*dst)[AC_mlocal].y);
 }
 
 AcResult
@@ -397,8 +352,8 @@ ac_compute_cos_phi(AcMeshInfo* dst)
 AcResult
 ac_compute_cot_theta(AcMeshInfo* dst)
 {
-	ac_compute_y(*dst,AC_cot_theta,ac_map_cot_theta);
 	auto& config = *dst;
+	ac_compute_y(*dst,AC_cot_theta,ac_map_cot_theta,0,config[AC_mlocal].y);
 	if(config[AC_left_extended_halo].y + config[AC_right_extended_halo].y == 0)
 	{
 		config.real_arrays[AC_cot_theta_extended] = config[AC_cot_theta];
