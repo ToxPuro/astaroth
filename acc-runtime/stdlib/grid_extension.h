@@ -69,3 +69,20 @@ copy_extended_to_grid(Field dst, Field src)
 {
 	copy_extended_to_grid(dst,src,AC_left_extended_halo)
 }
+
+/**
+ * Copies a Field from the extended grid (that has extended_halo around the original grid) to the normal grid.
+ * Boundary condition version
+ */
+copy_extended_to_grid(AcBoundary boundary, Field dst, Field src)
+{
+	left_extended_halo = AC_left_extended_halo
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 ghost  = boundary_point
+	for i in 0:NGHOST
+	{
+		ghost  = ghost  + normal
+		dst[ghost.x][ghost.y][ghost.z] = src[ghost.x+left_extended_halo.x][ghost.y+left_extended_halo.y][ghost.z+left_extended_halo.z]
+	}
+}
