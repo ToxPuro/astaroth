@@ -33,9 +33,12 @@ decompose_info(const MPI_Comm comm, AcMeshInfo& config)
   //TP: is not run_const anymore since for some reason gives bad performance
   //TODO: find out why!
   const int3 int3_decomp = (int3){(int)decomp.x,(int)decomp.y,(int)decomp.z};
-  ERRCHK_ALWAYS(config[AC_ngrid].x % decomp.x == 0);
-  ERRCHK_ALWAYS(config[AC_ngrid].y % decomp.y == 0);
-  ERRCHK_ALWAYS(config[AC_ngrid].z % decomp.z == 0);
+  if(!config[AC_allow_non_divisible_grid])
+  {
+  	ERRCHK_ALWAYS(config[AC_ngrid].x % decomp.x == 0);
+  	ERRCHK_ALWAYS(config[AC_ngrid].y % decomp.y == 0);
+  	ERRCHK_ALWAYS(config[AC_ngrid].z % decomp.z == 0);
+  }
 
   acPushToConfig(config,AC_nlocal,
 		  	(int3)
