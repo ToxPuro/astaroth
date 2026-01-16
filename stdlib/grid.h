@@ -157,7 +157,7 @@ ac_compute_inv_r(AcMeshInfo* dst)
 		if(R == 0.0)
 			res[x-NGHOST] = 0.0;
 		else
-			res[x-NGHOST] = 1.0;
+			res[x-NGHOST] = 1.0/R;
 	}
 	config[AC_inv_r] = res;
 	return AC_SUCCESS;
