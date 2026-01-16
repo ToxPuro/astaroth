@@ -139,11 +139,9 @@ elemental ac_const_bc(AcBoundary boundary, Field f, real const_val)
 {
 	const int3 normal = get_normal(boundary)
 	const int3 boundary_point = get_boundary(normal)
-	int3 domain = boundary_point
 	int3 ghost  = boundary_point
 	for i in 0:NGHOST
 	{
-		domain = domain - normal
 		ghost  = ghost  + normal
 		f[ghost.x][ghost.y][ghost.z] = const_val;
 	}
