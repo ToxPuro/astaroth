@@ -550,10 +550,19 @@ derzz_neighbours_stencil(Field f)
 	return 0.0
 }
 //Redefining the sixth-order coeffs to 4th order
+#undef COMPACT_POISSON_CENTRAL
+#undef COMPACT_POISSON_FACE
+#undef COMPACT_POISSON_DIAGONAL
+#undef COMPACT_POISSON_CUBICAL
+
 #define COMPACT_POISSON_CENTRAL (-24.0/6.0)
 #define COMPACT_POISSON_FACE (2.0/6.0)
 #define COMPACT_POISSON_DIAGONAL (1.0/6.0)
 #define COMPACT_POISSON_CUBICAL (0.0)
+
+#undef DER1_2
+#undef DER1_1
+#undef DER1_0
 
 #define DER1_2 ( -1.0 / 12.0)
 #define DER1_1 (2.0/3.0)
@@ -667,6 +676,10 @@ deryz_non_diagonal_stencil(Field f)
 	return 0.0
 }
 
+#undef DER3_2
+#undef DER3_1
+#undef DER3_0
+
 #define DER3_2 (1.0/2.0)
 #define DER3_1 (-1.0)
 #define DER3_0 (0)
@@ -692,6 +705,10 @@ Stencil der3z_stencil {
 	[ 1][0][0]  =  +DER3_1,
 	[ 2][0][0]  =  +DER3_2
 }
+
+#undef DER4_2
+#undef DER4_1
+#undef DER4_0
 
 #define DER4_2 (1)
 #define DER4_1 (-4.0)
