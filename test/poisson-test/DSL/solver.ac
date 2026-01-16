@@ -122,12 +122,17 @@ Kernel init()
 	write(POTENTIAL,0.0)
 
 }
-Kernel init_bicgstab()
+Kernel init_bicgstab_kernel()
 {
 	r = DENSITY - laplace(POTENTIAL)
 	write(BICGSTAB_R,r)
 	write(BICGSTAB_R0,r)
 	write(BICGSTAB_P,r)
+}
+
+ComputeSteps reinitialize_bicgstab(jacobi_bcs)
+{
+	init_bicgstab_kernel()
 }
 
 Kernel bicgstab_step0()
@@ -137,21 +142,6 @@ Kernel bicgstab_step0()
 Kernel bicgstab_step1()
 {
 	v = laplace(BICGSTAB_P)
-	if(isnan(v))
-	{
-		print("v was nan at (%d,%d,%d): %.14e,%.14e,%.14e,%.14e,%.14e,%.14e,%.14e\n"
-				,vertexIdx.x
-				,vertexIdx.y
-				,vertexIdx.z
-				,BICGSTAB_P[vertexIdx.x][vertexIdx.y][vertexIdx.z]
-				,BICGSTAB_P[vertexIdx.x-1][vertexIdx.y][vertexIdx.z]
-				,BICGSTAB_P[vertexIdx.x+1][vertexIdx.y][vertexIdx.z]
-				,BICGSTAB_P[vertexIdx.x][vertexIdx.y-1][vertexIdx.z]
-				,BICGSTAB_P[vertexIdx.x][vertexIdx.y+1][vertexIdx.z]
-				,BICGSTAB_P[vertexIdx.x][vertexIdx.y][vertexIdx.z-1]
-				,BICGSTAB_P[vertexIdx.x][vertexIdx.y][vertexIdx.z+1]
-		     )
-	}
 	bicgstab_compute_v_and_r0Tv(v)
 }
 
@@ -189,7 +179,7 @@ ComputeSteps
 initcond(bcs)
 {
 	init()
-	init_bicgstab()
+	init_bicgstab_kernel()
 }
 
 
@@ -242,8 +232,10 @@ BoundConds jacobi_bcs
 	analytic_potential_outside(BOUNDARY_X_TOP,POTENTIAL)
 	ac_bc_sym(BOUNDARY_Y,POTENTIAL,1)
 	periodic(BOUNDARY_Z)
-	ac_const_bc(BOUNDARY_XY,BICGSTAB_P,0.0)
-	ac_const_bc(BOUNDARY_XY,BICGSTAB_S,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_P,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_S,0.0)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_P,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_S,1)
 	//Cartesian 
 	//periodic(BOUNDARY_XYZ)
 }
@@ -261,6 +253,28 @@ sor_red_black_step(jacobi_bcs)
 	sor_black(AC_SOR_omega)
 }
 
+output real DIAGNOS_BICGSTAB_S
+output real DIAGNOS_BICGSTAB_H
+output real DIAGNOS_BICGSTAB_R
+output real DIAGNOS_BICGSTAB_R0
+output real DIAGNOS_BICGSTAB_T
+output real DIAGNOS_BICGSTAB_P
+output real DIAGNOS_BICGSTAB_V
+Kernel compute_diagnos()
+{
+	reduce_sum(BICGSTAB_S*BICGSTAB_S,DIAGNOS_BICGSTAB_S)
+	reduce_sum(BICGSTAB_H*BICGSTAB_H,DIAGNOS_BICGSTAB_H)
+	reduce_sum(BICGSTAB_R*BICGSTAB_R,DIAGNOS_BICGSTAB_R)
+	reduce_sum(BICGSTAB_R0*BICGSTAB_R0,DIAGNOS_BICGSTAB_R0)
+	reduce_sum(BICGSTAB_T*BICGSTAB_T,DIAGNOS_BICGSTAB_T)
+	reduce_sum(BICGSTAB_P*BICGSTAB_P,DIAGNOS_BICGSTAB_P)
+	reduce_sum(BICGSTAB_V*BICGSTAB_V,DIAGNOS_BICGSTAB_V)
+}
+Kernel bicgstab_compute_true_residual()
+{
+	write(BICGSTAB_R,DENSITY-laplace(POTENTIAL))	
+}
+
 ComputeSteps
 bicgstab_step(jacobi_bcs)
 {
@@ -269,8 +283,10 @@ bicgstab_step(jacobi_bcs)
 	bicgstab_step2()
 	bicgstab_step3()
 	bicgstab_step4()
+	bicgstab_compute_true_residual()
 	bicgstab_step5()
 	bicgstab_step6()
+	compute_diagnos()
 }
 
 ComputeSteps
@@ -295,3 +311,6 @@ get_potential_with_sph(jacobi_bcs)
 	calculate_mlm_kernel()
 	calculate_potential_with_mlm()
 }
+
+
+

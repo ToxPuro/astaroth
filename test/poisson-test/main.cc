@@ -110,7 +110,6 @@ main(void)
     ac_compute_sin_phi(&info);
     ac_compute_cos_phi(&info);
     ac_compute_phi(&info);
-    acPushToConfig(info,AC_SOR_omega,1.8);
 
     const AcReal R = info[AC_r][info[AC_charge_radius_points]] + 0.5*info[AC_ds].x;
     const AcReal R_max = info[AC_r][info[AC_nlocal].x+NGHOST-1] + 0.5*info[AC_ds].x;
@@ -252,25 +251,47 @@ main(void)
     }
 
     acGridInit(info);
+    acDeviceSetInput(acGridGetDevice(),AC_SOR_omega,1.8);
     //acPrintMeshInfo(acDeviceGetLocalConfig(acGridGetDevice()));
     //fflush(stdout);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
 
     const auto jacobi_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
     const auto sor_rb_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
+    const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_step);
+    const auto reinit_bicgstab_graph = acGetOptimizedDSLTaskGraph(reinitialize_bicgstab);
     //const auto sor_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     const size_t NUM_SOLVING_STEPS = info[AC_n_solving_steps];
     for (size_t i = 0; i < NUM_SOLVING_STEPS; ++i)
     {
-    	//acGridExecuteTaskGraph(jacobi_graph,1);
-    	acGridExecuteTaskGraph(sor_rb_graph,1);
-	if(i % 1000 == 0)
+	if(i == 0)
 	{
     		acGridExecuteTaskGraph(residual_graph,1);
 		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+		printf("Initial residual: %zu,%7e\n",i,residual_norm);
+	}
+    	acGridExecuteTaskGraph(bicgstab_graph,1);
+	if(i % 1000 == 0)
+	{
+		acGridExecuteTaskGraph(reinit_bicgstab_graph,1);
+    		acGridExecuteTaskGraph(residual_graph,1);
+		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
+		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
 		printf("Residual: %zu,%7e\n",i,residual_norm);
+		//printf("||S||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_S));
+		//printf("||H||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_H));
+		//printf("||R||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_R));
+		//printf("||R0||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_R0));
+		//printf("||T||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_T));
+		//printf("||P||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_P));
+		//printf("||V||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_V));
+		//printf("<r0,v>: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_r0Tv));
+		//printf("rho-1: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_rho_prev));
+		//printf("rho: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_rho_next));
+		//printf("<t,t>: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_tTt));
+		//printf("<t,s>: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_tTs));
 	}
     }
     acGridExecuteTaskGraph(residual_graph,1);
