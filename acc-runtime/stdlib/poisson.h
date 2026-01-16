@@ -129,7 +129,6 @@ poisson_sor_red_black_extended(int color, real density, Field potential, real om
 }
 #endif
 
-#endif
 #ifdef AC_GENERAL_GRID_VARS_H
 //For spherical grids
 local_jacobi_spectral_radius_estimate()
@@ -165,4 +164,6 @@ update_sor_omega(Field omega)
 	jacobi_radius2 = jacobi_radius*jacobi_radius
 	return (1.0)/(1.0 - 0.25*jacobi_radius2*omega)
 }
+#endif
+
 #endif
