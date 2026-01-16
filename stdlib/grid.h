@@ -282,19 +282,20 @@ ac_compute_y(AcMeshInfo& config, const AcRealArrayParam param, const std::functi
 	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*m);
 	for(int y = start; y < end; ++y)
 	{
-		res[y] = map(config,y);
+		res[y-start] = map(config,y);
 	}
 	config[param] = res;
 	return AC_SUCCESS;
 }
 
 AcResult
-ac_compute_z(AcMeshInfo& config, const AcRealArrayParam param, const std::function<AcReal(const AcMeshInfo config, const int z)> map)
+ac_compute_z(AcMeshInfo& config, const AcRealArrayParam param, const std::function<AcReal(const AcMeshInfo config, const int z)> map, const int start, const int end)
 {
-	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].z);
-	for(int z = 0; z < config[AC_mlocal].z; ++z)
+	const int m = end-start;
+	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*m);
+	for(int z = start; z < end; ++z)
 	{
-		res[z] = map(config,z);
+		res[z-start] = map(config,z);
 	}
 	config[param] = res;
 	return AC_SUCCESS;
@@ -306,10 +307,7 @@ ac_compute_inv_sin_theta(AcMeshInfo* dst)
 {
 	auto& config = *dst;
 	ac_compute_y(*dst,AC_inv_sin_theta,ac_map_inv_sin_theta,0,config[AC_mlocal].y);
-	if(config[AC_left_extended_halo].y + config[AC_right_extended_halo].y == 0)
-	{
-		config.real_arrays[AC_inv_sin_theta_extended] = config[AC_inv_sin_theta];
-	}
+	ac_compute_y(*dst,AC_inv_sin_theta_extended,ac_map_inv_sin_theta,-config[AC_left_extended_halo].y,config[AC_mlocal].y + config[AC_right_extended_halo].y);
 	return AC_SUCCESS;
 }
 
@@ -322,7 +320,7 @@ ac_compute_theta(AcMeshInfo* dst)
 AcResult
 ac_compute_phi(AcMeshInfo* dst)
 {
-	return ac_compute_z(*dst,AC_phi,ac_map_phi);
+	return ac_compute_z(*dst,AC_phi,ac_map_phi,0,(*dst)[AC_mlocal].z);
 }
 
 AcResult
@@ -340,13 +338,13 @@ ac_compute_cos_theta(AcMeshInfo* dst)
 AcResult
 ac_compute_sin_phi(AcMeshInfo* dst)
 {
-	return ac_compute_z(*dst,AC_sin_phi,ac_map_sin_phi);
+	return ac_compute_z(*dst,AC_sin_phi,ac_map_sin_phi,0,(*dst)[AC_mlocal].z);
 }
 
 AcResult
 ac_compute_cos_phi(AcMeshInfo* dst)
 {
-	return ac_compute_z(*dst,AC_cos_phi,ac_map_cos_phi);
+	return ac_compute_z(*dst,AC_cos_phi,ac_map_cos_phi,0,(*dst)[AC_mlocal].z);
 }
 
 AcResult
@@ -354,10 +352,7 @@ ac_compute_cot_theta(AcMeshInfo* dst)
 {
 	auto& config = *dst;
 	ac_compute_y(*dst,AC_cot_theta,ac_map_cot_theta,0,config[AC_mlocal].y);
-	if(config[AC_left_extended_halo].y + config[AC_right_extended_halo].y == 0)
-	{
-		config.real_arrays[AC_cot_theta_extended] = config[AC_cot_theta];
-	}
+	ac_compute_y(*dst,AC_cot_theta_extended,ac_map_cot_theta,-config[AC_left_extended_halo].y,config[AC_mlocal].y + config[AC_right_extended_halo].y);
 	return AC_SUCCESS;
 }
 
