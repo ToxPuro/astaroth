@@ -160,20 +160,40 @@ ac_compute_inv_r(AcMeshInfo* dst)
 			res[x-NGHOST] = 1.0/R;
 	}
 	config[AC_inv_r] = res;
+
+	res = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_nlocal].x);
+        for(int x = NGHOST; x < config[AC_extended_nlocal].x+NGHOST; ++x)
+	{
+	      const AcReal R = ac_grid_position((int3){x-config[AC_left_extended_halo].x,0,0},config).x;
+	      if(R == 0.0)
+	      	res[x-NGHOST] = 0.0;
+	      else
+	      	res[x-NGHOST] = 1.0/R;
+	}
+	config[AC_inv_r_extended] = res;
+	return AC_SUCCESS;
+}
+
+AcResult
+ac_compute_r_helper(AcMeshInfo* dst, const AcRealArrayParam arr, const int start, const int end)
+{
+	AcMeshInfo& config = *dst;
+	const int m = end-start;
+	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*m);
+	for(auto x = start; x < end; ++x)
+	{
+		const AcReal R = ac_grid_position((int3){x,0,0},config).x;
+		res[x-start] = R;
+	}
+	config[arr] = res;
 	return AC_SUCCESS;
 }
 
 AcResult
 ac_compute_r(AcMeshInfo* dst)
 {
-	AcMeshInfo& config = *dst;
-	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-	for(auto x = 0; x < config[AC_mlocal].x; ++x)
-	{
-		const AcReal R = ac_grid_position((int3){x,0,0},config).x;
-		res[x] = R;
-	}
-	config[AC_r] = res;
+	ac_compute_r_helper(dst,AC_r,0,(*dst)[AC_mlocal].x);
+	ac_compute_r_helper(dst,AC_r_extended,-(*dst)[AC_left_extended_halo].x,(*dst)[AC_mlocal].x+(*dst)[AC_right_extended_halo].x);
 	return AC_SUCCESS;
 }
 
