@@ -2461,21 +2461,21 @@ gmg_write_del2(gmg_boundconds)
 	gmg_write_del2_kernel()
 }
 
-global output real AC_GMG_residual2
-global output real AC_GMG_rhs2
+global output real AC_GMG_residual2[5]
+global output real AC_GMG_rhs2[5]
 Kernel gmg_get_residual_norm_kernel(GMG_LEVEL level)
 {
 	const real res = -gmg_laplace(GMG_SOLUTIONS[level],level)
 	r = GMG_RHS[level]- res
-	reduce_sum(r*r,AC_GMG_residual2)
+	reduce_sum(r*r,AC_GMG_residual2[level])
 }
 
 Kernel gmg_get_residual_and_rhs_norms_kernel(GMG_LEVEL level)
 {
 	const real res = -gmg_laplace(GMG_SOLUTIONS[level],level)
 	r = GMG_RHS[level]- res
-	reduce_sum(r*r,AC_GMG_residual2)
-	reduce_sum(GMG_RHS[level]*GMG_RHS[level],AC_GMG_rhs2)
+	reduce_sum(r*r,AC_GMG_residual2[level])
+	reduce_sum(GMG_RHS[level]*GMG_RHS[level],AC_GMG_rhs2[level])
 }
 
 ComputeSteps

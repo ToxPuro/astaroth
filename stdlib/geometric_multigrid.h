@@ -210,7 +210,6 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     		}
     	}
     }
-    const int index = acVertexBufferIdx(hat_basis_position.x - NGHOST -1,hat_basis_position.y,hat_basis_position.z,info,GMG_RESIDUALS[level]);
     const int central_index = acVertexBufferIdx(hat_basis_position.x,hat_basis_position.y,hat_basis_position.z,info,GMG_RESIDUALS[level]);
     const AcReal central_coeff = mesh.vertex_buffer[GMG_RESIDUALS[level]][central_index];
     //const AcReal central_coeff = -6.0*h2_inv;
@@ -263,7 +262,7 @@ gmg_level_step(const int level, const int number_of_levels)
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 
-  //const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_optimized_smoother);
+  //const auto smoother = acGetOptimizedDSLTaskGraph(gmg_optimized_smoother);
   const auto smoother = acGetOptimizedDSLTaskGraph(gmg_jacobi_smoother);
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step);
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(sor_red_black_step);
@@ -272,15 +271,15 @@ gmg_level_step(const int level, const int number_of_levels)
   if(level == number_of_levels-1)
   {
     	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual_and_rhs_norms),1);
-	const AcReal rhs_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_rhs2));
-	AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2));
+	const AcReal rhs_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_rhs2[level]));
+	AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
 	AcReal relative_residual_norm = residual_norm/rhs_norm;
 	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
 	while(relative_residual_norm > 1e-8)
 	{
 		acGridExecuteTaskGraph(smoother,1);
     		acGridExecuteTaskGraph(residual_graph,1);
-		residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2));
+		residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
 		relative_residual_norm = residual_norm/rhs_norm;
 	}
   }
