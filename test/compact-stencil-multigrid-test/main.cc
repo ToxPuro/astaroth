@@ -135,7 +135,6 @@ main(int argc, char* argv[])
     gmg_setup(&info);
     //Test that can build test ComputeSteps
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
-    const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_write_del2),1);
     for(int i = 0; i < 4; ++i)
     {
@@ -360,9 +359,11 @@ main(int argc, char* argv[])
     test_restriction();
     fprintf(stderr,"GMG\n");
     {
+	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
+    	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(initcond_graph,1);
     	acGridExecuteTaskGraph(residual_graph,1);
-    	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
+    	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
     	int n_steps = 0;
 
@@ -371,7 +372,7 @@ main(int argc, char* argv[])
             gmg_v_cycle(n_levels);
 	    //exit(EXIT_SUCCESS);
     	    acGridExecuteTaskGraph(residual_graph,1);
-    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2));
+    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
 	    fprintf(stderr,"\n\n");
     	    fprintf(stderr,"Residual: %14e\n",residual);
 	    fprintf(stderr,"\n\n");
