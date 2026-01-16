@@ -275,7 +275,7 @@ gmg_level_step(const int level, const int number_of_levels)
 	AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
 	AcReal relative_residual_norm = residual_norm/rhs_norm;
 	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
-	while(relative_residual_norm > 1e-8)
+	while(relative_residual_norm > 1e-14)
 	{
 		acGridExecuteTaskGraph(smoother,1);
     		acGridExecuteTaskGraph(residual_graph,1);
