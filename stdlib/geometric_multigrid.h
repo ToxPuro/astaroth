@@ -54,14 +54,34 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     AcMesh mesh{};
     acHostMeshCreate(info,&mesh);
     const AcReal h2_inv = info[AC_inv_ds_2].x/std::pow(4,level);
-    const std::array<Stencil,5> galerkin_operator_stencils = 
+    const std::array<Stencil,5> galerkin_operator_stencils_r1 = 
     {
     	(Stencil)0,
-    	stencil_gmg_laplace_level_1,
-    	stencil_gmg_laplace_level_2,
-    	stencil_gmg_laplace_level_3,
-    	stencil_gmg_laplace_level_4
+    	stencil_gmg_laplace_level_1_r1,
+    	stencil_gmg_laplace_level_2_r1,
+    	stencil_gmg_laplace_level_3_r1,
+    	stencil_gmg_laplace_level_4_r1
     };
+#if STENCIL_ORDER == 4
+    const std::array<Stencil,5> galerkin_operator_stencils_r2 = 
+    {
+    	(Stencil)0,
+    	stencil_gmg_laplace_level_1_r2,
+    	stencil_gmg_laplace_level_2_r2,
+    	stencil_gmg_laplace_level_3_r2,
+    	stencil_gmg_laplace_level_4_r2
+    };
+#endif
+#if STENCIL_ORDER == 6
+    const std::array<Stencil,5> galerkin_operator_stencils_r3 = 
+    {
+    	(Stencil)0,
+    	stencil_gmg_laplace_level_1_r3,
+    	stencil_gmg_laplace_level_2_r3,
+    	stencil_gmg_laplace_level_3_r3,
+    	stencil_gmg_laplace_level_4_r3
+    };
+#endif
     const std::array<Stencil,5> galerkin_neighbours_operator_stencils = 
     {
     	(Stencil)0,
@@ -178,11 +198,11 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     //stencil[1][1][2] = 1.0*h2_inv;
 
     //stencil[1][1][1] = -6.0*h2_inv;
-    for(int x = -1; x <= 1; ++x)
+    for(int x = -NGHOST; x <= NGHOST; ++x)
     {
-    	for(int y = -1; y <= 1; ++y)
+    	for(int y = -NGHOST; y <= NGHOST; ++y)
     	{
-    		for(int z = -1; z <= 1; ++z)
+    		for(int z = -NGHOST; z <= NGHOST; ++z)
     		{
             		const int index = acVertexBufferIdx(hat_basis_position.x + x,hat_basis_position.y + y,hat_basis_position.z + z,info,GMG_RESIDUALS[level]);
             		const AcReal val = mesh.vertex_buffer[GMG_RESIDUALS[level]][index];
@@ -194,9 +214,16 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     const AcReal central_coeff = mesh.vertex_buffer[GMG_RESIDUALS[level]][central_index];
     //const AcReal central_coeff = -6.0*h2_inv;
     gmg_central_coeffs[level] = central_coeff;
-    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils[level],stencil);
+    //Here we load to both r1 and (r2/r3) since we are not sure is the user using compact poisson or not
+    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r1[level],stencil);
+#if STENCIL_ORDER == 4
+    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r2[level],stencil);
+#endif
+#if STENCIL_ORDER == 6
+    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r3[level],stencil);
+#endif
     stencil[NGHOST][NGHOST][NGHOST] = 0.0;
-    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_neighbours_operator_stencils[level],stencil);
+    //acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_neighbours_operator_stencils[level],stencil);
     acDeviceSynchronizeStream(acGridGetDevice(),STREAM_DEFAULT);
     //fprintf(stderr,"\n");
     acHostMeshDestroy(&mesh);
@@ -236,6 +263,7 @@ gmg_level_step(const int level, const int number_of_levels)
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 
   const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_optimized_smoother);
+  //const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_jacobi_smoother);
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step);
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(sor_red_black_step);
   //const auto sor_graph = acGetOptimizedDSLTaskGraph(jacobi_step);

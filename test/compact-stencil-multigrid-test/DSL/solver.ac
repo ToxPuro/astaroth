@@ -22,9 +22,14 @@ Kernel init_kernel()
 }
 Kernel init_2nd_kernel()
 {
-#if STENCIL_ORDER == 6
-	write(GMG_INITIAL_RHS,compact_poisson_rhs(TMP))
-#endif
+	if(AC_compact_poisson)
+	{
+		write(GMG_INITIAL_RHS,compact_poisson_rhs(TMP))
+	}
+	else
+	{
+		write(GMG_INITIAL_RHS,TMP)
+	}
 }
 
 

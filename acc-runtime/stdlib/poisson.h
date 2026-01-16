@@ -2,6 +2,12 @@
 #define AC_POISSON_H
 
 input real AC_SOR_omega = 1.0
+run_const bool AC_compact_poisson = false;
+#if STENCIL_ORDER == 2
+run_const bool AC_poisson_radius_1  = true;
+#else
+run_const bool AC_poisson_radius_1  = AC_compact_poisson;
+#endif
 enum SOR_STEP
 {
 	SOR_RED,
