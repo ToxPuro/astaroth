@@ -591,6 +591,7 @@ printDeviceInfo(const int device_id)
 {
     cudaDeviceProp props;
     ERRCHK_CUDA(cudaGetDeviceProperties(&props, device_id));
+    int smClockRate{},memClockRate{};
     printf("--------------------------------------------------\n");
     printf("Device Number: %d\n", device_id);
     const size_t bus_id_max_len = 128;
@@ -602,16 +603,18 @@ printDeviceInfo(const int device_id)
 
     // Compute
     printf("  Compute\n");
-    printf("    Clock rate (GHz): %g\n", props.clockRate / 1e6); // KHz -> GHz
+    printf("    Clock rate (GHz): %g\n", props.smClockRate / 1e6); // KHz -> GHz
     printf("    Stream processors: %d\n", props.multiProcessorCount);
+    int computeMode;
+    ERRCHK_CUDA_ALWAYS(acDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, device_id));
     // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g7eb25f5413a962faad0956d92bae10d0
-    printf("    Compute mode: %d\n", (int)props.computeMode);
+    printf("    Compute mode: %d\n", (int)computeMode);
     // Memory
     printf("  Global memory\n");
-    printf("    Memory Clock Rate (MHz): %d\n", props.memoryClockRate / (1000));
+    printf("    Memory Clock Rate (MHz): %d\n", memClockRate/ (1000));
     printf("    Memory Bus Width (bits): %d\n", props.memoryBusWidth);
     printf("    Peak Memory Bandwidth (GiB/s): %f\n",
-           2 * (props.memoryClockRate * 1e3) * props.memoryBusWidth / (8. * 1024. * 1024. * 1024.));
+           2 * (memClockRate * 1e3) * props.memoryBusWidth / (8. * 1024. * 1024. * 1024.));
     printf("    ECC enabled: %d\n", props.ECCEnabled);
 
     // Memory usage
