@@ -2350,13 +2350,23 @@ optimized_smoother_stencil
 //This is the full 3x3x3 smoother with numerically derived coeffs that achieve smoothing factor of approx 0.285 which is better than the theoretical best when including only cardinals
 //
 #if STENCIL_ORDER == 2
-run_const real AC_omega_for_optimized_smoother = 1.3699
-run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.1432
-run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0284
-run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0081
-run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0025
+//LFA gives smoothing factor 0.1910
+//run_const real AC_omega_for_optimized_smoother = 1.3699
+//run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.1432
+//run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0284
+//run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0081
+//run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0025
+//
+//LFA gives smoothing factor of 0.1888
+run_const real AC_omega_for_optimized_smoother = 0.9009
+run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.2178
+run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0432
+run_const real AC_gmg_optimized_smoother_coeff_facet_2_r1 = 0.0122
+run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0038
+
 #else
 #if STENCIL_ORDER == 4
+//LFA gives smoothing factor of 0.0828
 run_const real AC_omega_for_optimized_smoother = 0.9363
 run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.2807
 run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.0329
@@ -2365,6 +2375,7 @@ run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0044
 
 #else
 //For compact sixth-order laplacian
+//LFA gives smoothing factor of 0.0909
 run_const real AC_omega_for_optimized_smoother = 0.3543
 run_const real AC_gmg_optimized_smoother_coeff_facet_0_r1 = 0.7064
 run_const real AC_gmg_optimized_smoother_coeff_facet_1_r1 = 0.1005
