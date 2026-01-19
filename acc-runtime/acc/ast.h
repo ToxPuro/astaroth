@@ -810,7 +810,7 @@ format_source(const char* file_in, const char* file_out)
   assert(out);
 
   while (!feof(in)) {
-    const char c = fgetc(in);
+    const int c = fgetc(in);
     if (c == EOF)
       break;
 
