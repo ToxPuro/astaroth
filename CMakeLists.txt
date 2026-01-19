@@ -3,7 +3,7 @@
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 # V3.21 required for first-class HIP support
-# V3.24 required for native CUDA architecture support
+# V3.24 required for native CUDA architecture support (Not used as of now)
 cmake_minimum_required(VERSION 3.21)
 
 ## Project settings
