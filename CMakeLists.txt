@@ -3,7 +3,8 @@
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 # V3.21 required for first-class HIP support
-cmake_minimum_required(VERSION 3.21)
+# V3.24 required for native CUDA architecture support
+cmake_minimum_required(VERSION 3.24)
 
 ## Project settings
 project(astaroth)
@@ -127,12 +128,7 @@ if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
     add_compile_options(-DDEVICE_ENABLED)
     add_compile_options(-DCUDA_ENABLED)
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
-
-    ##TP: do not set GPU architectures to speedup debug compilations
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    else()
-    	set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
-    endif()
+    set(CMAKE_CUDA_ARCHITECTURES native)
     message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
 elseif (NOT CPU_BUILD AND (USE_HIP OR HIP_FOUND))
     set(USE_HIP ON)
