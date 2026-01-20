@@ -1,3 +1,7 @@
+/**
+ * This file implements functionality used for the calculation of radiative transport
+ * in MHD astrophysics codes.
+ */
 hostdefine AC_RADIATION_RAY_INCLUDED (1)
 Raytrace (+0,+0,-1) backwards_ray
 Raytrace (+0,+0,+1) forwards_ray

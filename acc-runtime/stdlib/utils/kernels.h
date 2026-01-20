@@ -1,3 +1,6 @@
+/**
+ * Utility kernels that might be useful
+ */
 utility Kernel randomize() {
 
 // results in (-rng_scale, rng_scale] range

@@ -1,3 +1,11 @@
+/**
+ * This function implements the expansion of a function into spherical harmonics
+ * and the corresponding calculation of the gravitational potential at the boundaries of the domain
+ * with them.
+ * Requires setup host code in stdlib/grid.h to calculate the values of the required trigonometric functions
+ * into AC_cos_m_phis and AC_sin_m_phis and the values of the associated Legendre polynomials into AC_PLM
+ */
+
 #ifdef AC_HOME
 #include "$AC_HOME/acc-runtime/stdlib/general_grid"
 #endif

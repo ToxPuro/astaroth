@@ -1,4 +1,8 @@
 /**
+ * This file has useful functions for working with extended grids.
+ */
+
+/**
  * Copies a Field from the normal grid to the extended grid that has extended_halo around the original grid.
  * Meant to be launched on the extended grid
  * For values outside the original grid the padding value is used which can be unique at each grid point in the extended grid.

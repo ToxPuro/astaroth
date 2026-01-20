@@ -1,3 +1,6 @@
+/**
+ * Utility functions that might be useful
+ */
 array_val(field_array)
 {
 	real res[size(field_array)]

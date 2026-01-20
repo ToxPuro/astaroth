@@ -1,3 +1,8 @@
+/**
+ * This file is for a geometric multigrid (GMG) implementation of the Poisson equation
+ * -Δu = f, in Cartesian coordinates.
+ *  For a good introduction to multigrid methods see the book Multigrid by Trottenberg.
+ */
 #include "$AC_HOME/acc-runtime/stdlib/grid_transfer_functions.h"
 int3 level_divisor = (int3)
 {

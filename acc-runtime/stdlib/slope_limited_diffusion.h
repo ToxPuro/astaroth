@@ -1,3 +1,15 @@
+/**
+ * This file implements Slope-limited diffusion (SLD) which is a technique which
+ * adds enough diffusion to resolve steep slopes while trying to keep the added 
+ * diffusion to a minimum.
+ * See https://indico.fysik.su.se/event/6870/sessions/1096/attachments/4557/5291/notes.pdf
+ * for a good reference.
+ * This explanation is not from an expert so take it with a grain of salt, but SLD
+ * measures two jumps: one at a cell-faces and one over a cell.
+ * Unresolved slopes correspond to jumps where the jump over a cell-face is much larger than a jump over the cell.
+ * When such jumps are noticed extra diffusion is added to flatten then.
+ */
+
 #include "$AC_HOME/acc-runtime/stdlib/general_grid/vars.h"
 struct sld_interface_values
 {

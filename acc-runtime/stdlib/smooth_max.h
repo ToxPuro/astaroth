@@ -1,8 +1,10 @@
 
-
-// Stencil coefficients need to be redefined in standalone_mpi/stencil_loader.h !!!!! 
-// Otherwiase will be set to zero 
-
+/**
+ * This file implements smoothing and maxima functionality used now primarily 
+ * into the calculation of shock diffusion in hydrodynamics codes.
+ * Includes Gaussian and binomial smoothing and functions taking the maximal value
+ * over a radius of 1 to 3 with different dimensions included in different versions
+ */
 
 #define SMOOTH_XM3_YM3_ZM3 ( 1.0 / 5832000.0 ) 
 #define SMOOTH_XM2_YM3_ZM3 ( 9.0 / 5832000.0 ) 

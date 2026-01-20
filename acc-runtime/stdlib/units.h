@@ -1,4 +1,7 @@
-// Physical units
+/**
+ * This file contains handy units that can be used when defining the values of other variables
+ * Also derived units (only mass at the moment) are contained in here.
+ */
 run_const real AC_unit_density
 run_const real AC_unit_velocity
 run_const real AC_unit_length
