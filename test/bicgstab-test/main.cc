@@ -109,7 +109,8 @@ main(void)
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
     const auto cg_init_graph = acGetOptimizedDSLTaskGraph(init);
     const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step);
-    const auto bicgstab_graph = acGetOptimizedDSLTaskGraph(bicgstab_step);
+    //const auto bicgstab_graph = acGetOptimizedDSLTaskGraph(bicgstab_step);
+    const auto bicgstab_graph = acGetOptimizedDSLTaskGraph(bicgstab_preconditioned_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     const int MAX_STEPS = 2000;
 
