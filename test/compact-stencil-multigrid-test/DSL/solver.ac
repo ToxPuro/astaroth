@@ -46,6 +46,9 @@ BoundConds gmg_boundconds{
 	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[2],0.0)
 	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[3],0.0)
 	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[4],0.0)
+
+	ac_const_bc(BOUNDARY_XYZ,GMG_COARSE_CG_P,0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_COARSE_CG_R,0.0)
 }
 
 

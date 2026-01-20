@@ -184,7 +184,7 @@ main(int argc, char* argv[])
     fprintf(stderr,"1/h2: %.14e\n",1.0/info[AC_inv_ds_2].x);
     fflush(stderr);
 
-    gmg_v_cycle(n_levels);
+    gmg_v_cycle(n_levels,1e-1);
     fprintf(stderr,"GMG\n");
     {
 	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
@@ -193,10 +193,11 @@ main(int argc, char* argv[])
     	acGridExecuteTaskGraph(residual_graph,1);
     	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
+	const AcReal relative_convergence_rate = 1e-14;
     	int n_steps = 0;
     	while(residual > 1e-8)
     	{
-            gmg_v_cycle(n_levels);
+            gmg_v_cycle(n_levels,relative_convergence_rate);
     	    acGridExecuteTaskGraph(residual_graph,1);
     	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
     	    fprintf(stderr,"Residual: %14e\n",residual);
