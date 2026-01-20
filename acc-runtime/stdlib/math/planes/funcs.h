@@ -1,3 +1,8 @@
+/**
+ * This file implements the Average Gradient Method for unstructured meshes.
+ * See `GPU acceleration of average gradient method for solving partial differential equations`
+ * for a reference.
+ */
 //TP: note all the input coordinate and values are in a reference frame where the centre grid point is subtracted from the value
 //TP: the motivation is that this takes less compute
 TetrahedronVolume(real3 a, real3 b, real3 c)
