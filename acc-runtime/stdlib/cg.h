@@ -1,3 +1,8 @@
+/**
+ * This file implements the CG method for solving sparse symmetric positive definite linear systems.
+ * See Saad's Iterative Methods for Sparse Linear Systems Chapter 6. for a good reference.
+ * The method is good for our use cases because of its low memory requirements.
+ */
 global output real CG_rTr
 global output real CG_pTAp
 global output real CG_rp1Trp1

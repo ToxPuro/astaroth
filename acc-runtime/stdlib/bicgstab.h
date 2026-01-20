@@ -1,3 +1,8 @@
+/**
+ * This file implements the BICGSTAB method for solving sparse linear systems.
+ * See Saad's Iterative Methods for Sparse Linear Systems Chapter 7. for a good reference.
+ * The method is good for our use cases because of its low memory requirements.
+ */
 global output real BICGSTAB_r0Tv
 global output real BICGSTAB_rho_prev
 global output real BICGSTAB_rho_next
