@@ -258,7 +258,8 @@ main(void)
 
     const auto jacobi_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
     const auto sor_rb_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
-    const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_step);
+    //const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_step);
+    const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_preconditioned_step);
     const auto reinit_bicgstab_graph = acGetOptimizedDSLTaskGraph(reinitialize_bicgstab);
     //const auto sor_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);

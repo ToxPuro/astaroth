@@ -234,8 +234,12 @@ BoundConds jacobi_bcs
 	periodic(BOUNDARY_Z)
 	ac_const_bc(BOUNDARY_X,BICGSTAB_P,0.0)
 	ac_const_bc(BOUNDARY_X,BICGSTAB_S,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_Y,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_Z,0.0)
 	ac_bc_sym(BOUNDARY_Y,BICGSTAB_P,1)
 	ac_bc_sym(BOUNDARY_Y,BICGSTAB_S,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_Y,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_Z,1)
 	//Cartesian 
 	//periodic(BOUNDARY_XYZ)
 }
@@ -287,6 +291,65 @@ bicgstab_step(jacobi_bcs)
 	bicgstab_step5()
 	bicgstab_step6()
 	compute_diagnos()
+}
+
+Kernel bicgstab_step0_preconditioned()
+{
+	bicgstab_compute_rho_prev()
+	coeff = laplace_central_coeff()
+	write(BICGSTAB_Y,BICGSTAB_P/coeff)
+}
+
+Kernel bicgstab_step1_preconditioned()
+{
+	v = laplace(BICGSTAB_Y)
+	bicgstab_compute_v_and_r0Tv(v)
+}
+
+Kernel bicgstab_step2_preconditioned()
+{
+	bicgstab_compute_h_and_s_preconditioned(POTENTIAL)
+}
+
+Kernel bicgstab_step25_preconditioned()
+{
+	coeff = laplace_central_coeff()
+	write(BICGSTAB_Z,BICGSTAB_S/coeff)
+}
+
+Kernel bicgstab_step3_preconditioned()
+{
+	t = laplace(BICGSTAB_Z)
+	write(BICGSTAB_T,t)
+}
+
+Kernel bicgstab_preconditioned_calculate_omega()
+{
+	coeff = laplace_central_coeff()
+	Kinv_t = BICGSTAB_T/coeff
+	Kinv_s = BICGSTAB_S/coeff
+	reduce_sum(Kinv_t*Kinv_s,BICGSTAB_tTs)
+	reduce_sum(Kinv_t*Kinv_t,BICGSTAB_tTt)
+}
+
+Kernel bicgstab_step4_preconditioned()
+{
+	bicgstab_compute_next_solution_preconditioned(POTENTIAL)
+}
+
+ComputeSteps
+bicgstab_preconditioned_step(jacobi_bcs)
+{
+	bicgstab_step0_preconditioned()
+	bicgstab_step1_preconditioned()
+	bicgstab_step2_preconditioned()
+	bicgstab_step25_preconditioned()
+	bicgstab_step3_preconditioned()
+	bicgstab_preconditioned_calculate_omega()
+	bicgstab_step4_preconditioned()
+	bicgstab_compute_true_residual()
+	bicgstab_step5()
+	bicgstab_step6()
 }
 
 ComputeSteps
