@@ -15,6 +15,8 @@ Field BICGSTAB_R0
 Field BICGSTAB_T
 Field BICGSTAB_P
 Field BICGSTAB_V
+Field BICGSTAB_Y
+Field BICGSTAB_Z
 
 bicgstab_compute_v_and_r0Tv(real v)
 {
@@ -29,6 +31,13 @@ bicgstab_compute_h_and_s(Field x)
 	write(BICGSTAB_H,x + alpha*BICGSTAB_P)
 }
 
+bicgstab_compute_h_and_s_preconditioned(Field x)
+{
+	alpha = BICGSTAB_rho_prev/BICGSTAB_r0Tv
+	write(BICGSTAB_S,BICGSTAB_R - alpha*BICGSTAB_V)
+	write(BICGSTAB_H,x + alpha*BICGSTAB_Y)
+}
+
 bicgstab_compute_t(real As)
 {
 	t = As
@@ -41,6 +50,13 @@ bicgstab_compute_next_solution(Field x)
 {
 	omega = BICGSTAB_tTs/BICGSTAB_tTt
 	write(x,BICGSTAB_H + omega*BICGSTAB_S)
+	write(BICGSTAB_R,BICGSTAB_S - omega*BICGSTAB_T)
+}
+
+bicgstab_compute_next_solution_preconditioned(Field x)
+{
+	omega = BICGSTAB_tTs/BICGSTAB_tTt
+	write(x,BICGSTAB_H + omega*BICGSTAB_Z)
 	write(BICGSTAB_R,BICGSTAB_S - omega*BICGSTAB_T)
 }
 bicgstab_compute_rho_next() 
