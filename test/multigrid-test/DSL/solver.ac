@@ -11,12 +11,13 @@ hostdefine STENCIL_ORDER (2)
 real AC_k = 1.0
 real AC_laplace_sign = -1.0
 
+real AC_init_val = 0.0
 Kernel init_kernel()
 {
 	pos = grid_position()
 	val = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
 	write(GMG_INITIAL_RHS,val)
-	write(GMG_SOLUTIONS[0],0.0)
+	write(GMG_SOLUTIONS[0],AC_init_val)
 }
 
 
@@ -32,6 +33,9 @@ BoundConds gmg_boundconds{
 	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[2],0.0)
 	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[3],0.0)
 	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[4],0.0)
+
+	ac_const_bc(BOUNDARY_XYZ,GMG_COARSE_CG_P,0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_COARSE_CG_R,0.0)
 }
 
 

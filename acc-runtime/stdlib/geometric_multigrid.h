@@ -1,5 +1,6 @@
 #include "$AC_HOME/acc-runtime/stdlib/geometric_multigrid_core.h"
 #include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/cg.h"
 hostdefine AC_GMG_ENABLED (1)
 
 run_const int AC_gmg_number_of_levels = 5
@@ -2499,4 +2500,47 @@ ComputeSteps
 gmg_get_residual_and_rhs_norms(gmg_boundconds)
 {
 	gmg_get_residual_and_rhs_norms_kernel(AC_GMG_LEVEL)
+}
+
+dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P 
+dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R
+
+Kernel gmg_cg_compute_alpha(GMG_LEVEL level)
+{
+	Ap = -gmg_laplace(GMG_COARSE_CG_P,level)
+ 	r  = value(GMG_COARSE_CG_R)
+	p  = value(GMG_COARSE_CG_P)
+	cg_compute_inner_products(Ap,p,r)
+}
+Kernel gmg_cg_advance(GMG_LEVEL level)
+{
+	Ap = -gmg_laplace(GMG_COARSE_CG_P,level)
+	p  = value(GMG_COARSE_CG_P)
+	cg_advance_solution(GMG_SOLUTIONS[level],Ap,p,GMG_COARSE_CG_R)
+}
+
+Kernel gmg_cg_advance_p()
+{
+	cg_next_direction(GMG_COARSE_CG_P,GMG_COARSE_CG_R)
+}
+
+Kernel
+gmg_init_cg_residual_kernel(GMG_LEVEL level)
+{
+	r = GMG_RHS[level] + gmg_laplace(GMG_SOLUTIONS[level],level)
+	write(GMG_COARSE_CG_P,r)
+	write(GMG_COARSE_CG_R,r)
+}
+ComputeSteps
+gmg_init_cg_residual(gmg_boundconds)
+{
+	gmg_init_cg_residual_kernel(AC_GMG_LEVEL)
+}
+
+ComputeSteps
+gmg_cg_coarsest_level_step(gmg_boundconds)
+{
+	gmg_cg_compute_alpha(AC_GMG_LEVEL)
+	gmg_cg_advance(AC_GMG_LEVEL)
+	gmg_cg_advance_p()
 }

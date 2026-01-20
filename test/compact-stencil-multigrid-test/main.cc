@@ -355,7 +355,7 @@ main(int argc, char* argv[])
 
 
     const int n_levels = info[AC_gmg_number_of_levels];
-    gmg_v_cycle(n_levels);
+    gmg_v_cycle(n_levels,1e-1);
     test_restriction();
     fprintf(stderr,"GMG\n");
     {
@@ -365,11 +365,14 @@ main(int argc, char* argv[])
     	acGridExecuteTaskGraph(residual_graph,1);
     	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
+	const AcReal init_residual = residual;
     	int n_steps = 0;
 
+	const AcReal relative_threshold = 1e-14;
+	//const AcReal relative_threshold = 10e-1;
     	while(residual > 1e-8)
     	{
-            gmg_v_cycle(n_levels);
+            gmg_v_cycle(n_levels,relative_threshold);
 	    //exit(EXIT_SUCCESS);
     	    acGridExecuteTaskGraph(residual_graph,1);
     	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
@@ -381,6 +384,7 @@ main(int argc, char* argv[])
     	}
     	fprintf(stderr,"Final residual: %14e\n",residual);
     	fprintf(stderr,"Took %d steps\n",n_steps);
+	fprintf(stderr,"Asymptotic convergence factor: %.14e\n",pow(residual/init_residual,1.0/n_steps));
     }
     int retval = AC_SUCCESS;
     acGridQuit();

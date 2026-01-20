@@ -268,18 +268,22 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   //const auto sor_graph         = acGetOptimizedDSLTaskGraph(sor_red_black_step);
   //const auto sor_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
   acGridExecuteTaskGraph(smoother,1); //Pre-smooth step
+  //Now is using CG on the coarsest level
+  //TODO: option to choose the coarse level solver since we might not always be SPD
   if(level == number_of_levels-1)
   {
-    	//acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual_and_rhs_norms),1);
-	//const AcReal rhs_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_rhs2[level]));
 	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(residual_graph,1);
 	const AcReal residual0_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
 	AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
 	AcReal relative_residual_norm = residual_norm/residual0_norm;
+        const Volume launch_start = to_volume(info[AC_nmin]);
+        const Volume launch_dims = to_volume(info[level_dims[level]]);
+	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_init_cg_residual,launch_start,launch_dims),1);
 	while(relative_residual_norm > relative_residual_tolerance)
 	{
-		acGridExecuteTaskGraph(smoother,1);
+		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_cg_coarsest_level_step,launch_start,launch_dims),1);
+		//acGridExecuteTaskGraph(smoother,1);
     		acGridExecuteTaskGraph(residual_graph,1);
 		residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
 		relative_residual_norm = residual_norm/residual0_norm;

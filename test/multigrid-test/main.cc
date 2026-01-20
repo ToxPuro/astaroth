@@ -354,8 +354,7 @@ main(int argc, char* argv[])
     **/
 
 
-    //const int n_levels = info[AC_gmg_number_of_levels];
-    const int n_levels = 2;
+    const int n_levels = info[AC_gmg_number_of_levels];
     gmg_v_cycle(n_levels,1e-1);
     test_restriction();
     const AcReal relative_residual_tolerance = 1e-14;

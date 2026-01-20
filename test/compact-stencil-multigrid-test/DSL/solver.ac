@@ -12,13 +12,13 @@ real AC_k = 1.0
 real AC_laplace_sign = -1.0
 
 Field TMP
-
+real AC_init_val = 0.0
 Kernel init_kernel()
 {
 	pos = grid_position()
 	val = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
 	write(TMP,val)
-	write(GMG_SOLUTIONS[0],0.0)
+	write(GMG_SOLUTIONS[0],AC_init_val)
 }
 Kernel init_2nd_kernel()
 {

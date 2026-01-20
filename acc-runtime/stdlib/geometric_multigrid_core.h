@@ -78,6 +78,12 @@ int3 AC_nlocal_gmg_level_4 =
 				       				  (AC_nlocal_gmg_level_3.z)/level_divisor.z
 			     }
 
+int3 AC_nlocal_gmg_level_final = AC_gmg_number_of_levels == 1 ? AC_nlocal_gmg_level_0 :
+				 AC_gmg_number_of_levels == 2 ? AC_nlocal_gmg_level_1 :
+				 AC_gmg_number_of_levels == 3 ? AC_nlocal_gmg_level_2 :
+				 AC_gmg_number_of_levels == 4 ? AC_nlocal_gmg_level_3 :
+				 AC_gmg_number_of_levels == 5 ? AC_nlocal_gmg_level_4 : AC_nlocal_gmg_level_4
+
 get_global_gmg_level_dims(int level)
 {
 	if(level == 1)
@@ -104,6 +110,7 @@ int3 AC_mlocal_gmg_level_1 = AC_nlocal_gmg_level_1 + 2*AC_nmin
 int3 AC_mlocal_gmg_level_2 = AC_nlocal_gmg_level_2 + 2*AC_nmin
 int3 AC_mlocal_gmg_level_3 = AC_nlocal_gmg_level_3 + 2*AC_nmin
 int3 AC_mlocal_gmg_level_4 = AC_nlocal_gmg_level_4 + 2*AC_nmin
+int3 AC_mlocal_gmg_level_final = AC_nlocal_gmg_level_final + 2*AC_nmin
 
 dims(AC_mlocal_gmg_level_0) Field GMG_SOLUTION_0
 dims(AC_mlocal_gmg_level_1) Field GMG_SOLUTION_1 
