@@ -129,12 +129,12 @@ main(int argc, char* argv[])
     acPushToConfig(info,AC_allow_non_divisible_grid,true);
     acSetLocalMeshDims(nx,ny,nz,&info);
 
-    fprintf(stderr,"%d Local Mesh: (%d,%d,%d)\n"
-		    ,pid
-		    ,info[AC_nlocal].x
-		    ,info[AC_nlocal].y
-		    ,info[AC_nlocal].z
-	   );
+//    fprintf(stderr,"%d Local Mesh: (%d,%d,%d)\n"
+//		    ,pid
+//		    ,info[AC_nlocal].x
+//		    ,info[AC_nlocal].y
+//		    ,info[AC_nlocal].z
+//	   );
 
     #if AC_RUNTIME_COMPILATION
     const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
@@ -181,31 +181,35 @@ main(int argc, char* argv[])
     }
 
 
-    fprintf(stderr,"1/h2: %.14e\n",1.0/info[AC_inv_ds_2].x);
-    fflush(stderr);
 
     gmg_v_cycle(n_levels,1e-1);
-    fprintf(stderr,"GMG\n");
     {
 	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
     	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(initcond_graph,1);
     	acGridExecuteTaskGraph(residual_graph,1);
     	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
-    	fprintf(stderr,"Initial Residual: %14e\n",residual);
+    	acLogFromRootProc(pid,"Initial Residual: %14e\n",residual);
+	const AcReal init_residual = residual;
 	const AcReal relative_convergence_rate = 1e-14;
+	AcReal sum_time = 0.0;
     	int n_steps = 0;
     	while(residual > 1e-8)
     	{
+	    const AcReal start_time = MPI_Wtime();
             gmg_v_cycle(n_levels,relative_convergence_rate);
+	    const AcReal end_time   = MPI_Wtime();
+	    sum_time += end_time-start_time;
     	    acGridExecuteTaskGraph(residual_graph,1);
     	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
-    	    fprintf(stderr,"Residual: %14e\n",residual);
+    	    acLogFromRootProc(pid,"Residual: %14e\n",residual);
     	    acGridWriteSlicesToDiskCollectiveSynchronous("slices", n_steps, 0.0);
     	    ++n_steps;
     	}
-    	fprintf(stderr,"Final residual: %14e\n",residual);
-    	fprintf(stderr,"Took %d steps\n",n_steps);
+    	acLogFromRootProc(pid,"Final residual: %14e\n",residual);
+    	acLogFromRootProc(pid,"Took %d steps\n",n_steps);
+	acLogFromRootProc(pid,"Asymptotic convergence factor: %.14e\n",pow(residual/init_residual,1.0/n_steps));
+	acLogFromRootProc(pid,"On average a single V cycle took: %.14e seconds\n",sum_time/n_steps);
     }
     int retval = AC_SUCCESS;
     acGridQuit();

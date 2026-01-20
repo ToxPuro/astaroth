@@ -370,9 +370,13 @@ main(int argc, char* argv[])
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
 	const AcReal init_residual = residual;
     	int n_steps = 0;
+	AcReal sum_time = 0.0;
     	while(residual > 1e-8)
     	{
+	    const AcReal start_time = MPI_Wtime();
             gmg_v_cycle(n_levels,relative_residual_tolerance);
+	    const AcReal end_time   = MPI_Wtime();
+	    sum_time += end_time-start_time;
     	    acGridExecuteTaskGraph(res_graph,1);
     	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
     	    fprintf(stderr,"Residual: %14e\n",residual);
@@ -382,6 +386,7 @@ main(int argc, char* argv[])
     	fprintf(stderr,"Final residual: %14e\n",residual);
     	fprintf(stderr,"Took %d steps\n",n_steps);
 	fprintf(stderr,"Asymptotic convergence factor: %.14e\n",pow(residual/init_residual,1.0/n_steps));
+	fprintf(stderr,"On average a single V cycle took: %.14e seconds\n",sum_time/n_steps);
     }
     int retval = AC_SUCCESS;
     acGridQuit();
