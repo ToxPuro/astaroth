@@ -1,3 +1,8 @@
+/**
+ * This file implements iterative solvers for the Poisson equation in Cartesian,cylindrical and spherical coordinates.
+ * Includes Jacobi,Gauss-seidel and Successive over-relaxation.
+ * Most likely not efficient enough on their own but a good starting point for setting your initial problem correctly.
+ */
 #ifndef AC_POISSON_H
 #define AC_POISSON_H
 
