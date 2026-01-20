@@ -132,7 +132,7 @@ if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     else()
        set(CMAKE_CUDA_ARCHITECTURES "61;70;80")
-       set(CMAKE_CUDA_ARCHITECTURES native)
+       #set(CMAKE_CUDA_ARCHITECTURES native)
     endif()
 
     message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
