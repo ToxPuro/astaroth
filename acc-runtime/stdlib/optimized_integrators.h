@@ -1,3 +1,9 @@
+/**
+ * This file implements low-storage RK integrators from orders from 1 to 3
+ * and Runge-Kutta-Fehlberg integrator with 4th order accuracy and 5th order error estimate.
+ * The difference of this file compared to the normal one is that to use this correctly 
+ * kernel monomorphization and runtime-compilation is almost a necessity since we have conditionals depending on the substep number and on the chosen accuracy.
+ */
 run_const bool AC_rk_cumulative_df = false
 const real rk1_alpha = [0.0]
 const real rk1_beta  = [1.0]
