@@ -258,8 +258,8 @@ main(void)
 
     const auto jacobi_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
     const auto sor_rb_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
-    //const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_step);
-    const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_preconditioned_step);
+    const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_step);
+    //const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_preconditioned_step);
     const auto reinit_bicgstab_graph = acGetOptimizedDSLTaskGraph(reinitialize_bicgstab);
     const auto sor_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
@@ -312,6 +312,7 @@ main(void)
     AcReal M_00 = ((4*AC_REAL_PI*R*R*R)/3.0)*sqrt(4*AC_REAL_PI);
     M_00 -= ((4*AC_REAL_PI*R_min*R_min*R_min)/3.0)*sqrt(4*AC_REAL_PI);
     AcReal M_inner = 2.0*AC_REAL_PI*(R*R - R_min*R_min)*sqrt(4*AC_REAL_PI);
+    /**
     printf("M_00 should be: %14e\n",M_00);
     printf("M_inner should be: %14e\n",M_inner);
     for(int l = 0; l < 6; ++l)
@@ -327,6 +328,7 @@ main(void)
 		}
 	    }
     }
+    **/
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
 
     acGridStoreMesh(STREAM_DEFAULT, &candidate);

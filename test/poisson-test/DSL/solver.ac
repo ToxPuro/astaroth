@@ -1,3 +1,4 @@
+hostdefine STENCIL_ORDER (2)
 #include "$AC_HOME/acc-runtime/stdlib/general_grid"
 #include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
 #include "$AC_HOME/acc-runtime/stdlib/math"
@@ -17,6 +18,7 @@ int AC_n_solving_steps = 1000
 AcReal AC_power_law_mapping_exponent = 1.0
 int AC_charge_radius_points = 10
 real AC_density_charge = 0.0
+
 
 
 //output real AC_MLM[AC_n_spherical_harmonics][AC_n_spherical_harmonics][2]
@@ -297,7 +299,35 @@ Kernel bicgstab_step0_preconditioned()
 {
 	bicgstab_compute_rho_prev()
 	coeff = laplace_central_coeff()
-	write(BICGSTAB_Y,BICGSTAB_P/coeff)
+}
+Kernel bicgstab_compute_y_init()
+{
+	write(BICGSTAB_Y,BICGSTAB_P/laplace_central_coeff())
+}
+Kernel bicgstab_compute_y_red(real omega)
+{
+	p = value(BICGSTAB_P)
+	if(red_black_is_of_color(SOR_RED))
+	{
+		write(BICGSTAB_Y,p/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Y,BICGSTAB_Y)
+	}
+}
+Kernel bicgstab_compute_y_black(real omega)
+{
+	p = value(BICGSTAB_P)
+	Eyr = laplace_neighbours(BICGSTAB_Y)
+	if(red_black_is_of_color(SOR_BLACK))
+	{
+		write(BICGSTAB_Y,(p-Eyr)/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Y,BICGSTAB_Y)
+	}
 }
 
 Kernel bicgstab_step1_preconditioned()
@@ -315,6 +345,36 @@ Kernel bicgstab_step25_preconditioned()
 {
 	coeff = laplace_central_coeff()
 	write(BICGSTAB_Z,BICGSTAB_S/coeff)
+}
+
+Kernel bicgstab_compute_z_init()
+{
+	write(BICGSTAB_Z,BICGSTAB_S/laplace_central_coeff())
+}
+Kernel bicgstab_compute_z_red(real omega)
+{
+	s = value(BICGSTAB_S)
+	if(red_black_is_of_color(SOR_RED))
+	{
+		write(BICGSTAB_Z,s/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Z,BICGSTAB_Z)
+	}
+}
+Kernel bicgstab_compute_z_black(real omega)
+{
+	s = value(BICGSTAB_S)
+	Eyr = laplace_neighbours(BICGSTAB_Z)
+	if(red_black_is_of_color(SOR_BLACK))
+	{
+		write(BICGSTAB_Z,(s-Eyr)/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Z,BICGSTAB_Z)
+	}
 }
 
 Kernel bicgstab_step3_preconditioned()
@@ -340,9 +400,15 @@ ComputeSteps
 bicgstab_preconditioned_step(jacobi_bcs)
 {
 	bicgstab_step0_preconditioned()
+	//bicgstab_compute_y_init()
+	bicgstab_compute_y_red(AC_SOR_omega)
+	bicgstab_compute_y_black(AC_SOR_omega)
 	bicgstab_step1_preconditioned()
 	bicgstab_step2_preconditioned()
-	bicgstab_step25_preconditioned()
+	//bicgstab_step25_preconditioned()
+	//bicgstab_compute_z_init()
+	bicgstab_compute_z_red(AC_SOR_omega)
+	bicgstab_compute_z_black(AC_SOR_omega)
 	bicgstab_step3_preconditioned()
 	bicgstab_preconditioned_calculate_omega()
 	bicgstab_step4_preconditioned()
