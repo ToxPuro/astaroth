@@ -284,6 +284,8 @@ main(void)
 		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
 		printf("Residual: %zu,%7e\n",i,residual_norm);
+		fflush(stdout);
+		fflush(stderr);
 		//printf("||S||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_S));
 		//printf("||H||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_H));
 		//printf("||R||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_R));
