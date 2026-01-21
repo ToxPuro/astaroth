@@ -261,9 +261,10 @@ main(void)
     //const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_step);
     const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_preconditioned_step);
     const auto reinit_bicgstab_graph = acGetOptimizedDSLTaskGraph(reinitialize_bicgstab);
-    //const auto sor_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
+    const auto sor_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     const size_t NUM_SOLVING_STEPS = info[AC_n_solving_steps];
+    FILE* fp = fopen("residual.dat","w");
     for (size_t i = 0; i < NUM_SOLVING_STEPS; ++i)
     {
 	if(i == 0)
@@ -272,8 +273,10 @@ main(void)
 		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
 		printf("Initial residual: %zu,%7e\n",i,residual_norm);
+		acGridExecuteTaskGraph(reinit_bicgstab_graph,1);
 	}
     	acGridExecuteTaskGraph(bicgstab_graph,1);
+    	//acGridExecuteTaskGraph(sor_graph,1);
 	if(i % 1000 == 0)
 	{
 		acGridExecuteTaskGraph(reinit_bicgstab_graph,1);
@@ -294,7 +297,13 @@ main(void)
 		//printf("<t,t>: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_tTt));
 		//printf("<t,s>: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_tTs));
 	}
+	{
+    		acGridExecuteTaskGraph(residual_graph,1);
+		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+		fprintf(fp,"%.14e,",residual_norm);
+	}
     }
+    fclose(fp);
     acGridExecuteTaskGraph(residual_graph,1);
     AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
     printf("Final residual: %7e\n",residual_norm);
