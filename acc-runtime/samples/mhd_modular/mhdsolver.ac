@@ -19,7 +19,6 @@ const int3 AC_const_int3 = {1,2,3}
 
 
 
-
 struct TimeParams
 {
         real dt;
@@ -86,13 +85,14 @@ real AC_lnrho0, AC_mu0, AC_lnT0
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
-hostdefine LENTROPY (1)
+hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
+hostdefine LSELFGRAVITY (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
@@ -103,6 +103,11 @@ hostdefine LSPECIAL_REDUCTIONS (0)
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 //const int NCHEM=20
 //Field CHEMISTRY[NCHEM]
+
+#if LSELFGRAVITY
+Field GRAVITY_POTENTIAL
+const real G_NEWTON = 9e-8
+#endif
 
 
 #if LMAGNETIC
@@ -347,6 +352,10 @@ momentum() {
           + AC_nu_shock * (VTXBUF_SHOCK * (divergence(UU) * gradient(VTXBUF_LNRHO) +
                                            gradient_of_divergence(UU)) +
                            divergence(UU) * gradient(VTXBUF_SHOCK))
+#endif
+#if LSELFGRAVITY
+	-gradient(GRAVITY_POTENTIAL)
+	+force_from_sink_particle(G_NEWTON)
 #endif
 
     return mom
@@ -836,8 +845,8 @@ input AC_SUBSTEP_NUMBER AC_SUBSTEP
 
 ComputeSteps AC_rhs_substep(boundconds)
 {
-        twopass_solve_intermediate((AC_SUBSTEP_NUMBER)AC_ITERATION_NUMBER,AC_dt)
-        twopass_solve_final((AC_SUBSTEP_NUMBER)AC_ITERATION_NUMBER,AC_current_time);
+        twopass_solve_intermediate(AC_SUBSTEP,AC_dt)
+        twopass_solve_final(AC_SUBSTEP,AC_current_time);
 }
 
 ComputeSteps AC_rhs(boundconds)
@@ -852,6 +861,53 @@ ComputeSteps AC_rhs(boundconds)
         twopass_solve_final(AC_THIRD_SUBSTEP,AC_current_time);
 }
 Kernel calc_timestep_kernel() {calc_timestep()}
+
+Kernel init()
+{
+	r = AC_r[vertexIdx.x]
+	density = AC_cs2_sound/(2.0*AC_REAL_PI*r*r)
+	write(VTXBUF_LNRHO,log(density))
+	write(UU,real3(0.,0.,0.))
+	write(AA,real3(0.,0.,0.))
+}
+#if LSELFGRAVITY
+fixed_boundary Kernel sor_red(real omega)
+{
+	poisson_sor_red_black(SOR_RED,exp(VTXBUF_LNRHO),GRAVITY_POTENTIAL,omega)
+}
+fixed_boundary Kernel sor_black(real omega)
+{
+	poisson_sor_red_black(SOR_BLACK,exp(VTXBUF_LNRHO),GRAVITY_POTENTIAL,omega)
+}
+
+
+ComputeSteps
+sor_red_black_step(boundconds)
+{
+	sor_red(AC_SOR_omega)
+	sor_black(AC_SOR_omega)
+}
+global output AC_residual2
+global output AC_rhs_norm2
+Kernel get_residual_kernel()
+{
+	reduce_sum(4*AC_REAL_PI*G_NEWTON*exp(VTXBUF_LNRHO)-laplace(gravity_potential),AC_residual2)
+}
+Kernel get_selfgravity_rhs_norm2()
+{
+	reduce_sum(4*AC_REAL_PI*G_NEWTON*exp(VTXBUF_LNRHO),AC_rhs_norm2)
+}
+ComputeSteps
+get_residual(boundconds)
+{
+	get_residual_kernel()
+}
+ComputeSteps
+get_rhs_norm(boundconds)
+{
+	get_selfgravity_rhs_norm2()
+}
+#endif
 
 
 ComputeSteps AC_calc_timestep(boundconds)

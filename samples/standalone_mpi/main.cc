@@ -1582,6 +1582,20 @@ main(int argc, char** argv)
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
     	        acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
+#if LSELFGRAVITY
+		const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step);
+		const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
+		const auto rhs_norm_graph = acGetOptimizedDSLTaskGraph(get_rhs_norm);
+		acGridExecuteTaskGraph(residual_graph,1);
+		acGridExecuteTaskGraph(rhs_norm_graph,1);
+		AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
+		const AcReal rhs_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_rhs_norm2));
+		while(residual > 1e-4)
+		{
+			acGridExecuteTaskGraph(sor_graph,1);
+			acGridExecuteTaskGraph(residual_graph,1);
+		}
+#endif
     		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
     	}
         simulation_time += dt;
