@@ -3,25 +3,21 @@
  * Includes Jacobi,Gauss-seidel and Successive over-relaxation.
  * Most likely not efficient enough on their own but a good starting point for setting your initial problem correctly.
  */
+#include "$AC_HOME/acc-runtime/stdlib/colors.h"
 #ifndef AC_POISSON_H
 #define AC_POISSON_H
 
 input real AC_SOR_omega = 1.0
 run_const bool AC_compact_poisson = false;
 #if STENCIL_ORDER == 2
+run_const int AC_laplacian_colors = 2
 run_const bool AC_poisson_radius_1  = true;
 #else
 run_const bool AC_poisson_radius_1  = AC_compact_poisson;
+run_const int AC_laplacian_colors = 4
 #endif
-enum SOR_STEP
-{
-	SOR_RED,
-	SOR_BLACK
-}
-red_black_is_of_color(int color)
-{
-	return (globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color
-}
+#define SOR_RED   AC_COLOR_RED
+#define SOR_BLACK AC_COLOR_BLACK
 poisson_jacobi_update(real b, Field x_prev, real laplace_sign)
 {
 	Ax = laplace_sign*laplace_neighbours(x_prev)
