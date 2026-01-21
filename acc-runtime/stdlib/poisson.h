@@ -18,6 +18,10 @@ enum SOR_STEP
 	SOR_RED,
 	SOR_BLACK
 }
+red_black_is_of_color(int color)
+{
+	return (globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color
+}
 poisson_jacobi_update(real b, Field x_prev, real laplace_sign)
 {
 	Ax = laplace_sign*laplace_neighbours(x_prev)
@@ -46,7 +50,7 @@ poisson_jacobi_update(real b, potential, real3 inv_spacings_2)
 poisson_sor_red_black(int color, real density, Field potential, real omega, real laplace_sign)
 {
 	res = (1-omega)*potential+omega*poisson_jacobi_update(density,potential,laplace_sign)
-	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color)
+	if(red_black_is_of_color(color))
         {
 		write(potential,res)
 	}
@@ -63,7 +67,7 @@ poisson_sor_red_black(int color, real density, Field potential, real omega)
 poisson_sor_red_black(int color, real density, Field potential, real omega, real laplace_sign, real3 inv_spacings)
 {
 	res = (1-omega)*potential+omega*poisson_jacobi_update(density,potential,laplace_sign,inv_spacings)
-	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color)
+	if(red_black_is_of_color(color))
         {
 		write(potential,res)
 	}
@@ -108,7 +112,7 @@ poisson_jacobi_update_extended(real b , Field x_prev, real3 inv_spacings)
 poisson_sor_red_black_extended(int color, real density, Field potential, real omega, real laplace_sign)
 {
 	res = (1-omega)*potential+omega*poisson_jacobi_update_extended(density,potential,laplace_sign)
-	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color)
+	if(red_black_is_of_color(color))
         {
 		write(potential,res)
 	}
@@ -125,7 +129,7 @@ poisson_sor_red_black_extended(int color, real density, Field potential, real om
 poisson_sor_red_black_extended(int color, real density, Field potential, real omega, real laplace_sign, real3 inv_spacings)
 {
 	res = (1-omega)*potential+omega*poisson_jacobi_update_extended(density,potential,laplace_sign,inv_spacings)
-	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color)
+	if(red_black_is_of_color(color))
         {
 		write(potential,res)
 	}
