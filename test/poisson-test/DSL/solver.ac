@@ -325,11 +325,10 @@ Kernel bicgstab_step3_preconditioned()
 
 Kernel bicgstab_preconditioned_calculate_omega()
 {
-	coeff = laplace_central_coeff()
-	Kinv_t = BICGSTAB_T/coeff
-	Kinv_s = BICGSTAB_S/coeff
-	reduce_sum(Kinv_t*Kinv_s,BICGSTAB_tTs)
-	reduce_sum(Kinv_t*Kinv_t,BICGSTAB_tTt)
+	t = BICGSTAB_T
+	s = BICGSTAB_S
+	reduce_sum(t*s,BICGSTAB_tTs)
+	reduce_sum(t*t,BICGSTAB_tTt)
 }
 
 Kernel bicgstab_step4_preconditioned()
