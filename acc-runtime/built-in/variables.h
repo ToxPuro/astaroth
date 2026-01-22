@@ -410,6 +410,10 @@ run_const int3 AC_ngrid_extended  = AC_ngrid + AC_left_extended_halo  + AC_right
  * Size of Fields on the extended grid without halos
  */
 dconst int3 AC_extended_nlocal = AC_nlocal + AC_left_extended_halo + AC_right_extended_halo
+/**
+ * Final point in the computational domain in the extended grid
+ */
+dconst int3 AC_extended_nlocal_max = AC_extended_nlocal + AC_nmin;
 
 /**
  * Set by the autotuner to true when autotuning is happening
