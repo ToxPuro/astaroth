@@ -1,3 +1,5 @@
+#ifndef AC_COLORS_H
+#define AC_COLORS_H
 /**
  * The place for standard numeric definition of colors for graph coloring.
  * Used for Red-Black SOR and multi-coloring preconditioners
@@ -19,3 +21,4 @@ is_of_color(int color, int number_of_colors)
 {
 	return (globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) % number_of_colors == color
 }
+#endif
