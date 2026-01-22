@@ -49,6 +49,7 @@ AcReal ac_get_theta(const AcMeshInfo config, const int y)
 AcResult 
 ac_compute_cos_m_phis(AcMeshInfo* dst)
 {
+#if AC_SPHERICAL_HARMONICS_INCLUDED
 	AcMeshInfo& config = *dst;
 	const int N = config[AC_n_spherical_harmonics];
 	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].z*N);
@@ -65,11 +66,15 @@ ac_compute_cos_m_phis(AcMeshInfo* dst)
 	}
 	config[AC_cos_m_phis] = res;
 	return AC_SUCCESS;
+#else
+	return AC_FAILURE;
+#endif
 }
 
 AcResult 
 ac_compute_sin_m_phis(AcMeshInfo* dst)
 {
+#if AC_SPHERICAL_HARMONICS_INCLUDED
 	AcMeshInfo& config = *dst;
 	const int N = config[AC_n_spherical_harmonics];
 	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].z*N);
@@ -86,6 +91,9 @@ ac_compute_sin_m_phis(AcMeshInfo* dst)
 	}
 	config[AC_sin_m_phis] = res;
 	return AC_SUCCESS;
+#else
+	return AC_FAILURE;
+#endif
 }
 
 int 
@@ -120,6 +128,7 @@ ac_get_normalized_plm(const AcReal x, const int l, const int m)
 
 AcResult ac_compute_normalized_plms(AcMeshInfo* dst)
 {
+#if AC_SPHERICAL_HARMONICS_INCLUDED
 	AcMeshInfo& config = *dst;
 	const int N = config[AC_n_spherical_harmonics];
 	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].y*N*N);
@@ -137,13 +146,20 @@ AcResult ac_compute_normalized_plms(AcMeshInfo* dst)
 	}
 	config[AC_PLM] = res;
 	return AC_SUCCESS;
+#else
+	return AC_FAILURE;
+#endif
 }
 AcResult ac_compute_spherical_harmonics(AcMeshInfo* dst)
 {
+#if AC_SPHERICAL_HARMONICS_INCLUDED
 	ac_compute_normalized_plms(dst);
 	ac_compute_cos_m_phis(dst);
 	ac_compute_sin_m_phis(dst);
 	return AC_SUCCESS;
+#else
+	return AC_FAILURE;
+#endif
 }
 
 AcResult
@@ -175,27 +191,28 @@ ac_compute_inv_r(AcMeshInfo* dst)
 }
 
 AcResult
-ac_compute_r_helper(AcMeshInfo* dst, const AcRealArrayParam arr, const int start, const int end)
+ac_compute_r(AcMeshInfo* dst)
 {
 	AcMeshInfo& config = *dst;
-	const int m = end-start;
-	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*m);
-	for(auto x = start; x < end; ++x)
+	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	for(auto x = 0; x < config[AC_mlocal].x; ++x)
 	{
 		const AcReal R = ac_grid_position((int3){x,0,0},config).x;
-		res[x-start] = R;
+		res[x] = R;
 	}
-	config[arr] = res;
+	config[AC_r] = res;
+
+	res = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+        for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
+	{
+	      const AcReal R = ac_grid_position((int3){x-config[AC_left_extended_halo].x,0,0},config).x;
+	      res[x] = R;
+	}
+	config[AC_r_extended] = res;
+	fprintf(stderr,"loaded AC_r_extended: %d, %d!!\n",config[AC_r_extended] == NULL,config[AC_extended_mlocal].x);
 	return AC_SUCCESS;
 }
 
-AcResult
-ac_compute_r(AcMeshInfo* dst)
-{
-	ac_compute_r_helper(dst,AC_r,0,(*dst)[AC_mlocal].x);
-	ac_compute_r_helper(dst,AC_r_extended,-(*dst)[AC_left_extended_halo].x,(*dst)[AC_mlocal].x+(*dst)[AC_right_extended_halo].x);
-	return AC_SUCCESS;
-}
 
 //TP: duplicate of ac_compute_inv_r since for now cyl_r is independent of inv_r
 //open to changing it in the future but works for now

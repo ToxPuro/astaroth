@@ -5,7 +5,9 @@
  * Requires setup host code in stdlib/grid.h to calculate the values of the required trigonometric functions
  * into AC_cos_m_phis and AC_sin_m_phis and the values of the associated Legendre polynomials into AC_PLM
  */
-
+#ifndef AC_SPHERICAL_HARMONICS_H
+#define AC_SPHERICAL_HARMONICS_H
+hostdefine AC_SPHERICAL_HARMONICS_INCLUDED (1)
 #ifdef AC_HOME
 #include "$AC_HOME/acc-runtime/stdlib/general_grid"
 #endif
@@ -335,7 +337,9 @@ multipole_expansion_bc_outer_extended(AcBoundary boundary_region, Field f, real 
                 }
             }
         }
+    
     res *= G
     f[ghost.x][ghost.y][ghost.z] = res
     }
 }
+#endif

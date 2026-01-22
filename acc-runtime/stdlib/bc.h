@@ -79,6 +79,14 @@ elemental ac_bc_sym(AcBoundary boundary, Field f)
 	ac_bc_sym(boundary,f,1)
 }
 
+ac_bc_sym(AcBoundary boundary)
+{
+	for f in 0:NUM_FIELDS
+	{
+		ac_bc_a2(boundary,Field(f))
+	}
+}
+
 utility Kernel BOUNDCOND_SYMMETRIC(Field f)
 {
 	ac_bc_sym(BOUNDARY_XYZ,f,1)
