@@ -1,7 +1,7 @@
 #ifndef AC_COLORS_H
 #define AC_COLORS_H
 /**
- * The place for standard numeric definition of colors for graph coloring.
+ * Functionality required for graph coloring.
  * Used for Red-Black SOR and multi-coloring preconditioners
  */
 enum AC_COLOR
