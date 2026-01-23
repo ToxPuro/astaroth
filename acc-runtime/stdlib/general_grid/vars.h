@@ -1,6 +1,8 @@
 #ifndef AC_GENERAL_GRID_VARS_H
 
 #define AC_GENERAL_GRID_VARS_H
+
+hostdefine AC_GENERAL_GRID_VARS_INCLUDED (1)
 run_const real3 AC_origin =  0.5*AC_len
 run_const real3 AC_center
 
