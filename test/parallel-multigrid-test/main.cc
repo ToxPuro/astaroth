@@ -70,7 +70,7 @@ main(int argc, char* argv[])
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acLoadConfig("mg.conf", &info);
     acPushToConfig(info,AC_ds,
     (AcReal3){
     	    (2.0*AC_REAL_PI)/info[AC_ngrid].x,
@@ -88,7 +88,7 @@ main(int argc, char* argv[])
 		    //1.8
     );
     acPushToConfig(info,AC_gmg_number_of_levels,
-		    2
+		    3
     );
 
     acPushToConfig(info,AC_periodic_grid,

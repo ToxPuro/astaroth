@@ -248,6 +248,32 @@ get_galerkin_operators(AcMeshInfo* info)
     acDeviceSynchronizeStream(acGridGetDevice(),STREAM_DEFAULT);
 }
 
+std::array<AcTaskGraph*,5> halo_exchange_residuals{};
+std::array<AcTaskGraph*,5> halo_exchange_solutions{};
+void
+gmg_get_halo_exchange_operators(const AcMeshInfo info)
+{
+	const int number_of_levels = info[AC_gmg_number_of_levels];
+	for(int level = 0; level < number_of_levels; ++level)
+	{
+		halo_exchange_residuals[level] = acGridBuildTaskGraph(
+    				{
+    				       acHaloExchange({GMG_RESIDUALS[level]})
+    				}
+			);
+
+          	const Volume launch_start = to_volume(info[AC_nmin]);
+          	const Volume launch_dims = to_volume(info[level_dims[level+1]]);
+          	const Volume launch_end = launch_dims + launch_start;
+		halo_exchange_solutions[level] = acGridBuildTaskGraph(
+    				{
+    				       acHaloExchange({GMG_SOLUTIONS[level+1]})
+    				}
+			,launch_start,launch_end);
+
+	}
+}
+
 void
 gmg_setup(AcMeshInfo* info)
 {
@@ -255,6 +281,7 @@ gmg_setup(AcMeshInfo* info)
 	{
 		get_galerkin_operators(info);
 	}
+	gmg_get_halo_exchange_operators(*info);
 }
 void
 gmg_level_step(const int level, const int number_of_levels, const AcReal relative_residual_tolerance)
@@ -292,13 +319,7 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   else
   {
   	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual),1); //Get residual
-	  {
-    	  	AcTaskDefinition periodic_ops[] = {
-    	  	        acHaloExchange({GMG_RESIDUALS[level]}),
-    	  	};
-	  	const auto halo_exchange = acGridBuildTaskGraph(periodic_ops);
-		acGridExecuteTaskGraph(halo_exchange,1);
-	  }
+	  acGridExecuteTaskGraph(halo_exchange_residuals[level],1);
 
           const Volume launch_start = to_volume(info[AC_nmin]);
           const Volume launch_dims = to_volume(info[level_dims[level+1]]);
@@ -308,13 +329,7 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
           acGridExecuteTaskGraph(restrict_graph,1); //Restrict residual to the next level
 	  gmg_level_step(level+1,number_of_levels,relative_residual_tolerance);
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
-	  {
-    	  	AcTaskDefinition periodic_ops[] = {
-    	  	        acHaloExchange({GMG_SOLUTIONS[level+1]}),
-    	  	};
-	  	const auto halo_exchange = acGridBuildTaskGraphWithBounds(periodic_ops,launch_start,launch_end);
-		acGridExecuteTaskGraph(halo_exchange,1);
-	  }
+	  acGridExecuteTaskGraph(halo_exchange_solutions[level],1);
 	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level
   	  acGridExecuteTaskGraph(smoother,1); //Post-smooth step
   }
