@@ -22,9 +22,6 @@ gmg_restrict_to_level(const int level)
     	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)restrict_level);
 	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_restrict_residual,launch_start,launch_end),1);
     	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)(restrict_level+1));
-
-	acDeviceLaunchKernel(acGridGetDevice(),STREAM_DEFAULT,gmg_copy_rhs_to_residual_kernel,launch_start,launch_end);
-	acDeviceSynchronizeStream(acGridGetDevice(),STREAM_DEFAULT);
 	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_copy_rhs_to_residual,launch_start,launch_end),1);
     	++restrict_level;
     }
@@ -256,20 +253,27 @@ gmg_get_halo_exchange_operators(const AcMeshInfo info)
 	const int number_of_levels = info[AC_gmg_number_of_levels];
 	for(int level = 0; level < number_of_levels; ++level)
 	{
-		halo_exchange_residuals[level] = acGridBuildTaskGraph(
+		{
+          		const Volume launch_start = to_volume(info[AC_nmin]);
+          		const Volume launch_dims = to_volume(info[level_dims[level]]);
+          		const Volume launch_end = launch_dims + launch_start;
+			halo_exchange_residuals[level] = acGridBuildTaskGraph(
     				{
     				       acHaloExchange({GMG_RESIDUALS[level]})
     				}
-			);
+				,launch_start,launch_end);
+		}
 
-          	const Volume launch_start = to_volume(info[AC_nmin]);
-          	const Volume launch_dims = to_volume(info[level_dims[level+1]]);
-          	const Volume launch_end = launch_dims + launch_start;
-		halo_exchange_solutions[level] = acGridBuildTaskGraph(
-    				{
-    				       acHaloExchange({GMG_SOLUTIONS[level+1]})
-    				}
-			,launch_start,launch_end);
+		{
+          		const Volume launch_start = to_volume(info[AC_nmin]);
+          		const Volume launch_dims = to_volume(info[level_dims[level+1]]);
+          		const Volume launch_end = launch_dims + launch_start;
+			halo_exchange_solutions[level] = acGridBuildTaskGraph(
+    					{
+    					       acHaloExchange({GMG_SOLUTIONS[level+1]})
+    					}
+				,launch_start,launch_end);
+		}
 
 	}
 }
