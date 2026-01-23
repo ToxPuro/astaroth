@@ -24,7 +24,7 @@ ac_grid_position(const int3 localVertexIdx, const AcMeshInfo config)
 		};
 }
 
-
+#if AC_GENERAL_GRID_VARS_INCLUDED
 AcReal ac_get_cos_theta(const AcMeshInfo config, const int y)
 {
 	const AcReal3 pos = ac_grid_position((int3){0,y,0},config);
@@ -545,4 +545,4 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  config[AC_inv_r_extended] = inv_r_ext;
 	  return AC_SUCCESS;
 }
-
+#endif
