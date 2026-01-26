@@ -481,6 +481,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  AcReal* r = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* inv_mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	  AcReal* mapping_der2 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* mapping_tilde = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
           for(int x = 0; x < config[AC_mlocal].x; ++x)
 	  {
@@ -497,10 +498,12 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  {
 		  inv_mapping_der[x] = 1.0/coordinate.prim[x];
 		  mapping_der[x] =     coordinate.prim[x];
+		  mapping_der2[x] =     coordinate.prim2[x];
 		  mapping_tilde[x] =   -coordinate.prim2[x]/(coordinate.prim[x]*coordinate.prim[x]);
 	  }
 	  config[AC_inv_mapping_func_derivative_x] = inv_mapping_der;
 	  config[AC_mapping_func_derivative_x] = mapping_der;
+	  config[AC_mapping_func_2nd_derivative_x] = mapping_der2;
 	  config[AC_mapping_func_tilde_x] = mapping_tilde;
 	  config[AC_r] = r;
 	  config[AC_inv_r] = inv_r;
@@ -519,6 +522,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  AcReal* r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* inv_mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* mapping_der2_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* mapping_tilde_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
           for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
 	  {
@@ -535,10 +539,12 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  {
 		  inv_mapping_der_ext[x] = 1.0/extended_coordinate.prim[x];
 		  mapping_der_ext[x] =     extended_coordinate.prim[x];
+		  mapping_der2_ext[x] =     extended_coordinate.prim2[x];
 		  mapping_tilde_ext[x] =   -extended_coordinate.prim2[x]/(extended_coordinate.prim[x]*extended_coordinate.prim[x]);
 	  }
 
 	  config[AC_inv_mapping_func_derivative_x_extended] = inv_mapping_der_ext;
+	  config[AC_mapping_func_2nd_derivative_x_extended] = mapping_der2;
 	  config[AC_mapping_func_derivative_x_extended] = mapping_der_ext;
 	  config[AC_mapping_func_tilde_x_extended] = mapping_tilde_ext;
 	  config[AC_r_extended] = r_ext;
