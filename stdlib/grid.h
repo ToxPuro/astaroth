@@ -1,4 +1,5 @@
 #include <cmath>
+#include <Eigen/Dense>
 int3
 ac_global_vertex_idx(const int3 localVertexIdx, const AcMeshInfo config)
 {
@@ -393,14 +394,27 @@ ac_compute_cot_theta(AcMeshInfo* dst)
 	return AC_SUCCESS;
 }
 
-AcReal3
+AcReal4
 ac_get_power_mapping(const AcReal xi_scaled,const AcReal exponent)
 {
 	return 
 	{
 		  pow(xi_scaled,1.0/exponent),
 		  1.0/exponent * pow(xi_scaled,(1.0/exponent)-1.0),
-		  1.0/exponent * ((1.0/exponent)-1.0)*pow(xi_scaled,(1/exponent)-2.0)
+		  1.0/exponent * ((1.0/exponent)-1.0)*pow(xi_scaled,(1/exponent)-2.0),
+		  1.0/exponent * ((1.0/exponent)-1.0) *  ((1.0/exponent)-2.0) * pow(xi_scaled,(1/exponent)-3.0)
+	};
+}
+
+AcReal4
+ac_get_exp_mapping(const AcReal xi_scaled)
+{
+	return 
+	{
+		exp(xi_scaled),
+		exp(xi_scaled),
+		exp(xi_scaled),
+		exp(xi_scaled)
 	};
 }
 
@@ -409,6 +423,7 @@ typedef struct
 	std::vector<AcReal> value;
 	std::vector<AcReal> prim;
 	std::vector<AcReal> prim2;
+	std::vector<AcReal> prim3;
 } AcGridMappingFunction;
 
 AcGridMappingFunction
@@ -432,6 +447,7 @@ ac_compute_power_law_mapping_x(
 	  std::vector<AcReal> x_arr{};
 	  std::vector<AcReal> x_prim{};
 	  std::vector<AcReal> x_prim2{};
+	  std::vector<AcReal> x_prim3{};
 	  //For visualizing the mapping function and its derivatives
 	  /**
 	  const char* name = left_extension != 0 ? "x_ext.dat" : "x.dat";
@@ -443,24 +459,81 @@ ac_compute_power_law_mapping_x(
           for(int x = -left_extension; x < n_points+right_extension; ++x)
 	  {
 		const AcReal xi = AcReal(x-NGHOST)+shift;
-		const AcReal3 g_res = ac_get_power_mapping(a*(xi-b),exponent);
+		const AcReal4 g_res = ac_get_power_mapping(a*(xi-b),exponent);
 
 		const AcReal g     = g_res.x;
 		const AcReal gder1 = g_res.y;
 		const AcReal gder2 = g_res.z;
+		const AcReal gder3 = g_res.w;
 		
 		const auto x_local       = first_x + len*(g-g1lo)/(g1up-g1lo);
 		const auto x_prim_local  = len*(gder1*a)/(g1up-g1lo);
 		const auto x_prim2_local = len*(gder2*a*a)/(g1up-g1lo);
+		const auto x_prim3_local = len*(gder3*a*a*a)/(g1up-g1lo);
 		x_arr.push_back(x_local);
 		x_prim.push_back(x_prim_local);
 		x_prim2.push_back(x_prim2_local);
+		x_prim3.push_back(x_prim3_local);
 		//fprintf(fp,"%7e,%7e,%7e\n",x_local,x_prim_local,x_prim2_local);
 	  }
 	  //fclose(fp);
 	  return (AcGridMappingFunction)
 	  {
-		x_arr,x_prim,x_prim2
+		x_arr,x_prim,x_prim2,x_prim3
+	  };
+}
+
+AcGridMappingFunction
+ac_compute_exp_mapping_x( 
+				const AcReal first_x,
+				const AcReal last_x,
+				const int ngrid,
+				const int n_points,
+				const int left_extension,
+				const int right_extension,
+				const AcReal shift
+			      )
+{
+	  const AcReal a = (exp(last_x)-exp(first_x))/ngrid;
+	  const AcReal b = 0.5*(ngrid - (exp(last_x)+exp(first_x))/a);
+
+	  const AcReal g1lo = ac_get_exp_mapping(a*(0-b)).x;
+	  const AcReal g1up = ac_get_exp_mapping(a*(ngrid-b)).x;
+
+	  std::vector<AcReal> x_arr{};
+	  std::vector<AcReal> x_prim{};
+	  std::vector<AcReal> x_prim2{};
+	  std::vector<AcReal> x_prim3{};
+	  //For visualizing the mapping function and its derivatives
+	  /**
+	  const char* name = left_extension != 0 ? "x_ext.dat" : "x.dat";
+	  FILE* fp = fopen(name,"w");
+	  fprintf(fp,"x,dx,dx2\n");
+	  **/
+
+	  const AcReal len = last_x - first_x;
+          for(int x = -left_extension; x < n_points+right_extension; ++x)
+	  {
+		const AcReal xi = AcReal(x-NGHOST)+shift;
+		const AcReal4 g_res = ac_get_exp_mapping(a*(xi-b));
+
+		const AcReal g     = g_res.x;
+		const AcReal gder1 = g_res.y;
+		const AcReal gder2 = g_res.z;
+		const AcReal gder3 = g_res.w;
+		
+		const auto x_local       = first_x + len*(g-g1lo)/(g1up-g1lo);
+		const auto x_prim_local  = len*(gder1*a)/(g1up-g1lo);
+		const auto x_prim2_local = len*(gder2*a*a)/(g1up-g1lo);
+		const auto x_prim3_local = len*(gder3*a*a*a)/(g1up-g1lo);
+		x_arr.push_back(x_local);
+		x_prim.push_back(x_prim_local);
+		x_prim2.push_back(x_prim2_local);
+		x_prim3.push_back(x_prim3_local);
+	  }
+	  return (AcGridMappingFunction)
+	  {
+		x_arr,x_prim,x_prim2,x_prim3
 	  };
 }
 
@@ -484,6 +557,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  AcReal* inv_mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* mapping_der2 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	  AcReal* mapping_der3 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* mapping_tilde = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
           for(int x = 0; x < config[AC_mlocal].x; ++x)
 	  {
@@ -501,11 +575,13 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 		  inv_mapping_der[x] = 1.0/coordinate.prim[x];
 		  mapping_der[x] =     coordinate.prim[x];
 		  mapping_der2[x] =     coordinate.prim2[x];
+		  mapping_der3[x] =     coordinate.prim3[x];
 		  mapping_tilde[x] =   -coordinate.prim2[x]/(coordinate.prim[x]*coordinate.prim[x]);
 	  }
 	  config[AC_inv_mapping_func_derivative_x] = inv_mapping_der;
 	  config[AC_mapping_func_derivative_x] = mapping_der;
 	  config[AC_mapping_func_2nd_derivative_x] = mapping_der2;
+	  config[AC_mapping_func_3rd_derivative_x] = mapping_der3;
 	  config[AC_mapping_func_tilde_x] = mapping_tilde;
 	  config[AC_r] = r;
 	  config[AC_inv_r] = inv_r;
@@ -543,6 +619,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  AcReal* inv_mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* mapping_der2_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* mapping_der3_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* mapping_tilde_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
           for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
 	  {
@@ -560,15 +637,199 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 		  inv_mapping_der_ext[x] = 1.0/extended_coordinate.prim[x];
 		  mapping_der_ext[x] =     extended_coordinate.prim[x];
 		  mapping_der2_ext[x] =     extended_coordinate.prim2[x];
+		  mapping_der3_ext[x] =     extended_coordinate.prim3[x];
 		  mapping_tilde_ext[x] =   -extended_coordinate.prim2[x]/(extended_coordinate.prim[x]*extended_coordinate.prim[x]);
 	  }
 
 	  config[AC_inv_mapping_func_derivative_x_extended] = inv_mapping_der_ext;
-	  config[AC_mapping_func_2nd_derivative_x_extended] = mapping_der2;
+	  config[AC_mapping_func_2nd_derivative_x_extended] = mapping_der2_ext;
+	  config[AC_mapping_func_3rd_derivative_x_extended] = mapping_der3_ext;
 	  config[AC_mapping_func_derivative_x_extended] = mapping_der_ext;
 	  config[AC_mapping_func_tilde_x_extended] = mapping_tilde_ext;
 	  config[AC_r_extended] = r_ext;
 	  config[AC_inv_r_extended] = inv_r_ext;
 	  return AC_SUCCESS;
+}
+
+AcResult
+ac_compute_exp_mapping_x(AcMeshInfo* dst)
+{
+	  AcMeshInfo& config = *dst;
+	  const auto coordinate = ac_compute_exp_mapping_x(
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  0,
+			  0,
+			  0.0
+			  );
+	  AcReal* inv_r = (AcReal*)malloc(sizeof(AcReal)*config[AC_nlocal].x);
+	  AcReal* r = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	  AcReal* inv_mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	  AcReal* mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	  AcReal* mapping_der2 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	  AcReal* mapping_der3 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	  AcReal* mapping_tilde = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+          for(int x = 0; x < config[AC_mlocal].x; ++x)
+	  {
+		r[x] = coordinate.value[x];
+		if(NGHOST <= x && x < config[AC_nlocal].x + NGHOST)
+		{
+			if(r[x] == 0.0)
+				inv_r[x-NGHOST] = 0.0;
+			else
+				inv_r[x-NGHOST] = 1.0/r[x];
+		}
+	  }
+          for(int x = 0; x < config[AC_mlocal].x; ++x)
+	  {
+		  inv_mapping_der[x] = 1.0/coordinate.prim[x];
+		  mapping_der[x] =     coordinate.prim[x];
+		  mapping_der2[x] =     coordinate.prim2[x];
+		  mapping_der3[x] =     coordinate.prim3[x];
+		  mapping_tilde[x] =   -coordinate.prim2[x]/(coordinate.prim[x]*coordinate.prim[x]);
+	  }
+	  config[AC_inv_mapping_func_derivative_x] = inv_mapping_der;
+	  config[AC_mapping_func_derivative_x] = mapping_der;
+	  config[AC_mapping_func_2nd_derivative_x] = mapping_der2;
+	  config[AC_mapping_func_3rd_derivative_x] = mapping_der3;
+	  config[AC_mapping_func_tilde_x] = mapping_tilde;
+	  config[AC_r] = r;
+	  config[AC_inv_r] = inv_r;
+
+	  const auto coordinate_shifted_by_half = ac_compute_exp_mapping_x(
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  0,
+			  0,
+			  0.5
+			  );
+	  AcReal* x12 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+          for(int x = 0; x < config[AC_mlocal].x; ++x)
+	  {
+		x12[x] = coordinate_shifted_by_half.value[x];
+	  }
+	  config[AC_x12] = x12;
+
+	  const auto extended_coordinate = ac_compute_exp_mapping_x(
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  config[AC_left_extended_halo].x,
+			  config[AC_right_extended_halo].x,
+			  0.0
+			  );
+
+	  AcReal* inv_r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_nlocal].x);
+	  AcReal* r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* inv_mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* mapping_der2_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* mapping_der3_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+	  AcReal* mapping_tilde_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+          for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
+	  {
+		r_ext[x] = extended_coordinate.value[x];
+		if(NGHOST <= x && x < config[AC_extended_nlocal].x + NGHOST)
+		{
+			if(r_ext[x] == 0.0)
+				inv_r_ext[x-NGHOST] = 0.0;
+			else
+				inv_r_ext[x-NGHOST] = 1.0/r_ext[x];
+		}
+	  }
+          for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
+	  {
+		  inv_mapping_der_ext[x] = 1.0/extended_coordinate.prim[x];
+		  mapping_der_ext[x] =     extended_coordinate.prim[x];
+		  mapping_der2_ext[x] =     extended_coordinate.prim2[x];
+		  mapping_der3_ext[x] =     extended_coordinate.prim3[x];
+		  mapping_tilde_ext[x] =   -extended_coordinate.prim2[x]/(extended_coordinate.prim[x]*extended_coordinate.prim[x]);
+	  }
+
+	  config[AC_inv_mapping_func_derivative_x_extended] = inv_mapping_der_ext;
+	  config[AC_mapping_func_2nd_derivative_x_extended] = mapping_der2_ext;
+	  config[AC_mapping_func_3rd_derivative_x_extended] = mapping_der3_ext;
+	  config[AC_mapping_func_derivative_x_extended] = mapping_der_ext;
+	  config[AC_mapping_func_tilde_x_extended] = mapping_tilde_ext;
+	  config[AC_r_extended] = r_ext;
+	  config[AC_inv_r_extended] = inv_r_ext;
+	  return AC_SUCCESS;
+}
+
+AcResult
+ac_extend_mapping_inner(AcMeshInfo* dst, const AcReal target)
+{
+    AcMeshInfo& info = *dst;
+    Eigen::Matrix<double,5,5> A = Eigen::Matrix<double,5,5>::Zero();
+    const AcReal xi_left_most  = -AcReal(info[AC_left_extended_halo].x)-AcReal(NGHOST);
+    const AcReal xi_connecting = AcReal(0);
+    A(0,0) = 1.0;
+    A(0,1) = xi_left_most;
+    A(0,2) = xi_left_most*xi_left_most;
+    A(0,3) = xi_left_most*xi_left_most*xi_left_most;
+    A(0,4) = xi_left_most*xi_left_most*xi_left_most*xi_left_most;
+
+    A(1,0) = 1.0;
+    A(1,1) = xi_connecting;
+    A(1,2) = xi_connecting*xi_connecting;
+    A(1,3) = xi_connecting*xi_connecting*xi_connecting;
+    A(1,3) = xi_connecting*xi_connecting*xi_connecting*xi_connecting;
+    
+    A(2,0) = 0.0;
+    A(2,1) = 1.0;
+    A(2,2) = 2*xi_connecting;
+    A(2,3) = 3*xi_connecting*xi_connecting;
+    A(2,4) = 4*xi_connecting*xi_connecting*xi_connecting;
+    
+    A(3,0) = 0.0;
+    A(3,1) = 0.0;
+    A(3,2) = 2.0;
+    A(3,3) = 6*xi_connecting;
+    A(3,4) = 12*xi_connecting*xi_connecting;
+
+    A(4,0) = 0.0;
+    A(4,1) = 0.0;
+    A(4,2) = 0.0;
+    A(4,3) = 6;
+    A(4,4) = 24*xi_connecting;
+
+    Eigen::Matrix<double,5,1> rhs = Eigen::Matrix<double,5,1>::Zero();
+    rhs(0) = target;//info[AC_first_gridpoint].x/2.0;
+    rhs(1) = info[AC_r][NGHOST];
+    rhs(2) = info[AC_mapping_func_derivative_x][NGHOST];
+    rhs(3) = info[AC_mapping_func_2nd_derivative_x][NGHOST];
+    rhs(4) = info[AC_mapping_func_3rd_derivative_x][NGHOST];
+
+    auto a = A.colPivHouseholderQr().solve(rhs);
+    auto v = A*a;
+
+    for(int x = -info[AC_left_extended_halo].x; x <= NGHOST; ++x)
+    {
+            const int xi = x-NGHOST;
+	    const AcReal polynomial_value = a(0) + a(1)*xi + a(2)*xi*xi + a(3)*xi*xi*xi + a(4)*xi*xi*xi*xi;
+	    const AcReal polynomial_der =  a(1) + 2*a(2)*xi + 3*a(3)*xi*xi + 4*a(4)*xi*xi*xi;
+	    const AcReal polynomial_der2 =   2*a(2)+ 6*a(3)*xi + 12*a(4)*xi*xi;
+	    info[AC_r_extended][x + info[AC_left_extended_halo].x] = polynomial_value;
+	    info[AC_mapping_func_derivative_x_extended][x + info[AC_left_extended_halo].x] = polynomial_der;
+	    info[AC_mapping_func_2nd_derivative_x_extended][x + info[AC_left_extended_halo].x] = polynomial_der2;
+    }
+
+    for(int x = 0; x <= NGHOST; ++x)
+    {
+            const int xi = x-NGHOST;
+	    const AcReal polynomial_value = a(0) + a(1)*xi + a(2)*xi*xi + a(3)*xi*xi*xi + a(4)*xi*xi*xi*xi;
+	    const AcReal polynomial_der =  a(1) + 2*a(2)*xi + 3*a(3)*xi*xi + 4*a(4)*xi*xi*xi;
+	    const AcReal polynomial_der2 =   2*a(2)+ 6*a(3)*xi + 12*a(4)*xi*xi;
+	    info[AC_r][x] = polynomial_value;
+	    info[AC_mapping_func_derivative_x][x] = polynomial_der;
+	    info[AC_mapping_func_2nd_derivative_x][x] = polynomial_der2;
+    }
+    const AcReal polynomial_value = a(0) + a(1)*xi_left_most + a(2)*xi_left_most*xi_left_most + a(3)*xi_left_most*xi_left_most*xi_left_most + a(4)*xi_left_most*xi_left_most*xi_left_most*xi_left_most;
+    return AC_SUCCESS;
 }
 #endif
