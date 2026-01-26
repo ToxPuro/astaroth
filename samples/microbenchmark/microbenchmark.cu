@@ -592,6 +592,10 @@ printDeviceInfo(const int device_id)
     cudaDeviceProp props;
     ERRCHK_CUDA(cudaGetDeviceProperties(&props, device_id));
     int smClockRate{},memClockRate{};
+
+    ERRCHK_CUDA_ALWAYS(acDeviceGetAttribute(&smClockRate,cudaDevAttrClockRate,device_id));
+    ERRCHK_CUDA_ALWAYS(acDeviceGetAttribute(&memClockRate,cudaDevAttrMemoryClockRate,device_id));
+
     printf("--------------------------------------------------\n");
     printf("Device Number: %d\n", device_id);
     const size_t bus_id_max_len = 128;
@@ -603,7 +607,7 @@ printDeviceInfo(const int device_id)
 
     // Compute
     printf("  Compute\n");
-    printf("    Clock rate (GHz): %g\n", props.smClockRate / 1e6); // KHz -> GHz
+    printf("    Clock rate (GHz): %g\n", smClockRate / 1e6); // KHz -> GHz
     printf("    Stream processors: %d\n", props.multiProcessorCount);
     int computeMode;
     ERRCHK_CUDA_ALWAYS(acDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, device_id));
