@@ -60,6 +60,7 @@ gmem real AC_x12[AC_mlocal.x]
 gmem real AC_y12[AC_mlocal.y]
 gmem real AC_sinth12[AC_mlocal.y]
 gmem real AC_z12[AC_mlocal.z]
+run_const real AC_power_law_mapping_exponent = 1.0
 
 #define AC_INV_R         (AC_inv_r[vertexIdx.x-NGHOST])
 #define AC_INV_CYL_R     (AC_inv_cyl_r[vertexIdx.x-NGHOST])

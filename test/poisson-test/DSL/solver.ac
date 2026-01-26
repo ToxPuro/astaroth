@@ -15,7 +15,6 @@ Field ANALYTICAL
 Field RESIDUAL
 
 int AC_n_solving_steps = 1000
-AcReal AC_power_law_mapping_exponent = 1.0
 int AC_charge_radius_points = 10
 real AC_density_charge = 0.0
 
