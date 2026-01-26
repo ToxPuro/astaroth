@@ -87,9 +87,6 @@ main(int argc, char* argv[])
 		    1.2
 		    //1.8
     );
-    acPushToConfig(info,AC_gmg_number_of_levels,
-		    3
-    );
 
     acPushToConfig(info,AC_periodic_grid,
     (AcBool3){
@@ -113,9 +110,9 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
     
-    const int nxgrid = 31;
-    const int nygrid = 31;
-    const int nzgrid = 31;
+    const int nxgrid = 63;
+    const int nygrid = 63;
+    const int nzgrid = 63;
     acSetGridMeshDims(nxgrid,nygrid,nzgrid, &info);
     const int3 decomp = acDecompose(nprocs,info);
     int nx = (1+nxgrid)/decomp.x;
