@@ -419,7 +419,8 @@ ac_compute_power_law_mapping_x(
 				const int ngrid,
 				const int n_points,
 				const int left_extension,
-				const int right_extension
+				const int right_extension,
+				const AcReal shift
 			      )
 {
 	  const AcReal a = (pow(last_x,exponent)-pow(first_x,exponent))/ngrid;
@@ -441,7 +442,7 @@ ac_compute_power_law_mapping_x(
 	  const AcReal len = last_x - first_x;
           for(int x = -left_extension; x < n_points+right_extension; ++x)
 	  {
-		const int xi = x-NGHOST;
+		const AcReal xi = AcReal(x-NGHOST)+shift;
 		const AcReal3 g_res = ac_get_power_mapping(a*(xi-b),exponent);
 
 		const AcReal g     = g_res.x;
@@ -475,7 +476,8 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 			  config[AC_ngrid].x,
 			  config[AC_mlocal].x,
 			  0,
-			  0
+			  0,
+			  0.0
 			  );
 	  AcReal* inv_r = (AcReal*)malloc(sizeof(AcReal)*config[AC_nlocal].x);
 	  AcReal* r = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
@@ -508,6 +510,23 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  config[AC_r] = r;
 	  config[AC_inv_r] = inv_r;
 
+	  const auto coordinate_shifted_by_half = ac_compute_power_law_mapping_x(
+			  exponent,
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  0,
+			  0,
+			  0.5
+			  );
+	  AcReal* x12 = (AcReal*)malloc(sizeof(AcReal)*config[AC_x12].x);
+          for(int x = 0; x < config[AC_mlocal].x; ++x)
+	  {
+		x12[x] = coordinate_shifted_by_half.value[x];
+	  }
+	  config[AC_x12] = x12;
+
 	  const auto extended_coordinate = ac_compute_power_law_mapping_x(
 			  exponent,
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
@@ -515,7 +534,8 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 			  config[AC_ngrid].x,
 			  config[AC_mlocal].x,
 			  config[AC_left_extended_halo].x,
-			  config[AC_right_extended_halo].x
+			  config[AC_right_extended_halo].x,
+			  0.0
 			  );
 
 	  AcReal* inv_r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_nlocal].x);
