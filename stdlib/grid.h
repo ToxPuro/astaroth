@@ -520,7 +520,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 			  0,
 			  0.5
 			  );
-	  AcReal* x12 = (AcReal*)malloc(sizeof(AcReal)*config[AC_x12].x);
+	  AcReal* x12 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
           for(int x = 0; x < config[AC_mlocal].x; ++x)
 	  {
 		x12[x] = coordinate_shifted_by_half.value[x];
