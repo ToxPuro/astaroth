@@ -829,7 +829,6 @@ ac_extend_mapping_inner(AcMeshInfo* dst, const AcReal target)
 	    info[AC_mapping_func_derivative_x][x] = polynomial_der;
 	    info[AC_mapping_func_2nd_derivative_x][x] = polynomial_der2;
     }
-    const AcReal polynomial_value = a(0) + a(1)*xi_left_most + a(2)*xi_left_most*xi_left_most + a(3)*xi_left_most*xi_left_most*xi_left_most + a(4)*xi_left_most*xi_left_most*xi_left_most*xi_left_most;
     return AC_SUCCESS;
 }
 #endif
