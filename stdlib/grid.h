@@ -439,7 +439,7 @@ ac_compute_power_law_mapping_x(
 			      )
 {
 	  const AcReal a = (pow(last_x,exponent)-pow(first_x,exponent))/ngrid;
-	  const AcReal b = 0.5*(ngrid - (pow(last_x,exponent)+pow(first_x,exponent))/a);
+          const AcReal b = 0.5*(ngrid - (pow(last_x,exponent)+pow(first_x,exponent))/a);
 
 	  const AcReal g1lo = ac_get_power_mapping(a*(0-b),exponent).x;
 	  const AcReal g1up = ac_get_power_mapping(a*(ngrid-b),exponent).x;
@@ -494,8 +494,8 @@ ac_compute_exp_mapping_x(
 				const AcReal shift
 			      )
 {
-	  const AcReal a = (exp(last_x)-exp(first_x))/ngrid;
-	  const AcReal b = 0.5*(ngrid - (exp(last_x)+exp(first_x))/a);
+	  const AcReal a = log(last_x/first_x)/ngrid;
+	  const AcReal b = 0.5*(ngrid - log(last_x*first_x)/a);
 
 	  const AcReal g1lo = ac_get_exp_mapping(a*(0-b)).x;
 	  const AcReal g1up = ac_get_exp_mapping(a*(ngrid-b)).x;
