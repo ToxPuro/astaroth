@@ -30,6 +30,10 @@ gmem real AC_mapping_func_2nd_derivative_x[AC_mlocal.x]
 gmem real AC_mapping_func_2nd_derivative_y[AC_mlocal.y]
 gmem real AC_mapping_func_2nd_derivative_z[AC_mlocal.z]
 
+gmem real AC_mapping_func_3rd_derivative_x[AC_mlocal.x]
+gmem real AC_mapping_func_3rd_derivative_y[AC_mlocal.y]
+gmem real AC_mapping_func_3rd_derivative_z[AC_mlocal.z]
+
 gmem real AC_mapping_func_derivative_x_extended[AC_extended_mlocal.x]
 gmem real AC_mapping_func_derivative_y_extended[AC_extended_mlocal.y]
 gmem real AC_mapping_func_derivative_z_extended[AC_extended_mlocal.z]
@@ -37,6 +41,10 @@ gmem real AC_mapping_func_derivative_z_extended[AC_extended_mlocal.z]
 gmem real AC_mapping_func_2nd_derivative_x_extended[AC_extended_mlocal.x]
 gmem real AC_mapping_func_2nd_derivative_y_extended[AC_extended_mlocal.y]
 gmem real AC_mapping_func_2nd_derivative_z_extended[AC_extended_mlocal.z]
+
+gmem real AC_mapping_func_3rd_derivative_x_extended[AC_extended_mlocal.x]
+gmem real AC_mapping_func_3rd_derivative_y_extended[AC_extended_mlocal.y]
+gmem real AC_mapping_func_3rd_derivative_z_extended[AC_extended_mlocal.z]
 
 gmem real AC_inv_r[AC_nlocal.x]
 gmem real AC_inv_cyl_r[AC_nlocal.x]
