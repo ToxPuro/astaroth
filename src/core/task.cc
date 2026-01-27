@@ -1411,7 +1411,7 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(size_t length_, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_)
+HaloMessage::HaloMessage(size_t length_, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_): requests()
 {
     type         = type_;
     length       = length_;
@@ -1431,8 +1431,6 @@ HaloMessage::HaloMessage(size_t length_, const int tag0, const int tag_, const s
     {
     	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&data_pinned, bytes));
     }
-    std::vector<MPI_Request>empty{};
-    requests = empty;
     for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
 	requests.push_back(MPI_REQUEST_NULL);
 }
