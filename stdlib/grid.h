@@ -806,7 +806,6 @@ ac_extend_mapping_inner(AcMeshInfo* dst, const AcReal target)
     rhs(4) = info[AC_mapping_func_3rd_derivative_x][NGHOST];
 
     auto a = A.colPivHouseholderQr().solve(rhs);
-    auto v = A*a;
 
     for(int x = -info[AC_left_extended_halo].x; x <= NGHOST; ++x)
     {
