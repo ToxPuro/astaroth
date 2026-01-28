@@ -123,6 +123,10 @@ run_const bool  AC_allow_non_periodic_bcs_with_periodic_grid = false;
  * Helper variable to know if all dimensions are periodic
  */
 run_const bool AC_fully_periodic_grid = AC_periodic_grid.x && AC_periodic_grid.y && AC_periodic_grid.z;
+/**
+ * Number of intervals is not the same is ngrid - 1 if not periodic and ngrid if periodic
+ */
+run_const int3 AC_nintervals = AC_ngrid + AC_periodic_grid -1;
 
 /**
  * Grid spacings. If is not given and AC_len, AC_periodic_grid and AC_ngrid are, then by default calculated from them.
@@ -230,7 +234,7 @@ run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_
 /**
  * Length of the computational grid. If not given then by default calculated from AC_ds 
  */
-run_const real3 AC_len = (AC_ngrid + AC_periodic_grid - 1)*AC_ds;
+run_const real3 AC_len = AC_nintervals*AC_ds;
 
 /**
  * Helper variable to get the spacing in the Fourier space
@@ -406,6 +410,10 @@ run_const real3 AC_len_extended = AC_len
  * Number of points in the computational domain of the extended grid
  */
 run_const int3 AC_ngrid_extended  = AC_ngrid + AC_left_extended_halo  + AC_right_extended_halo
+/**
+ * Number of intervals in the extended grid
+ */
+run_const int3 AC_nintervals_extended  = AC_ngrid_extended + AC_periodic_grid - 1
 /**
  * Size of Fields on the extended grid without halos
  */

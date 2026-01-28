@@ -427,10 +427,10 @@ typedef struct
 } AcGridMappingFunction;
 
 AcReal2
-ac_power_law_mapping_get_scaling_params(const AcReal first_x, const AcReal last_x, const int ngrid, const AcReal exponent)
+ac_power_law_mapping_get_scaling_params(const AcReal first_x, const AcReal last_x, const int nintervals, const AcReal exponent)
 {
-	const AcReal a = (pow(last_x,exponent)-pow(first_x,exponent))/ngrid;
-        const AcReal b = 0.5*(ngrid - (pow(last_x,exponent)+pow(first_x,exponent))/a);
+	const AcReal a = (pow(last_x,exponent)-pow(first_x,exponent))/nintervals;
+        const AcReal b = 0.5*(nintervals- (pow(last_x,exponent)+pow(first_x,exponent))/a);
 	return (AcReal2){a,b};
 }
 
@@ -467,16 +467,16 @@ ac_compute_power_law_mapping_x(
 				const AcReal exponent,
 				const AcReal first_x,
 				const AcReal last_x,
-				const int ngrid,
+				const int nintervals,
 				const int n_points,
 				const int left_extension,
 				const int right_extension,
 				const AcReal shift
 			      )
 {
-	  const auto& [a,b] = ac_power_law_mapping_get_scaling_params(first_x,last_x,ngrid,exponent);
+	  const auto& [a,b] = ac_power_law_mapping_get_scaling_params(first_x,last_x,nintervals,exponent);
 	  const AcReal g1lo = ac_get_power_mapping(a*(0-b),exponent).x;
-	  const AcReal g1up = ac_get_power_mapping(a*(ngrid-b),exponent).x;
+	  const AcReal g1up = ac_get_power_mapping(a*(nintervals-b),exponent).x;
 
 	  std::vector<AcReal> x_arr{};
 	  std::vector<AcReal> x_prim{};
@@ -502,10 +502,10 @@ ac_compute_power_law_mapping_x(
 }
 
 AcReal2
-ac_exp_mapping_get_scaling_params(const AcReal first_x, const AcReal last_x, const int ngrid)
+ac_exp_mapping_get_scaling_params(const AcReal first_x, const AcReal last_x, const int nintervals)
 {
-	const AcReal a = log(last_x/first_x)/ngrid;
-	const AcReal b = 0.5*(ngrid - log(last_x*first_x)/a);
+	const AcReal a = log(last_x/first_x)/nintervals;
+	const AcReal b = 0.5*(nintervals- log(last_x*first_x)/a);
 	return (AcReal2){a,b};
 }
 
@@ -513,16 +513,16 @@ AcGridMappingFunction
 ac_compute_exp_mapping_x( 
 				const AcReal first_x,
 				const AcReal last_x,
-				const int ngrid,
+				const int nintervals,
 				const int n_points,
 				const int left_extension,
 				const int right_extension,
 				const AcReal shift
 			      )
 {
-	  const auto& [a,b] = ac_exp_mapping_get_scaling_params(first_x,last_x,ngrid);
+	  const auto& [a,b] = ac_exp_mapping_get_scaling_params(first_x,last_x,nintervals);
 	  const AcReal g1lo = ac_get_exp_mapping(a*(0-b)).x;
-	  const AcReal g1up = ac_get_exp_mapping(a*(ngrid-b)).x;
+	  const AcReal g1up = ac_get_exp_mapping(a*(nintervals-b)).x;
 
 	  std::vector<AcReal> x_arr{};
 	  std::vector<AcReal> x_prim{};
@@ -634,7 +634,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 			  exponent,
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
 			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
+			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
 			  0,
@@ -645,7 +645,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 			  exponent,
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
 			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
+			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
 			  0,
@@ -662,7 +662,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 			  exponent,
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
 			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
+			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  config[AC_left_extended_halo].x,
 			  config[AC_right_extended_halo].x,
@@ -680,7 +680,7 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 	  const auto coordinate = ac_compute_exp_mapping_x(
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
 			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
+			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
 			  0,
@@ -691,7 +691,7 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 	  const auto coordinate_shifted_by_half = ac_compute_exp_mapping_x(
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
 			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
+			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
 			  0,
@@ -707,7 +707,7 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 	  const auto extended_coordinate = ac_compute_exp_mapping_x(
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
 			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
+			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  config[AC_left_extended_halo].x,
 			  config[AC_right_extended_halo].x,
