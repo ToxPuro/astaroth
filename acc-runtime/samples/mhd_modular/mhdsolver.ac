@@ -862,14 +862,6 @@ ComputeSteps AC_rhs(boundconds)
 }
 Kernel calc_timestep_kernel() {calc_timestep()}
 
-Kernel init()
-{
-	r = AC_r[vertexIdx.x]
-	density = AC_cs2_sound/(2.0*AC_REAL_PI*r*r)
-	write(VTXBUF_LNRHO,log(density))
-	write(UU,real3(0.,0.,0.))
-	write(AA,real3(0.,0.,0.))
-}
 #if LSELFGRAVITY
 fixed_boundary Kernel sor_red(real omega)
 {
