@@ -957,8 +957,11 @@ fixed_boundary Kernel sor_black(real omega)
 Kernel copy_density_to_extended_grid_kernel()
 {
 	copy_to_extended_grid(EXTENDED_LN_DENSITY, VTXBUF_LNRHO, AC_left_extended_halo, -AC_REAL_MAX)
-	//TP: we have to anyways do this at the start of solve so a convenient place to initialize omega
+	//TP: we have to anyways do this at the start of solve so a convenient place to initialize omega and r0
 	write(OMEGA,initial_sor_omega_extended())
+	ln_density = get_value_on_extended_grid(VTXBUF_LNRHO,AC_left_extended_halo,-AC_REAL_MAX)
+	r = 4*AC_REAL_PI*exp(ln_density) - laplace_extended(EXTENDED_GRAVITY_POTENTIAL)
+	write(EXTENDED_BICGSTAB_R0,r)
 }
 
 Kernel copy_potential_back_kernel()

@@ -1721,6 +1721,7 @@ main(int argc, char** argv)
 		const auto copy_to_extended = acGetOptimizedDSLTaskGraph(copy_density_to_extended_grid,start,end);
 		acGridExecuteTaskGraph(copy_to_extended,1);
 		const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step,start,end);
+		const auto bicgstab_graph = acGetOptimizedDSLTaskGraph(bicgstab_step,start,end);
 		const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual,start,end);
 		const auto rhs_norm_graph = acGetOptimizedDSLTaskGraph(get_rhs_norm,start,end);
 		acGridExecuteTaskGraph(residual_graph,1);
@@ -1732,6 +1733,7 @@ main(int argc, char** argv)
 		while(relative_residual > 1e-4)
 		{
 			acGridExecuteTaskGraph(sor_graph,1);
+			//acGridExecuteTaskGraph(bicgstab_graph,1);
 			acGridExecuteTaskGraph(residual_graph,1);
 			residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
 			relative_residual = residual/rhs_norm;
