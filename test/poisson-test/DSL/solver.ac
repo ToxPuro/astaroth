@@ -297,7 +297,6 @@ bicgstab_step(jacobi_bcs)
 Kernel bicgstab_step0_preconditioned()
 {
 	bicgstab_compute_rho_prev()
-	coeff = laplace_central_coeff()
 }
 Kernel bicgstab_compute_y_init()
 {
