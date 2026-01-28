@@ -144,13 +144,11 @@ poisson_sor_red_black_extended(int color, real density, Field potential, real om
 //For spherical grids
 local_jacobi_spectral_radius_estimate()
 {
-	inv_dx = AC_INV_MAPPING_FUNC_DER_X
-	inv_dy = AC_INV_MAPPING_FUNC_DER_Y
-	inv_dz = AC_INV_MAPPING_FUNC_DER_Z
+	inv_ds = grid_inv_spacing()
 
-	inv_dx2 = inv_dx*inv_dx
-	inv_dy2 = inv_dy*inv_dy
-	inv_dz2 = inv_dz*inv_dz
+        inv_dx2 = inv_ds.x*inv_ds.x
+        inv_dy2 = inv_ds.y*inv_ds.y
+        inv_dz2 = inv_ds.z*inv_ds.z
 
 	inv_r = AC_INV_R
 	inv_r2 = inv_r*inv_r
@@ -177,13 +175,11 @@ update_sor_omega(Field omega)
 }
 local_jacobi_spectral_radius_estimate_extended()
 {
-        inv_dx = AC_INV_MAPPING_FUNC_DER_X_extended
-        inv_dy = AC_INV_MAPPING_FUNC_DER_Y_extended
-        inv_dz = AC_INV_MAPPING_FUNC_DER_Z_extended
+	inv_ds = grid_inv_spacing_extended()
 
-        inv_dx2 = inv_dx*inv_dx
-        inv_dy2 = inv_dy*inv_dy
-        inv_dz2 = inv_dz*inv_dz
+        inv_dx2 = inv_ds.x*inv_ds.x
+        inv_dy2 = inv_ds.y*inv_ds.y
+        inv_dz2 = inv_ds.z*inv_ds.z
 
         inv_r = AC_INV_R_extended
         inv_r2 = inv_r*inv_r

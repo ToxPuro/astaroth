@@ -220,4 +220,63 @@ get_integration_weight_extended()
 	}
 	return w
 }
+grid_inv_spacing()
+{
+	real3 res
+	if(AC_nonequidistant_grid.x)
+	{
+		res.x = AC_INV_MAPPING_FUNC_DER_X
+	}
+	else
+	{
+		res.x = AC_inv_ds.x
+	}
+	if(AC_nonequidistant_grid.y)
+	{
+		res.y = AC_INV_MAPPING_FUNC_DER_Y
+	}
+	else
+	{
+		res.y = AC_inv_ds.y
+	}
+	if(AC_nonequidistant_grid.z)
+	{
+		res.z = AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		res.z = AC_inv_ds.z
+	}
+	return res
+}
+
+grid_inv_spacing_extended()
+{
+	real3 res
+	if(AC_nonequidistant_grid.x)
+	{
+		res.x = AC_INV_MAPPING_FUNC_DER_X_extended
+	}
+	else
+	{
+		res.x = AC_inv_ds.x
+	}
+	if(AC_nonequidistant_grid.y)
+	{
+		res.y = AC_INV_MAPPING_FUNC_DER_Y_extended
+	}
+	else
+	{
+		res.y = AC_inv_ds.y
+	}
+	if(AC_nonequidistant_grid.z)
+	{
+		res.z = AC_INV_MAPPING_FUNC_DER_Z_extended
+	}
+	else
+	{
+		res.z = AC_inv_ds.z
+	}
+	return res
+}
 #endif
