@@ -884,6 +884,11 @@ BoundConds boundconds{
 	ac_bc_a2(BOUNDARY_X,VTXBUF_LNRHO)
 	ac_bc_sym(BOUNDARY_Y)
 	periodic(BOUNDARY_Z)
+
+        ac_const_bc(BOUNDARY_X,EXTENDED_BICGSTAB_P,0.0)
+        ac_const_bc(BOUNDARY_X,EXTENDED_BICGSTAB_S,0.0)
+        ac_const_bc(BOUNDARY_X,EXTENDED_BICGSTAB_Y,0.0)
+        ac_const_bc(BOUNDARY_X,EXTENDED_BICGSTAB_Z,0.0)
 }
 
 input AC_SUBSTEP_NUMBER AC_SUBSTEP
@@ -916,7 +921,7 @@ ComputeSteps AC_rhs(boundconds)
 }
 Kernel calc_timestep_kernel() {calc_timestep()}
 
-dims(AC_mlocal_extended) Field OMEGA
+dims(AC_extended_mlocal) Field OMEGA
 Kernel init()
 {
 	r = AC_r[vertexIdx.x]
@@ -1095,7 +1100,7 @@ Kernel bicgstab_compute_true_residual()
 
 
 ComputeSteps
-bicgstab_preconditioned_step(jacobi_bcs)
+bicgstab_step(boundconds)
 {
         bicgstab_step0_preconditioned()
         bicgstab_compute_y_red()
