@@ -303,7 +303,7 @@ Kernel bicgstab_compute_y_init()
 {
 	write(BICGSTAB_Y,BICGSTAB_P/laplace_central_coeff())
 }
-Kernel bicgstab_compute_y_red(real omega)
+Kernel bicgstab_compute_y_red()
 {
 	p = value(BICGSTAB_P)
 	if(is_of_color(AC_COLOR_RED,AC_laplacian_colors))
@@ -317,7 +317,7 @@ Kernel bicgstab_compute_y_red(real omega)
 	}
 }
 
-Kernel bicgstab_compute_y_black(real omega)
+Kernel bicgstab_compute_y_black()
 {
 	p = value(BICGSTAB_P)
 	Ly = laplace_neighbours(BICGSTAB_Y)
@@ -330,7 +330,7 @@ Kernel bicgstab_compute_y_black(real omega)
 		write(BICGSTAB_Y,BICGSTAB_Y)
 	}
 }
-Kernel bicgstab_compute_y_green(real omega)
+Kernel bicgstab_compute_y_green()
 {
 	p = value(BICGSTAB_P)
 	Ly = laplace_neighbours(BICGSTAB_Y)
@@ -343,7 +343,7 @@ Kernel bicgstab_compute_y_green(real omega)
 		write(BICGSTAB_Y,BICGSTAB_Y)
 	}
 }
-Kernel bicgstab_compute_y_yellow(real omega)
+Kernel bicgstab_compute_y_yellow()
 {
 	p = value(BICGSTAB_P)
 	Ly = laplace_neighbours(BICGSTAB_Y)
@@ -378,7 +378,7 @@ Kernel bicgstab_compute_z_init()
 {
 	write(BICGSTAB_Z,BICGSTAB_S/laplace_central_coeff())
 }
-Kernel bicgstab_compute_z_red(real omega)
+Kernel bicgstab_compute_z_red()
 {
 	s = value(BICGSTAB_S)
 	if(is_of_color(AC_COLOR_RED,AC_laplacian_colors))
@@ -391,7 +391,7 @@ Kernel bicgstab_compute_z_red(real omega)
 		write(BICGSTAB_Z,0.0)
 	}
 }
-Kernel bicgstab_compute_z_black(real omega)
+Kernel bicgstab_compute_z_black()
 {
 	s = value(BICGSTAB_S)
 	Lz = laplace_neighbours(BICGSTAB_Z)
@@ -405,7 +405,7 @@ Kernel bicgstab_compute_z_black(real omega)
 	}
 }
 
-Kernel bicgstab_compute_z_green(real omega)
+Kernel bicgstab_compute_z_green()
 {
 	s = value(BICGSTAB_S)
 	Lz = laplace_neighbours(BICGSTAB_Z)
@@ -419,7 +419,7 @@ Kernel bicgstab_compute_z_green(real omega)
 	}
 }
 
-Kernel bicgstab_compute_z_yellow(real omega)
+Kernel bicgstab_compute_z_yellow()
 {
 	s = value(BICGSTAB_S)
 	Lz = laplace_neighbours(BICGSTAB_Z)
@@ -458,21 +458,21 @@ bicgstab_preconditioned_step(jacobi_bcs)
 {
 	bicgstab_step0_preconditioned()
 	//bicgstab_compute_y_init()
-	bicgstab_compute_y_red(AC_SOR_omega)
-	bicgstab_compute_y_black(AC_SOR_omega)
+	bicgstab_compute_y_red()
+	bicgstab_compute_y_black()
 #if STENCIL_ORDER == 6
-	bicgstab_compute_y_green(AC_SOR_omega)
-	bicgstab_compute_y_yellow(AC_SOR_omega)
+	bicgstab_compute_y_green()
+	bicgstab_compute_y_yellow()
 #endif
 	bicgstab_step1_preconditioned()
 	bicgstab_step2_preconditioned()
 	//bicgstab_step25_preconditioned()
 	//bicgstab_compute_z_init()
-	bicgstab_compute_z_red(AC_SOR_omega)
-	bicgstab_compute_z_black(AC_SOR_omega)
+	bicgstab_compute_z_red()
+	bicgstab_compute_z_black()
 #if STENCIL_ORDER == 6
-	bicgstab_compute_z_green(AC_SOR_omega)
-	bicgstab_compute_z_yellow(AC_SOR_omega)
+	bicgstab_compute_z_green()
+	bicgstab_compute_z_yellow()
 #endif
 	bicgstab_step3_preconditioned()
 	bicgstab_preconditioned_calculate_omega()
