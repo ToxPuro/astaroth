@@ -1,5 +1,5 @@
 hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
-hostdefine STENCIL_ORDER (6)
+hostdefine STENCIL_ORDER (2)
 #include "../../stdlib/integrators.h"
 #include "../../stdlib/math"
 #include "../../stdlib/general_grid"
@@ -8,6 +8,7 @@ hostdefine STENCIL_ORDER (6)
 #include "../../standalone_params.h"
 #include "../../stdlib/units.h"
 #include "../../stdlib/map.h"
+#include "../../stdlib/bicgstab.h"
 #include "../../stdlib/utils/kernels.h"
 const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
@@ -92,9 +93,20 @@ hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
-hostdefine LSELFGRAVITY (0)
+hostdefine LSELFGRAVITY (1)
+hostdefine LSPHERICAL_SINK_PARTICLE (1)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
+
+#if LSPHERICAL_SINK_PARTICLE
+#include "../../stdlib/sink_particle.h"
+#endif
+#
+#if LSELFGRAVITY
+#include "../../stdlib/poisson.h"
+#include "../../stdlib/spherical_harmonics.h"
+#include "../../stdlib/grid_extension.h"
+#endif
 
 // Enables a set of special reductions. Currently for primarily for testing
 // purposes:  
@@ -106,7 +118,7 @@ Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 
 #if LSELFGRAVITY
 Field GRAVITY_POTENTIAL
-const real G_NEWTON = 9e-8
+const real G_NEWTON = 6.67428e-08
 #endif
 
 
@@ -355,8 +367,25 @@ momentum() {
 #endif
 #if LSELFGRAVITY
 	-gradient(GRAVITY_POTENTIAL)
+#endif
+#if LSPHERICAL_SINK_PARTICLE
 	+force_from_sink_particle(G_NEWTON)
 #endif
+	phi = value(GRAVITY_POTENTIAL)
+	//if(vertexIdx == (int3){1,1,1})
+	//{
+        //  	gas_pressure = - cs2 * gradient(VTXBUF_LNRHO)
+	//	G_phi = -gradient(GRAVITY_POTENTIAL)
+	//	F = force_from_sink_particle(G_NEWTON)
+	//	print("Force from sink particle: %.14e\n",F.x)
+	//	print("Momentum: %.14e\n",mom.x)
+	//	print("Force from self-gravity: %.14e\n",G_phi.x)
+	//	print("Force from gas: %.14e\n",gas_pressure.x)
+	//	print("Sink particle mass: %.14e\n",AC_central_sink_particle_mass)
+	//	print("Gravity potential: %.14e\n"
+	//			,phi
+	//	     )
+	//}	
 
     return mom
 }
@@ -536,30 +565,36 @@ calc_timestep()
     bb = curl(AA)
     b2 = dot(bb,bb)
     alfven_speed = sqrt(b2/rho);
+    //dlr=AC_ds.x
+    dlr = AC_mapping_func_derivative_x[vertexIdx.x]
+    dltheta=AC_ds.y * AC_r[vertexIdx.x]
+    dlphi=AC_ds.z * AC_sin_theta[vertexIdx.y] * AC_r[vertexIdx.x]
+    dsmin=min(dlr,dltheta,dlphi)
+    dsmin_2=dsmin*dsmin
     if(AC_additive_timestep)
     {
-    	visc_max =
-	      max(max(AC_nu_visc, AC_eta), AC_gamma * AC_chi)
+        visc_max =
+              max(max(AC_nu_visc, AC_eta), AC_gamma * AC_chi)
 #if LSHOCK
                          + AC_nu_shock * VTXBUF_SHOCK
 #endif
-    	visc_dt =  (AC_cdtv*AC_dsmin_2) / visc_max;
-    	advec_sum = norm(UU) + sqrt(AC_cs2_sound + alfven_speed*alfven_speed)
+        visc_dt =  (AC_cdtv*dsmin_2) / visc_max;
+        advec_sum = norm(UU) + sqrt(AC_cs2_sound + alfven_speed*alfven_speed)
 #if LADONEFLUID
              + (pow(rho,AC_onefluid_ad_exp)/b2)
 #endif
-    	advec_dt = (AC_cdt*AC_dsmin)/advec_sum;
-    	reduce_min(min(visc_dt,advec_dt),AC_dt_min);
+        advec_dt = (AC_cdt*dsmin)/advec_sum; // combining all velocities is pessimistic
+        reduce_min(min(visc_dt,advec_dt),AC_dt_min);
     }
     else
     {
-	reduce_max(norm(UU),UU_MAX_ADVEC)
-	reduce_max(alfven_speed,ALFVEN_SPEED_MAX)
+        reduce_max(norm(UU),UU_MAX_ADVEC)
+        reduce_max(alfven_speed,ALFVEN_SPEED_MAX)
 #if LSHOCK
-        reduce_max(VTXBUF_SHOCK,AC_MAX_SHOCK)	
+        reduce_max(VTXBUF_SHOCK,AC_MAX_SHOCK)
 #endif
 #if LADONEFLUID
-        reduce_max(pow(rho,AC_onefluid_ad_exp)/b2,AD_ONE_FLUID_MAX_ADVEC)	
+        reduce_max(pow(rho,AC_onefluid_ad_exp)/b2,AD_ONE_FLUID_MAX_ADVEC)
 #endif
     }
 }
@@ -574,6 +609,10 @@ Kernel twopass_solve_intermediate(AC_SUBSTEP_NUMBER step_num, real dt) {
     #endif
 
     write(UU, rk3_intermediate(UU, momentum(), int(step_num), dt))
+
+#if LSPHERICAL_SINK_PARTICLE
+    calculate_sink_particle_rhs(UU.x, exp(VTXBUF_LNRHO))
+#endif
 
     #if LMAGNETIC
     write(AA, rk3_intermediate(AA, induction(), int(step_num), dt))
@@ -836,12 +875,27 @@ BoundConds boundconds{
 **/
 
 BoundConds boundconds{
-  periodic(BOUNDARY_X)
-  periodic(BOUNDARY_Y)
-  periodic(BOUNDARY_Z)
+	copy_extended_to_grid(BOUNDARY_X_BOT, GRAVITY_POTENTIAL, EXTENDED_GRAVITY_POTENTIAL)
+	copy_extended_to_grid(BOUNDARY_X_TOP, GRAVITY_POTENTIAL, EXTENDED_GRAVITY_POTENTIAL)
+	multipole_expansion_bc_inner_extended(BOUNDARY_X_BOT, EXTENDED_GRAVITY_POTENTIAL, G_NEWTON)
+	multipole_expansion_bc_outer_extended(BOUNDARY_X_TOP, EXTENDED_GRAVITY_POTENTIAL, G_NEWTON)
+	ac_bc_a2(BOUNDARY_X,UU)
+	ac_bc_a2(BOUNDARY_X,AA)
+	ac_bc_a2(BOUNDARY_X,VTXBUF_LNRHO)
+	ac_bc_sym(BOUNDARY_Y)
+	periodic(BOUNDARY_Z)
 }
 
 input AC_SUBSTEP_NUMBER AC_SUBSTEP
+
+Kernel calculate_mlm_density()
+{
+	calculate_mlm(exp(VTXBUF_LNRHO))
+}
+ComputeSteps AC_get_sph(boundconds)
+{
+	calculate_mlm_density()
+}
 
 ComputeSteps AC_rhs_substep(boundconds)
 {
@@ -862,15 +916,68 @@ ComputeSteps AC_rhs(boundconds)
 }
 Kernel calc_timestep_kernel() {calc_timestep()}
 
+Field OMEGA
+Kernel init()
+{
+	r = AC_r[vertexIdx.x]
+	density = AC_cs2_sound/(G_NEWTON*2.0*AC_REAL_PI*r*r)
+	write(VTXBUF_LNRHO,log(density))
+	if(vertexIdx == (int3){7,7,7})
+	{
+		print("Density at (7,7,7): %.14e\n",density)
+		print("r at (7,7,7): %.14e\n",r)
+	}	
+	write(UU,real3(0.,0.,0.))
+	write(AA,real3(0.,0.,0.))
+}
 #if LSELFGRAVITY
+Kernel init_extended_grid_kernel()
+{
+	write(EXTENDED_GRAVITY_POTENTIAL,0.0)
+}
+
+ComputeSteps
+init_extended_grid(boundconds)
+{
+	init_extended_grid_kernel()
+}
+
+dims(AC_extended_mlocal) Field EXTENDED_LN_DENSITY
+dims(AC_extended_mlocal) Field EXTENDED_GRAVITY_POTENTIAL
+
 fixed_boundary Kernel sor_red(real omega)
 {
-	poisson_sor_red_black(SOR_RED,exp(VTXBUF_LNRHO),GRAVITY_POTENTIAL,omega)
+	poisson_sor_red_black_extended(SOR_RED,4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY),EXTENDED_GRAVITY_POTENTIAL,value(OMEGA))
 }
 fixed_boundary Kernel sor_black(real omega)
 {
-	poisson_sor_red_black(SOR_BLACK,exp(VTXBUF_LNRHO),GRAVITY_POTENTIAL,omega)
+	poisson_sor_red_black_extended(SOR_BLACK,4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY),EXTENDED_GRAVITY_POTENTIAL,value(OMEGA))
+	write(OMEGA,update_sor_omega(OMEGA))
 }
+Kernel copy_density_to_extended_grid_kernel()
+{
+	copy_to_extended_grid(EXTENDED_LN_DENSITY, VTXBUF_LNRHO, AC_left_extended_halo, -AC_REAL_MAX)
+	//TP: we have to anyways do this at the start of solve so a convenient place to initialize omega
+	write(OMEGA,initial_sor_omega())
+}
+
+Kernel copy_potential_back_kernel()
+{
+	copy_extended_to_grid(GRAVITY_POTENTIAL,EXTENDED_GRAVITY_POTENTIAL,AC_left_extended_halo)
+}
+ComputeSteps
+copy_density_to_extended_grid(boundconds)
+{
+	copy_density_to_extended_grid_kernel()
+}
+
+ComputeSteps
+copy_potential_back(boundconds)
+{
+	copy_potential_back_kernel()
+}
+
+
 
 
 ComputeSteps
@@ -879,20 +986,166 @@ sor_red_black_step(boundconds)
 	sor_red(AC_SOR_omega)
 	sor_black(AC_SOR_omega)
 }
-global output AC_residual2
-global output AC_rhs_norm2
+
+Kernel bicgstab_step0_preconditioned()
+{
+        bicgstab_compute_rho_prev()
+}
+
+
+Kernel bicgstab_compute_y_red()
+{
+        p = value(BICGSTAB_P)
+        if(is_of_color(AC_COLOR_RED,AC_laplacian_colors))
+        {
+                write(BICGSTAB_Y,p/laplace_central_coeff_extended())
+        }
+        else
+        {
+                //initializing to zero allows easy application of multiple colours later
+                write(BICGSTAB_Y,0.0)
+        }
+}
+
+Kernel bicgstab_compute_y_black()
+{
+        p = value(BICGSTAB_P)
+        Ly = laplace_neighbours_extended(BICGSTAB_Y)
+        if(is_of_color(AC_COLOR_BLACK,AC_laplacian_colors))
+        {
+                write(BICGSTAB_Y,(p-Ly)/laplace_central_coeff_extended())
+        }
+        else
+        {
+                write(BICGSTAB_Y,BICGSTAB_Y)
+        }
+}
+
+Kernel bicgstab_step1_preconditioned()
+{
+        v = laplace_extended(BICGSTAB_Y)
+        bicgstab_compute_v_and_r0Tv(v)
+}
+
+Kernel bicgstab_step2_preconditioned()
+{
+        bicgstab_compute_h_and_s_preconditioned(EXTENDED_GRAVITY_POTENTIAL)
+}
+Kernel bicgstab_compute_z_red()
+{
+        s = value(BICGSTAB_S)
+        if(is_of_color(AC_COLOR_RED,AC_laplacian_colors))
+        {
+                write(BICGSTAB_Z,s/laplace_central_coeff_extended())
+        }
+        else
+        {
+                //initializing to zero allows easy application of multiple colours later
+                write(BICGSTAB_Z,0.0)
+        }
+}
+Kernel bicgstab_compute_z_black()
+{
+        s = value(BICGSTAB_S)
+        Lz = laplace_neighbours_extended(BICGSTAB_Z)
+        if(is_of_color(AC_COLOR_BLACK,AC_laplacian_colors))
+        {
+                write(BICGSTAB_Z,(s-Lz)/laplace_central_coeff_extended())
+        }
+        else
+        {
+                write(BICGSTAB_Z,BICGSTAB_Z)
+        }
+}
+Kernel bicgstab_step3_preconditioned()
+{
+        t = laplace(BICGSTAB_Z)
+        write(BICGSTAB_T,t)
+}
+
+Kernel bicgstab_preconditioned_calculate_omega()
+{
+        t = BICGSTAB_T
+        s = BICGSTAB_S
+        reduce_sum(t*s,BICGSTAB_tTs)
+        reduce_sum(t*t,BICGSTAB_tTt)
+}
+
+Kernel bicgstab_step4_preconditioned()
+{
+        bicgstab_compute_next_solution_preconditioned(EXTENDED_GRAVITY_POTENTIAL)
+}
+
+Kernel bicgstab_step5()
+{
+        bicgstab_compute_rho_next()
+}
+
+Kernel bicgstab_step6()
+{
+        bicgstab_update_p()
+}
+Kernel bicgstab_compute_true_residual()
+{
+        write(BICGSTAB_R,4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY)-laplace_extended(EXTENDED_GRAVITY_POTENTIAL))
+}
+
+
+ComputeSteps
+bicgstab_preconditioned_step(jacobi_bcs)
+{
+        bicgstab_step0_preconditioned()
+        bicgstab_compute_y_red()
+        bicgstab_compute_y_black()
+        bicgstab_step1_preconditioned()
+        bicgstab_step2_preconditioned()
+        bicgstab_compute_z_red()
+        bicgstab_compute_z_black()
+        bicgstab_step3_preconditioned()
+        bicgstab_preconditioned_calculate_omega()
+        bicgstab_step4_preconditioned()
+        bicgstab_compute_true_residual()
+        bicgstab_step5()
+        bicgstab_step6()
+}
+
+global output real AC_residual2
+global output real AC_rhs_norm2
 Kernel get_residual_kernel()
 {
-	reduce_sum(4*AC_REAL_PI*G_NEWTON*exp(VTXBUF_LNRHO)-laplace(gravity_potential),AC_residual2)
+	
+	residual = 4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY)-laplace_extended(EXTENDED_GRAVITY_POTENTIAL)
+	reduce_sum(residual*residual,AC_residual2)
 }
+
+Kernel print_residual_kernel()
+{
+	residual = 4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY)-laplace_extended(EXTENDED_GRAVITY_POTENTIAL)
+	print("Residual at (%d,%d,%d): %.14e,%.14e\n"
+			,vertexIdx.x
+			,vertexIdx.y
+			,vertexIdx.z
+			,exp(EXTENDED_LN_DENSITY)
+			,laplace_extended(EXTENDED_GRAVITY_POTENTIAL)
+		)
+	write(EXTENDED_LN_DENSITY,EXTENDED_LN_DENSITY)
+}
+
 Kernel get_selfgravity_rhs_norm2()
 {
-	reduce_sum(4*AC_REAL_PI*G_NEWTON*exp(VTXBUF_LNRHO),AC_rhs_norm2)
+	rhs = 4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY)
+	reduce_sum(rhs*rhs,AC_rhs_norm2)
 }
 ComputeSteps
 get_residual(boundconds)
 {
 	get_residual_kernel()
+}
+
+ComputeSteps
+print_residual(boundconds)
+{
+	print_residual_kernel()
 }
 ComputeSteps
 get_rhs_norm(boundconds)
