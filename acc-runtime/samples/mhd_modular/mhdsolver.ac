@@ -2,9 +2,9 @@ hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic
 hostdefine STENCIL_ORDER (6)
 #include "../../stdlib/integrators.h"
 #include "../../stdlib/math"
-#include "../../stdlib/grid"
-#include "../../stdlib/derivs.h"
-#include "../../stdlib/operators.h"
+#include "../../stdlib/general_grid"
+#include "../../stdlib/general_derivs.h"
+#include "../../stdlib/general_operators.h"
 #include "../../standalone_params.h"
 #include "../../stdlib/units.h"
 #include "../../stdlib/map.h"

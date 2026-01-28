@@ -998,7 +998,7 @@ main(int argc, char** argv)
     info.comm->handle = MPI_COMM_WORLD;
     acLogFromRootProc(pid, "Done loading config file\n");
 #if AC_RUNTIME_COMPILATION
-    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF"
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DELIMINATE_CONDITIONALS=ON -DBUILD_ACM=OFF"
 	    		    ;
     info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
