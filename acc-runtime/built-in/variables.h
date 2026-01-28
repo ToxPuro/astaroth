@@ -413,7 +413,7 @@ run_const int3 AC_ngrid_extended  = AC_ngrid + AC_left_extended_halo  + AC_right
 /**
  * Number of intervals in the extended grid
  */
-run_const int3 AC_nintervals_extended  = AC_ngrid_extended + AC_periodic_grid - 1
+dconst int3 AC_nintervals_extended  = AC_ngrid_extended + AC_periodic_grid - 1
 /**
  * Size of Fields on the extended grid without halos
  */
