@@ -298,10 +298,6 @@ Kernel bicgstab_step0_preconditioned()
 {
 	bicgstab_compute_rho_prev()
 }
-Kernel bicgstab_compute_y_init()
-{
-	write(BICGSTAB_Y,BICGSTAB_P/laplace_central_coeff())
-}
 Kernel bicgstab_compute_y_red()
 {
 	p = value(BICGSTAB_P)
@@ -367,16 +363,6 @@ Kernel bicgstab_step2_preconditioned()
 	bicgstab_compute_h_and_s_preconditioned(POTENTIAL)
 }
 
-Kernel bicgstab_step25_preconditioned()
-{
-	coeff = laplace_central_coeff()
-	write(BICGSTAB_Z,BICGSTAB_S/coeff)
-}
-
-Kernel bicgstab_compute_z_init()
-{
-	write(BICGSTAB_Z,BICGSTAB_S/laplace_central_coeff())
-}
 Kernel bicgstab_compute_z_red()
 {
 	s = value(BICGSTAB_S)
@@ -456,7 +442,6 @@ ComputeSteps
 bicgstab_preconditioned_step(jacobi_bcs)
 {
 	bicgstab_step0_preconditioned()
-	//bicgstab_compute_y_init()
 	bicgstab_compute_y_red()
 	bicgstab_compute_y_black()
 #if STENCIL_ORDER == 6
@@ -465,8 +450,6 @@ bicgstab_preconditioned_step(jacobi_bcs)
 #endif
 	bicgstab_step1_preconditioned()
 	bicgstab_step2_preconditioned()
-	//bicgstab_step25_preconditioned()
-	//bicgstab_compute_z_init()
 	bicgstab_compute_z_red()
 	bicgstab_compute_z_black()
 #if STENCIL_ORDER == 6
