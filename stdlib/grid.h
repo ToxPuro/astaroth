@@ -434,6 +434,34 @@ ac_power_law_mapping_get_scaling_params(const AcReal first_x, const AcReal last_
 	return (AcReal2){a,b};
 }
 
+typedef struct
+{
+	AcReal coordinate;
+	AcReal prim;
+	AcReal prim2;
+	AcReal prim3;
+} AcGridMappingFunctionValue;
+
+AcGridMappingFunctionValue
+map_g_to_physical_coordinates(const AcReal4 g, const AcReal g1up, const AcReal g1lo, const AcReal a, const AcReal first_x, const AcReal len)
+{
+		const AcReal gcoordinate     = g.x;
+		const AcReal gder1           = g.y;
+		const AcReal gder2           = g.z;
+		const AcReal gder3           = g.w;
+		
+		const auto x_local       = first_x + len*(gcoordinate-g1lo)/(g1up-g1lo);
+		const auto x_prim_local  = len*(gder1*a)/(g1up-g1lo);
+		const auto x_prim2_local = len*(gder2*a*a)/(g1up-g1lo);
+		const auto x_prim3_local = len*(gder3*a*a*a)/(g1up-g1lo);
+		return (AcGridMappingFunctionValue){
+			x_local,
+			x_prim_local,
+			x_prim2_local,
+			x_prim3_local
+		};
+}
+
 AcGridMappingFunction
 ac_compute_power_law_mapping_x( 
 				const AcReal exponent,
@@ -460,20 +488,12 @@ ac_compute_power_law_mapping_x(
 	  {
 		const AcReal xi = AcReal(x-NGHOST)+shift;
 		const AcReal4 g_res = ac_get_power_mapping(a*(xi-b),exponent);
+		const AcGridMappingFunctionValue physical_coordinates  = map_g_to_physical_coordinates(g_res,g1up,g1lo,a,first_x,len);
 
-		const AcReal g     = g_res.x;
-		const AcReal gder1 = g_res.y;
-		const AcReal gder2 = g_res.z;
-		const AcReal gder3 = g_res.w;
-		
-		const auto x_local       = first_x + len*(g-g1lo)/(g1up-g1lo);
-		const auto x_prim_local  = len*(gder1*a)/(g1up-g1lo);
-		const auto x_prim2_local = len*(gder2*a*a)/(g1up-g1lo);
-		const auto x_prim3_local = len*(gder3*a*a*a)/(g1up-g1lo);
-		x_arr.push_back(x_local);
-		x_prim.push_back(x_prim_local);
-		x_prim2.push_back(x_prim2_local);
-		x_prim3.push_back(x_prim3_local);
+		x_arr.push_back(physical_coordinates.coordinate);
+		x_prim.push_back(physical_coordinates.prim);
+		x_prim2.push_back(physical_coordinates.prim2);
+		x_prim3.push_back(physical_coordinates.prim3);
 	  }
 	  return (AcGridMappingFunction)
 	  {
@@ -514,20 +534,11 @@ ac_compute_exp_mapping_x(
 	  {
 		const AcReal xi = AcReal(x-NGHOST)+shift;
 		const AcReal4 g_res = ac_get_exp_mapping(a*(xi-b));
-
-		const AcReal g     = g_res.x;
-		const AcReal gder1 = g_res.y;
-		const AcReal gder2 = g_res.z;
-		const AcReal gder3 = g_res.w;
-		
-		const auto x_local       = first_x + len*(g-g1lo)/(g1up-g1lo);
-		const auto x_prim_local  = len*(gder1*a)/(g1up-g1lo);
-		const auto x_prim2_local = len*(gder2*a*a)/(g1up-g1lo);
-		const auto x_prim3_local = len*(gder3*a*a*a)/(g1up-g1lo);
-		x_arr.push_back(x_local);
-		x_prim.push_back(x_prim_local);
-		x_prim2.push_back(x_prim2_local);
-		x_prim3.push_back(x_prim3_local);
+		const AcGridMappingFunctionValue physical_coordinates  = map_g_to_physical_coordinates(g_res,g1up,g1lo,a,first_x,len);
+		x_arr.push_back(physical_coordinates.coordinate);
+		x_prim.push_back(physical_coordinates.prim);
+		x_prim2.push_back(physical_coordinates.prim2);
+		x_prim3.push_back(physical_coordinates.prim3);
 	  }
 	  return (AcGridMappingFunction)
 	  {
@@ -535,21 +546,9 @@ ac_compute_exp_mapping_x(
 	  };
 }
 
-
 AcResult
-ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
+update_computational_domain(const AcGridMappingFunction coordinate, AcMeshInfo& config)
 {
-	  AcMeshInfo& config = *dst;
-	  const auto coordinate = ac_compute_power_law_mapping_x(
-			  exponent,
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
-			  config[AC_mlocal].x,
-			  0,
-			  0,
-			  0.0
-			  );
 	  AcReal* inv_r = (AcReal*)malloc(sizeof(AcReal)*config[AC_nlocal].x);
 	  AcReal* r = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* inv_mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
@@ -583,35 +582,12 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  config[AC_mapping_func_tilde_x] = mapping_tilde;
 	  config[AC_r] = r;
 	  config[AC_inv_r] = inv_r;
+	  return AC_SUCCESS;
+}
 
-	  const auto coordinate_shifted_by_half = ac_compute_power_law_mapping_x(
-			  exponent,
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
-			  config[AC_mlocal].x,
-			  0,
-			  0,
-			  0.5
-			  );
-	  AcReal* x12 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-          for(int x = 0; x < config[AC_mlocal].x; ++x)
-	  {
-		x12[x] = coordinate_shifted_by_half.value[x];
-	  }
-	  config[AC_x12] = x12;
-
-	  const auto extended_coordinate = ac_compute_power_law_mapping_x(
-			  exponent,
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
-			  config[AC_ngrid].x,
-			  config[AC_mlocal].x,
-			  config[AC_left_extended_halo].x,
-			  config[AC_right_extended_halo].x,
-			  0.0
-			  );
-
+AcResult
+update_extended_domain(const AcGridMappingFunction extended_coordinate, AcMeshInfo& config)
+{
 	  AcReal* inv_r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_nlocal].x);
 	  AcReal* r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* inv_mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
@@ -649,6 +625,54 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  return AC_SUCCESS;
 }
 
+
+AcResult
+ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
+{
+	  AcMeshInfo& config = *dst;
+	  const auto coordinate = ac_compute_power_law_mapping_x(
+			  exponent,
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  0,
+			  0,
+			  0.0
+			  );
+	  update_computational_domain(coordinate,config);
+	  const auto coordinate_shifted_by_half = ac_compute_power_law_mapping_x(
+			  exponent,
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  0,
+			  0,
+			  0.5
+			  );
+	  AcReal* x12 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+          for(int x = 0; x < config[AC_mlocal].x; ++x)
+	  {
+		x12[x] = coordinate_shifted_by_half.value[x];
+	  }
+	  config[AC_x12] = x12;
+
+	  const auto extended_coordinate = ac_compute_power_law_mapping_x(
+			  exponent,
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  config[AC_left_extended_halo].x,
+			  config[AC_right_extended_halo].x,
+			  0.0
+			  );
+	  update_extended_domain(extended_coordinate,config);
+	  return AC_SUCCESS;
+}
+
+
 AcResult
 ac_compute_exp_mapping_x(AcMeshInfo* dst)
 {
@@ -662,39 +686,7 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 			  0,
 			  0.0
 			  );
-	  AcReal* inv_r = (AcReal*)malloc(sizeof(AcReal)*config[AC_nlocal].x);
-	  AcReal* r = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-	  AcReal* inv_mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-	  AcReal* mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-	  AcReal* mapping_der2 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-	  AcReal* mapping_der3 = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-	  AcReal* mapping_tilde = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
-          for(int x = 0; x < config[AC_mlocal].x; ++x)
-	  {
-		r[x] = coordinate.value[x];
-		if(NGHOST <= x && x < config[AC_nlocal].x + NGHOST)
-		{
-			if(r[x] == 0.0)
-				inv_r[x-NGHOST] = 0.0;
-			else
-				inv_r[x-NGHOST] = 1.0/r[x];
-		}
-	  }
-          for(int x = 0; x < config[AC_mlocal].x; ++x)
-	  {
-		  inv_mapping_der[x] = 1.0/coordinate.prim[x];
-		  mapping_der[x] =     coordinate.prim[x];
-		  mapping_der2[x] =     coordinate.prim2[x];
-		  mapping_der3[x] =     coordinate.prim3[x];
-		  mapping_tilde[x] =   -coordinate.prim2[x]/(coordinate.prim[x]*coordinate.prim[x]);
-	  }
-	  config[AC_inv_mapping_func_derivative_x] = inv_mapping_der;
-	  config[AC_mapping_func_derivative_x] = mapping_der;
-	  config[AC_mapping_func_2nd_derivative_x] = mapping_der2;
-	  config[AC_mapping_func_3rd_derivative_x] = mapping_der3;
-	  config[AC_mapping_func_tilde_x] = mapping_tilde;
-	  config[AC_r] = r;
-	  config[AC_inv_r] = inv_r;
+	  update_computational_domain(coordinate,config);
 
 	  const auto coordinate_shifted_by_half = ac_compute_exp_mapping_x(
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
@@ -722,40 +714,7 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 			  0.0
 			  );
 
-	  AcReal* inv_r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_nlocal].x);
-	  AcReal* r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
-	  AcReal* inv_mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
-	  AcReal* mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
-	  AcReal* mapping_der2_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
-	  AcReal* mapping_der3_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
-	  AcReal* mapping_tilde_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
-          for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
-	  {
-		r_ext[x] = extended_coordinate.value[x];
-		if(NGHOST <= x && x < config[AC_extended_nlocal].x + NGHOST)
-		{
-			if(r_ext[x] == 0.0)
-				inv_r_ext[x-NGHOST] = 0.0;
-			else
-				inv_r_ext[x-NGHOST] = 1.0/r_ext[x];
-		}
-	  }
-          for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
-	  {
-		  inv_mapping_der_ext[x] = 1.0/extended_coordinate.prim[x];
-		  mapping_der_ext[x] =     extended_coordinate.prim[x];
-		  mapping_der2_ext[x] =     extended_coordinate.prim2[x];
-		  mapping_der3_ext[x] =     extended_coordinate.prim3[x];
-		  mapping_tilde_ext[x] =   -extended_coordinate.prim2[x]/(extended_coordinate.prim[x]*extended_coordinate.prim[x]);
-	  }
-
-	  config[AC_inv_mapping_func_derivative_x_extended] = inv_mapping_der_ext;
-	  config[AC_mapping_func_2nd_derivative_x_extended] = mapping_der2_ext;
-	  config[AC_mapping_func_3rd_derivative_x_extended] = mapping_der3_ext;
-	  config[AC_mapping_func_derivative_x_extended] = mapping_der_ext;
-	  config[AC_mapping_func_tilde_x_extended] = mapping_tilde_ext;
-	  config[AC_r_extended] = r_ext;
-	  config[AC_inv_r_extended] = inv_r_ext;
+	  update_extended_domain(extended_coordinate,config);
 	  return AC_SUCCESS;
 }
 
