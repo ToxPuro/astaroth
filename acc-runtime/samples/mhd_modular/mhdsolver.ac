@@ -916,7 +916,7 @@ ComputeSteps AC_rhs(boundconds)
 }
 Kernel calc_timestep_kernel() {calc_timestep()}
 
-Field OMEGA
+dims(AC_mlocal_extended) Field OMEGA
 Kernel init()
 {
 	r = AC_r[vertexIdx.x]
@@ -952,13 +952,13 @@ fixed_boundary Kernel sor_red(real omega)
 fixed_boundary Kernel sor_black(real omega)
 {
 	poisson_sor_red_black_extended(SOR_BLACK,4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY),EXTENDED_GRAVITY_POTENTIAL,value(OMEGA))
-	write(OMEGA,update_sor_omega(OMEGA))
+	write(OMEGA,update_sor_omega_extended(OMEGA))
 }
 Kernel copy_density_to_extended_grid_kernel()
 {
 	copy_to_extended_grid(EXTENDED_LN_DENSITY, VTXBUF_LNRHO, AC_left_extended_halo, -AC_REAL_MAX)
 	//TP: we have to anyways do this at the start of solve so a convenient place to initialize omega
-	write(OMEGA,initial_sor_omega())
+	write(OMEGA,initial_sor_omega_extended())
 }
 
 Kernel copy_potential_back_kernel()
@@ -989,105 +989,105 @@ sor_red_black_step(boundconds)
 
 Kernel bicgstab_step0_preconditioned()
 {
-        bicgstab_compute_rho_prev()
+        bicgstab_compute_rho_prev_extended()
 }
 
 
 Kernel bicgstab_compute_y_red()
 {
-        p = value(BICGSTAB_P)
+        p = value(EXTENDED_BICGSTAB_P)
         if(is_of_color(AC_COLOR_RED,AC_laplacian_colors))
         {
-                write(BICGSTAB_Y,p/laplace_central_coeff_extended())
+                write(EXTENDED_BICGSTAB_Y,p/laplace_central_coeff_extended())
         }
         else
         {
                 //initializing to zero allows easy application of multiple colours later
-                write(BICGSTAB_Y,0.0)
+                write(EXTENDED_BICGSTAB_Y,0.0)
         }
 }
 
 Kernel bicgstab_compute_y_black()
 {
-        p = value(BICGSTAB_P)
-        Ly = laplace_neighbours_extended(BICGSTAB_Y)
+        p = value(EXTENDED_BICGSTAB_P)
+        Ly = laplace_neighbours_extended(EXTENDED_BICGSTAB_Y)
         if(is_of_color(AC_COLOR_BLACK,AC_laplacian_colors))
         {
-                write(BICGSTAB_Y,(p-Ly)/laplace_central_coeff_extended())
+                write(EXTENDED_BICGSTAB_Y,(p-Ly)/laplace_central_coeff_extended())
         }
         else
         {
-                write(BICGSTAB_Y,BICGSTAB_Y)
+                write(EXTENDED_BICGSTAB_Y,EXTENDED_BICGSTAB_Y)
         }
 }
 
 Kernel bicgstab_step1_preconditioned()
 {
-        v = laplace_extended(BICGSTAB_Y)
-        bicgstab_compute_v_and_r0Tv(v)
+        v = laplace_extended(EXTENDED_BICGSTAB_Y)
+        bicgstab_compute_v_and_r0Tv_extended(v)
 }
 
 Kernel bicgstab_step2_preconditioned()
 {
-        bicgstab_compute_h_and_s_preconditioned(EXTENDED_GRAVITY_POTENTIAL)
+        bicgstab_compute_h_and_s_preconditioned_extended(EXTENDED_GRAVITY_POTENTIAL)
 }
 Kernel bicgstab_compute_z_red()
 {
-        s = value(BICGSTAB_S)
+        s = value(EXTENDED_BICGSTAB_S)
         if(is_of_color(AC_COLOR_RED,AC_laplacian_colors))
         {
-                write(BICGSTAB_Z,s/laplace_central_coeff_extended())
+                write(EXTENDED_BICGSTAB_Z,s/laplace_central_coeff_extended())
         }
         else
         {
                 //initializing to zero allows easy application of multiple colours later
-                write(BICGSTAB_Z,0.0)
+                write(EXTENDED_BICGSTAB_Z,0.0)
         }
 }
 Kernel bicgstab_compute_z_black()
 {
-        s = value(BICGSTAB_S)
-        Lz = laplace_neighbours_extended(BICGSTAB_Z)
+        s = value(EXTENDED_BICGSTAB_S)
+        Lz = laplace_neighbours_extended(EXTENDED_BICGSTAB_Z)
         if(is_of_color(AC_COLOR_BLACK,AC_laplacian_colors))
         {
-                write(BICGSTAB_Z,(s-Lz)/laplace_central_coeff_extended())
+                write(EXTENDED_BICGSTAB_Z,(s-Lz)/laplace_central_coeff_extended())
         }
         else
         {
-                write(BICGSTAB_Z,BICGSTAB_Z)
+                write(EXTENDED_BICGSTAB_Z,EXTENDED_BICGSTAB_Z)
         }
 }
 Kernel bicgstab_step3_preconditioned()
 {
-        t = laplace(BICGSTAB_Z)
-        write(BICGSTAB_T,t)
+        t = laplace_extended(EXTENDED_BICGSTAB_Z)
+        write(EXTENDED_BICGSTAB_T,t)
 }
 
 Kernel bicgstab_preconditioned_calculate_omega()
 {
-        t = BICGSTAB_T
-        s = BICGSTAB_S
+        t = EXTENDED_BICGSTAB_T
+        s = EXTENDED_BICGSTAB_S
         reduce_sum(t*s,BICGSTAB_tTs)
         reduce_sum(t*t,BICGSTAB_tTt)
 }
 
 Kernel bicgstab_step4_preconditioned()
 {
-        bicgstab_compute_next_solution_preconditioned(EXTENDED_GRAVITY_POTENTIAL)
+        bicgstab_compute_next_solution_preconditioned_extended(EXTENDED_GRAVITY_POTENTIAL)
 }
 
 Kernel bicgstab_step5()
 {
-        bicgstab_compute_rho_next()
+        bicgstab_compute_rho_next_extended()
 }
 
 Kernel bicgstab_step6()
 {
-        bicgstab_update_p()
+        bicgstab_update_p_extended()
 }
 Kernel bicgstab_compute_true_residual()
 {
-        write(BICGSTAB_R,4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY)-laplace_extended(EXTENDED_GRAVITY_POTENTIAL))
+        write(EXTENDED_BICGSTAB_R,4*AC_REAL_PI*G_NEWTON*exp(EXTENDED_LN_DENSITY)-laplace_extended(EXTENDED_GRAVITY_POTENTIAL))
 }
 
 
