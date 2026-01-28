@@ -764,6 +764,7 @@ ac_extend_mapping_inner(AcMeshInfo* dst, const AcReal target)
 
     auto a = A.colPivHouseholderQr().solve(rhs);
 
+    AcReal last_value = -AC_REAL_MAX; 
     for(int x = -info[AC_left_extended_halo].x; x <= NGHOST; ++x)
     {
             const int xi = x-NGHOST;
@@ -771,7 +772,22 @@ ac_extend_mapping_inner(AcMeshInfo* dst, const AcReal target)
 	    const AcReal polynomial_der =  a(1) + 2*a(2)*xi + 3*a(3)*xi*xi + 4*a(4)*xi*xi*xi;
 	    const AcReal polynomial_der2 =   2*a(2)+ 6*a(3)*xi + 12*a(4)*xi*xi;
 	    info[AC_r_extended][x + info[AC_left_extended_halo].x] = polynomial_value;
+	    if(polynomial_value <= last_value)
+	    {
+		    fprintf(stderr,"Astaroth fatal failure!\n");
+		    fprintf(stderr,"Mapping function was not monotonically increasing!\n");
+		    fflush(stderr);
+		    exit(EXIT_FAILURE);
+	    }
+	    last_value = polynomial_value;
 	    info[AC_mapping_func_derivative_x_extended][x + info[AC_left_extended_halo].x] = polynomial_der;
+	    if(polynomial_der < 0.0)
+	    {
+		    fprintf(stderr,"Astaroth fatal failure!\n");
+		    fprintf(stderr,"Mapping function was not monotonically increasing!\n");
+		    fflush(stderr);
+		    exit(EXIT_FAILURE);
+	    }
 	    info[AC_mapping_func_2nd_derivative_x_extended][x + info[AC_left_extended_halo].x] = polynomial_der2;
     }
 
