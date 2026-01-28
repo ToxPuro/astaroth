@@ -3,11 +3,10 @@
  */
 
 /**
- * Copies a Field from the normal grid to the extended grid that has extended_halo around the original grid.
- * Meant to be launched on the extended grid
- * For values outside the original grid the padding value is used which can be unique at each grid point in the extended grid.
+ * Gives the value of the src on the subdomain of the extended grid that overlaps with the computational grid.
+ * Outside gives the padding value which can be unique at each point if wanted
  */
-copy_to_extended_grid(Field dst, Field src, int3 left_extended_halo, real padding_value)
+get_value_on_extended_grid(Field src, int3 left_extended_halo, real padding_value)
 {
 	//Are we inside the subvolume of the extended grid that matches the original grid
 	const bool inside_volume = vertexIdx.x >= left_extended_halo.x +NGHOST &&
@@ -33,12 +32,22 @@ copy_to_extended_grid(Field dst, Field src, int3 left_extended_halo, real paddin
 	f_val = src[f_indexes.x][f_indexes.y][f_indexes.z]
 	if(inside_volume)
 	{
-		write(dst,f_val)
+		return f_val
 	}
 	else
 	{
-		write(dst,padding_value)
+		return padding_value
 	}
+}
+
+/**
+ * Copies a Field from the normal grid to the extended grid that has extended_halo around the original grid.
+ * Meant to be launched on the extended grid
+ * For values outside the original grid the padding value is used which can be unique at each grid point in the extended grid.
+ */
+copy_to_extended_grid(Field dst, Field src, int3 left_extended_halo, real padding_value)
+{
+	write(dst,get_value_on_extended_grid(src,left_extended_halo,padding_value))
 }
 
 /**
