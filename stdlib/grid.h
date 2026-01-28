@@ -454,12 +454,6 @@ ac_compute_power_law_mapping_x(
 	  std::vector<AcReal> x_prim{};
 	  std::vector<AcReal> x_prim2{};
 	  std::vector<AcReal> x_prim3{};
-	  //For visualizing the mapping function and its derivatives
-	  /**
-	  const char* name = left_extension != 0 ? "x_ext.dat" : "x.dat";
-	  FILE* fp = fopen(name,"w");
-	  fprintf(fp,"x,dx,dx2\n");
-	  **/
 
 	  const AcReal len = last_x - first_x;
           for(int x = -left_extension; x < n_points+right_extension; ++x)
@@ -480,9 +474,7 @@ ac_compute_power_law_mapping_x(
 		x_prim.push_back(x_prim_local);
 		x_prim2.push_back(x_prim2_local);
 		x_prim3.push_back(x_prim3_local);
-		//fprintf(fp,"%7e,%7e,%7e\n",x_local,x_prim_local,x_prim2_local);
 	  }
-	  //fclose(fp);
 	  return (AcGridMappingFunction)
 	  {
 		x_arr,x_prim,x_prim2,x_prim3
@@ -516,12 +508,6 @@ ac_compute_exp_mapping_x(
 	  std::vector<AcReal> x_prim{};
 	  std::vector<AcReal> x_prim2{};
 	  std::vector<AcReal> x_prim3{};
-	  //For visualizing the mapping function and its derivatives
-	  /**
-	  const char* name = left_extension != 0 ? "x_ext.dat" : "x.dat";
-	  FILE* fp = fopen(name,"w");
-	  fprintf(fp,"x,dx,dx2\n");
-	  **/
 
 	  const AcReal len = last_x - first_x;
           for(int x = -left_extension; x < n_points+right_extension; ++x)
