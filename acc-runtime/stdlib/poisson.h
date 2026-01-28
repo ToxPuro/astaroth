@@ -175,6 +175,40 @@ update_sor_omega(Field omega)
 	jacobi_radius2 = jacobi_radius*jacobi_radius
 	return (1.0)/(1.0 - 0.25*jacobi_radius2*omega)
 }
+local_jacobi_spectral_radius_estimate_extended()
+{
+        inv_dx = AC_INV_MAPPING_FUNC_DER_X_extended
+        inv_dy = AC_INV_MAPPING_FUNC_DER_Y_extended
+        inv_dz = AC_INV_MAPPING_FUNC_DER_Z_extended
+
+        inv_dx2 = inv_dx*inv_dx
+        inv_dy2 = inv_dy*inv_dy
+        inv_dz2 = inv_dz*inv_dz
+
+        inv_r = AC_INV_R_extended
+        inv_r2 = inv_r*inv_r
+
+        inv_sin_theta = AC_INV_SIN_THETA_extended
+        inv_sin_theta2 = inv_sin_theta*inv_sin_theta
+        return (2.0/laplace_central_coeff_extended())*
+                (
+                   cos(AC_REAL_PI/AC_ngrid_extended.x)*inv_dx2
+                  +cos(AC_REAL_PI/AC_ngrid_extended.y)*inv_dy2*inv_r2
+                  +cos(AC_REAL_PI/AC_ngrid_extended.z)*inv_dz2*inv_r2*inv_sin_theta2
+                )
+}
+initial_sor_omega_extended()
+{
+        jacobi_radius = local_jacobi_spectral_radius_estimate_extended()
+        return (1.0)/(1.0 - 0.5*jacobi_radius)
+}
+update_sor_omega_extended(Field omega)
+{
+        jacobi_radius = local_jacobi_spectral_radius_estimate_extended()
+        jacobi_radius2 = jacobi_radius*jacobi_radius
+        return (1.0)/(1.0 - 0.25*jacobi_radius2*omega)
+}
+
 #endif
 
 #endif
