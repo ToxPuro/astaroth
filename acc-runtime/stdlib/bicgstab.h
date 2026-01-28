@@ -8,15 +8,16 @@ global output real BICGSTAB_rho_prev
 global output real BICGSTAB_rho_next
 global output real BICGSTAB_tTs
 global output real BICGSTAB_tTt
-Field BICGSTAB_S
-Field BICGSTAB_H
-Field BICGSTAB_R
-Field BICGSTAB_R0
-Field BICGSTAB_T
-Field BICGSTAB_P
-Field BICGSTAB_V
-Field BICGSTAB_Y
-Field BICGSTAB_Z
+int3 AC_bicgstab_dims = AC_mlocal
+dims(AC_bicgstab_dims) Field BICGSTAB_S
+dims(AC_bicgstab_dims) Field BICGSTAB_H
+dims(AC_bicgstab_dims) Field BICGSTAB_R
+dims(AC_bicgstab_dims) Field BICGSTAB_R0
+dims(AC_bicgstab_dims) Field BICGSTAB_T
+dims(AC_bicgstab_dims) Field BICGSTAB_P
+dims(AC_bicgstab_dims) Field BICGSTAB_V
+dims(AC_bicgstab_dims) Field BICGSTAB_Y
+dims(AC_bicgstab_dims) Field BICGSTAB_Z
 
 bicgstab_compute_v_and_r0Tv(real v)
 {
