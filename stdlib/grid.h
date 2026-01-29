@@ -13,7 +13,7 @@ ac_global_vertex_idx(const int3 localVertexIdx, const AcMeshInfo config)
 AcReal3
 ac_grid_position(const int3 localVertexIdx, const AcMeshInfo config)
 {
-	//TP: implicitly assumes [0,AC_len] domain
+	//TP: implicitly assumes [AC_first_gridpoint,AC_len+AC_fist_gridpoint] domain
 	//    add a new case if you have different grid
 	const int3 globalVertexIdx = ac_global_vertex_idx(localVertexIdx,config);
 	return 
@@ -633,7 +633,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  const auto coordinate = ac_compute_power_law_mapping_x(
 			  exponent,
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
@@ -644,7 +644,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  const auto coordinate_shifted_by_half = ac_compute_power_law_mapping_x(
 			  exponent,
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
@@ -661,7 +661,7 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  const auto extended_coordinate = ac_compute_power_law_mapping_x(
 			  exponent,
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  config[AC_left_extended_halo].x,
@@ -679,7 +679,7 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 	  AcMeshInfo& config = *dst;
 	  const auto coordinate = ac_compute_exp_mapping_x(
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
@@ -690,7 +690,7 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 
 	  const auto coordinate_shifted_by_half = ac_compute_exp_mapping_x(
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
@@ -706,7 +706,7 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 
 	  const auto extended_coordinate = ac_compute_exp_mapping_x(
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  config[AC_left_extended_halo].x,

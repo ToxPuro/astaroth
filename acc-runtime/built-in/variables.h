@@ -51,6 +51,10 @@ int3 AC_mlocal = AC_nlocal + 2*AC_nmin;
  */
 int3 AC_nlocal_max = AC_nlocal + AC_nmin;
 /**
+ * Last active point in the local subdomain
+ */
+run_const int3 AC_last_active_local_point = AC_nlocal_max-1;
+/**
  * Maximum extent in the computational subdomain
  */
 int AC_nlocal_max_dim = max(AC_nlocal);
@@ -63,6 +67,10 @@ int AC_mlocal_max_dim = max(AC_mlocal);
  * AC_nmin <= vertex < AC_ngrid_max
  */
 int3 AC_ngrid_max = AC_ngrid + AC_nmin;
+/**
+ * Last active point in the global grid
+ */
+run_const int3 AC_last_active_grid_point = AC_ngrid_max-1;
 
 /**
  * Inverses of AC_nlocal
