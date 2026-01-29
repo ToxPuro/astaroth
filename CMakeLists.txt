@@ -318,7 +318,7 @@ if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
     # add_subdirectory(samples/standalone_mpi)
     add_subdirectory(samples/mpitest)
     add_subdirectory(samples/devicetest)
-    add_subdirectory(samples/stencil-loader)
+    #add_subdirectory(samples/stencil-loader)
 endif()
 
 if (MPI_ENABLED AND BUILD_ACM)
