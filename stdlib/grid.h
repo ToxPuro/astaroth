@@ -11,11 +11,10 @@ ac_global_vertex_idx(const int3 localVertexIdx, const AcMeshInfo config)
 		};
 }
 AcReal3
-ac_grid_position(const int3 localVertexIdx, const AcMeshInfo config)
+ac_global_position(const int3 globalVertexIdx, const AcMeshInfo config)
 {
 	//TP: implicitly assumes [AC_first_gridpoint,AC_len+AC_fist_gridpoint] domain
 	//    add a new case if you have different grid
-	const int3 globalVertexIdx = ac_global_vertex_idx(localVertexIdx,config);
 	return 
 		(AcReal3)
 		{
@@ -23,6 +22,12 @@ ac_grid_position(const int3 localVertexIdx, const AcMeshInfo config)
 			(globalVertexIdx.y -config[AC_nmin].y)*config[AC_ds].y + config[AC_first_gridpoint].y,
 			(globalVertexIdx.z -config[AC_nmin].z)*config[AC_ds].z + config[AC_first_gridpoint].z
 		};
+}
+AcReal3
+ac_grid_position(const int3 localVertexIdx, const AcMeshInfo config)
+{
+	const int3 globalVertexIdx = ac_global_vertex_idx(localVertexIdx,config);
+	return ac_global_position(globalVertexIdx,config);
 }
 
 #if AC_GENERAL_GRID_VARS_INCLUDED
@@ -513,6 +518,7 @@ AcGridMappingFunction
 ac_compute_exp_mapping_x( 
 				const AcReal first_x,
 				const AcReal last_x,
+				const int offset,
 				const int nintervals,
 				const int n_points,
 				const int left_extension,
@@ -530,7 +536,7 @@ ac_compute_exp_mapping_x(
 	  std::vector<AcReal> x_prim3{};
 
 	  const AcReal len = last_x - first_x;
-          for(int x = -left_extension; x < n_points+right_extension; ++x)
+          for(int x = offset-left_extension; x < offset+n_points+right_extension; ++x)
 	  {
 		const AcReal xi = AcReal(x-NGHOST)+shift;
 		const AcReal4 g_res = ac_get_exp_mapping(a*(xi-b));
@@ -632,8 +638,8 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  AcMeshInfo& config = *dst;
 	  const auto coordinate = ac_compute_power_law_mapping_x(
 			  exponent,
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  ac_global_position((int3){NGHOST,0,0},config).x,
+			  ac_global_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
@@ -643,8 +649,8 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  update_computational_domain(coordinate,config);
 	  const auto coordinate_shifted_by_half = ac_compute_power_law_mapping_x(
 			  exponent,
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  ac_global_position((int3){NGHOST,0,0},config).x,
+			  ac_global_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
@@ -660,8 +666,8 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 
 	  const auto extended_coordinate = ac_compute_power_law_mapping_x(
 			  exponent,
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  ac_global_position((int3){NGHOST,0,0},config).x,
+			  ac_global_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  config[AC_left_extended_halo].x,
@@ -678,8 +684,9 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 {
 	  AcMeshInfo& config = *dst;
 	  const auto coordinate = ac_compute_exp_mapping_x(
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  ac_global_position((int3){NGHOST,0,0},config).x,
+			  ac_global_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  config[AC_multigpu_offset].x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
@@ -689,8 +696,9 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 	  update_computational_domain(coordinate,config);
 
 	  const auto coordinate_shifted_by_half = ac_compute_exp_mapping_x(
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  ac_global_position((int3){NGHOST,0,0},config).x,
+			  ac_global_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  config[AC_multigpu_offset].x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  0,
@@ -705,8 +713,9 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 	  config[AC_x12] = x12;
 
 	  const auto extended_coordinate = ac_compute_exp_mapping_x(
-			  ac_grid_position((int3){NGHOST,0,0},config).x,
-			  ac_grid_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  ac_global_position((int3){NGHOST,0,0},config).x,
+			  ac_global_position((int3){config[AC_last_active_grid_point].x,0,0},config).x,
+			  config[AC_multigpu_offset].x,
 			  config[AC_nintervals].x,
 			  config[AC_mlocal].x,
 			  config[AC_left_extended_halo].x,
