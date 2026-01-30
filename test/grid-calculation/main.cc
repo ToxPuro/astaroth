@@ -69,16 +69,15 @@ main(void)
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_LINEAR);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
 
-    const int3 decomp = acDecompose(nprocs,info);
+    info.comm->handle = MPI_COMM_WORLD;
+
+    acUpdateDecompositionParams(&info);
+    const int3 decomp = info[AC_domain_decomposition];
     fprintf(stderr,"Decomp: (%d,%d,%d)\n"
 		    ,decomp.x
 		    ,decomp.y
 		    ,decomp.z
 	   );
-    acPushToConfig(info,AC_domain_decomposition,decomp);
-    const int3 pid3d = acGetPid3D(pid, decomp,info);
-    acPushToConfig(info,AC_domain_coordinates,pid3d);
-    info.comm->handle = MPI_COMM_WORLD;
     //info[AC_coordinate_system] = AC_CARTESIAN_COORDINATES;
     //TP: this is said to be a good empirical value based on the eigenspectrum of the 3d laplacian matrix
 

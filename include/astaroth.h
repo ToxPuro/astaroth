@@ -461,6 +461,7 @@ acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info);
 int
 acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
+
 #include "device_set_input_decls.h"
 #include "device_get_output_decls.h"
 #include "device_get_input_decls.h"
@@ -1339,21 +1340,40 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start
 #include <type_traits>
 
 
-  template <typename P, typename V>
-  void
-  acPushToConfig(AcMeshInfo& config, P param, V val)
-  {
-	  if constexpr(IsCompParam<P>())
-	  {
-	  	  config.run_consts.config[param] = val;
-	  	  config.run_consts.is_loaded[param] = true;
-	  }
-	  else if constexpr(IsParam<P>())
-	  {
-		  config[param] = val;
-		  config.is_loaded[param] = true;
-	  }
-  }
+template <typename P, typename V>
+void
+acPushToConfig(AcMeshInfo& config, P param, V val)
+{
+        if constexpr(IsCompParam<P>())
+        {
+        	  config.run_consts.config[param] = val;
+        	  config.run_consts.is_loaded[param] = true;
+        }
+        else if constexpr(IsParam<P>())
+        {
+      	  config[param] = val;
+      	  config.is_loaded[param] = true;
+        }
+}
+
+static AcResult
+acUpdateDecompositionParams(AcMeshInfo* dst)
+{
+#if AC_MPI_ENABLED
+	int nprocs{};
+	int rank{};
+	ERRCHK_ALWAYS(dst->comm != NULL && dst->comm->handle != MPI_COMM_NULL);
+	MPI_Comm_size(dst->comm->handle,&nprocs);
+	MPI_Comm_rank(dst->comm->handle,&rank);
+	const int3 decomp = acDecompose(nprocs,*dst);
+	const int3 pid3d = acGetPid3D(rank,decomp,*dst);
+	acPushToConfig((*dst),AC_domain_coordinates,pid3d);
+	acPushToConfig((*dst),AC_domain_decomposition,decomp);
+	return AC_SUCCESS;
+#else
+	return AC_FAILURE;
+#endif
+}
 
 #endif
 #include <string.h>
