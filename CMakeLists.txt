@@ -131,7 +131,7 @@ if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
     ##TP: do not set GPU architectures to speedup debug compilations
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     else()
-       set(CMAKE_CUDA_ARCHITECTURES "70;80")
+       set(CMAKE_CUDA_ARCHITECTURES "80")
        #set(CMAKE_CUDA_ARCHITECTURES native)
     endif()
 
