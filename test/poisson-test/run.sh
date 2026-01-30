@@ -1,2 +1,2 @@
 #!/bin/bash
-mpiexec -n 1 build/poisson-test
+mpiexec --oversubscribe -n 8 build/poisson-test

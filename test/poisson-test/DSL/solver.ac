@@ -171,13 +171,26 @@ Kernel bicgstab_step6()
 	bicgstab_update_p() 
 }
 
-BoundConds bcs
+BoundConds jacobi_bcs
 {
-	periodic(BOUNDARY_XYZ)
+	analytic_potential_inside(BOUNDARY_X_BOT,POTENTIAL)
+	analytic_potential_outside(BOUNDARY_X_TOP,POTENTIAL)
+	ac_bc_sym(BOUNDARY_Y,POTENTIAL,1)
+	periodic(BOUNDARY_Z)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_P,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_S,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_Y,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_Z,0.0)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_P,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_S,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_Y,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_Z,1)
+	//Cartesian 
+	//periodic(BOUNDARY_XYZ)
 }
 
 ComputeSteps
-initcond(bcs)
+initcond(jacobi_bcs)
 {
 	init()
 	init_bicgstab_kernel()
@@ -226,23 +239,6 @@ analytic_potential_outside(AcBoundary boundary_region, Field f)
 		//Sphere
 		f[ghost.x][ghost.y][ghost.z] = -M/r
         }
-}
-BoundConds jacobi_bcs
-{
-	analytic_potential_inside(BOUNDARY_X_BOT,POTENTIAL)
-	analytic_potential_outside(BOUNDARY_X_TOP,POTENTIAL)
-	ac_bc_sym(BOUNDARY_Y,POTENTIAL,1)
-	periodic(BOUNDARY_Z)
-	ac_const_bc(BOUNDARY_X,BICGSTAB_P,0.0)
-	ac_const_bc(BOUNDARY_X,BICGSTAB_S,0.0)
-	ac_const_bc(BOUNDARY_X,BICGSTAB_Y,0.0)
-	ac_const_bc(BOUNDARY_X,BICGSTAB_Z,0.0)
-	ac_bc_sym(BOUNDARY_Y,BICGSTAB_P,1)
-	ac_bc_sym(BOUNDARY_Y,BICGSTAB_S,1)
-	ac_bc_sym(BOUNDARY_Y,BICGSTAB_Y,1)
-	ac_bc_sym(BOUNDARY_Y,BICGSTAB_Z,1)
-	//Cartesian 
-	//periodic(BOUNDARY_XYZ)
 }
 
 ComputeSteps

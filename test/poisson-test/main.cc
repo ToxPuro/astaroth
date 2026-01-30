@@ -69,10 +69,11 @@ main(void)
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
     info.comm->handle = MPI_COMM_WORLD;
+    acUpdateDecompositionParams(&info);
     //info[AC_coordinate_system] = AC_CARTESIAN_COORDINATES;
     //TP: this is said to be a good empirical value based on the eigenspectrum of the 3d laplacian matrix
 
-    const int max_devices = 1;
+    const int max_devices = 8;
     if (nprocs > max_devices) {
         fprintf(stderr,
                 "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
@@ -93,9 +94,11 @@ main(void)
 	    0.5*info[AC_ds].y,
 	    0.5*info[AC_ds].z
     });
-    acSetLocalMeshDims(info[AC_ngrid].x,info[AC_ngrid].y,info[AC_ngrid].z, &info);
+    acHostUpdateParams(&info);
+    const int3 decomp = info[AC_domain_decomposition];
+    acSetLocalMeshDims(info[AC_ngrid].x/decomp.x,info[AC_ngrid].y/decomp.y,info[AC_ngrid].z/decomp.z, &info);
 
-    ac_compute_power_law_mapping_x(&info,info[AC_power_law_mapping_exponent]);
+    //ac_compute_power_law_mapping_x(&info,info[AC_power_law_mapping_exponent]);
     /**
     ac_compute_inv_r(&info);
     ac_compute_r(&info);
@@ -110,6 +113,7 @@ main(void)
     ac_compute_sin_phi(&info);
     ac_compute_cos_phi(&info);
     ac_compute_phi(&info);
+    ac_compute_exp_mapping_x(&info);
 
     const AcReal R = info[AC_r][info[AC_charge_radius_points]] + 0.5*info[AC_ds].x;
     const AcReal R_max = info[AC_r][info[AC_nlocal].x+NGHOST-1] + 0.5*info[AC_ds].x;
