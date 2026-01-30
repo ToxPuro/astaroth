@@ -728,7 +728,65 @@ ac_compute_exp_mapping_x(AcMeshInfo* dst)
 }
 
 AcResult
-ac_extend_mapping_inner(AcMeshInfo* dst, const AcReal target)
+ac_extend_mapping_left_with_continued_tangent_x(AcMeshInfo* dst)
+{
+    AcMeshInfo& info = *dst;
+    Eigen::Matrix<double,2,2> A = Eigen::Matrix<double,2,2>::Zero();
+    const AcReal xi_connecting = AcReal(0);
+
+    A(1,0) = 1.0;
+    A(1,1) = xi_connecting;
+    
+    A(2,0) = 0.0;
+    A(2,1) = 1.0;
+
+    Eigen::Matrix<double,2,1> rhs = Eigen::Matrix<double,2,1>::Zero();
+    rhs(0) = info[AC_r][NGHOST];
+    rhs(1) = info[AC_mapping_func_derivative_x][NGHOST];
+    auto a = A.colPivHouseholderQr().solve(rhs);
+
+    AcReal last_value = -AC_REAL_MAX; 
+    for(int x = -info[AC_left_extended_halo].x; x <= NGHOST; ++x)
+    {
+            const int xi = x-NGHOST;
+	    const AcReal polynomial_value = a(0) + a(1)*xi;
+	    const AcReal polynomial_der =  a(1);
+	    const AcReal polynomial_der2 =   0.0;
+	    info[AC_r_extended][x + info[AC_left_extended_halo].x] = polynomial_value;
+	    if(polynomial_value <= last_value)
+	    {
+		    fprintf(stderr,"Astaroth fatal failure!\n");
+		    fprintf(stderr,"Mapping function was not monotonically increasing!\n");
+		    fflush(stderr);
+		    exit(EXIT_FAILURE);
+	    }
+	    last_value = polynomial_value;
+	    info[AC_mapping_func_derivative_x_extended][x + info[AC_left_extended_halo].x] = polynomial_der;
+	    if(polynomial_der < 0.0)
+	    {
+		    fprintf(stderr,"Astaroth fatal failure!\n");
+		    fprintf(stderr,"Mapping function was not monotonically increasing!\n");
+		    fflush(stderr);
+		    exit(EXIT_FAILURE);
+	    }
+	    info[AC_mapping_func_2nd_derivative_x_extended][x + info[AC_left_extended_halo].x] = polynomial_der2;
+    }
+
+    for(int x = 0; x <= NGHOST; ++x)
+    {
+            const int xi = x-NGHOST;
+	    const AcReal polynomial_value = a(0) + a(1)*xi;
+	    const AcReal polynomial_der =   a(1);
+	    const AcReal polynomial_der2 =  0.0;
+	    info[AC_r][x] = polynomial_value;
+	    info[AC_mapping_func_derivative_x][x] = polynomial_der;
+	    info[AC_mapping_func_2nd_derivative_x][x] = polynomial_der2;
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+ac_extend_mapping_left_with_target_and_smooth_continuation_x(AcMeshInfo* dst, const AcReal target)
 {
     AcMeshInfo& info = *dst;
     Eigen::Matrix<double,5,5> A = Eigen::Matrix<double,5,5>::Zero();
