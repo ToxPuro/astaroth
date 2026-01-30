@@ -734,11 +734,11 @@ ac_extend_mapping_left_with_continued_tangent_x(AcMeshInfo* dst)
     Eigen::Matrix<double,2,2> A = Eigen::Matrix<double,2,2>::Zero();
     const AcReal xi_connecting = AcReal(0);
 
-    A(1,0) = 1.0;
-    A(1,1) = xi_connecting;
+    A(0,0) = 1.0;
+    A(0,1) = xi_connecting;
     
-    A(2,0) = 0.0;
-    A(2,1) = 1.0;
+    A(1,0) = 0.0;
+    A(1,1) = 1.0;
 
     Eigen::Matrix<double,2,1> rhs = Eigen::Matrix<double,2,1>::Zero();
     rhs(0) = info[AC_r][NGHOST];
@@ -864,6 +864,151 @@ ac_extend_mapping_left_with_target_and_smooth_continuation_x(AcMeshInfo* dst, co
 	    const AcReal polynomial_value = a(0) + a(1)*xi + a(2)*xi*xi + a(3)*xi*xi*xi + a(4)*xi*xi*xi*xi;
 	    const AcReal polynomial_der =  a(1) + 2*a(2)*xi + 3*a(3)*xi*xi + 4*a(4)*xi*xi*xi;
 	    const AcReal polynomial_der2 =   2*a(2)+ 6*a(3)*xi + 12*a(4)*xi*xi;
+	    info[AC_r][x] = polynomial_value;
+	    info[AC_mapping_func_derivative_x][x] = polynomial_der;
+	    info[AC_mapping_func_2nd_derivative_x][x] = polynomial_der2;
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+ac_extend_mapping_right_with_target_and_smooth_continuation_x(AcMeshInfo* dst, const AcReal target)
+{
+    AcMeshInfo& info = *dst;
+    Eigen::Matrix<double,5,5> A = Eigen::Matrix<double,5,5>::Zero();
+    const int last_point = info[AC_last_active_local_point].x;
+    const AcReal xi_right_most  = AcReal(info[AC_last_active_local_point].x)+AcReal(info[AC_right_extended_halo].x)-AcReal(NGHOST);
+    const AcReal xi_connecting = AcReal(last_point-NGHOST);
+    A(0,0) = 1.0;
+    A(0,1) = xi_right_most;
+    A(0,2) = xi_right_most*xi_right_most;
+    A(0,3) = xi_right_most*xi_right_most*xi_right_most;
+    A(0,4) = xi_right_most*xi_right_most*xi_right_most*xi_right_most;
+
+    A(1,0) = 1.0;
+    A(1,1) = xi_connecting;
+    A(1,2) = xi_connecting*xi_connecting;
+    A(1,3) = xi_connecting*xi_connecting*xi_connecting;
+    A(1,3) = xi_connecting*xi_connecting*xi_connecting*xi_connecting;
+    
+    A(2,0) = 0.0;
+    A(2,1) = 1.0;
+    A(2,2) = 2*xi_connecting;
+    A(2,3) = 3*xi_connecting*xi_connecting;
+    A(2,4) = 4*xi_connecting*xi_connecting*xi_connecting;
+    
+    A(3,0) = 0.0;
+    A(3,1) = 0.0;
+    A(3,2) = 2.0;
+    A(3,3) = 6*xi_connecting;
+    A(3,4) = 12*xi_connecting*xi_connecting;
+
+    A(4,0) = 0.0;
+    A(4,1) = 0.0;
+    A(4,2) = 0.0;
+    A(4,3) = 6;
+    A(4,4) = 24*xi_connecting;
+
+    Eigen::Matrix<double,5,1> rhs = Eigen::Matrix<double,5,1>::Zero();
+    rhs(0) = target;
+    rhs(1) = info[AC_r][last_point];
+    rhs(2) = info[AC_mapping_func_derivative_x][last_point];
+    rhs(3) = info[AC_mapping_func_2nd_derivative_x][last_point];
+    rhs(4) = info[AC_mapping_func_3rd_derivative_x][last_point];
+    auto a = A.colPivHouseholderQr().solve(rhs);
+
+    AcReal last_value = -AC_REAL_MAX; 
+    for(int x = last_point+1; x <= info[AC_extended_mlocal].x; ++x)
+    {
+            const int xi = x-NGHOST;
+	    const AcReal polynomial_value = a(0) + a(1)*xi + a(2)*xi*xi + a(3)*xi*xi*xi + a(4)*xi*xi*xi*xi;
+	    const AcReal polynomial_der =  a(1) + 2*a(2)*xi + 3*a(3)*xi*xi + 4*a(4)*xi*xi*xi;
+	    const AcReal polynomial_der2 =   2*a(2)+ 6*a(3)*xi + 12*a(4)*xi*xi;
+	    info[AC_r_extended][info[AC_left_extended_halo].x+x] = polynomial_value;
+	    if(polynomial_value <= last_value)
+	    {
+		    fprintf(stderr,"Astaroth fatal failure!\n");
+		    fprintf(stderr,"Mapping function was not monotonically increasing!\n");
+		    fflush(stderr);
+		    exit(EXIT_FAILURE);
+	    }
+	    last_value = polynomial_value;
+	    info[AC_mapping_func_derivative_x_extended][info[AC_left_extended_halo].x+x] = polynomial_der;
+	    if(polynomial_der < 0.0)
+	    {
+		    fprintf(stderr,"Astaroth fatal failure!\n");
+		    fprintf(stderr,"Mapping function was not monotonically increasing!\n");
+		    fflush(stderr);
+		    exit(EXIT_FAILURE);
+	    }
+	    info[AC_mapping_func_2nd_derivative_x_extended][x + info[AC_left_extended_halo].x] = polynomial_der2;
+    }
+
+    for(int x = last_point+1; x <= last_point+NGHOST; ++x)
+    {
+            const int xi = x-NGHOST;
+	    const AcReal polynomial_value = a(0) + a(1)*xi + a(2)*xi*xi + a(3)*xi*xi*xi + a(4)*xi*xi*xi*xi;
+	    const AcReal polynomial_der =  a(1) + 2*a(2)*xi + 3*a(3)*xi*xi + 4*a(4)*xi*xi*xi;
+	    const AcReal polynomial_der2 =   2*a(2)+ 6*a(3)*xi + 12*a(4)*xi*xi;
+	    info[AC_r][x] = polynomial_value;
+	    info[AC_mapping_func_derivative_x][x] = polynomial_der;
+	    info[AC_mapping_func_2nd_derivative_x][x] = polynomial_der2;
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+ac_extend_mapping_right_with_continued_tangent_x(AcMeshInfo* dst)
+{
+    AcMeshInfo& info = *dst;
+    Eigen::Matrix<double,2,2> A = Eigen::Matrix<double,2,2>::Zero();
+    const int last_point = info[AC_last_active_local_point].x;
+    const AcReal xi_connecting = AcReal(last_point-NGHOST);
+
+    A(0,0) = 1.0;
+    A(0,1) = xi_connecting;
+    
+    A(1,0) = 0.0;
+    A(1,1) = 1.0;
+
+    Eigen::Matrix<double,2,1> rhs = Eigen::Matrix<double,2,1>::Zero();
+    rhs(0) = info[AC_r][NGHOST];
+    rhs(1) = info[AC_mapping_func_derivative_x][NGHOST];
+    auto a = A.colPivHouseholderQr().solve(rhs);
+
+    AcReal last_value = -AC_REAL_MAX; 
+    for(int x = last_point+1; x <= info[AC_extended_mlocal].x; ++x)
+    {
+            const int xi = x-NGHOST;
+	    const AcReal polynomial_value = a(0) + a(1)*xi;
+	    const AcReal polynomial_der =  a(1);
+	    const AcReal polynomial_der2 =   0.0;
+	    info[AC_r_extended][info[AC_left_extended_halo].x+x] = polynomial_value;
+	    if(polynomial_value <= last_value)
+	    {
+		    fprintf(stderr,"Astaroth fatal failure!\n");
+		    fprintf(stderr,"Mapping function was not monotonically increasing!\n");
+		    fflush(stderr);
+		    exit(EXIT_FAILURE);
+	    }
+	    last_value = polynomial_value;
+	    info[AC_mapping_func_derivative_x_extended][info[AC_left_extended_halo].x+x] = polynomial_der;
+	    if(polynomial_der < 0.0)
+	    {
+		    fprintf(stderr,"Astaroth fatal failure!\n");
+		    fprintf(stderr,"Mapping function was not monotonically increasing!\n");
+		    fflush(stderr);
+		    exit(EXIT_FAILURE);
+	    }
+	    info[AC_mapping_func_2nd_derivative_x_extended][x + info[AC_left_extended_halo].x] = polynomial_der2;
+    }
+
+    for(int x = last_point+1; x <= last_point+NGHOST; ++x)
+    {
+            const int xi = x-NGHOST;
+	    const AcReal polynomial_value = a(0) + a(1)*xi;
+	    const AcReal polynomial_der =   a(1);
+	    const AcReal polynomial_der2 =  0.0;
 	    info[AC_r][x] = polynomial_value;
 	    info[AC_mapping_func_derivative_x][x] = polynomial_der;
 	    info[AC_mapping_func_2nd_derivative_x][x] = polynomial_der2;
