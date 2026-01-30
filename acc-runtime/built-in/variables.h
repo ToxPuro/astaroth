@@ -308,7 +308,12 @@ int3 AC_domain_coordinates;
  * Offset to the first point on the GPU/process in the global grid coordinates.
  * AC_multigpu_offset = AC_domain_coordinates*AC_nlocal
  */
-int3 AC_multigpu_offset = AC_domain_coordinates*AC_nlocal;
+int3 AC_multigpu_offset = (int3)
+			  {
+				  AC_domain_coordinates.x*AC_nlocal.x,
+				  AC_domain_coordinates.y*AC_nlocal.y,
+				  AC_domain_coordinates.z*AC_nlocal.z,
+			  };
 
 /**
  * Global option to always include the 3d corner cubicles in halo exchanges.
