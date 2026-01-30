@@ -4,7 +4,7 @@
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 # V3.21 required for first-class HIP support
 # V3.24 required for native CUDA architecture support (Not used as of now)
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 
 ## Project settings
 project(astaroth)
@@ -56,6 +56,7 @@ option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astarot
 option(PROFILING_ENABLED "Whether to enable profiling and link to the vendor profiling libraries" ON)
 option(FFT_ENABLED "Whether to enable FFT" OFF)
 option(CPU_BUILD "To build CPU-only build" OFF)
+option(SUPPORT_OLD_ARCHITECTURES "To support old CUDA architectures" ON)
 
 ## Project-wide compilation flags
 # -Werror TODO read
@@ -131,7 +132,11 @@ if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
     ##TP: do not set GPU architectures to speedup debug compilations
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     else()
-       set(CMAKE_CUDA_ARCHITECTURES "80")
+       if(SUPPORT_OLD_ARCHITECTURES)
+         set(CMAKE_CUDA_ARCHITECTURES "61;70;80")
+       else()
+       	 set(CMAKE_CUDA_ARCHITECTURES "80")
+       endif()
        #set(CMAKE_CUDA_ARCHITECTURES native)
     endif()
 
