@@ -67,9 +67,14 @@ main(void)
     acPushToConfig(info,AC_coordinate_system,AC_SPHERICAL_COORDINATES);
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_LINEAR);
-    acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_EXTERNAL);
+    acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
 
-    const int3 decomp = (int3){2,2,2};
+    const int3 decomp = acDecompose(nprocs,info);
+    fprintf(stderr,"Decomp: (%d,%d,%d)\n"
+		    ,decomp.x
+		    ,decomp.y
+		    ,decomp.z
+	   );
     acPushToConfig(info,AC_domain_decomposition,decomp);
     const int3 pid3d = acGetPid3D(pid, decomp,info);
     acPushToConfig(info,AC_domain_coordinates,pid3d);
