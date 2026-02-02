@@ -117,7 +117,7 @@ main(int argc, char* argv[])
     acSetLocalMeshDims(nx,ny,nz, &info);
 
     #if AC_RUNTIME_COMPILATION
-    const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
     acCompile(build_str,info);
     acLoadLibrary(stdout,info);
     acLoadUtils(stdout,info);
@@ -371,7 +371,7 @@ main(int argc, char* argv[])
 	const AcReal init_residual = residual;
     	int n_steps = 0;
 	AcReal sum_time = 0.0;
-    	while(residual > 1e-8)
+    	while(residual > 1e-12)
     	{
 	    const AcReal start_time = MPI_Wtime();
             gmg_v_cycle(n_levels,relative_residual_tolerance);
@@ -380,7 +380,6 @@ main(int argc, char* argv[])
     	    acGridExecuteTaskGraph(res_graph,1);
     	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
     	    fprintf(stderr,"Residual: %14e\n",residual);
-    	    acGridWriteSlicesToDiskCollectiveSynchronous("slices", n_steps, 0.0);
     	    ++n_steps;
     	}
     	fprintf(stderr,"Final residual: %14e\n",residual);
@@ -388,6 +387,8 @@ main(int argc, char* argv[])
 	fprintf(stderr,"Asymptotic convergence factor: %.14e\n",pow(residual/init_residual,1.0/n_steps));
 	fprintf(stderr,"On average a single V cycle took: %.14e seconds\n",sum_time/n_steps);
     }
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_laplace_solution),1);
+    acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     int retval = AC_SUCCESS;
     acGridQuit();
     ac_MPI_Finalize();
