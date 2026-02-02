@@ -12,11 +12,13 @@ real AC_k = 1.0
 real AC_laplace_sign = -1.0
 
 real AC_init_val = 0.0
+Field ANALYTICAL_SOLUTION
 Kernel init_kernel()
 {
 	pos = grid_position()
 	val = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
 	write(GMG_INITIAL_RHS,val)
+	write(ANALYTICAL_SOLUTION,3.0*val)
 	write(GMG_SOLUTIONS[0],AC_init_val)
 }
 
@@ -99,6 +101,24 @@ Kernel print_kernel(GMG_LEVEL level)
 	}
 	write(GMG_RHS[level],GMG_RHS[level])
 	write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level])
+}
+Field LAPLACE_SOLUTION
+Field LAPLACE_GMG_SOLUTION
+Field FINAL_RESIDUAL 
+Field FINAL_GMG_RESIDUAL 
+Kernel get_laplace_solution_kernel()
+{
+	write(LAPLACE_SOLUTION,-laplace(GMG_SOLUTIONS[0]))
+	res = GMG_RHS[0] + laplace(GMG_SOLUTIONS[0])
+	write(FINAL_RESIDUAL,res)
+	write(LAPLACE_GMG_SOLUTION,-gmg_laplace(GMG_SOLUTIONS[0],0))
+	res = GMG_RHS[0] + gmg_laplace(GMG_SOLUTIONS[0],0)
+	write(FINAL_GMG_RESIDUAL,res)
+}
+
+ComputeSteps get_laplace_solution(gmg_boundconds)
+{
+	get_laplace_solution_kernel()
 }
 ComputeSteps 
 print_values(gmg_boundconds)

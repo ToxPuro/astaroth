@@ -882,6 +882,9 @@ acGridInitBase(const AcMesh user_mesh)
 		    grid.decomposition.y,
 		    grid.decomposition.z
 		    );
+    acLogFromRootProc(ac_pid(), "acGridInit: Stencil order: %d\n",
+		    NGHOST*2
+		    );
 
     if((int)(grid.decomposition.x*grid.decomposition.y*grid.decomposition.z) != (int)ac_nprocs())
     {
