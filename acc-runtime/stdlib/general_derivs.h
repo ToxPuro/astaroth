@@ -32,7 +32,7 @@ hostdefine AC_GENERAL_DERIVS_ENABLED (1)
 #define DER4_0 (56.0/6.0)
 #define DER4_1 (-39.0/6.0)
 #define DER4_2 (12.0/6.0)
-#define DER4_3 (-1.0)
+#define DER4_3 (-1.0/6.0)
 
 #define DER3_0 (0)
 #define DER3_1 (-13.0/8.0)
@@ -1895,33 +1895,33 @@ Stencil der2y2z_stencil {
 
 
 Stencil der4x_stencil {
-    [0][0][-3] = AC_inv_ds_4.x * DER4_3,
-    [0][0][-2] = AC_inv_ds_4.x * DER4_2,
-    [0][0][-1] = AC_inv_ds_4.x * DER4_1,
-    [0][0][0]  = AC_inv_ds_4.x * DER4_0,
-    [0][0][1]  = AC_inv_ds_4.x * DER4_1,
-    [0][0][2]  = AC_inv_ds_4.x * DER4_2,
-    [0][0][3]  = AC_inv_ds_4.x * DER4_3
+    [0][0][-3] = DER4_3,
+    [0][0][-2] = DER4_2,
+    [0][0][-1] = DER4_1,
+    [0][0][0]  = DER4_0,
+    [0][0][1]  = DER4_1,
+    [0][0][2]  = DER4_2,
+    [0][0][3]  = DER4_3
 }
 
 Stencil der4y_stencil {
-    [0][-3][0] = AC_inv_ds_4.y * DER4_3,
-    [0][-2][0] = AC_inv_ds_4.y * DER4_2,
-    [0][-1][0] = AC_inv_ds_4.y * DER4_1,
-    [0][0][0]  = AC_inv_ds_4.y * DER4_0,
-    [0][1][0]  = AC_inv_ds_4.y * DER4_1,
-    [0][2][0]  = AC_inv_ds_4.y * DER4_2,
-    [0][3][0]  = AC_inv_ds_4.y * DER4_3
+    [0][-3][0] = DER4_3,
+    [0][-2][0] = DER4_2,
+    [0][-1][0] = DER4_1,
+    [0][0][0]  = DER4_0,
+    [0][1][0]  = DER4_1,
+    [0][2][0]  = DER4_2,
+    [0][3][0]  = DER4_3
 }
 
 Stencil der4z_stencil {
-    [-3][0][0] = AC_inv_ds_4.z * DER4_3,
-    [-2][0][0] = AC_inv_ds_4.z * DER4_2,
-    [-1][0][0] = AC_inv_ds_4.z * DER4_1,
-    [0][0][0]  = AC_inv_ds_4.z * DER4_0,
-    [1][0][0]  = AC_inv_ds_4.z * DER4_1,
-    [2][0][0]  = AC_inv_ds_4.z * DER4_2,
-    [3][0][0]  = AC_inv_ds_4.z * DER4_3
+    [-3][0][0] = DER4_3,
+    [-2][0][0] = DER4_2,
+    [-1][0][0] = DER4_1,
+    [0][0][0]  = DER4_0,
+    [1][0][0]  = DER4_1,
+    [2][0][0]  = DER4_2,
+    [3][0][0]  = DER4_3
 }
 
 Stencil der4x2y_stencil {
@@ -3392,7 +3392,7 @@ der4x(Field f)
 	}
 	else
 	{
-		return der4x_stencil(f)
+		return der4x_stencil(f)*AC_inv_ds_4.x
 	}
 }
 
@@ -3410,16 +3410,16 @@ der4y(Field f)
 			factor = AC_INV_R
 			factor *= factor
 			factor *= factor
-			return der4y_stencil(f)*(factor)
+			return der4y_stencil(f)*(factor)*AC_inv_ds_4.y
 		}
 		if (AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 		{
 			factor = AC_INV_CYL_R
 			factor *= factor
 			factor *= factor
-			return der4y_stencil(f)*(factor)
+			return der4y_stencil(f)*(factor)*AC_inv_ds_4.y
 		}
-		return der4y_stencil(f)
+		return der4y_stencil(f)*AC_inv_ds_4.y
 	}
 }
 
@@ -3437,9 +3437,9 @@ der4z(Field f)
 			factor = AC_INV_R*AC_INV_SIN_THETA
 			factor *= factor
 			factor *= factor
-			return der4z_stencil(f)*(factor)
+			return der4z_stencil(f)*(factor)*AC_inv_ds_4.z
 		}
-		return der4z_stencil(f)
+		return der4z_stencil(f)*AC_inv_ds_4.z
 	}
 }
 
