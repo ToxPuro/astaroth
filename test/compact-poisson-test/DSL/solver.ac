@@ -1,10 +1,10 @@
-#define STENCIL_ORDER (4)
 #include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
 #include "$AC_HOME/acc-runtime/stdlib/math"
 #include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
 #include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
 #include "$AC_HOME/acc-runtime/stdlib/poisson.h"
 #include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/cg.h"
 Field HEAT_INIT
 Field HEAT_SOLUTION
 Field HEAT_RHS
@@ -18,11 +18,44 @@ Kernel init_kernel()
 	write(HEAT_INIT,rhs)
 	write(ANALYTICAL_SOLUTION,(1.0/3.0)*rhs)
 	write(HEAT_SOLUTION,0.0)
-	reduce_sum(rhs*rhs,AC_rhs2)
 }
+
+Field DIFF_RHS
+Field ANALYTICAL_RHS
+Field DIFF_DEL2
+Field DIFF_DEL4
+Field DIFF_D2X2Y
 Kernel init_2nd_kernel()
 {
-	write(HEAT_RHS,compact_poisson_rhs(HEAT_INIT))
+	
+        h2 = AC_ds_2.x
+        h4 = AC_ds_4.x
+        analytical_res = HEAT_INIT + (h2/12.0)*(-3*HEAT_INIT)
+#if STENCIL_ORDER == 6
+	       + (h4/360.0)*(3*HEAT_INIT)
+               + (h4/180.0)*(3*HEAT_INIT)
+#endif
+
+	numerical_res = compact_poisson_rhs(HEAT_INIT)
+	write(HEAT_RHS,numerical_res)
+	write(ANALYTICAL_RHS,analytical_res)
+	write(DIFF_RHS,numerical_res-analytical_res)
+	analytical_del2 = -3*HEAT_INIT
+	numerical_del2  = laplace(HEAT_INIT)
+	write(DIFF_DEL2,analytical_del2-numerical_del2)
+	analytical_del4 = 3*HEAT_INIT
+	numerical_del4  = del4(HEAT_INIT)
+	write(DIFF_DEL4,analytical_del4-numerical_del4)
+	analytical_der2x2y = HEAT_INIT
+	numerical_der2x2y = der2x2y(HEAT_INIT)
+	write(DIFF_D2X2Y,analytical_der2x2y-numerical_der2x2y)
+	reduce_sum(analytical_res*analytical_res,AC_rhs2)
+}
+Kernel init_3rd_kernel()
+{
+	r = HEAT_RHS -(-compact_poisson_lhs(HEAT_SOLUTION))
+	write(CG_P,r)
+	write(CG_R,r)
 }
 
 ac_rhs_bc(AcBoundary boundary)
@@ -34,7 +67,12 @@ ac_rhs_bc(AcBoundary boundary)
 	{
 		ghost  = ghost  + normal
 		pos = grid_position(ghost)
-		HEAT_INIT[ghost.x][ghost.y][ghost.z] = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+		rhs = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+		if(ghost == (int3){0,0,NGHOST})
+		{
+			print("Updating init at (0,0,NGHOST): %.14e\n",rhs)
+		}	
+		HEAT_INIT[ghost.x][ghost.y][ghost.z] = rhs
 	}
 }
 
@@ -47,14 +85,28 @@ ac_analytical_solution_bc(AcBoundary boundary)
 	{
 		ghost  = ghost  + normal
 		pos = grid_position(ghost)
-		HEAT_SOLUTION[ghost.x][ghost.y][ghost.z] = (1.0/3.0)*sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+ 		res = (1.0/3.0)*sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+		if(ghost == (int3){0,0,0})
+		{
+			print("Updating solution at (0,0,0): %.14e\n",res)
+			print("Position is (0,0,0): %.14e,%.14e,%.14e\n"
+					,pos.x
+					,pos.y
+					,pos.z
+				)
+		}	
+		HEAT_SOLUTION[ghost.x][ghost.y][ghost.z] = res
 	}
 }
 
+Field CG_P
+Field CG_R
 
 BoundConds boundconds{
    ac_rhs_bc(BOUNDARY_XYZ)
    ac_analytical_solution_bc(BOUNDARY_XYZ)
+   ac_const_bc(BOUNDARY_XYZ,CG_P,0.0)
+   ac_const_bc(BOUNDARY_XYZ,CG_R,0.0)
 }
 
 
@@ -63,6 +115,7 @@ initcond(boundconds)
 {
 	init_kernel()
 	init_2nd_kernel()
+	init_3rd_kernel()
 }
 ComputeSteps
 empty_steps(boundconds)
@@ -80,6 +133,35 @@ fixed_boundary Kernel jacobi_kernel()
 ComputeSteps jacobi_step(boundconds)
 {
 	jacobi_kernel()
+}
+
+
+Kernel cg_compute_alpha()
+{
+	Ap = -compact_poisson_lhs(CG_P)
+ 	r  = value(CG_R)
+	p  = value(CG_P)
+	cg_compute_inner_products(Ap,p,r)
+}
+
+Kernel cg_advance()
+{
+	Ap = -compact_poisson_lhs(CG_P)
+	p  = value(CG_P)
+	cg_advance_solution(HEAT_SOLUTION,Ap,p,CG_R)
+}
+
+ComputeSteps
+cg_step(boundconds)
+{
+	cg_compute_alpha()
+	cg_advance()
+	cg_advance_p()
+}
+
+Kernel cg_advance_p()
+{
+	cg_next_direction(CG_P,CG_R)
 }
 
 
@@ -105,6 +187,7 @@ Kernel get_diff_to_analytical_solution_kernel()
 	write(DIFF,diff)
 	reduce_sum(diff*diff,AC_l2_from_analytical_solution)
 }
+
 ComputeSteps
 get_diff_to_analytical_solution(boundconds)
 {
