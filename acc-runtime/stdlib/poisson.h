@@ -208,3 +208,4 @@ update_sor_omega_extended(Field omega)
 }
 #endif
 #endif
+#endif
