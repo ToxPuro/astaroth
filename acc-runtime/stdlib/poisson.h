@@ -18,6 +18,7 @@ run_const int AC_laplacian_colors = 4
 #endif
 #define SOR_RED   AC_COLOR_RED
 #define SOR_BLACK AC_COLOR_BLACK
+
 poisson_jacobi_update(real b, Field x_prev, real laplace_sign)
 {
 	Ax = laplace_sign*laplace_neighbours(x_prev)
@@ -25,23 +26,22 @@ poisson_jacobi_update(real b, Field x_prev, real laplace_sign)
 	return (b-Ax)/coef
 }
 
-poisson_jacobi_update(real b, potential)
+poisson_jacobi_update(real b, Field potential)
 {
 	return poisson_jacobi_update(b,potential,1.0)
 }
 
-poisson_jacobi_update(real b, Field x_prev, real laplace_sign,real3 inv_spacings_2)
+poisson_jacobi_update(real b, Field x_prev, real laplace_sign, real3 inv_spacings_2)
 {
 	Ax = laplace_sign*laplace_neighbours(x_prev,inv_spacings_2)
 	coef = laplace_sign*laplace_central_coeff(inv_spacings_2)
 	return (b-Ax)/coef
 }
 
-poisson_jacobi_update(real b, potential, real3 inv_spacings_2)
+poisson_jacobi_update(real b, Field potential, real3 inv_spacings_2)
 {
 	return poisson_jacobi_update(b,potential,1.0,inv_spacings_2)
 }
-
 
 poisson_sor_red_black(int color, real density, Field potential, real omega, real laplace_sign)
 {
@@ -55,6 +55,7 @@ poisson_sor_red_black(int color, real density, Field potential, real omega, real
 		write(potential,potential)
 	}
 }
+
 poisson_sor_red_black(int color, real density, Field potential, real omega)
 {
 	poisson_sor_red_black(color,density,potential,omega,1.0)
@@ -72,28 +73,26 @@ poisson_sor_red_black(int color, real density, Field potential, real omega, real
 		write(potential,potential)
 	}
 }
+
 poisson_sor_red_black(int color, real density, Field potential, real omega,real3 inv_spacings)
 {
 	return poisson_sor_red_black(color,density,potential,omega,1.0,inv_spacings)
 }
 
-
-
-
 #ifdef AC_GENERAL_DERIVS_H
-poisson_jacobi_update_extended(real b , Field x_prev, real laplace_sign)
+poisson_jacobi_update_extended(real b, Field x_prev, real laplace_sign)
 {
 	Ax = laplace_sign*laplace_neighbours_extended(x_prev)
 	coef = laplace_sign*laplace_central_coeff_extended()
 	return (b-Ax)/coef
 }
 
-poisson_jacobi_update_extended(real b , Field x_prev)
+poisson_jacobi_update_extended(real b, Field x_prev)
 {
 	return poisson_jacobi_update_extended(b,x_prev,1.0)
 }
 
-poisson_jacobi_update_extended(real b , Field x_prev, real laplace_sign, real3 inv_spacings_2)
+poisson_jacobi_update_extended(real b, Field x_prev, real laplace_sign, real3 inv_spacings_2)
 {
 	Ax = laplace_sign*laplace_neighbours_extended(x_prev,inv_spacings_2)
 	coef = laplace_sign*laplace_central_coeff_extended(inv_spacings_2)
@@ -117,6 +116,7 @@ poisson_sor_red_black_extended(int color, real density, Field potential, real om
 		write(potential,potential)
 	}
 }
+
 poisson_sor_red_black_extended(int color, real density, Field potential, real omega)
 {
 	poisson_sor_red_black_extended(color,density,potential,omega,1.0)
@@ -134,6 +134,7 @@ poisson_sor_red_black_extended(int color, real density, Field potential, real om
 		write(potential,potential)
 	}
 }
+
 poisson_sor_red_black_extended(int color, real density, Field potential, real omega, real3 inv_spacings)
 {
 	poisson_sor_red_black_extended(color,density,potential,omega,1.0,inv_spacings)
@@ -206,6 +207,4 @@ update_sor_omega_extended(Field omega)
         return (1.0)/(1.0 - 0.25*jacobi_radius2*omega)
 }
 #endif
-#endif
-
 #endif
