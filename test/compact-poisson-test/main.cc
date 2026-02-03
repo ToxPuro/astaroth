@@ -61,18 +61,19 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
+    acLoadConfig("sor.conf", &info);
     acPushToConfig(info,AC_ds,
     (AcReal3){
-	    (2*AC_REAL_PI)/info[AC_ngrid].x,
-	    (2*AC_REAL_PI)/info[AC_ngrid].y,
-	    (2*AC_REAL_PI)/info[AC_ngrid].z
+	    (2*AC_REAL_PI)/(info[AC_ngrid].x+1),
+	    (2*AC_REAL_PI)/(info[AC_ngrid].y+1),
+	    (2*AC_REAL_PI)/(info[AC_ngrid].z+1)
     });
+    acPushToConfig(info,AC_first_gridpoint,info[AC_ds]);
 
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
     info.comm->handle = MPI_COMM_WORLD;
 
     const int max_devices = 8;
@@ -106,20 +107,27 @@ main(void)
 
     //TP: this sets for the next graph that the halo exchange is red-black and only for it
     //acDeviceSetInput(acGridGetDevice(),AC_red_black_halo_exchange,AC_RED_BLACK_STATE_RED);
-    //const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto jacobi_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     acGridExecuteTaskGraph(initcond_graph,1);
-    AcReal residual = 10e8;
-    while(residual > 1e-8)
+    const AcReal rhs_l2 = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_rhs2));
+    AcReal relative_residual = 10e8;
+    const int max_step = 100000;
+    int step = 0;
+    while(relative_residual > 1e-15 && step < max_step)
     {
     	acGridExecuteTaskGraph(jacobi_graph,1);
     	acGridExecuteTaskGraph(residual_graph,1);
 	const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
-	residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
-	fprintf(stderr,"Residual: %.14e\n",residual);
+	const AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
+	relative_residual = residual/rhs_l2;
+	fprintf(stderr,"Relative residual: %.14e\n",relative_residual);
+	++step;
     }
-    if(pid == 0) fprintf(stderr,"Final residual: %14e\n",residual);
+    if(pid == 0) fprintf(stderr,"Final relative residual: %14e\n",relative_residual);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_diff_to_analytical_solution),1);
+    const AcReal l2_diff = sqrt(info[AC_ds].x*info[AC_ds].y*info[AC_ds].z*acDeviceGetOutput(acGridGetDevice(),AC_l2_from_analytical_solution));
+    fprintf(stderr,"L2 diff to solution: %.14e\n",l2_diff);
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     acGridSynchronizeStream(STREAM_ALL);
 
