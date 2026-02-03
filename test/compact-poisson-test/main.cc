@@ -108,6 +108,7 @@ main(void)
     //TP: this sets for the next graph that the halo exchange is red-black and only for it
     //acDeviceSetInput(acGridGetDevice(),AC_red_black_halo_exchange,AC_RED_BLACK_STATE_RED);
     const auto jacobi_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
+    const auto cg_graph = acGetOptimizedDSLTaskGraph(cg_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     acGridExecuteTaskGraph(initcond_graph,1);
     const AcReal rhs_l2 = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_rhs2));
@@ -116,7 +117,8 @@ main(void)
     int step = 0;
     while(relative_residual > 1e-15 && step < max_step)
     {
-    	acGridExecuteTaskGraph(jacobi_graph,1);
+    	//acGridExecuteTaskGraph(jacobi_graph,1);
+    	acGridExecuteTaskGraph(cg_graph,1);
     	acGridExecuteTaskGraph(residual_graph,1);
 	const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 	const AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
