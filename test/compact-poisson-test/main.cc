@@ -128,6 +128,7 @@ main(void)
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_diff_to_analytical_solution),1);
     const AcReal l2_diff = sqrt(info[AC_ds].x*info[AC_ds].y*info[AC_ds].z*acDeviceGetOutput(acGridGetDevice(),AC_l2_from_analytical_solution));
     fprintf(stderr,"L2 diff to solution: %.14e\n",l2_diff);
+    fprintf(stderr,"h is: %.14e\n",info[AC_ds].x);
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     acGridSynchronizeStream(STREAM_ALL);
 
