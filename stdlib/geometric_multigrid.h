@@ -1,13 +1,19 @@
 #include "math_utils.h"
 
-AcReal gmg_central_coeffs[5]{};
-const std::array<AcInt3Param,5> level_dims = 
+AcReal gmg_central_coeffs[11]{};
+const std::array<AcInt3Param,11> level_dims = 
 {
 	AC_nlocal_gmg_level_0,
 	AC_nlocal_gmg_level_1,
 	AC_nlocal_gmg_level_2,
 	AC_nlocal_gmg_level_3,
-	AC_nlocal_gmg_level_4
+	AC_nlocal_gmg_level_4,
+	AC_nlocal_gmg_level_5,
+	AC_nlocal_gmg_level_6,
+	AC_nlocal_gmg_level_7,
+	AC_nlocal_gmg_level_8,
+	AC_nlocal_gmg_level_9,
+	AC_nlocal_gmg_level_10
 };
 void
 gmg_restrict_to_level(const int level)
@@ -57,7 +63,14 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     	stencil_gmg_laplace_level_1_r1,
     	stencil_gmg_laplace_level_2_r1,
     	stencil_gmg_laplace_level_3_r1,
-    	stencil_gmg_laplace_level_4_r1
+    	stencil_gmg_laplace_level_4_r1,
+    	stencil_gmg_laplace_level_5_r1,
+    	stencil_gmg_laplace_level_6_r1,
+    	stencil_gmg_laplace_level_7_r1,
+    	stencil_gmg_laplace_level_8_r1,
+    	stencil_gmg_laplace_level_9_r1,
+    	stencil_gmg_laplace_level_9_r1,
+    	stencil_gmg_laplace_level_10_r1
     };
 #if STENCIL_ORDER == 4
     const std::array<Stencil,5> galerkin_operator_stencils_r2 = 
@@ -91,19 +104,6 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     const Volume hat_basis_position = to_volume(
     	((to_int3(coarse_dims.nn)/2) + (int3){NGHOST,NGHOST,NGHOST})
     );
-    /**
-    fprintf(stderr,"Dims at level %d: (%zu,%zu,%zu)\n"
-		,level
-    		,coarse_dims.nn.x
-    		,coarse_dims.nn.y
-    		,coarse_dims.nn.z
-          );
-    fprintf(stderr,"Hat basis position: (%zu,%zu,%zu)\n"
-    		,hat_basis_position.x
-    		,hat_basis_position.y
-    		,hat_basis_position.z
-          );
-    **/
 
     for(size_t x = 0; x < coarse_dims.m1.x;++x)
     {
@@ -213,12 +213,15 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     gmg_central_coeffs[level] = central_coeff;
     //Here we load to both r1 and (r2/r3) since we are not sure is the user using compact poisson or not
     acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r1[level],stencil);
+    if(level <= 4)
+    {
 #if STENCIL_ORDER == 4
-    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r2[level],stencil);
+    	acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r2[level],stencil);
 #endif
 #if STENCIL_ORDER == 6
-    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r3[level],stencil);
+    	acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r3[level],stencil);
 #endif
+    }
     stencil[NGHOST][NGHOST][NGHOST] = 0.0;
     //acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_neighbours_operator_stencils[level],stencil);
     acDeviceSynchronizeStream(acGridGetDevice(),STREAM_DEFAULT);
@@ -245,8 +248,8 @@ get_galerkin_operators(AcMeshInfo* info)
     acDeviceSynchronizeStream(acGridGetDevice(),STREAM_DEFAULT);
 }
 
-std::array<AcTaskGraph*,5> halo_exchange_residuals{};
-std::array<AcTaskGraph*,5> halo_exchange_solutions{};
+std::array<AcTaskGraph*,11> halo_exchange_residuals{};
+std::array<AcTaskGraph*,11> halo_exchange_solutions{};
 void
 gmg_get_halo_exchange_operators(const AcMeshInfo info)
 {
