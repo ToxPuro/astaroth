@@ -2586,33 +2586,33 @@ run_const real AC_gmg_optimized_smoother_coeff_facet_3_r1 = 0.0151
 Stencil
 optimized_smoother_stencil
 {
-          [-1][-1][-1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
-          [-1][-1][0] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [-1][-1][1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
-          [-1][0][-1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [-1][0][0] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
-          [-1][0][1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [-1][1][-1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
-          [-1][1][0] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [-1][1][1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
-          [0][-1][-1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [0][-1][0] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
-          [0][-1][1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [0][0][-1] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
-          [0][0][0] = AC_gmg_optimized_smoother_coeff_facet_0_r1,
-          [0][0][1] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
-          [0][1][-1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [0][1][0] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
-          [0][1][1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [1][-1][-1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
-          [1][-1][0] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [1][-1][1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
-          [1][0][-1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [1][0][0] = AC_gmg_optimized_smoother_coeff_facet_1_r1,
-          [1][0][1] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [1][1][-1] = AC_gmg_optimized_smoother_coeff_facet_3_r1,
-          [1][1][0] = AC_gmg_optimized_smoother_coeff_facet_2_r1,
-          [1][1][1] = AC_gmg_optimized_smoother_coeff_facet_3_r1
+          [-1][-1][-1] = AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [-1][-1][0] =  AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [-1][-1][1] =  AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [-1][0][-1] =  AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [-1][0][0] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [-1][0][1] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [-1][1][-1] =  AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [-1][1][0] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [-1][1][1] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [0][-1][-1] =  AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [0][-1][0] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [0][-1][1] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [0][0][-1] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [0][0][0] =    AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_0_r1,
+          [0][0][1] =    AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [0][1][-1] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [0][1][0] =    AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [0][1][1] =    AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][-1][-1] =  AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [1][-1][0] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][-1][1] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [1][0][-1] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][0][0] =    AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_1_r1,
+          [1][0][1] =    AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][1][-1] =   AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_3_r1,
+          [1][1][0] =    AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_2_r1,
+          [1][1][1] =    AC_omega_for_optimized_smoother*AC_gmg_optimized_smoother_coeff_facet_3_r1
 }
 
 optimized_smoother(Field r, int level)
@@ -2627,7 +2627,7 @@ Kernel gmg_optimized_smoother_kernel(GMG_LEVEL level)
 {
 	Field u = GMG_SOLUTIONS[level]
 	Field r = GMG_RESIDUALS[level]
-	write(u,u + AC_omega_for_optimized_smoother*optimized_smoother(r,level))
+	write(u,u + optimized_smoother(r,level))
 }
 
 Kernel gmg_jacobi_smoother_kernel(GMG_LEVEL level)

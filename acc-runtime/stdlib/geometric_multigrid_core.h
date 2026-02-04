@@ -267,17 +267,17 @@ dims(AC_mlocal_gmg_level_8)  Field GMG_SOLUTION_8
 dims(AC_mlocal_gmg_level_9)  Field GMG_SOLUTION_9
 dims(AC_mlocal_gmg_level_10) Field GMG_SOLUTION_10
 
-auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_INITIAL_RHS
-auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RHS_1
-auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RHS_2
-auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RHS_3
-auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RHS_4
-auxiliary dims(AC_mlocal_gmg_level_5) Field GMG_RHS_5
-auxiliary dims(AC_mlocal_gmg_level_6) Field GMG_RHS_6
-auxiliary dims(AC_mlocal_gmg_level_7) Field GMG_RHS_7
-auxiliary dims(AC_mlocal_gmg_level_8) Field GMG_RHS_8
-auxiliary dims(AC_mlocal_gmg_level_9) Field GMG_RHS_9
-auxiliary dims(AC_mlocal_gmg_level_10) Field GMG_RHS_10
+communicated auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_INITIAL_RHS
+communicated auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RHS_1
+communicated auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RHS_2
+communicated auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RHS_3
+communicated auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RHS_4
+communicated auxiliary dims(AC_mlocal_gmg_level_5) Field GMG_RHS_5
+communicated auxiliary dims(AC_mlocal_gmg_level_6) Field GMG_RHS_6
+communicated auxiliary dims(AC_mlocal_gmg_level_7) Field GMG_RHS_7
+communicated auxiliary dims(AC_mlocal_gmg_level_8) Field GMG_RHS_8
+communicated auxiliary dims(AC_mlocal_gmg_level_9) Field GMG_RHS_9
+communicated auxiliary dims(AC_mlocal_gmg_level_10) Field GMG_RHS_10
 //Need to be communicated if use other smoothers than gauss-seidel or jacobi
 communicated auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_RESIDUAL_0
 communicated auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RESIDUAL_1 

@@ -235,7 +235,7 @@ Kernel gmg_optimized_prototype_smoother_kernel(GMG_LEVEL level)
 {
 	Field u = GMG_SOLUTIONS[level]
 	Field b = GMG_RHS[level]
-	write(u,u + AC_omega_for_optimized_smoother*optimized_smoother(b,level) - dummy_r2_stencil(u))
+	write(u,u + optimized_smoother(b,level) - dummy_r2_stencil(u))
 }
 ComputeSteps
 gmg_prototype_smoother(gmg_boundconds)
