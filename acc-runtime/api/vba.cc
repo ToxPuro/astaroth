@@ -264,7 +264,7 @@ acVBACreate(const AcMeshInfo config)
   size_t out_bytes = 0;
   for(int i = 0; i  < NUM_FIELDS; ++i)
   {
-	if(config[vtxbuf_dims[i]].x <= NGHOST) continue;
+	if(config[vtxbuf_dims[i]].x <= 2*NGHOST) continue;
   	vba.dims[i]    = acGetMeshDims(config,Field(i));
   	size_t count = vba.dims[i].m1.x*vba.dims[i].m1.y*vba.dims[i].m1.z;
   	size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
