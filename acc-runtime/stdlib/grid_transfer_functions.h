@@ -207,16 +207,17 @@ trilinear_prolongation_odd(Field coarse_residual)
 
 	const int3 coarse_vertexIdx = (shifted_index/ 2) + NGHOST - 1
 
-	AcReal sum = coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-	sum += (!I_even)*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z]
-	sum += (!J_even)*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
-	sum += (!K_even)*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
-	sum += (!I_even && !J_even)*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
-	sum += (!I_even && !K_even)*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
-	sum += (!J_even && !K_even)*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
-	sum += (!I_even && !J_even && !K_even)*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
+	AcReal res = coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
+	res += (!I_even)*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z]
+	res += (!J_even)*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
+	res += (!K_even)*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
+	res += (!I_even && !J_even)*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
+	res += (!I_even && !K_even)*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
+	res += (!J_even && !K_even)*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
+	res += (!I_even && !J_even && !K_even)*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
 
 	const AcReal factor = (I_even ? 1.0 : 0.5) * (J_even ? 1.0 : 0.5) * (K_even ? 1.0 : 0.5)
+	return factor*res
 }
 /*
  * Meant to be launched on the fine grid
