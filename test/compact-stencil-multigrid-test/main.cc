@@ -397,6 +397,12 @@ main(int argc, char* argv[])
 		const AcReal end_time = MPI_Wtime();
 		const AcReal time = end_time-start_time;
 		fprintf(stderr,"Applying smoother took: %.14e milliseconds\n",1000*(time));
+  		const auto get_res = acGetOptimizedDSLTaskGraph(gmg_get_residual);
+		const AcReal start_time2 = MPI_Wtime();
+		acGridExecuteTaskGraph(get_res,1);
+		const AcReal end_time2 = MPI_Wtime();
+		const AcReal time2 = end_time-start_time;
+		fprintf(stderr,"Applying smoother +  getting residual took: %.14e milliseconds\n",1000*(time+time2));
 	}
 
 	{
