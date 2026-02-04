@@ -69,7 +69,6 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     	stencil_gmg_laplace_level_7_r1,
     	stencil_gmg_laplace_level_8_r1,
     	stencil_gmg_laplace_level_9_r1,
-    	stencil_gmg_laplace_level_9_r1,
     	stencil_gmg_laplace_level_10_r1
     };
 #if STENCIL_ORDER == 4
