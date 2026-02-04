@@ -109,6 +109,7 @@ main(void)
     //acDeviceSetInput(acGridGetDevice(),AC_red_black_halo_exchange,AC_RED_BLACK_STATE_RED);
     const auto jacobi_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
     const auto cg_graph = acGetOptimizedDSLTaskGraph(cg_step);
+    const auto cg_4th_order_graph = acGetOptimizedDSLTaskGraph(cg_4th_order_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     acGridExecuteTaskGraph(initcond_graph,1);
     const AcReal rhs_l2 = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_rhs2));
@@ -119,6 +120,7 @@ main(void)
     {
     	//acGridExecuteTaskGraph(jacobi_graph,1);
     	acGridExecuteTaskGraph(cg_graph,1);
+    	acGridExecuteTaskGraph(cg_4th_order_graph,1);
     	acGridExecuteTaskGraph(residual_graph,1);
 	const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 	const AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
@@ -129,8 +131,61 @@ main(void)
     if(pid == 0) fprintf(stderr,"Final relative residual: %14e\n",relative_residual);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_diff_to_analytical_solution),1);
     const AcReal l2_diff = sqrt(info[AC_ds].x*info[AC_ds].y*info[AC_ds].z*acDeviceGetOutput(acGridGetDevice(),AC_l2_from_analytical_solution));
+    const AcReal l2_diff_4th_order = sqrt(info[AC_ds].x*info[AC_ds].y*info[AC_ds].z*acDeviceGetOutput(acGridGetDevice(),AC_4th_order_l2_from_analytical_solution));
     fprintf(stderr,"L2 diff to solution: %.14e\n",l2_diff);
+    fprintf(stderr,"L2 4th order diff to solution: %.14e\n",l2_diff_4th_order);
     fprintf(stderr,"h is: %.14e\n",info[AC_ds].x);
+    fprintf(stderr,"h^2 is: %.14e\n",info[AC_ds_2].x);
+    fprintf(stderr,"h^4 is: %.14e\n",info[AC_ds_4].x);
+    AcReal sum = 0.0;
+    acDeviceStoreMesh(acGridGetDevice(),STREAM_DEFAULT,&model);
+    for(int x = 0; x < info[AC_mlocal].x; ++x)
+    {
+    	for(int y = 0; y < info[AC_mlocal].y; ++y)
+    	{
+    		for(int z = 0; z < info[AC_mlocal].z; ++z)
+    		{
+			const AcReal3 pos = (AcReal3){info[AC_ds].x*(x-NGHOST),
+					    +info[AC_ds].x*(y-NGHOST),
+					    +info[AC_ds].x*(z-NGHOST)} + info[AC_first_gridpoint];
+			const AcReal f = -std::sin(pos.x)*std::sin(pos.y)*std::sin(pos.z)*(1.0/3.0);
+			const AcReal res = model.vertex_buffer[HEAT_SOLUTION][acVertexBufferIdx(x,y,z,info)];
+			const AcReal fourth_order_res = model.vertex_buffer[HEAT_SOLUTION_4TH_ORDER][acVertexBufferIdx(x,y,z,info)];
+			const AcReal err = f-res;
+			const AcReal fourth_order_err = f-fourth_order_res;
+			if(x == 0 && y == 0 && z == 0)
+			{
+				fprintf(stderr,"Err at 0,0,0: %.14e\n",err);
+			}
+			if(x == NGHOST-1 && y == NGHOST-1 && z == NGHOST-1)
+			{
+				fprintf(stderr,"Err at 2,2,2: %.14e\n",err);
+				fprintf(stderr,"F at (-1,-1,-1): %.14e\n",f);
+			}
+			if(x == info[AC_nlocal_max].x && y == info[AC_nlocal_max].x && z == info[AC_nlocal_max].x)
+			{
+				fprintf(stderr,"Err at 2,2,2: %.14e\n",err);
+				fprintf(stderr,"F at (+1,+1,+1): %.14e\n",f);
+			}
+			if(x == NGHOST && y == NGHOST && z == NGHOST)
+			{
+				fprintf(stderr,"Err at 3,3,3: %.14e\n",err);
+				fprintf(stderr,"4th order Err at 3,3,3: %.14e\n",fourth_order_err);
+				fprintf(stderr,"Diff at 3,3,3: %.14e\n",fourth_order_res-res);
+			}
+			if(x == info[AC_mlocal].x/2 && y == info[AC_mlocal].x/2 && z == info[AC_mlocal].x/2)
+			{
+				fprintf(stderr,"Err at middle: %.14e\n",err);
+				fprintf(stderr,"4th order Err at middle: %.14e\n",fourth_order_err);
+				fprintf(stderr,"Diff at middle: %.14e\n",fourth_order_res-res);
+			}
+			sum += err*err;
+
+		}
+	}
+    }
+    fprintf(stderr,"L2 error including boundaries: %.14e\n",sqrt(info[AC_ds].x*info[AC_ds].x*info[AC_ds].x*sum));
+    fprintf(stderr,"At (0,0,0): %.14e\n",model.vertex_buffer[HEAT_SOLUTION][0]);
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     acGridSynchronizeStream(STREAM_ALL);
 

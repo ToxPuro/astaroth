@@ -7,7 +7,10 @@
 #include "$AC_HOME/acc-runtime/stdlib/cg.h"
 Field HEAT_INIT
 Field HEAT_SOLUTION
+Field HEAT_SOLUTION_4TH_ORDER
+Field SOLUTION_DIFF
 Field HEAT_RHS
+Field HEAT_RHS_4TH_ORDER
 Field ANALYTICAL_SOLUTION
 real AC_k = 1.0
 global output real AC_rhs2
@@ -16,8 +19,9 @@ Kernel init_kernel()
 	pos = grid_position()
 	rhs = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
 	write(HEAT_INIT,rhs)
-	write(ANALYTICAL_SOLUTION,(1.0/3.0)*rhs)
+	write(ANALYTICAL_SOLUTION,-(1.0/3.0)*rhs)
 	write(HEAT_SOLUTION,0.0)
+	write(HEAT_SOLUTION_4TH_ORDER,0.0)
 }
 
 Field DIFF_RHS
@@ -25,6 +29,8 @@ Field ANALYTICAL_RHS
 Field DIFF_DEL2
 Field DIFF_DEL4
 Field DIFF_D2X2Y
+Field DIFF_ANALYTICAL_ORDERS 
+bool AC_use_analytical_rhs = false
 Kernel init_2nd_kernel()
 {
 	
@@ -32,30 +38,34 @@ Kernel init_2nd_kernel()
         h4 = AC_ds_4.x
         analytical_res = HEAT_INIT + (h2/12.0)*(-3*HEAT_INIT)
 #if STENCIL_ORDER == 6
-	       + (h4/360.0)*(3*HEAT_INIT)
+	       + (h4/360.0)*(9*HEAT_INIT)
                + (h4/180.0)*(3*HEAT_INIT)
 #endif
+        analytical_res_4th_order = HEAT_INIT + (h2/12.0)*(-3*HEAT_INIT)
 
+	write(DIFF_ANALYTICAL_ORDERS,analytical_res-analytical_res_4th_order)
 	numerical_res = compact_poisson_rhs(HEAT_INIT)
-	write(HEAT_RHS,numerical_res)
+	if(AC_use_analytical_rhs)
+	{
+		write(HEAT_RHS,analytical_res)
+	}
+	else
+	{
+		write(HEAT_RHS,numerical_res)
+	}
 	write(ANALYTICAL_RHS,analytical_res)
-	write(DIFF_RHS,numerical_res-analytical_res)
-	analytical_del2 = -3*HEAT_INIT
-	numerical_del2  = laplace(HEAT_INIT)
-	write(DIFF_DEL2,analytical_del2-numerical_del2)
-	analytical_del4 = 3*HEAT_INIT
-	numerical_del4  = del4(HEAT_INIT)
-	write(DIFF_DEL4,analytical_del4-numerical_del4)
-	analytical_der2x2y = HEAT_INIT
-	numerical_der2x2y = der2x2y(HEAT_INIT)
-	write(DIFF_D2X2Y,analytical_der2x2y-numerical_der2x2y)
+	write(HEAT_RHS_4TH_ORDER,analytical_res_4th_order)
 	reduce_sum(analytical_res*analytical_res,AC_rhs2)
 }
 Kernel init_3rd_kernel()
 {
-	r = HEAT_RHS -(-compact_poisson_lhs(HEAT_SOLUTION))
+	r = HEAT_RHS -(compact_poisson_lhs(HEAT_SOLUTION))
 	write(CG_P,r)
 	write(CG_R,r)
+
+	r = HEAT_RHS_4TH_ORDER -(compact_poisson_lhs_4th_order(HEAT_SOLUTION_4TH_ORDER))
+	write(CG_P_4TH_ORDER,r)
+	write(CG_R_4TH_ORDER,r)
 }
 
 ac_rhs_bc(AcBoundary boundary)
@@ -85,7 +95,7 @@ ac_analytical_solution_bc(AcBoundary boundary)
 	{
 		ghost  = ghost  + normal
 		pos = grid_position(ghost)
- 		res = (1.0/3.0)*sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+ 		res = -(1.0/3.0)*sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
 		if(ghost == (int3){0,0,0})
 		{
 			print("Updating solution at (0,0,0): %.14e\n",res)
@@ -96,17 +106,22 @@ ac_analytical_solution_bc(AcBoundary boundary)
 				)
 		}	
 		HEAT_SOLUTION[ghost.x][ghost.y][ghost.z] = res
+		HEAT_SOLUTION_4TH_ORDER[ghost.x][ghost.y][ghost.z] = res
 	}
 }
 
 Field CG_P
 Field CG_R
+Field CG_P_4TH_ORDER
+Field CG_R_4TH_ORDER
 
 BoundConds boundconds{
    ac_rhs_bc(BOUNDARY_XYZ)
    ac_analytical_solution_bc(BOUNDARY_XYZ)
    ac_const_bc(BOUNDARY_XYZ,CG_P,0.0)
    ac_const_bc(BOUNDARY_XYZ,CG_R,0.0)
+   ac_const_bc(BOUNDARY_XYZ,CG_P_4TH_ORDER,0.0)
+   ac_const_bc(BOUNDARY_XYZ,CG_R_4TH_ORDER,0.0)
 }
 
 
@@ -124,8 +139,8 @@ empty_steps(boundconds)
 
 fixed_boundary Kernel jacobi_kernel()
 {
-	Mx = -compact_poisson_lhs_neighbours(HEAT_SOLUTION)
-	a  = -compact_poisson_lhs_central_coeff()
+	Mx = compact_poisson_lhs_neighbours(HEAT_SOLUTION)
+	a  = compact_poisson_lhs_central_coeff()
 	f  = HEAT_RHS
 	write(HEAT_SOLUTION,(f-Mx)/a)
 }
@@ -138,7 +153,7 @@ ComputeSteps jacobi_step(boundconds)
 
 Kernel cg_compute_alpha()
 {
-	Ap = -compact_poisson_lhs(CG_P)
+	Ap = compact_poisson_lhs(CG_P)
  	r  = value(CG_R)
 	p  = value(CG_P)
 	cg_compute_inner_products(Ap,p,r)
@@ -146,9 +161,14 @@ Kernel cg_compute_alpha()
 
 Kernel cg_advance()
 {
-	Ap = -compact_poisson_lhs(CG_P)
+	Ap = compact_poisson_lhs(CG_P)
 	p  = value(CG_P)
 	cg_advance_solution(HEAT_SOLUTION,Ap,p,CG_R)
+}
+
+Kernel cg_advance_p()
+{
+	cg_next_direction(CG_P,CG_R)
 }
 
 ComputeSteps
@@ -159,16 +179,41 @@ cg_step(boundconds)
 	cg_advance_p()
 }
 
-Kernel cg_advance_p()
+Kernel cg_compute_alpha_4th_order()
 {
-	cg_next_direction(CG_P,CG_R)
+	Ap = compact_poisson_lhs_4th_order(CG_P_4TH_ORDER)
+ 	r  = value(CG_R_4TH_ORDER)
+	p  = value(CG_P_4TH_ORDER)
+	cg_compute_inner_products(Ap,p,r)
 }
+
+Kernel cg_advance_4th_order()
+{
+	Ap = compact_poisson_lhs_4th_order(CG_P_4TH_ORDER)
+	p  = value(CG_P_4TH_ORDER)
+	cg_advance_solution(HEAT_SOLUTION_4TH_ORDER,Ap,p,CG_R_4TH_ORDER)
+}
+
+Kernel cg_advance_p_4th_order()
+{
+	cg_next_direction(CG_P_4TH_ORDER,CG_R_4TH_ORDER)
+}
+
+
+ComputeSteps
+cg_4th_order_step(boundconds)
+{
+	cg_compute_alpha_4th_order()
+	cg_advance_4th_order()
+	cg_advance_p_4th_order()
+}
+
 
 
 output real AC_residual2
 Kernel residual_kernel()
 {
-	Ax = -compact_poisson_lhs(HEAT_SOLUTION)
+	Ax = compact_poisson_lhs(HEAT_SOLUTION)
 	r = HEAT_RHS-Ax
 	reduce_sum(r*r,AC_residual2)
 }
@@ -181,11 +226,15 @@ get_residual(boundconds)
 
 Field DIFF
 global output real AC_l2_from_analytical_solution
+global output real AC_4th_order_l2_from_analytical_solution
 Kernel get_diff_to_analytical_solution_kernel()
 {
 	diff = ANALYTICAL_SOLUTION-HEAT_SOLUTION
+	diff_4th_order = ANALYTICAL_SOLUTION-HEAT_SOLUTION_4TH_ORDER
 	write(DIFF,diff)
 	reduce_sum(diff*diff,AC_l2_from_analytical_solution)
+	reduce_sum(diff_4th_order*diff_4th_order,AC_4th_order_l2_from_analytical_solution)
+	write(SOLUTION_DIFF,HEAT_SOLUTION-HEAT_SOLUTION_4TH_ORDER)
 }
 
 ComputeSteps

@@ -1022,6 +1022,19 @@ laplace_neighbours_extended(Field s, real3 inv_spacings_2) {
 }
 
 /**
+ * Calculates biharmonic operator delta(delta(s))
+ */
+biharmonic(Field s) {
+    if(AC_coordinate_system != AC_CARTESIAN_COORDINATES)
+    {
+	    fatal_error_message(true,"Biharmonic operator is only supported in Cartesian coordinates at the moment!\n")
+    }
+    return
+	         der4x(s) + der4y(s) + der4z(s)
+	    + 2*(der2x2y(s) + der2y2z(s) + der2x2z(s))
+}
+
+/**
  * Computes the rhs needed when solving the Poisson equation
  * with a compact stencil (e.g. radius 1 stencil for 6th order Laplacian).
  * Requires isotropic spacing.
@@ -1036,7 +1049,7 @@ compact_poisson_rhs(Field f)
 	//accuracy because of the prefactors but for now let us be accurate
 	h2 = AC_ds_2.x
 	h4 = AC_ds_4.x
-	return f + (h2/12.0)*laplace(f) + (h4/360.0)*del4(f)
+	return f + (h2/12.0)*laplace(f) + (h4/360.0)*biharmonic(f)
 	       + (h4/180.0)*(der2x2y(f) + der2y2z(f) + der2x2z(f))
 }
 #else
