@@ -408,6 +408,15 @@ main(int argc, char* argv[])
 		const AcReal time = end_time-start_time;
 		fprintf(stderr,"Applying prototype smoother took: %.14e milliseconds\n",1000*(time));
 	}
+	{
+		acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
+  		const auto smoother = acGetOptimizedDSLTaskGraph(gmg_prototype_smoother_v2);
+		const AcReal start_time = MPI_Wtime();
+  		acGridExecuteTaskGraph(smoother,1); //Pre-smooth step
+		const AcReal end_time = MPI_Wtime();
+		const AcReal time = end_time-start_time;
+		fprintf(stderr,"Applying prototype smoother v2 took: %.14e milliseconds\n",1000*(time));
+	}
     }
     int retval = AC_SUCCESS;
     acGridQuit();
