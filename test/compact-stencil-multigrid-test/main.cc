@@ -387,7 +387,27 @@ main(int argc, char* argv[])
     	fprintf(stderr,"Final residual: %14e\n",residual);
     	fprintf(stderr,"Took %d steps\n",n_steps);
 	fprintf(stderr,"Asymptotic convergence factor: %.14e\n",pow(residual/init_residual,1.0/n_steps));
-	fprintf(stderr,"On average a single V cycle took: %.14e seconds\n",sum_time/n_steps);
+	fprintf(stderr,"On average a single V cycle took: %.14e milliseconds\n",1000*(sum_time/n_steps));
+
+	{
+		acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
+  		const auto smoother = acGetOptimizedDSLTaskGraph(gmg_optimized_smoother);
+		const AcReal start_time = MPI_Wtime();
+  		acGridExecuteTaskGraph(smoother,1); //Pre-smooth step
+		const AcReal end_time = MPI_Wtime();
+		const AcReal time = end_time-start_time;
+		fprintf(stderr,"Applying smoother took: %.14e milliseconds\n",1000*(time));
+	}
+
+	{
+		acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
+  		const auto smoother = acGetOptimizedDSLTaskGraph(gmg_prototype_smoother);
+		const AcReal start_time = MPI_Wtime();
+  		acGridExecuteTaskGraph(smoother,1); //Pre-smooth step
+		const AcReal end_time = MPI_Wtime();
+		const AcReal time = end_time-start_time;
+		fprintf(stderr,"Applying prototype smoother took: %.14e milliseconds\n",1000*(time));
+	}
     }
     int retval = AC_SUCCESS;
     acGridQuit();
