@@ -38,7 +38,7 @@ acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
    const Volume m1 = to_volume(info[vtxbuf_dims[vtxbuf]]);
    const Volume n1 = m1-n0;
    const Volume m0 = (Volume){0, 0, 0};
-   const Volume nn = m1-n0*2;
+   const Volume nn = (m1 <= n0*2) ? m1 : m1-n0*2;
    const Volume reduction_tile = (Volume)
    {
 	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
@@ -264,7 +264,6 @@ acVBACreate(const AcMeshInfo config)
   size_t out_bytes = 0;
   for(int i = 0; i  < NUM_FIELDS; ++i)
   {
-	if(config[vtxbuf_dims[i]].x <= 2*NGHOST) continue;
   	vba.dims[i]    = acGetMeshDims(config,Field(i));
   	size_t count = vba.dims[i].m1.x*vba.dims[i].m1.y*vba.dims[i].m1.z;
   	size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
