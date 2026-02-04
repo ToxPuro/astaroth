@@ -590,7 +590,7 @@ Kernel gmg_optimized_prototype_smoother_kernel_v2(GMG_LEVEL level)
 {
 	Field u = GMG_SOLUTIONS[level]
 	Field b = GMG_RHS[level]
-	write(u,b-gmg_laplace(u,level) - dummy_r2_stencil(b,level) + dummy_r3_stencil(u))
+	write(u,b-gmg_laplace(u,level) - dummy_r2_stencil(b) + dummy_r3_stencil(u))
 }
 
 ComputeSteps
