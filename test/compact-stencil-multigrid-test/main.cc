@@ -368,9 +368,9 @@ main(int argc, char* argv[])
 	const AcReal init_residual = residual;
     	int n_steps = 0;
 
-	const AcReal relative_threshold = 1e-14;
+	//const AcReal relative_threshold = 1e-14;
 	AcReal sum_time = 0.0;
-	//const AcReal relative_threshold = 10e-1;
+	const AcReal relative_threshold = 5.5e-2;
     	while(residual > 1e-8)
     	{
 	    const AcReal start_time = MPI_Wtime();
