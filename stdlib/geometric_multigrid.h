@@ -57,7 +57,7 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     AcMesh mesh{};
     acHostMeshCreate(info,&mesh);
     const AcReal h2_inv = info[AC_inv_ds_2].x/std::pow(4,level);
-    const std::array<Stencil,5> galerkin_operator_stencils_r1 = 
+    const std::array<Stencil,11> galerkin_operator_stencils_r1 = 
     {
     	(Stencil)0,
     	stencil_gmg_laplace_level_1_r1,
