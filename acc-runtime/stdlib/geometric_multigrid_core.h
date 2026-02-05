@@ -359,17 +359,21 @@ input GMG_LEVEL AC_GMG_LEVEL
 
 Kernel gmg_restrict_residual_kernel(GMG_LEVEL level)
 {
-	if(level == AC_gmg_maximum_level) return
-	restrict_full_weighting(GMG_RESIDUALS[level],GMG_RHS[level+1],get_global_gmg_level_dims(level))
-	//The residual is most likely small so zero is a meaningful starting value
-	write(GMG_SOLUTIONS[level+1],0.0)
+	if(level < AC_gmg_maximum_level) 
+	{
+		restrict_full_weighting(GMG_RESIDUALS[level],GMG_RHS[level+1],get_global_gmg_level_dims(level))
+		//The residual is most likely small so zero is a meaningful starting value
+		write(GMG_SOLUTIONS[level+1],0.0)
+	}
 }
 
 Kernel gmg_get_correction_from_next_level_kernel(GMG_LEVEL level)
 {
-	if(level == AC_gmg_maximum_level) return
-	e = trilinear_prolongation(GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
-	write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level]+e)
+	if(level < AC_gmg_maximum_level)
+	{
+		e = trilinear_prolongation(GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
+		write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level]+e)
+	}
 }
 
 ComputeSteps

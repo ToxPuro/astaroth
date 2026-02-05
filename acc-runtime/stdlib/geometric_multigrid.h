@@ -2429,8 +2429,10 @@ Kernel gmg_copy_rhs_to_residual_kernel(GMG_LEVEL level)
 
 Kernel gmg_restrict_solution_kernel(GMG_LEVEL level)
 {
-	if((int)level == AC_gmg_maximum_level) return
-	restrict_full_weighting(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
+	if((int)level < AC_gmg_maximum_level)
+	{
+		restrict_full_weighting(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
+	}
 }
 
 
@@ -2488,9 +2490,11 @@ gmg_poisson_sor_red_black(int color, int level, real omega)
 
 Kernel gmg_prolong_solution_kernel(GMG_LEVEL level)
 {
-	if((int)level == AC_gmg_maximum_level) return
-	e = trilinear_prolongation(GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
-	write(GMG_SOLUTIONS[level],e)
+	if((int)level < AC_gmg_maximum_level) 
+	{
+		e = trilinear_prolongation(GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
+		write(GMG_SOLUTIONS[level],e)
+	}
 }
 
 ComputeSteps
