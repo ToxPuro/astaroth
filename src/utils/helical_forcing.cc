@@ -4,7 +4,6 @@
 #include <complex>
 #include <cstdlib>
 #include <iostream>
-#include <numbers>
 #include <random>
 
 #include "astaroth_random.h"

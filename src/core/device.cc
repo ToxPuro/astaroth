@@ -469,6 +469,34 @@ std::vector<std::vector<int>> generateIndexRange(const std::vector<size_t>& dime
     return result;
 }
 
+static size_t
+column_major_index(const std::vector<int>& indexes, std::vector<size_t> sizes)
+{
+	const int n_dims = (int)sizes.size();
+	size_t res = 0;
+	size_t coeff = 1;
+	for(int i = 0; i < n_dims; ++i)
+	{
+		res += coeff*indexes[i];
+		coeff *= sizes[i];
+	}
+	return res;
+}
+static size_t
+row_major_index(const std::vector<int>& indexes, std::vector<size_t> sizes)
+{
+	const int n_dims = (int)sizes.size();
+	size_t res = 0;
+	size_t coeff = 1;
+	for(int i = n_dims-1; i >= 0; --i)
+	{
+		res += coeff*indexes[i];
+		coeff *= sizes[i];
+	}
+	return res;
+};
+
+
 template <typename P, typename V>
 static AcResult
 acDeviceStoreUniform(const Device device, const Stream stream, const P param, V* value)
@@ -476,44 +504,17 @@ acDeviceStoreUniform(const Device device, const Stream stream, const P param, V*
 	acSetDevice(device->id);
 	if constexpr (IsArrayParam(param))
 	{
-		auto column_to_row_order = [](const P array, const AcMeshInfo host_info, auto* src, auto* dst)
-		{
-			const int n_dims       = get_array_n_dims(array);
-			const auto sizes_array = get_array_dim_sizes(array,host_info);
-			std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
-			auto column_major_index = [&](const auto& indexes)
-			{
-				size_t res = 0;
-				size_t coeff = 1;
-				for(int i = 0; i < n_dims; ++i)
-				{
-					res += coeff*indexes[i];
-					coeff *= sizes[i];
-				}
-				return res;
-			};
-			auto row_major_index = [&](const auto& indexes)
-			{
-				size_t res = 0;
-				size_t coeff = 1;
-				for(int i = n_dims-1; i >= 0; --i)
-				{
-					res += coeff*indexes[i];
-					coeff *= sizes[i];
-				}
-				return res;
-			};
-			auto index_range = generateIndexRange(sizes);
-			for(const auto& index : index_range)
-				dst[row_major_index(index)] = src[column_major_index(index)];
-		};
 		const size_t len = get_array_length(param,device->local_config);
 		V* dst = device->local_config[AC_host_has_row_memory_order] ? (V*)malloc(sizeof(V)*len) : value;
 		ERRCHK_ALWAYS(acStoreUniform(param, dst, len) == AC_SUCCESS);
 		if(device->local_config[AC_host_has_row_memory_order])
 		{
-			column_to_row_order(param,device->local_config,dst,value);
-			free(dst);
+			const int n_dims       = get_array_n_dims(param);
+			const auto sizes_array = get_array_dim_sizes(param,device->local_config);
+			std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
+			auto index_range = generateIndexRange(sizes);
+			for(const auto& index : index_range)
+				dst[row_major_index(index,sizes)] = value[column_major_index(index,sizes)];
 		}
 		return AC_SUCCESS;
 	}
@@ -557,31 +558,9 @@ acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo hos
 		const int n_dims       = get_array_n_dims(array);
 		const auto sizes_array = get_array_dim_sizes(array,host_info);
 		std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
-		auto column_major_index = [&](const auto& indexes)
-		{
-			size_t res = 0;
-			size_t coeff = 1;
-			for(int i = 0; i < n_dims; ++i)
-			{
-				res += coeff*indexes[i];
-				coeff *= sizes[i];
-			}
-			return res;
-		};
-		auto row_major_index = [&](const auto& indexes)
-		{
-			size_t res = 0;
-			size_t coeff = 1;
-			for(int i = n_dims-1; i >= 0; --i)
-			{
-				res += coeff*indexes[i];
-				coeff *= sizes[i];
-			}
-			return res;
-		};
 		auto index_range = generateIndexRange(sizes);
 		for(const auto& index : index_range)
-			dst[column_major_index(index)] = src[row_major_index(index)];
+			dst[column_major_index(index,sizes)] = src[row_major_index(index,sizes)];
 		return dst;
 	};
 

@@ -1344,6 +1344,8 @@ template <typename P, typename V>
 void
 acPushToConfig(AcMeshInfo& config, P param, V val)
 {
+	(void)param;
+	(void)val;
         if constexpr(IsCompParam<P>())
         {
         	  config.run_consts.config[param] = val;
