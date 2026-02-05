@@ -93,9 +93,9 @@ grid_xyz() {
 
 
 grid_position(int3 local_point) {
-    	global_point = (local_point-AC_nmin) + AC_multigpu_offset
 	if(AC_equidistant_in_all_directions)
 	{
+    		global_point = (local_point-AC_nmin) + AC_multigpu_offset
     		return global_point*AC_ds + AC_first_gridpoint
 	}
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
@@ -124,14 +124,13 @@ grid_position(int3 local_point) {
 }
 
 grid_position_extended(int3 local_point) {
-    global_point = local_point + AC_multigpu_offset
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
 	{
 		return 
 			real3(
-				AC_x[global_point.x],
-				AC_y[global_point.y],
-				AC_z[global_point.z]
+				AC_x[local_point.x],
+				AC_y[local_point.y],
+				AC_z[local_point.z]
 			     )
 	}
     	else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
