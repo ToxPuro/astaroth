@@ -2643,7 +2643,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
     //
     //TP: In theory doing the vertex buffer dependencies in this manner would be also more precise but there is not really a an actual use case where it would help
     //so postponed until it would actually help
-    const auto profile_overlap = [&](const auto preq_task, const auto dept_task)
+    const auto profile_overlap = [&kernel_analysis_info,&profile_overlap_in_regions](const auto preq_task, const auto dept_task)
     {
 	if(dept_task->isComputeTask() && preq_task->isComputeTask())
 	{
