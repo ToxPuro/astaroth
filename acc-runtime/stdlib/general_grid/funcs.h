@@ -102,18 +102,18 @@ grid_position(int3 local_point) {
 	{
 		return 
 			real3(
-				AC_x[global_point.x],
-				AC_y[global_point.y],
-				AC_z[global_point.z]
+				AC_x[local_point.x],
+				AC_y[local_point.y],
+				AC_z[local_point.z]
 			     )
 	}
     	else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
 		return 
 			real3(
-				AC_r[global_point.x],
-				AC_theta[global_point.y],
-				AC_phi[global_point.z]
+				AC_r[local_point.x],
+				AC_theta[local_point.y],
+				AC_phi[local_point.z]
 			     )
 	}
 	else
@@ -138,9 +138,9 @@ grid_position_extended(int3 local_point) {
 	{
 		return 
 			real3(
-				AC_r_extended[global_point.x],
-				AC_theta[global_point.y],
-				AC_phi[global_point.z]
+				AC_r_extended[local_point.x],
+				AC_theta[local_point.y],
+				AC_phi[local_point.z]
 			     )
 	}
 	else
