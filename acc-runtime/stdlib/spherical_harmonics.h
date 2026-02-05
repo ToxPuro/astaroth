@@ -287,7 +287,7 @@ multipole_expansion_bc_outer(AcBoundary boundary_region, Field f, real G)
         for l in 0:AC_n_spherical_harmonics
         {
             r_factor = 1.0/r
-            for i in 0:l
+            for k in 0:l
             {
                 r_factor /= r
             }
@@ -322,7 +322,7 @@ multipole_expansion_bc_outer_extended(AcBoundary boundary_region, Field f, real 
         for l in 0:AC_n_spherical_harmonics
         {
             r_factor = 1.0/r
-            for i in 0:l
+            for k in 0:l
             {
                 r_factor /= r
             }
