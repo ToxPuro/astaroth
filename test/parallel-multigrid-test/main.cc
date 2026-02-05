@@ -110,21 +110,8 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
     
-    const int nxgrid = 63;
-    const int nygrid = 63;
-    const int nzgrid = 63;
-    acSetGridMeshDims(nxgrid,nygrid,nzgrid, &info);
-    const int3 decomp = acDecompose(nprocs,info);
-    int nx = (1+nxgrid)/decomp.x;
-    int ny = (1+nygrid)/decomp.y;
-    int nz = (1+nzgrid)/decomp.z;
-    const int3 pid3d = acGetPid3D(pid, decomp, info);
-    if(pid3d.x == decomp.x-1) nx--;
-    if(pid3d.y == decomp.y-1) ny--;
-    if(pid3d.z == decomp.z-1) nz--;
-    acPushToConfig(info,AC_power_of_two_minus_one_grid,true);
-    acPushToConfig(info,AC_allow_non_divisible_grid,true);
-    acSetLocalMeshDims(nx,ny,nz,&info);
+    acPushToConfig(info,AC_ngrid,(int3){63,63,63});
+    gmg_setup_parallel_grid_decomposition(&info);
 
 //    fprintf(stderr,"%d Local Mesh: (%d,%d,%d)\n"
 //		    ,pid

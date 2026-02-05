@@ -346,3 +346,25 @@ gmg_v_cycle(const int number_of_levels, const AcReal relative_residual_tolerance
 {
 	gmg_level_step(0,number_of_levels,relative_residual_tolerance);
 }
+void
+gmg_setup_parallel_grid_decomposition(AcMeshInfo* dst)
+{
+
+    const int nxgrid = (*dst)[AC_ngrid].x;
+    const int nygrid = (*dst)[AC_ngrid].y;
+    const int nzgrid = (*dst)[AC_ngrid].z;
+    acUpdateDecompositionParams(dst);
+
+    const int3 decomp = (*dst)[AC_domain_decomposition];
+    int nx = (1+nxgrid)/decomp.x;
+    int ny = (1+nygrid)/decomp.y;
+    int nz = (1+nzgrid)/decomp.z;
+    acSetGridMeshDims(nxgrid,nygrid,nzgrid, dst);
+    const int3 pid3d = (*dst)[AC_domain_coordinates];
+    if(pid3d.x == decomp.x-1) nx--;
+    if(pid3d.y == decomp.y-1) ny--;
+    if(pid3d.z == decomp.z-1) nz--;
+    acPushToConfig((*dst),AC_power_of_two_minus_one_grid,true);
+    acPushToConfig((*dst),AC_allow_non_divisible_grid,true);
+    acSetLocalMeshDims(nx,ny,nz,dst);
+}
