@@ -247,12 +247,10 @@ main(void)
     #endif
 
     AcMesh model, candidate;
-    if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
-    }
+    acHostMeshCreate(info, &model);
+    acHostMeshCreate(info, &candidate);
+    acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
 
     acGridInit(info);
     acDeviceSetInput(acGridGetDevice(),AC_SOR_omega,1.8);
