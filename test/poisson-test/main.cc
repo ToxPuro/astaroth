@@ -335,8 +335,6 @@ main(void)
     **/
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
 
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
-
 
     int retval = AC_SUCCESS;
     if(residual_norm > 4e-8)
