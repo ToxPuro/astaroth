@@ -1020,7 +1020,7 @@ laplace_neighbours_extended(Field s, real3 inv_spacings_2) {
     }
     return del2f
 }
-
+#endif
 /**
  * Calculates biharmonic operator delta(delta(s))
  */
@@ -1034,40 +1034,5 @@ biharmonic(Field s) {
 	    + 2*(der2x2y(s) + der2y2z(s) + der2x2z(s))
 }
 
-/**
- * Computes the rhs needed when solving the Poisson equation
- * with a compact stencil (e.g. radius 1 stencil for 6th order Laplacian).
- * Requires isotropic spacing.
- * See reference: A High-Order Compact Formulation for the 3D Poisson Equation.
- * For test case see test/compact-poisson-test
- */
-#if STENCIL_ORDER == 6
-compact_poisson_rhs(Field f)
-{
-	//Assumes equidistant grid
-	//Derivative terms of f are not necessarily needed to be computed to h^6
-	//accuracy because of the prefactors but for now let us be accurate
-	h2 = AC_ds_2.x
-	h4 = AC_ds_4.x
-	return f + (h2/12.0)*laplace(f) + (h4/360.0)*biharmonic(f)
-	       + (h4/180.0)*(der2x2y(f) + der2y2z(f) + der2x2z(f))
-}
-#else
-#if STENCIL_ORDER == 4
-compact_poisson_rhs(Field f)
-{
-	//Assumes equidistant grid
-	//Derivative terms of f are not necessarily needed to be computed to h^6
-	//accuracy because of the prefactors but for now let us be accurate
-	h2 = AC_ds_2.x
-	return f + (h2/12.0)*laplace(f)
-}
-#else
-compact_poisson_rhs(Field f)
-{
-  	fatal_error_message(true,"Compact stencils for Poisson exist only for sixth-order and fourth-order!\n");
-	return 0.0
-}
-#endif
-#endif
-#endif
+#include "$AC_HOME/acc-runtime/stdlib/compact_operators.h"
+

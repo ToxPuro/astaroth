@@ -7,19 +7,6 @@ hostdefine AC_GENERAL_DERIVS_ENABLED (1)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
 
-//Sixth-order values.
-//To be redefined by other orders
-#define COMPACT_POISSON_CENTRAL (-128.0/30.0)
-#define COMPACT_POISSON_FACE (14.0/30.0)
-#define COMPACT_POISSON_DIAGONAL (3.0/30.0)
-#define COMPACT_POISSON_CUBICAL (1.0/30.0)
-
-#define COMPACT_POISSON_4TH_ORDER_CENTRAL (-24.0/6.0)
-#define COMPACT_POISSON_4TH_ORDER_FACE (2.0/6.0)
-#define COMPACT_POISSON_4TH_ORDER_DIAGONAL (1.0/6.0)
-#define COMPACT_POISSON_4TH_ORDER_CUBICAL (0.0)
-
-
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)
 #define DER6UPWD_1 ( 15. / 60.)
@@ -554,16 +541,6 @@ derzz_neighbours_stencil(Field f)
 	fatal_error_message(true,"derzz_neighbours_stencil not implemented with order 4!\n");
 	return 0.0
 }
-//Redefining the sixth-order coeffs to 4th order
-#undef COMPACT_POISSON_CENTRAL
-#undef COMPACT_POISSON_FACE
-#undef COMPACT_POISSON_DIAGONAL
-#undef COMPACT_POISSON_CUBICAL
-
-#define COMPACT_POISSON_CENTRAL COMPACT_POISSON_4TH_ORDER_CENTRAL
-#define COMPACT_POISSON_FACE    COMPACT_POISSON_4TH_ORDER_FACE
-#define COMPACT_POISSON_DIAGONAL COMPACT_POISSON_4TH_ORDER_DIAGONAL
-#define COMPACT_POISSON_CUBICAL COMPACT_POISSON_4TH_ORDER_CUBICAL
 
 #undef DER1_2
 #undef DER1_1
@@ -4071,126 +4048,3 @@ der2y2z(Field f)
 //	return res;
 //}
 //
-/**
- * Computes the lhs needed when solving the Poisson equation
- * with a compact stencil (e.g. radius 1 stencil for 6th order Laplacian).
- * Requires isotropic spacing.
- * See reference: A High-Order Compact Formulation for the 3D Poisson Equation.
- * For test case see test/compact-poisson-test
- */
-Stencil compact_poisson_lhs
-{
-	[ 0][ 0][ 0]  = (COMPACT_POISSON_CENTRAL)*AC_inv_ds_2.x,
-	[ 0][ 0][ 1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[ 0][ 0][-1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[ 0][ 1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[ 0][-1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[ 1][ 0][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[-1][ 0][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-
-	[-1][-1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][-1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[-1][ 1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-
-	[-1][ 0][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 0][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[-1][ 0][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 0][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-
-	[ 0][-1][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][ 1][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][-1][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][ 1][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-
-	[-1][-1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[-1][-1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[-1][ 1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[-1][ 1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][-1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][-1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][ 1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][ 1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x
-}
-
-Stencil compact_poisson_lhs_4th_order
-{
-	[ 0][ 0][ 0]  = (COMPACT_POISSON_4TH_ORDER_CENTRAL)*AC_inv_ds_2.x,
-	[ 0][ 0][ 1]  = (COMPACT_POISSON_4TH_ORDER_FACE)*AC_inv_ds_2.x,
-	[ 0][ 0][-1]  = (COMPACT_POISSON_4TH_ORDER_FACE)*AC_inv_ds_2.x,
-	[ 0][ 1][ 0]  = (COMPACT_POISSON_4TH_ORDER_FACE)*AC_inv_ds_2.x,
-	[ 0][-1][ 0]  = (COMPACT_POISSON_4TH_ORDER_FACE)*AC_inv_ds_2.x,
-	[ 1][ 0][ 0]  = (COMPACT_POISSON_4TH_ORDER_FACE)*AC_inv_ds_2.x,
-	[-1][ 0][ 0]  = (COMPACT_POISSON_4TH_ORDER_FACE)*AC_inv_ds_2.x,
-
-	[-1][-1][ 0]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][-1][ 0]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[-1][ 1][ 0]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 1][ 0]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-
-	[-1][ 0][-1]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 0][-1]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[-1][ 0][ 1]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 0][ 1]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-
-	[ 0][-1][-1]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][ 1][-1]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][-1][ 1]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][ 1][ 1]  = (COMPACT_POISSON_4TH_ORDER_DIAGONAL)*AC_inv_ds_2.x,
-
-	[-1][-1][-1]  = (COMPACT_POISSON_4TH_ORDER_CUBICAL)*AC_inv_ds_2.x,
-	[-1][-1][ 1]  = (COMPACT_POISSON_4TH_ORDER_CUBICAL)*AC_inv_ds_2.x,
-	[-1][ 1][-1]  = (COMPACT_POISSON_4TH_ORDER_CUBICAL)*AC_inv_ds_2.x,
-	[-1][ 1][ 1]  = (COMPACT_POISSON_4TH_ORDER_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][-1][-1]  = (COMPACT_POISSON_4TH_ORDER_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][-1][ 1]  = (COMPACT_POISSON_4TH_ORDER_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][ 1][-1]  = (COMPACT_POISSON_4TH_ORDER_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][ 1][ 1]  = (COMPACT_POISSON_4TH_ORDER_CUBICAL)*AC_inv_ds_2.x
-}
-
-/**
- * The same as compact_poisson_lhs
- * (Useful for Jacobi or SOR).
- */
-Stencil compact_poisson_lhs_neighbours
-{
-	[ 0][ 0][ 1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[ 0][ 0][-1]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[ 0][ 1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[ 0][-1][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[ 1][ 0][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-	[-1][ 0][ 0]  = (COMPACT_POISSON_FACE)*AC_inv_ds_2.x,
-
-	[-1][-1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][-1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[-1][ 1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 1][ 0]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-
-	[-1][ 0][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 0][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[-1][ 0][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 1][ 0][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-
-	[ 0][-1][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][ 1][-1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][-1][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-	[ 0][ 1][ 1]  = (COMPACT_POISSON_DIAGONAL)*AC_inv_ds_2.x,
-
-	[-1][-1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[-1][-1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[-1][ 1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[-1][ 1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][-1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][-1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][ 1][-1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x,
-	[ 1][ 1][ 1]  = (COMPACT_POISSON_CUBICAL)*AC_inv_ds_2.x
-}
-
-/**
- * The central coefficient of the compact Poisson matrix
- * used for Jacobi or SOR
- */
-compact_poisson_lhs_central_coeff()
-{
-	return (COMPACT_POISSON_CENTRAL)*AC_inv_ds_2.x
-}
