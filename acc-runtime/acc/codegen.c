@@ -5122,7 +5122,9 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, travers
 static inline void
 traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 {
-	traverse_base(node,exclude,stream,(traverse_base_params){});
+	traverse_base_params params;
+	memset(&params,0,sizeof(params));
+	traverse_base(node,exclude,stream,params);
 }
 
 func_params_info
@@ -6302,6 +6304,8 @@ gen_names_variadic(const char* datatype, const string_vec types, FILE* fp)
 	fprintf(fp,"static const char* %s_names[] __attribute__((unused)) = {",datatype);
 	for(size_t i = 0; i < names.size; ++i)
   		fprintf(fp, "\"%s\",", names.data[i]);
+	//TP: add padding that in case there are 0 instances of the datatype to not get constant compiler warnings
+	fprintf(fp,"\"padding\",");
 	fprintf(fp,"};\n");
 	free_str_vec(&names);
 }
@@ -11360,7 +11364,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   	symboltable_reset();
   	traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
-  	char** dfunc_strs = get_dfunc_strs(root,(traverse_base_params){});
+	traverse_base_params params;
+	memset(&params,0,sizeof(params));
+  	char** dfunc_strs = get_dfunc_strs(root,params);
   	// Kernels
   	symboltable_reset();
   	gen_kernels(root, dfunc_strs, gen_mem_accesses);

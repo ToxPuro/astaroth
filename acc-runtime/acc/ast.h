@@ -327,16 +327,16 @@ astnode_sprintf_prefix(ASTNode* node, const char* format, ...)
 static inline void
 astnode_print(const ASTNode* node)
 {
-  printf("%u (%p)\n", node->type, node);
+  printf("%u (%p)\n", node->type, (void*)node);
   printf("\tid:      %d\n", node->id);
-  printf("\tparent:  %p\n", node->parent);
-  printf("\tlhs:     %p\n", node->lhs);
-  printf("\trhs:     %p\n", node->rhs);
+  printf("\tparent:  %p\n", (void*)node->parent);
+  printf("\tlhs:     %p\n", (void*)node->lhs);
+  printf("\trhs:     %p\n", (void*)node->rhs);
   printf("\tbuffer:  %s\n", node->buffer);
   printf("\ttoken:   %d\n", node->token);
-  printf("\tprefix:  %p (\"%s\")\n", node->prefix, node->prefix);
-  printf("\tinfix:   %p (\"%s\")\n", node->infix, node->infix);
-  printf("\tpostfix: %p (\"%s\")\n", node->postfix, node->postfix);
+  printf("\tprefix:  %p (\"%s\")\n", (void*)node->prefix, node->prefix);
+  printf("\tinfix:   %p (\"%s\")\n", (void*)node->infix, node->infix);
+  printf("\tpostfix: %p (\"%s\")\n", (void*)node->postfix, node->postfix);
 }
 
 
