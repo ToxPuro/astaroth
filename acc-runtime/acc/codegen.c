@@ -6201,9 +6201,7 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     gen_kernels_recursive(node->lhs, dfunctions, gen_mem_accesses,curr_kernel);
   if (node->type & NODE_KFUNCTION) {
 
-    const size_t len = 64 * 1024 * 1024;
-    char* prefix     = malloc(len);
-    assert(prefix);
+    static char prefix[64*1024*1024];
     prefix[0] = '\0';
 
     const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
@@ -6216,7 +6214,7 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     strcat(prefix, compound_statement->prefix);
 
     // Generate stencil FMADs
-    char* cmdoptions = malloc(sizeof(char)*4096);
+    static char cmdoptions[4096];
     cmdoptions[0] = '\0';
     if (gen_mem_accesses) {
       sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
@@ -6249,8 +6247,6 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     free_int_vec(&topological_order);
 
     astnode_set_prefix(prefix, compound_statement);
-    free(prefix);
-    free(cmdoptions);
   }
 
 
