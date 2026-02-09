@@ -2368,7 +2368,7 @@ gmg_laplace_neighbours_level_4
 }
 
 run_const bool AC_use_coarse_galerkin_operators = true
-gmg_get_fine_level_operator(Field f)
+gmg_get_fine_grid_operator(Field f)
 {
 	if(AC_compact_poisson)
 	{
