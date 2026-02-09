@@ -10951,14 +10951,6 @@ generate_executed_nodes(ASTNode* root, bool gen_mem_accesses, FILE* stream)
   get_executed_nodes(0);
   while(eliminated_something)
   {
-  	clean_stream(stream);
-
-  	symboltable_reset();
-    	traverse(root,
-   		NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
-       		NODE_HOSTDEFINE | NODE_NO_OUT,
-   	stream);
-  	fflush(stream);
   	eliminated_something = eliminate_conditionals(root,gen_mem_accesses);
   	gen_constexpr_info(root,gen_mem_accesses);
   }
