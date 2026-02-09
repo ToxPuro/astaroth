@@ -1,0 +1,5 @@
+add_subdirectory(multigrid-test)
+add_subdirectory(parallel-multigrid-test)
+add_subdirectory(line-smoother-multigrid-test)
+add_subdirectory(compact-stencil-multigrid-test)
+add_subdirectory(anisotropic-test)
