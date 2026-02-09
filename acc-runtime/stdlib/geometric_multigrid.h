@@ -2368,6 +2368,18 @@ gmg_laplace_neighbours_level_4
 }
 
 run_const bool AC_use_coarse_galerkin_operators = true
+gmg_get_fine_level_operator(Field f)
+{
+	if(AC_compact_poisson)
+	{
+		if(AC_poisson_order == 4)
+		{
+			return compact_poisson_lhs_4th_order(f)
+		}
+		return compact_poisson_lhs(f)
+	}
+	return laplace(f)
+}
 gmg_laplace(Field f, int level)
 {
 	if(!AC_use_coarse_galerkin_operators) 
@@ -2375,8 +2387,7 @@ gmg_laplace(Field f, int level)
 		inv_spacing_2 = AC_inv_ds_2/pow(4,int(level))
 		return laplace(f,inv_spacing_2)
 	}
-	if(AC_compact_poisson && level == 0) return compact_poisson_lhs(f)
-	if(level == 0) return laplace(f)
+	if(level == 0) return gmg_get_fine_grid_operator(f)
 	if(AC_poisson_radius_1)
 	{
 		if(level == 1)  return gmg_laplace_level_1_r1(f)
@@ -2658,14 +2669,7 @@ ComputeSteps gmg_jacobi_smoother(gmg_boundconds)
 
 Kernel gmg_write_del2_kernel()
 {
-	if(AC_compact_poisson)
-	{
-		write(GMG_RESIDUALS[0],compact_poisson_lhs(GMG_SOLUTIONS[0]))
-	}
-	else
-	{
-		write(GMG_RESIDUALS[0],laplace(GMG_SOLUTIONS[0]))
-	}
+	write(GMG_RESIDUALS[0],gmg_get_fine_grid_operator(GMG_SOLUTIONS[0]))
 }
 
 

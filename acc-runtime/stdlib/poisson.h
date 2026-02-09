@@ -9,6 +9,7 @@
 
 input real AC_SOR_omega = 1.0
 run_const bool AC_compact_poisson = false;
+run_const int AC_poisson_order = STENCIL_ORDER
 #if STENCIL_ORDER == 2
 run_const int AC_laplacian_colors = 2
 run_const bool AC_poisson_radius_1  = true;

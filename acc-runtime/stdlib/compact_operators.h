@@ -169,9 +169,18 @@ compact_poisson_lhs_central_coeff()
  * See reference: A High-Order Compact Formulation for the 3D Poisson Equation.
  * For test case see test/compact-poisson-test
  */
+compact_poisson_rhs_4th_order(Field f)
+{
+	//Assumes equidistant grid
+	//Derivative terms of f are not necessarily needed to be computed to h^6
+	//accuracy because of the prefactors but for now let us be accurate
+	h2 = AC_ds_2.x
+	return f + (h2/12.0)*laplace(f)
+}
 #if STENCIL_ORDER == 6
 compact_poisson_rhs(Field f)
 {
+	if(AC_poisson_order == 4) return compact_poisson_rhs_4th_order(f)
 	//Assumes equidistant grid
 	//Derivative terms of f are not necessarily needed to be computed to h^6
 	//accuracy because of the prefactors but for now let us be accurate
@@ -184,11 +193,7 @@ compact_poisson_rhs(Field f)
 #if STENCIL_ORDER == 4
 compact_poisson_rhs(Field f)
 {
-	//Assumes equidistant grid
-	//Derivative terms of f are not necessarily needed to be computed to h^6
-	//accuracy because of the prefactors but for now let us be accurate
-	h2 = AC_ds_2.x
-	return f + (h2/12.0)*laplace(f)
+	return compact_poisson_rhs_4th_order(f)
 }
 #else
 #if STENCIL_ORDER == 2
