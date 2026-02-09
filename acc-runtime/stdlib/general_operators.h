@@ -1034,5 +1034,4 @@ biharmonic(Field s) {
 	    + 2*(der2x2y(s) + der2y2z(s) + der2x2z(s))
 }
 
-#include "$AC_HOME/acc-runtime/stdlib/compact_operators.h"
 

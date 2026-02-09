@@ -210,3 +210,6 @@ update_sor_omega_extended(Field omega)
 #endif
 #endif
 #endif
+
+#include "$AC_HOME/acc-runtime/stdlib/compact_poisson_operators.h"
+
