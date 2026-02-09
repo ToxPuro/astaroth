@@ -5053,7 +5053,7 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, travers
 	{
 		if(params.to_DSL && !strcmp(node->prefix,KERNEL_PREFIX))
 		{
-      			fprintf(stream, "\nKernel ");
+      			fprintf(stream, "%s", "\nKernel ");
 		}
  		else if(params.to_DSL && strstr(node->prefix,"AC_INTERNAL_ARRAY_LOOP_INDEX"))
                 {
