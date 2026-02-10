@@ -69,6 +69,7 @@ void strip_whitespace(char *str) {
 "Matrix"                { return MATRIX; }
 "AcMatrix"              { return MATRIX; }
 "Field"                 { return FIELD; }
+"FloatField"          { return FLOAT_FIELD; }
 "ComplexField"          { return COMPLEX_FIELD; }
 "VtxBuffer"                 { return VTXBUFFER; }
 "ComputeSteps"          {return COMPUTESTEPS; }

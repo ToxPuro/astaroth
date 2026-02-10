@@ -84,6 +84,7 @@ const char* FIELD3_STR      = NULL;
 const char* FIELD4_STR      = NULL;
 const char* PROFILE_STR      = NULL;
 const char* COMPLEX_FIELD_STR  = NULL;
+const char* FLOAT_FIELD_STR  = NULL;
 
 #include <hash.h>
 #include "ast.h"
@@ -696,6 +697,7 @@ populate_global_strings()
 	FIELD4_STR = intern("Field4");
 	PROFILE_STR = intern("Profile");
 	COMPLEX_FIELD_STR = intern("ComplexField");
+	FLOAT_FIELD_STR = intern("FloatField");
 
 	MULT_STR = intern("*");
 	PLUS_STR = intern("+");
@@ -760,7 +762,7 @@ main(int argc, char** argv)
 %token  NON_RETURNING_FUNC_CALL
 %token  BINARY_OP IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
 %token  ASSIGNOP QUESTION UNARY_OP
-%token  SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
+%token  SIZE_T INT UINT REAL MATRIX TENSOR FLOAT_FIELD COMPLEX_FIELD FIELD STENCIL PROFILE
 %token  BOOL INTRINSIC LONG_LONG LONG 
 %token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token  FIXED_BOUNDARY
@@ -823,6 +825,10 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
             else if (get_node_by_token(COMPLEX_FIELD, variable_definition)) {
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+            } 
+            else if (get_node_by_token(FLOAT_FIELD, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
@@ -965,6 +971,7 @@ matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 tensor: TENSOR { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcTensor", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 complex_field: COMPLEX_FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+float_field: FLOAT_FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("Stencil", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("return", $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
 kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("Kernel", $$); $$->token = 255 + yytoken; };
@@ -1050,6 +1057,7 @@ non_scalar_arr_types:
                  field            { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
                | struct_type      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
                | complex_field    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+               | float_field      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 type_specifier: 
 	        scalar_type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
 	      | scalar_type_specifier '[' ']' {
@@ -1068,6 +1076,7 @@ type_specifier:
   		}
               | field         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | complex_field { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | float_field   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | raytrace '(' expression_list ')' { $$ = astnode_create(NODE_TSPEC, $1, $3); }
               | enum_type    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }

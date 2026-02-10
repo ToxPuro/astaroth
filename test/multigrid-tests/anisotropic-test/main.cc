@@ -360,11 +360,16 @@ main(int argc, char* argv[])
     const AcReal relative_residual_tolerance = 1e-14;
     const auto jacobi_step = acGetOptimizedDSLTaskGraph(solve_anisotropic_with_jacobian);
     //const AcReal relative_residual_tolerance = 1.5e-1;
+    //
   
     fprintf(stderr,"GMG\n");
     {
 	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
     	const auto res_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
+        const auto init_y_line_smoother = acGetOptimizedDSLTaskGraph(initialize_y_line_smoother_res);
+        const auto y_line_smoother_step = acGetOptimizedDSLTaskGraph(y_line_smoother_jacobi_step);
+        const auto y_line_smoother_get_residual = acGetOptimizedDSLTaskGraph(y_line_smoother_residual_norm);
+        const auto y_line_smoother_finalize = acGetOptimizedDSLTaskGraph(y_line_smoother_update_solution);
     	acGridExecuteTaskGraph(initcond_graph,1);
     	acGridExecuteTaskGraph(res_graph,1);
     	AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
@@ -376,7 +381,21 @@ main(int argc, char* argv[])
     	{
 	    const AcReal start_time = MPI_Wtime();
             //gmg_v_cycle(n_levels,relative_residual_tolerance);
-	    acGridExecuteTaskGraph(jacobi_step,1);
+	    {
+		    acGridExecuteTaskGraph(init_y_line_smoother,1);
+		    acGridExecuteTaskGraph(y_line_smoother_get_residual,1);
+    	    	    const AcReal y_line_smoother_residual0 = acDeviceGetOutput(acGridGetDevice(),AC_line_smoother_y_residual_l2_norm);
+		    AcReal y_line_smoother_relative_residual = 1.0;
+		    while(y_line_smoother_relative_residual > 1e-12)
+		    {
+		    	acGridExecuteTaskGraph(y_line_smoother_step,1);
+		    	acGridExecuteTaskGraph(y_line_smoother_get_residual,1);
+			y_line_smoother_relative_residual = acDeviceGetOutput(acGridGetDevice(),AC_line_smoother_y_residual_l2_norm)/y_line_smoother_residual0;
+			fprintf(stderr,"Line smoother residual: %.14e\n",y_line_smoother_relative_residual);
+		    }
+		    acGridExecuteTaskGraph(y_line_smoother_finalize,1);
+	    }
+	    //acGridExecuteTaskGraph(jacobi_step,1);
 	    const AcReal end_time   = MPI_Wtime();
 	    sum_time += end_time-start_time;
     	    acGridExecuteTaskGraph(res_graph,1);

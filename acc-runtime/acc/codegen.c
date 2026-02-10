@@ -130,6 +130,7 @@ extern const char* FIELD3_STR     ;
 extern const char* FIELD4_STR     ;
 extern const char* PROFILE_STR;
 extern const char* COMPLEX_FIELD_STR;
+extern const char* FLOAT_FIELD_STR;
 
 
 
@@ -233,6 +234,7 @@ static int* field_has_ray_op     = NULL;
 static int* field_has_previous_call  = NULL;
 static size_t num_fields   = 0;
 static size_t num_complex_fields = 0;
+static size_t num_float_fields = 0;
 static size_t num_profiles = 0;
 static size_t num_kernels  = 0;
 static size_t num_dfuncs   = 0;
@@ -484,6 +486,7 @@ get_allocating_types()
 		push(&allocating_types,intern("Field"));
 		push(&allocating_types,intern("Field3"));
 		push(&allocating_types,intern("ComplexField"));
+		push(&allocating_types,intern("FloatField"));
 		push(&allocating_types,intern("Profile<X>"));
 		push(&allocating_types,intern("Profile<Y>"));
 		push(&allocating_types,intern("Profile<Z>"));
@@ -3198,7 +3201,7 @@ is_subtype(const char* a, const char* b)
 bool
 is_field_expr(const char* expr)
 {
-	return expr && (expr == COMPLEX_FIELD_STR || expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
+	return expr && (expr == FLOAT_FIELD_STR || expr == COMPLEX_FIELD_STR || expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
 }
 bool
 is_value_applicable_type(const char* expr)
@@ -5344,6 +5347,7 @@ get_binary_expr_type(const ASTNode* node)
 	const bool rhs_int   = rhs_res == INT_STR || rhs_res == BOOL_STR;
 	const char* res = 	
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,COMPLEX_FIELD_STR) || !strcmp(rhs_res,COMPLEX_FIELD_STR))   ? COMPLEX_STR  :
+		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FLOAT_FIELD_STR) || !strcmp(rhs_res,FLOAT_FIELD_STR))   ? FLOAT_STR  :
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD_STR) || !strcmp(rhs_res,FIELD_STR))   ? REAL_STR  :
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD3_STR) || !strcmp(rhs_res,FIELD3_STR)) ? REAL3_STR :
 		op && rhs_real && !strcmp(lhs_res,REAL3_STR) ? REAL3_STR :
@@ -5855,7 +5859,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	if(get_parent_node(NODE_GLOBAL,node))
 		return;
 	const char* type = get_expr_type(node->parent);
-	if(!type || strcmps(type,COMPLEX_FIELD_STR,FIELD_STR,FIELD3_STR,FIELD4_STR,"VertexBufferHandle"))
+	if(!type || strcmps(type,FLOAT_FIELD_STR,COMPLEX_FIELD_STR,FIELD_STR,FIELD3_STR,FIELD4_STR,"VertexBufferHandle"))
 		return;
 	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
 	if(!array_access || !is_left_child(NODE_ARRAY_ACCESS,node))	return;
@@ -5904,6 +5908,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 			const char* func =  		
 						type == FIELD4_STR ? "AC_INTERNAL_write_vtxbuf4(" :
 						type == FIELD3_STR ? "AC_INTERNAL_write_vtxbuf3(" : 
+						type == FLOAT_FIELD_STR ? "AC_INTERNAL_write_vtxbuf_float(" : 
 						type == COMPLEX_FIELD_STR ? "AC_INTERNAL_write_vtxbuf_complex(" : 
 						"AC_INTERNAL_write_vtxbuf(";
 			astnode_set_infix(func,lhs);
@@ -5919,6 +5924,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 			const char* func =
 						type == FIELD4_STR ? "AC_INTERNAL_read_vtxbuf4(" :
 						type == FIELD3_STR ? "AC_INTERNAL_read_vtxbuf3(" :
+						type == FLOAT_FIELD_STR ? "AC_INTERNAL_read_vtxbuf_float(" :
 						type == COMPLEX_FIELD_STR ? "AC_INTERNAL_read_vtxbuf_complex(" :
 						"AC_INTERNAL_read_vtxbuf(";
 			astnode_set_infix(func,lhs);
@@ -6150,6 +6156,8 @@ write_calling_info_for_stencilgen(const string_vec* stencils_called)
     write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_X_"),"reduce_sum_real_x_called");
     write_calling_info(fp,intern("value_AC_MANGLED_NAME__ComplexField"),"value_complex_called_statically");
     write_calling_info(fp,intern("write_AC_MANGLED_NAME__ComplexField_AcComplex"),"write_complex_called_statically");
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__FloatField"),"value_float_called_statically");
+    write_calling_info(fp,intern("write_AC_MANGLED_NAME__FloatField_AcReal"),"write_float_called_statically");
     write_calling_info(fp,intern("write_AC_MANGLED_NAME__Field_AcReal"),"write_base_called_statically");
     write_calling_info(fp,intern("previous_AC_MANGLED_NAME__Field"),"previous_called_statically");
     write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_Y_"),"reduce_sum_real_y_called");
@@ -6493,6 +6501,7 @@ gen_field_info(FILE* fp)
 {
   num_fields   = count_symbols(FIELD_STR);
   num_complex_fields   = count_symbols(COMPLEX_FIELD_STR);
+  num_float_fields   = count_symbols(FLOAT_FIELD_STR);
 
   // Enums
   int num_of_communicated_fields=0;
@@ -6565,6 +6574,13 @@ gen_field_info(FILE* fp)
 	  push(&complex_field_names,symbol_table[i].identifier);
 	}
   }
+  string_vec float_field_names = VEC_INITIALIZER;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
+    	if(symbol_table[i].tspecifier == FLOAT_FIELD_STR){
+	  push(&float_field_names,symbol_table[i].identifier);
+	}
+  }
   fprintf(fp,"static const int field_remappings[] = {");
   for(size_t field = 0; field < num_of_fields; ++field)
   {
@@ -6595,11 +6611,16 @@ gen_field_info(FILE* fp)
 	fprintf(fp_enums, "#define NUM_ALL_FIELDS (%ld)\n",num_of_fields);
   	fprintf(fp_enums, "#define NUM_DEAD_FIELDS (%ld)\n", num_of_fields-num_of_alive_fields);
   	fprintf(fp_enums, "#define NUM_COMMUNICATED_FIELDS (%d)\n", num_of_communicated_fields);
+
   	fprintf(fp_enums, "typedef enum {");
   	for(size_t i = 0; i < num_complex_fields; ++i)
   	        fprintf(fp_enums,"%s,",complex_field_names.data[i]);
-
   	fprintf(fp_enums, "NUM_COMPLEX_FIELDS} ComplexField;\n");
+
+  	fprintf(fp_enums, "typedef enum {");
+  	for(size_t i = 0; i < num_float_fields; ++i)
+  	        fprintf(fp_enums,"%s,",float_field_names.data[i]);
+  	fprintf(fp_enums, "NUM_FLOAT_FIELDS} FloatField;\n");
 	fclose(fp_enums);
   }
   fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
