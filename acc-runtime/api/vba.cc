@@ -272,7 +272,7 @@ acVBACreate(const AcMeshInfo config)
   	vba.dims[i]    = acGetMeshDims(config,Field(i));
   	size_t count = vba.dims[i].m1.x*vba.dims[i].m1.y*vba.dims[i].m1.z;
   	size_t bytes = vtxbuf_is_single_precision[i] 
-			        ? sizeof(vba.on_device.single_in[0][0]) * count;
+			        ? sizeof(vba.on_device.single_in[0][0]) * count
 				: sizeof(vba.on_device.in[0][0]) * count;
   	vba.counts[i]         = count;
   	vba.bytes[i]          = bytes;

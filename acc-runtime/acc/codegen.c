@@ -6611,6 +6611,7 @@ gen_field_info(FILE* fp)
   	for(size_t i = 0; i < num_complex_fields; ++i)
   	        fprintf(fp_enums,"%s,",complex_field_names.data[i]);
   	fprintf(fp_enums, "NUM_COMPLEX_FIELDS} ComplexField;\n");
+	fclose(fp_enums);
 
   }
   fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
@@ -6677,6 +6678,15 @@ gen_field_info(FILE* fp)
 
   fprintf(fp_vtxbuf_is_comm_func,"default: return false;\n");
   fprintf(fp_vtxbuf_is_comm_func, "}\n}\n");
+
+  fprintf(fp_vtxbuf_is_comm_func, "static __device__ const bool vtxbuf_device_is_single_precision[] = {");
+
+  for(size_t i = 0; i < num_of_fields; ++i)
+    if(field_is_single_precision[i])
+        fprintf(fp_vtxbuf_is_comm_func, "%s,", "true");
+    else
+        fprintf(fp_vtxbuf_is_comm_func, "%s,", "false");
+  fprintf(fp_vtxbuf_is_comm_func, "};");
 
   fclose(fp_vtxbuf_is_comm_func);
 
@@ -6949,6 +6959,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   	"\n// Redefined for backwards compatibility START\n"
   	"#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n"
   	"#define NUM_REAL_VTXBUF_HANDLES (NUM_REAL_FIELDS)\n"
+  	"#define NUM_SINGLE_PRECISION_VTXBUF_HANDLES (NUM_SINGLE_PRECISION_FIELDS)\n"
   	"typedef Field VertexBufferHandle;\n"
 	 );
   fprintf(fp, "static const char** vtxbuf_names __attribute__((unused)) = "

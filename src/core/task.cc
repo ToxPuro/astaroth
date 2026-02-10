@@ -1429,6 +1429,7 @@ HaloMessage::HaloMessage(size_t length_, const int tag0, const int tag_, const s
 	    bytes *= counterpart_ranks.size();
     }
     ERRCHK_CUDA_ALWAYS(acMalloc((void**)&data, bytes));
+    single_data = NULL;
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
     	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&data_pinned, bytes));
@@ -1760,7 +1761,7 @@ HaloExchangeTask::pack()
     	                         input_regions[0].memory.fields.size(),offset);
     }
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
-                             msg->data, input_regions[0].memory.fields.data(),
+                             msg->data, msg->single_data, input_regions[0].memory.fields.data(),
                              input_regions[0].memory.fields.size());
 }
 
@@ -2286,7 +2287,7 @@ PeriodicRayTask::pack()
 {
     auto msg = buffers.get_fresh_buffer();
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
-                             msg->data, input_regions[0].memory.fields.data(),
+                             msg->data, msg->single_data, input_regions[0].memory.fields.data(),
                              input_regions[0].memory.fields.size());
 }
 
@@ -2439,7 +2440,7 @@ MPIScanTask::pack()
 {
     auto msg = reduce_buffers.get_fresh_buffer();
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
-                             msg->data, input_regions[0].memory.fields.data(),
+                             msg->data, msg->single_data, input_regions[0].memory.fields.data(),
                              input_regions[0].memory.fields.size());
 }
 

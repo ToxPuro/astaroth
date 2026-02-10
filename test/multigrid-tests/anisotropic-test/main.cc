@@ -391,7 +391,7 @@ main(int argc, char* argv[])
 		    	acGridExecuteTaskGraph(y_line_smoother_step,1);
 		    	acGridExecuteTaskGraph(y_line_smoother_get_residual,1);
 			y_line_smoother_relative_residual = acDeviceGetOutput(acGridGetDevice(),AC_line_smoother_y_residual_l2_norm)/y_line_smoother_residual0;
-			fprintf(stderr,"Line smoother residual: %.14e\n",y_line_smoother_relative_residual);
+			//fprintf(stderr,"Line smoother residual: %.14e\n",y_line_smoother_relative_residual);
 		    }
 		    acGridExecuteTaskGraph(y_line_smoother_finalize,1);
 	    }

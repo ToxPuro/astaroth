@@ -253,6 +253,7 @@ typedef struct HaloMessage {
     HaloMessageType type;
     int length;
     AcRealPacked* data;
+    float* single_data;
     size_t bytes;
     AcRealPacked* data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
