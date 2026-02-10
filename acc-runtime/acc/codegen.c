@@ -6203,7 +6203,9 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     gen_kernels_recursive(node->lhs, dfunctions, gen_mem_accesses,curr_kernel);
   if (node->type & NODE_KFUNCTION) {
 
-    static char prefix[64*1024*1024];
+    const size_t len = 64 * 1024 * 1024;
+    char* prefix     = malloc(len);
+    assert(prefix);
     prefix[0] = '\0';
 
     const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
@@ -6216,7 +6218,7 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     strcat(prefix, compound_statement->prefix);
 
     // Generate stencil FMADs
-    static char cmdoptions[4096];
+    char* cmdoptions = malloc(sizeof(char)*4096);
     cmdoptions[0] = '\0';
     if (gen_mem_accesses) {
       sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
@@ -6236,19 +6238,22 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     int_vec topological_order = dfuncs_in_topological_order();
     for(size_t index = 0; index < num_dfuncs; ++index)
     {
-	    const int i = topological_order.data[index];
-	    const Symbol* dfunc_symbol = get_symbol_by_index(NODE_DFUNCTION_ID,i,0);
-	    if(!dfunc_symbol) continue;
-	    if(str_vec_contains(dfunc_symbol->tqualifiers,INLINE_STR)) continue;
-	    const int call_index = str_vec_get_index(calling_info.names,dfunc_symbol->identifier);
-	    if(int_vec_contains(called_dfuncs,call_index)) 
-	    {
-		    strcat(prefix,dfunctions[i]);
-	    }
+            const int i = topological_order.data[index];
+            const Symbol* dfunc_symbol = get_symbol_by_index(NODE_DFUNCTION_ID,i,0);
+            if(!dfunc_symbol) continue;
+            if(str_vec_contains(dfunc_symbol->tqualifiers,INLINE_STR)) continue;
+            const int call_index = str_vec_get_index(calling_info.names,dfunc_symbol->identifier);
+            if(int_vec_contains(called_dfuncs,call_index))
+            {
+                    strcat(prefix,dfunctions[i]);
+            }
     }
     free_int_vec(&topological_order);
 
     astnode_set_prefix(prefix, compound_statement);
+    free(prefix);
+    free(cmdoptions);
+
   }
 
 
