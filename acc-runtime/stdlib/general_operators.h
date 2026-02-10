@@ -1,3 +1,5 @@
+#ifndef AC_GENERAL_OPERATORS_H
+#define AC_GENERAL_OPERATORS_H
 /**
  * Calculates u·(∇f),
  * where f and u are vector fields
@@ -609,6 +611,10 @@ anisotropic_laplace(Field s, real3 coeffs)
 	fatal_error_message(AC_coordinate_system != AC_CARTESIAN_COORDINATES,"Anisotropic laplace only implemented in Cartesian!\n");
 	return coeffs.x*derxx(s) + coeffs.y*deryy(s) + coeffs.z*derzz(s)
 }
+
+anisotropic_laplace_central_coeff(real3 coeffs) {
+    return coeffs.x*derxx_central_coeff() + coeffs.y*deryy_central_coeff() + coeffs.z*derzz_central_coeff()
+}
 /**
  * Calculates laplacian of s given the squares of the inverse spacings.
  * Most likely only correct in Cartesian.
@@ -1040,4 +1046,4 @@ biharmonic(Field s) {
 	    + 2*(der2x2y(s) + der2y2z(s) + der2x2z(s))
 }
 
-
+#endif

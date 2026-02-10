@@ -18,7 +18,7 @@ Kernel init_kernel()
 	pos = grid_position()
 	val = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
 	write(GMG_INITIAL_RHS,val)
-	write(ANALYTICAL_SOLUTION,3.0*val)
+	write(ANALYTICAL_SOLUTION,(1.0/3.0)*val)
 	write(GMG_SOLUTIONS[0],AC_init_val)
 }
 
@@ -38,8 +38,59 @@ BoundConds gmg_boundconds{
 
 	ac_const_bc(BOUNDARY_XYZ,GMG_COARSE_CG_P,0.0)
 	ac_const_bc(BOUNDARY_XYZ,GMG_COARSE_CG_R,0.0)
+
+	ac_const_bc(BOUNDARY_XYZ,Y_LINE_SMOOTHER_RES,0.0)
 }
 
+Field Y_LINE_SMOOTHER_RES
+Kernel initialize_y_line_smoother_res_kernel()
+{
+	write(Y_LINE_SMOOTHER_RES,0.0)
+}
+ComputeSteps
+initialize_y_line_smoother_res(gmg_boundconds)
+{
+	initialize_y_line_smoother_res_kernel()
+}
+
+Kernel y_line_smoother_jacobi_step_kernel()
+{
+	Mx = -AC_gmg_poisson_coeffs.y*deryy_neighbours(Y_LINE_SMOOTHER_RES)
+	central_coeff = - 2*(AC_gmg_poisson_coeffs.x+AC_gmg_poisson_coeffs.y+AC_gmg_poisson_coeffs.z)
+	Ax = Mx + central_coeff*Y_LINE_SMOOTHER_RES
+	residual = GMG_RESIDUALS[0]-Ax
+	write(Y_LINE_SMOOTHER_RES, Y_LINE_SMOOTHER_RES + residual/central_coeff)
+}
+ComputeSteps
+y_line_smoother_jacobi_step(gmg_boundconds)
+{
+	y_line_smoother_jacobi_step_kernel()
+}
+output real AC_line_smoother_y_residual2
+Kernel y_line_smoother_residual_norm_kernel()
+{
+	Mx = -AC_gmg_poisson_coeffs.y*deryy_neighbours(Y_LINE_SMOOTHER_RES)
+	central_coeff = - 2*(AC_gmg_poisson_coeffs.x+AC_gmg_poisson_coeffs.y+AC_gmg_poisson_coeffs.z)
+	Ax = Mx + central_coeff*Y_LINE_SMOOTHER_RES
+	residual = GMG_RESIDUALS[0]-Ax
+	reduce_l2_norm(residual,AC_line_smoother_y_residual2)
+}
+ComputeSteps
+y_line_smoother_residual_norm(gmg_boundconds)
+{
+	y_line_smoother_residual_norm_kernel()
+}
+
+Kernel y_line_smoother_update_solution_kernel()
+{
+	write(GMG_SOLUTIONS[0], GMG_SOLUTIONS[0] + Y_LINE_SMOOTHER_RES)
+}
+
+ComputeSteps
+y_line_smoother_update_solution(gmg_boundconds)
+{
+	y_line_smoother_update_solution_kernel()
+}
 
 
 
@@ -125,6 +176,16 @@ print_values(gmg_boundconds)
 {
 	print_kernel(AC_GMG_LEVEL)
 }
-
+Kernel solve_anisotropic_with_jacobian_kernel()
+{
+	coeff = -anisotropic_laplace_central_coeff(AC_gmg_poisson_coeffs)
+	Ax    = -anisotropic_laplace(GMG_SOLUTIONS[0],AC_gmg_poisson_coeffs)
+	write(GMG_SOLUTIONS[0],GMG_SOLUTIONS[0] + (GMG_INITIAL_RHS-Ax)/coeff)
+}
+ComputeSteps
+solve_anisotropic_with_jacobian(gmg_boundconds)
+{
+	solve_anisotropic_with_jacobian_kernel()
+}
 
 

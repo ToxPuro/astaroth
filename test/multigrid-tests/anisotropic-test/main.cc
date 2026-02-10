@@ -358,6 +358,7 @@ main(int argc, char* argv[])
     gmg_v_cycle(n_levels,1e-1);
     test_restriction();
     const AcReal relative_residual_tolerance = 1e-14;
+    const auto jacobi_step = acGetOptimizedDSLTaskGraph(solve_anisotropic_with_jacobian);
     //const AcReal relative_residual_tolerance = 1.5e-1;
   
     fprintf(stderr,"GMG\n");
@@ -366,7 +367,7 @@ main(int argc, char* argv[])
     	const auto res_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(initcond_graph,1);
     	acGridExecuteTaskGraph(res_graph,1);
-    	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
+    	AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
 	const AcReal init_residual = residual;
     	int n_steps = 0;
@@ -374,11 +375,12 @@ main(int argc, char* argv[])
     	while(residual > 1e-12)
     	{
 	    const AcReal start_time = MPI_Wtime();
-            gmg_v_cycle(n_levels,relative_residual_tolerance);
+            //gmg_v_cycle(n_levels,relative_residual_tolerance);
+	    acGridExecuteTaskGraph(jacobi_step,1);
 	    const AcReal end_time   = MPI_Wtime();
 	    sum_time += end_time-start_time;
     	    acGridExecuteTaskGraph(res_graph,1);
-    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
+    	    residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
     	    fprintf(stderr,"Residual: %14e\n",residual);
     	    ++n_steps;
     	}

@@ -363,7 +363,7 @@ main(int argc, char* argv[])
     	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(initcond_graph,1);
     	acGridExecuteTaskGraph(residual_graph,1);
-    	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
+    	AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
 	const AcReal init_residual = residual;
     	int n_steps = 0;
@@ -379,7 +379,7 @@ main(int argc, char* argv[])
 	    sum_time += end_time-start_time;
 	    //exit(EXIT_SUCCESS);
     	    acGridExecuteTaskGraph(residual_graph,1);
-    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
+    	    residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
     	    fprintf(stderr,"Residual: %14e\n",residual);
     	    acGridWriteSlicesToDiskCollectiveSynchronous("slices", n_steps, 0.0);
     	    ++n_steps;

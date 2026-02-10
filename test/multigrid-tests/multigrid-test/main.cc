@@ -366,7 +366,7 @@ main(int argc, char* argv[])
     	const auto res_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(initcond_graph,1);
     	acGridExecuteTaskGraph(res_graph,1);
-    	AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
+    	AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
     	fprintf(stderr,"Initial Residual: %14e\n",residual);
 	const AcReal init_residual = residual;
     	int n_steps = 0;
@@ -378,7 +378,7 @@ main(int argc, char* argv[])
 	    const AcReal end_time   = MPI_Wtime();
 	    sum_time += end_time-start_time;
     	    acGridExecuteTaskGraph(res_graph,1);
-    	    residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual2[0]));
+    	    residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
     	    fprintf(stderr,"Residual: %14e\n",residual);
     	    ++n_steps;
     	}

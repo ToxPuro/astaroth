@@ -307,8 +307,8 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   {
 	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(residual_graph,1);
-	const AcReal residual0_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
-	AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
+	const AcReal residual0_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
+	AcReal residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 	AcReal relative_residual_norm = residual_norm/residual0_norm;
         const Volume launch_start = to_volume(info[AC_nmin]);
         const Volume launch_dims = to_volume(info[level_dims[level]]);
@@ -318,7 +318,7 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
 		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_cg_coarsest_level_step,launch_start,launch_dims),1);
 		//acGridExecuteTaskGraph(smoother,1);
     		acGridExecuteTaskGraph(residual_graph,1);
-		residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual2[level]));
+		residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 		relative_residual_norm = residual_norm/residual0_norm;
 	}
   }
