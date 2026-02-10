@@ -112,6 +112,7 @@ void strip_whitespace(char *str) {
 "run_const"          { return RUN_CONST; }
 "gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }
+"single_precision"          { return SINGLE_PRECISION; }
 "dead"             { return DEAD; }
 
 "if"        { return IF; } /* Keywords */

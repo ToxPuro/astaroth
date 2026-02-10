@@ -101,6 +101,7 @@ extern const char* VALUE_STR     ;
 extern const char* OUTPUT_VALUE_STR     ;
 extern const char* DEAD_STR     ;
 extern const char* AUXILIARY_STR     ;
+extern const char* SINGLE_PRECISION_STR     ;
 extern const char* COMMUNICATED_STR     ;
 extern const char* DEVICE_ONLY_STR      ;
 extern const char* DIMS_STR;
@@ -6499,10 +6500,12 @@ gen_field_info(FILE* fp)
 
   // Enums
   int num_of_communicated_fields=0;
+  int num_of_single_precision_fields=0;
   size_t num_of_fields=0;
   bool field_is_auxiliary[MAX_FIELDS];
   bool field_is_communicated[MAX_FIELDS];
   bool field_is_device_only[MAX_FIELDS];
+  bool field_is_single_precision[MAX_FIELDS];
   bool field_is_dead[MAX_FIELDS];
   bool field_has_variable_dims[MAX_FIELDS];
   size_t num_of_alive_fields=0;
@@ -6530,13 +6533,16 @@ gen_field_info(FILE* fp)
     if(is_dead) continue;
     push(&field_names,sym->identifier);
     const bool is_aux  = str_vec_contains(sym->tqualifiers,AUXILIARY_STR);
+    const bool is_single_precision = str_vec_contains(sym->tqualifiers,SINGLE_PRECISION_STR) && !is_dead; 
     const bool is_comm = str_vec_contains(sym->tqualifiers,COMMUNICATED_STR);
     const bool has_variable_dims = str_vec_contains(sym->tqualifiers,DIMS_STR);
-    const bool is_device_only = str_vec_contains(sym->tqualifiers,DEVICE_ONLY_STR);
+    const bool is_device_only = str_vec_contains(sym->tqualifiers,DEVICE_ONLY_STR) || is_single_precision;
     field_is_auxiliary[num_of_fields]    = is_aux;
     field_is_communicated[num_of_fields] = is_comm;
+    field_is_single_precision[num_of_fields] = is_single_precision;
     field_has_variable_dims[num_of_fields] = has_variable_dims;
     num_of_communicated_fields           += is_comm;
+    num_of_single_precision_fields           += is_single_precision;
     num_of_alive_fields                  += (!is_dead);
     field_is_dead[num_of_fields]         = is_dead;
     field_is_device_only[num_of_fields] = is_device_only;
@@ -6550,17 +6556,20 @@ gen_field_info(FILE* fp)
     push(&field_names,sym->identifier);
     const bool is_aux  = str_vec_contains(sym->tqualifiers,AUXILIARY_STR);
     const bool is_comm = str_vec_contains(sym->tqualifiers,COMMUNICATED_STR);
+    const bool is_single_precision = str_vec_contains(sym->tqualifiers,SINGLE_PRECISION_STR) && !is_dead;
     const bool has_variable_dims = str_vec_contains(sym->tqualifiers,DIMS_STR);
-    const bool is_device_only = str_vec_contains(sym->tqualifiers,DEVICE_ONLY_STR);
+    const bool is_device_only = str_vec_contains(sym->tqualifiers,DEVICE_ONLY_STR) || is_single_precision;
     field_is_auxiliary[num_of_fields]    = is_aux;
     field_is_communicated[num_of_fields] = is_comm;
     field_has_variable_dims[num_of_fields] = has_variable_dims;
     num_of_communicated_fields           += is_comm;
+    num_of_single_precision_fields           += is_single_precision;
     num_of_alive_fields                  += (!is_dead);
     field_is_dead[num_of_fields]         = is_dead;
     field_is_device_only[num_of_fields] = is_device_only;
     ++num_of_fields;
   }
+  if(!has_optimization_info()) num_of_alive_fields = num_of_fields;
   string_vec complex_field_names = VEC_INITIALIZER;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
@@ -6591,10 +6600,9 @@ gen_field_info(FILE* fp)
   	        fprintf(fp_enums,"%s,",field_names.data[i]);
 
   	fprintf(fp_enums, "} Field;\n");
-  	if(has_optimization_info())
-  		fprintf(fp_enums, "#define NUM_FIELDS (%ld)\n", num_of_alive_fields);
-  	else
-  		fprintf(fp_enums, "#define NUM_FIELDS (%ld)\n", num_of_fields);
+  	fprintf(fp_enums, "#define NUM_FIELDS (%ld)\n", num_of_alive_fields);
+  	fprintf(fp_enums, "#define NUM_SINGLE_PRECISION_FIELDS (%d)\n", num_of_single_precision_fields);
+  	fprintf(fp_enums, "#define NUM_REAL_FIELDS (%ld)\n", num_of_alive_fields-num_of_single_precision_fields);
 	fprintf(fp_enums, "#define NUM_ALL_FIELDS (%ld)\n",num_of_fields);
   	fprintf(fp_enums, "#define NUM_DEAD_FIELDS (%ld)\n", num_of_fields-num_of_alive_fields);
   	fprintf(fp_enums, "#define NUM_COMMUNICATED_FIELDS (%d)\n", num_of_communicated_fields);
@@ -6646,6 +6654,15 @@ gen_field_info(FILE* fp)
 
   for(size_t i = 0; i < num_of_fields; ++i)
     if(field_is_device_only[i])
+        fprintf(fp, "%s,", "true");
+    else
+        fprintf(fp, "%s,", "false");
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const bool vtxbuf_is_single_precision[] = {");
+
+  for(size_t i = 0; i < num_of_fields; ++i)
+    if(field_is_single_precision[i])
         fprintf(fp, "%s,", "true");
     else
         fprintf(fp, "%s,", "false");
@@ -6931,6 +6948,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   fprintf(fp,
   	"\n// Redefined for backwards compatibility START\n"
   	"#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n"
+  	"#define NUM_REAL_VTXBUF_HANDLES (NUM_REAL_FIELDS)\n"
   	"typedef Field VertexBufferHandle;\n"
 	 );
   fprintf(fp, "static const char** vtxbuf_names __attribute__((unused)) = "
