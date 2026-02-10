@@ -1820,7 +1820,7 @@ HaloExchangeTask::unpack()
     }
     else
     {
-	    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+	    acKernelUnpackData(stream, msg->data, msg->single_data, output_region.position, output_region.dims,
 	                               vba, output_region.memory.fields.data(),
 			    		output_region.memory.fields.size());
     }
@@ -2296,7 +2296,7 @@ PeriodicRayTask::unpack()
 {
     //TP: we only unpack to the first Field which is assumed to Qrad or similar
     auto msg = buffers.get_current_buffer();
-    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+    acKernelUnpackData(stream, msg->data, msg->single_data, output_region.position, output_region.dims,
                                vba, output_region.memory.fields.data(),
 			        1
         	    		//output_region.memory.fields.size()
@@ -2449,7 +2449,7 @@ MPIScanTask::unpack()
 {
 
     auto msg = reduce_buffers.get_current_buffer();
-    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+    acKernelUnpackData(stream, msg->data, msg->single_data, output_region.position, output_region.dims,
                                vba, output_region.memory.fields.data(),
         	    		output_region.memory.fields.size());
 }

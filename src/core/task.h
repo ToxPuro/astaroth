@@ -256,8 +256,10 @@ typedef struct HaloMessage {
     float* single_data;
     size_t bytes;
     AcRealPacked* data_pinned;
+    float*        single_data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
     std::vector<MPI_Request> requests;
+    std::vector<MPI_Request> single_requests;
     int tag;
     int non_namespaced_tag;
     std::vector<int> counterpart_ranks;
