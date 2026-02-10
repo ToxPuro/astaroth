@@ -38,6 +38,7 @@ typedef struct AcShearInterpolationCoeffs
 
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const Volume vba_start, const Volume dims, AcRealPacked* packed,
+			  float* single_packed,
 			  const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,

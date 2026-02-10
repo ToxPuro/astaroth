@@ -1012,10 +1012,12 @@ Task::syncVBA()
         if (swap_offset[i]) {
             vba.on_device.in[i]  = device_vba.on_device.out[i];
             vba.on_device.out[i] = device_vba.on_device.in[i];
+            vba.on_device.single_in[i]  = device_vba.on_device.single_out[i];
+            vba.on_device.single_out[i] = device_vba.on_device.single_in[i];
         }
         else {
-            vba.on_device.in[i]  = device_vba.on_device.in[i];
-            vba.on_device.out[i] = device_vba.on_device.out[i];
+            vba.on_device.single_in[i]  = device_vba.on_device.single_in[i];
+            vba.on_device.single_out[i] = device_vba.on_device.single_out[i];
         }
     }
     for (int i = 0; i < NUM_PROFILES; ++i) {

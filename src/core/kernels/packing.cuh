@@ -215,7 +215,7 @@ kernel_partial_pack_data_rb(const DeviceVertexBufferArray vba, const int3 vba_st
 
 static __global__ void
 kernel_partial_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const int3 dims,
-                         AcRealPacked* packed, GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
+                         AcRealPacked* packed, float* single_packed, GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
 {
     KERNEL_DIMS_PREFIX
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
@@ -242,12 +242,24 @@ kernel_partial_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     //#pragma unroll
+    size_t double_offset = 0;
+    size_t single_offset = 0;
     for (size_t i = 0; i < num_vtxbufs; ++i)
     {
 	const int j = vtxbufs.data[i];
         const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
-	const int dst_idx = packed_idx + i * vtxbuf_offset;
-        packed[dst_idx] = vba.in[j][unpacked_idx];
+	if(vtxbuf_device_is_single_precision[i])
+	{
+		single_offset++;
+		const int dst_idx = packed_idx + single_offset * vtxbuf_offset;
+        	single_packed[dst_idx] = vba.single_in[j][unpacked_idx];
+	}
+	else
+	{
+		double_offset++;
+		const int dst_idx = packed_idx + double_offset * vtxbuf_offset;
+        	packed[dst_idx] = vba.in[j][unpacked_idx];
+	}
     }
     KERNEL_POSTFIX
 }
@@ -487,11 +499,12 @@ acKernelUnpackDataFull(const cudaStream_t stream, const AcRealPacked* packed, co
 AcResult
 acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                         const Volume vba_start, const Volume dims, AcRealPacked* packed,
+			float* single_packed,
                         const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs)
 {
     (void)stream;
     //done to ensure performance backwards compatibility
-    if(num_vtxbufs == NUM_COMMUNICATED_FIELDS)
+    if(num_vtxbufs == NUM_COMMUNICATED_FIELDS && NUM_SINGLE_PRECISION_VTXBUF_HANDLES == 0)
 	    return acKernelPackDataFull(stream,vba,vba_start,dims,packed);
 
     catch_previous_errors_debug(AcKernel(0),"when packing data");
@@ -503,7 +516,7 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_partial_pack_data,bpg,tpb,0,stream)(vba.on_device, to_int3(vba_start), to_int3(dims), packed, gpu_handles,
+    KERNEL_LAUNCH(kernel_partial_pack_data,bpg,tpb,0,stream)(vba.on_device, to_int3(vba_start), to_int3(dims), packed, single_packed, gpu_handles,
                                                       num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
 

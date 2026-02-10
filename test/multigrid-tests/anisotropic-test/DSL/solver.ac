@@ -57,7 +57,8 @@ initialize_y_line_smoother_res(gmg_boundconds)
 Kernel y_line_smoother_jacobi_step_kernel()
 {
 	Mx = -AC_gmg_poisson_coeffs.y*deryy_neighbours(Y_LINE_SMOOTHER_RES)
-	central_coeff = 2*(AC_gmg_poisson_coeffs.x+AC_gmg_poisson_coeffs.y+AC_gmg_poisson_coeffs.z)
+	h2_inv = AC_inv_ds_2.x
+	central_coeff = h2_inv*2*(AC_gmg_poisson_coeffs.x+AC_gmg_poisson_coeffs.y+AC_gmg_poisson_coeffs.z)
 	Ax = Mx + central_coeff*Y_LINE_SMOOTHER_RES
 	residual = GMG_RESIDUALS[0]-Ax
 	write(Y_LINE_SMOOTHER_RES, Y_LINE_SMOOTHER_RES + residual/central_coeff)
@@ -71,7 +72,8 @@ output real AC_line_smoother_y_residual_l2_norm
 Kernel y_line_smoother_residual_norm_kernel()
 {
 	Mx = -AC_gmg_poisson_coeffs.y*deryy_neighbours(Y_LINE_SMOOTHER_RES)
-	central_coeff = 2*(AC_gmg_poisson_coeffs.x+AC_gmg_poisson_coeffs.y+AC_gmg_poisson_coeffs.z)
+	h2_inv = AC_inv_ds_2.x
+	central_coeff = h2_inv*2*(AC_gmg_poisson_coeffs.x+AC_gmg_poisson_coeffs.y+AC_gmg_poisson_coeffs.z)
 	Ax = Mx + central_coeff*Y_LINE_SMOOTHER_RES
 	residual = GMG_RESIDUALS[0]-Ax
 	reduce_l2_norm(residual,AC_line_smoother_y_residual_l2_norm)

@@ -228,6 +228,9 @@ init_scratchpads(VertexBufferArray* vba)
 static AcReal*  vba_in_buff = NULL;
 static AcReal*  vba_out_buff = NULL;
 
+static float*  vba_single_in_buff = NULL;
+static float*  vba_single_out_buff = NULL;
+
 AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
@@ -260,18 +263,31 @@ acVBACreate(const AcMeshInfo config)
 
   vba.computational_dims = acGetMeshDims(config);
 
-  size_t in_bytes  = 0;
-  size_t out_bytes = 0;
+  size_t real_in_bytes  = 0;
+  size_t real_out_bytes = 0;
+  size_t single_in_bytes  = 0;
+  size_t single_out_bytes = 0;
   for(int i = 0; i  < NUM_FIELDS; ++i)
   {
   	vba.dims[i]    = acGetMeshDims(config,Field(i));
   	size_t count = vba.dims[i].m1.x*vba.dims[i].m1.y*vba.dims[i].m1.z;
-  	size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
+  	size_t bytes = vtxbuf_is_single_precision[i] 
+			        ? sizeof(vba.on_device.single_in[0][0]) * count;
+				: sizeof(vba.on_device.in[0][0]) * count;
   	vba.counts[i]         = count;
   	vba.bytes[i]          = bytes;
-	in_bytes  += vba.bytes[i];
-	if(vtxbuf_is_auxiliary[i]) continue;
-	out_bytes += vba.bytes[i];
+	if(vtxbuf_is_single_precision[i])
+	{
+		single_in_bytes  += vba.bytes[i];
+		if(vtxbuf_is_auxiliary[i]) continue;
+		single_out_bytes += vba.bytes[i];
+	}
+	else
+	{
+		real_in_bytes  += vba.bytes[i];
+		if(vtxbuf_is_auxiliary[i]) continue;
+		real_out_bytes += vba.bytes[i];
+	}
   }
   for(int p = 0; p < NUM_PROFILES; ++p)
   {
@@ -286,27 +302,53 @@ acVBACreate(const AcMeshInfo config)
 
   ERRCHK_ALWAYS(vba_in_buff == NULL);
   ERRCHK_ALWAYS(vba_out_buff == NULL);
-  acDeviceMalloc((void**)&vba_in_buff,in_bytes);
-  acDeviceMalloc((void**)&vba_out_buff,out_bytes);
+  ERRCHK_ALWAYS(vba_single_in_buff == NULL);
+  ERRCHK_ALWAYS(vba_single_out_buff == NULL);
+  acDeviceMalloc((void**)&vba_in_buff,real_in_bytes);
+  acDeviceMalloc((void**)&vba_out_buff,real_out_bytes);
+
+  acDeviceMalloc((void**)&vba_single_in_buff ,single_in_bytes);
+  acDeviceMalloc((void**)&vba_single_out_buff,single_out_bytes);
 
   size_t out_offset = 0;
   size_t in_offset = 0;
+  size_t single_out_offset = 0;
+  size_t single_in_offset = 0;
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    vba.on_device.in[i] = vba_in_buff + in_offset;
-    ERRCHK_ALWAYS(vba.on_device.in[i] != NULL);
-    in_offset += vba.counts[i];
-    if (vtxbuf_is_auxiliary[i])
+    if(vtxbuf_is_single_precision[i])
     {
-      vba.on_device.out[i] = vba.on_device.in[i];
-      ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
-    }else{
-      vba.on_device.out[i] = (vba_out_buff + out_offset);
-      out_offset += vba.counts[i];
-      if(vba.on_device.out[i] == NULL)
+      vba.on_device.single_in[i] = vba_single_in_buff + single_in_offset;
+      ERRCHK_ALWAYS(vba.on_device.single_in[i] != NULL);
+      single_in_offset += vba.counts[i];
+      if (vtxbuf_is_auxiliary[i])
       {
-         fprintf(stderr,"In bytes %zu; Out bytes: %zu\n",in_bytes,out_bytes);	
-	 fflush(stderr);
-       	 ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
+        vba.on_device.single_out[i] = vba.on_device.single_in[i];
+        ERRCHK_ALWAYS(vba.on_device.single_out[i] != NULL);
+      }else{
+        vba.on_device.single_out[i] = (vba_single_out_buff + single_out_offset);
+        single_out_offset += vba.counts[i];
+        if(vba.on_device.single_out[i] == NULL)
+        {
+         	 ERRCHK_ALWAYS(vba.on_device.single_out[i] != NULL);
+        }
+      }
+    }
+    else
+    {
+      vba.on_device.in[i] = vba_in_buff + in_offset;
+      ERRCHK_ALWAYS(vba.on_device.in[i] != NULL);
+      in_offset += vba.counts[i];
+      if (vtxbuf_is_auxiliary[i])
+      {
+        vba.on_device.out[i] = vba.on_device.in[i];
+        ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
+      }else{
+        vba.on_device.out[i] = (vba_out_buff + out_offset);
+        out_offset += vba.counts[i];
+        if(vba.on_device.out[i] == NULL)
+        {
+         	 ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
+        }
       }
     }
   }
