@@ -2368,6 +2368,7 @@ gmg_laplace_neighbours_level_4
 }
 
 run_const bool AC_use_coarse_galerkin_operators = true
+run_const real3 AC_gmg_poisson_coeffs = (AcReal3){1.0,1.0,1.0}
 gmg_get_fine_grid_operator(Field f)
 {
 	if(AC_compact_poisson)
@@ -2378,7 +2379,7 @@ gmg_get_fine_grid_operator(Field f)
 		}
 		return compact_poisson_lhs(f)
 	}
-	return laplace(f)
+	return anisotropic_laplace(f,AC_gmg_poisson_coeffs)
 }
 gmg_laplace(Field f, int level)
 {
@@ -2514,24 +2515,6 @@ gmg_prolong_solution(gmg_boundconds)
 	gmg_prolong_solution_kernel(AC_GMG_LEVEL)
 }
 
-/**
-Kernel gmg_sor_red(GMG_LEVEL level, real omega)
-{
-	gmg_poisson_sor_red_black(SOR_RED,level,omega)
-}
-
-Kernel gmg_sor_black(GMG_LEVEL level, real omega)
-{
-	gmg_poisson_sor_red_black(SOR_BLACK,level,omega)
-}
-
-ComputeSteps
-gmg_poisson_sor_red_black_step(gmg_boundconds)
-{
-	gmg_sor_red(AC_GMG_LEVEL, AC_SOR_omega)
-	gmg_sor_black(AC_GMG_LEVEL, AC_SOR_omega)
-}
-**/
 
 //Optimized smoother across all of the 7-point stencils
 //When going to sixth-order can numerically find optimized

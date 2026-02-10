@@ -603,6 +603,12 @@ laplace(Field s) {
     }
     return del2f
 }
+
+anisotropic_laplace(Field s, real3 coeffs)
+{
+	fatal_error_message(AC_coordinate_system != AC_CARTESIAN_COORDINATES,"Anisotropic laplace only implemented in Cartesian!\n");
+	return coeffs.x*derxx(s) + coeffs.y*deryy(s) + coeffs.z*derzz(s)
+}
 /**
  * Calculates laplacian of s given the squares of the inverse spacings.
  * Most likely only correct in Cartesian.
