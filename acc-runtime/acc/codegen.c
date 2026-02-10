@@ -6230,11 +6230,17 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     FILE* proc = popen(cmdoptions, "r");
     assert(proc);
 
-    char buf[4096];
+    char* sdefinitions = malloc(10 * 1024 * 1024);
+    assert(sdefinitions);
+    sdefinitions[0] = '\0';
+    char* buf = malloc(sizeof(char)*4096);
     while (fgets(buf, sizeof(buf), proc))
-      strcat(prefix, buf);
+      strcat(sdefinitions, buf);
+
     pclose(proc);
 
+    strcat(prefix, sdefinitions);
+    free(sdefinitions);
     int_vec topological_order = dfuncs_in_topological_order();
     for(size_t index = 0; index < num_dfuncs; ++index)
     {
@@ -6253,13 +6259,13 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     astnode_set_prefix(prefix, compound_statement);
     free(prefix);
     free(cmdoptions);
-
   }
 
 
   if (node->rhs)
     gen_kernels_recursive(node->rhs, dfunctions, gen_mem_accesses,curr_kernel);
 }
+
 static void
 gen_kernels(const ASTNode* node, char** dfunctions,
             const bool gen_mem_accesses)
