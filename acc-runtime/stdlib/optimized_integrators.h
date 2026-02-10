@@ -14,7 +14,7 @@ const real rk2_beta  = [1.0/2.0,   1.0]
 const real rk3_alpha =[ 0.,   -5./9.,   -153./128. ]
 const real rk3_beta  =[ 1./3., 15./ 16., 8./15.    ]
 
-run_const int AC_rk_order
+run_const int AC_rk_order = 3
 
 rk3(Field f, real roc, int step_num, real dt) {
     /*
