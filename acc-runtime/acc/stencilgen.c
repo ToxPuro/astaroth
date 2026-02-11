@@ -2085,7 +2085,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
     if(previous_accessed[cur_kernel][original_field])
     {
       const int field = get_original_index(field_remappings,original_field);
-      printf("const auto f%s_prev = (AcReal)vba.%s[%s][idx];", get_field_output_name(field), field_names[field], field_names[field]);
+      printf("const auto f%s_prev = (AcReal)vba.%s[%s][idx];", field_names[field], get_field_output_name(field), field_names[field]);
     }
   }
 
