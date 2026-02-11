@@ -645,6 +645,10 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 		        ++n_allocated_vtxbufs;
 			submesh.vertex_buffer[i] = acHostCreateVertexBuffer(submesh_info,Field(i));
 	    }
+	    else
+	    {
+		    submesh.vertex_buffer[i] = NULL;
+	    }
     }
 
     if(n_allocated_vtxbufs) acLogFromRootProc(ac_pid(), "acGridInit: Allocated %ld VertexBuffers on the host\n",n_allocated_vtxbufs);
