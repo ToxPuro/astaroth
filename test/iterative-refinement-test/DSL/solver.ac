@@ -1,0 +1,162 @@
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+Field HEAT_INIT
+Field HEAT_SOLUTION
+Field ANALYTICAL_SOLUTION
+single_precision Field RESIDUAL
+single_precision Field D
+
+//Field RESIDUAL
+//Field D
+
+real AC_k = 1.0
+global output real AC_rhs2
+Kernel init_kernel()
+{
+	pos = grid_position()
+	//write(HEAT_INIT,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)+2.0)
+	rhs = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)+0.0
+	write(HEAT_INIT,rhs)
+	write(ANALYTICAL_SOLUTION,(1.0/3.0)*rhs)
+	write(HEAT_SOLUTION,0.0)
+	reduce_sum(rhs*rhs,AC_rhs2)
+}
+
+rhs_boundconds(AcBoundary boundary)
+{
+}
+
+ac_rhs_bc(AcBoundary boundary)
+{
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 ghost  = boundary_point
+	for i in 0:NGHOST
+	{
+		ghost  = ghost  + normal
+		pos = grid_position(ghost)
+		HEAT_INIT[ghost.x][ghost.y][ghost.z] = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+	}
+}
+
+ac_analytical_solution_bc(AcBoundary boundary)
+{
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 ghost  = boundary_point
+	for i in 0:NGHOST
+	{
+		ghost  = ghost  + normal
+		pos = grid_position(ghost)
+		HEAT_SOLUTION[ghost.x][ghost.y][ghost.z] = (1.0/3.0)*sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+	}
+}
+
+BoundConds boundconds{
+	ac_rhs_bc(BOUNDARY_XYZ)
+	ac_analytical_solution_bc(BOUNDARY_XYZ)
+	ac_const_bc(BOUNDARY_XYZ,D,0.0)
+}
+
+output real AC_residual2
+Kernel residual_kernel()
+{
+	r = HEAT_INIT- (-laplace(HEAT_SOLUTION))
+	reduce_sum(r*r,AC_residual2)
+}
+
+Kernel get_sg_residual_kernel()
+{
+	r = HEAT_INIT- (-laplace(HEAT_SOLUTION))
+	write(RESIDUAL,r)
+	write(D,0.0)
+}
+
+ComputeSteps
+get_sg_residual(boundconds)
+{
+	get_sg_residual_kernel()
+}
+
+ComputeSteps
+initcond(boundconds)
+{
+	init_kernel()
+}
+ComputeSteps
+empty_steps(boundconds)
+{
+}
+
+
+fixed_boundary Kernel sor_red(real omega)
+{
+	poisson_sor_red_black_extended(SOR_RED,RESIDUAL,D,omega,-1.0)
+}
+fixed_boundary Kernel sor_black(real omega)
+{
+	poisson_sor_red_black_extended(SOR_BLACK,RESIDUAL,D,omega,-1.0)
+}
+output float AC_inner_l2_norm
+Kernel
+get_inner_l2_norm_kernel()
+{
+	r = RESIDUAL- (-laplace(D))
+	reduce_l2_norm((float)r,AC_inner_l2_norm)
+}
+ComputeSteps
+get_inner_l2_norm(boundconds)
+{
+	get_inner_l2_norm_kernel()
+}
+
+ComputeSteps
+sor_red_black_step(boundconds)
+{
+	sor_red(AC_SOR_omega)
+	sor_black(AC_SOR_omega)
+}
+
+Kernel update_solution_kernel()
+{
+	write(HEAT_SOLUTION, HEAT_SOLUTION + D)
+}
+ComputeSteps
+update_solution(boundconds)
+{
+	update_solution_kernel()
+}
+
+fixed_boundary Kernel jacobi_kernel()
+{
+	write(HEAT_SOLUTION,poisson_jacobi_update(HEAT_INIT,HEAT_SOLUTION))
+}
+
+ComputeSteps
+jacobi_step(boundconds)
+{
+	jacobi_kernel()
+}
+
+ComputeSteps
+get_residual(boundconds)
+{
+	residual_kernel()
+}
+Field DIFF
+global output real AC_l2_from_analytical_solution
+Kernel get_diff_to_analytical_solution_kernel()
+{
+	diff = ANALYTICAL_SOLUTION-HEAT_SOLUTION
+	write(DIFF,diff)
+	reduce_sum(diff*diff,AC_l2_from_analytical_solution)
+}
+ComputeSteps
+get_diff_to_analytical_solution(boundconds)
+{
+	get_diff_to_analytical_solution_kernel()
+}

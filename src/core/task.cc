@@ -1044,6 +1044,10 @@ Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps)
             AcReal* tmp = vba.on_device.in[i];
             vba.on_device.in[i]   = vba.on_device.out[i];
             vba.on_device.out[i]  = tmp;
+
+            float* sg_tmp = vba.on_device.single_in[i];
+            vba.on_device.single_in[i]   = vba.on_device.single_out[i];
+            vba.on_device.single_out[i]  = sg_tmp;
         }
     }
     for(int i = 0; i < NUM_PROFILES; ++i)

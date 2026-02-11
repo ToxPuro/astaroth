@@ -452,6 +452,8 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //TP: does not work for compressible memory TODO: fix it if needed
   acDeviceFree(&(vba_in_buff), 0);
   acDeviceFree(&(vba_out_buff), 0);
+  acDeviceFree((void**)&(vba_single_in_buff), 0);
+  acDeviceFree((void**)&(vba_single_out_buff), 0);
   for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
   {
   	acDeviceFree(&vba->on_device.complex_in[field], 0);

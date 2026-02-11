@@ -186,6 +186,14 @@ reduce_l2_norm(real val, param)
 	postprocess_reduce_result(param,AC_POSTPROCESS_SQRT)
 }
 
+reduce_l2_norm(float val, param)
+{
+	double_val = (double)val
+	res = double_val*double_val*AC_ds.x*AC_ds.y*AC_ds.z
+	reduce_sum((float)res,param)
+	postprocess_reduce_result(param,AC_POSTPROCESS_SQRT)
+}
+
 reduce_rms(real3 val, param)
 {
 	reduce_sum(dot(val,val)*AC_ds.x*AC_ds.y*AC_ds.z,param)
@@ -269,7 +277,7 @@ reduce_sum(real3 vec, VecZProfile prof)
 
 reduce_average(real val, param)
 {
-	reduce_sum_real(AC_ngrid_products_inv.xyz*val,param)
+	reduce_sum(AC_ngrid_products_inv.xyz*val,param)
 }
 
 reduce_average(real val, Profile<X> prof)

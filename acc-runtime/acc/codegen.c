@@ -4001,6 +4001,7 @@ get_reduce_dst_type(const ASTNode* node)
 		        strstr(func_name,"Profile") ? PROFILE_STR :
 			strstr(func_name,"AcReal")  ? REAL_STR :
 			strstr(func_name,"int")     ? INT_STR :
+			strstr(func_name,"float")     ? FLOAT_STR :
 			NULL;
 	if(!type) fatal("Was not able to get reduce type: %s\n",combine_all_new(node));
 	return type;

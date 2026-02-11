@@ -243,6 +243,30 @@ postprocess_reduce_result(const AcRealOutputParam dst, const AcReductionPostProc
 		exit(EXIT_FAILURE);
 	}
 }
+
+#if AC_DOUBLE_PRECISION
+void
+postprocess_reduce_result(const AcFloatOutputParam dst, const AcReductionPostProcessingOp op)
+{
+	bool found = false;
+	for(auto& output : reduce_outputs)
+	{
+		if(output.variable == dst && output.type == AC_FLOAT_TYPE)
+		{
+			found = true;
+			output.postprocess_op = op;
+		}
+	}
+	if(!found)
+	{
+		fprintf(stderr,"Applied postprocessing op on %s, but it is not reduced in %s!\n",float_output_names[dst], kernel_names[current_kernel]);
+		fprintf(stderr,"Applied postprocessing op on %s, but it is not reduced in %s!\n",float_output_names[dst], kernel_names[current_kernel]);
+		fprintf(stderr,"Applied postprocessing op on %s, but it is not reduced in %s!\n",float_output_names[dst], kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+}
+#endif
+
 void
 reduce_sum_real(const AcReal, const AcRealOutputParam dst)
 {

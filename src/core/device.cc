@@ -852,6 +852,10 @@ acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle)
     device->vba.on_device.in[handle]  = device->vba.on_device.out[handle];
     device->vba.on_device.out[handle] = tmp;
 
+    float* sg_tmp = device->vba.on_device.single_in[handle];
+    device->vba.on_device.single_in[handle]  = device->vba.on_device.single_out[handle];
+    device->vba.on_device.single_out[handle] = sg_tmp;
+
     return AC_SUCCESS;
 }
 
