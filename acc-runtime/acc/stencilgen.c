@@ -1443,6 +1443,13 @@ gen_kernel_write_funcs(const int curr_kernel)
 			}
 			printf("break;}");
 		}
+		if(vtxbuf_is_single_precision[original_field])
+		{
+			const int field = get_original_index(field_remappings,original_field);
+			printf("case %s: { vba.single_out[handle][idx] = (float)value; break;}"
+					,field_names[field]
+					);
+		}
 
 	}
 	if(!is_x_raytrace_kernel(curr_kernel))

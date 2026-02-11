@@ -1,1 +1,1 @@
-mpiexec -n 1 build/single-precision-test
+mpiexec -n 8 --oversubscribe build/single-precision-test

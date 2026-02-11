@@ -4030,9 +4030,10 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
 
-	//For simplicity do not write the default sized vtxbufs out
+	//For simplicity do not write the non-default sized vtxbufs out
     	auto field_dims = acGetMeshDims(info,Field(field));
 	if(field_dims.nn != local_nn) continue;
+	if(vtxbuf_is_device_only[field]) continue;
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 

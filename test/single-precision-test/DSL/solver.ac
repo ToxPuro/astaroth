@@ -1,25 +1,42 @@
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
 
 Field F
 single_precision Field F_SINGLE_PRECISION
+Field F_SINGLE_PRECISION_RES_IN_DOUBLE
 BoundConds bcs
 {
-	periodic(BOUNDARY_XYZ)
+	ac_const_bc(BOUNDARY_XYZ,0.0)
 }
 
 Kernel rhs_kernel()
 {
-	write(F,F+1.0)
-	write(F_SINGLE_PRECISION,F_SINGLE_PRECISION+1.0)
+	write(F,laplace(F))
+	write(F_SINGLE_PRECISION,laplace(F_SINGLE_PRECISION))
+}
+Kernel move_single_precision_result_to_double()
+{
+	write(F_SINGLE_PRECISION_RES_IN_DOUBLE,F_SINGLE_PRECISION)
 }
 
 Kernel init_kernel()
 {
-	write(F,0.0)
-	write(F_SINGLE_PRECISION,0.0)
+	pos = grid_position()
+	val = sin(pos.x)*sin(pos.y)*sin(pos.z)
+	write(F,val)
+	write(F_SINGLE_PRECISION,val)
 }
 
 ComputeSteps rhs(bcs)
 {
 	init_kernel()
 	rhs_kernel()
+	move_single_precision_result_to_double()
+}
+ComputeSteps copy_single_to_dbl(bcs)
+{
+	move_single_precision_result_to_double()
 }
