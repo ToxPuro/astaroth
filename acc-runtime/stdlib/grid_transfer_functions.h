@@ -4,7 +4,7 @@
 /*
  * Meant to be launched on the coarse grid
  */
-restrict_full_weighting_1d(Field fine_residual, Field coarse_residual)
+restrict_full_weighting_1d(Field fine_residual)
 {
 		i = 2*vertexIdx.x + 1 - NGHOST 
 		j = vertexIdx.y 
@@ -27,13 +27,13 @@ restrict_full_weighting_1d(Field fine_residual, Field coarse_residual)
 			res += weight*fine_residual[i+di][j][k]
 		}
 		res /= 4.0
-		write(coarse_residual,res);
+		return res
 }
 
 /*
  * Meant to be launched on the coarse grid
  */
-restrict_full_weighting_3d_even(Field fine_residual, Field coarse_residual)
+restrict_full_weighting_3d_even(Field fine_residual)
 {
 	fine_vertexIdx = localCompdomainVertexIdx*2 + AC_nmin
 	interpolation_weights = [1,3,3,1]
@@ -50,13 +50,13 @@ restrict_full_weighting_3d_even(Field fine_residual, Field coarse_residual)
 		}
 	}
 	res /= 512.0
-	write(coarse_residual,res);
+	return res
 }
 
 /*
  * Meant to be launched on the coarse grid
  */
-restrict_full_weighting_3d_odd(Field fine_residual, Field coarse_residual)
+restrict_full_weighting_3d_odd(Field fine_residual)
 {
 	i = 2*vertexIdx.x + 1 - NGHOST 
 	j = 2*vertexIdx.y + 1 - NGHOST 
@@ -91,27 +91,26 @@ restrict_full_weighting_3d_odd(Field fine_residual, Field coarse_residual)
 		}
 	}
 	res /= 64.0
-	write(coarse_residual,res);
+	return res
 }
 
 /*
  * Meant to be launched on the coarse grid
  */
-restrict_full_weighting(Field fine_residual, Field coarse_residual, int3 fine_dimensions)
+restrict_full_weighting(Field fine_residual, int3 fine_dimensions)
 {
-	const int3 launch_dims = end-start;
 	if(AC_dimension_inactive == (bool3){false,true,true})
 	{
-		restrict_full_weighting_1d(fine_residual,coarse_residual)
+		return restrict_full_weighting_1d(fine_residual)
 	}
 	//Assumes a cube
 	else if(fine_dimensions.x % 2 == 0)
 	{
-		restrict_full_weighting_3d_even(fine_residual,coarse_residual)
+		return restrict_full_weighting_3d_even(fine_residual)
 	}
 	else
 	{
-		restrict_full_weighting_3d_odd(fine_residual,coarse_residual)
+		return restrict_full_weighting_3d_odd(fine_residual)
 	}
 }
 
@@ -279,7 +278,6 @@ trilinear_prolongation_odd(Field coarse_residual)
  */
 trilinear_prolongation(Field coarse_residual, int3 global_mesh_dims)
 {
-	const int3 launch_dims = end-start;
 	if(AC_dimension_inactive == (bool3){false,true,true})
 	{
 		return linear_prolongation(coarse_residual)

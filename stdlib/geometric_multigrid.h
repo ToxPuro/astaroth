@@ -34,6 +34,24 @@ gmg_restrict_to_level(const int level)
 };
 
 void
+gmg_prolong(AcMesh mesh, int level)
+{
+    //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_boundconds),1);
+    const auto info = acGridGetLocalMeshInfo();
+    --level;
+    while(level >= 0)
+    {
+	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
+	const Volume launch_start = to_volume(info[AC_nmin]);
+	const Volume launch_dims = to_volume(info[level_dims[level]]);
+	const Volume launch_end = launch_dims + launch_start;
+	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_prolong_solution,launch_start,launch_end),1);
+    	--level;
+    }
+    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &mesh);
+};
+
+void
 gmg_store_and_prolong(AcMesh mesh, int level)
 {
     //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_boundconds),1);
@@ -103,97 +121,16 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     const Volume hat_basis_position = to_volume(
     	((to_int3(coarse_dims.nn)/2) + (int3){NGHOST,NGHOST,NGHOST})
     );
-
-    for(size_t x = 0; x < coarse_dims.m1.x;++x)
-    {
-       for(size_t y = 0; y < coarse_dims.m1.y;++y)
-       {
-    	for(size_t z = 0; z < coarse_dims.m1.z;++z)
-    	{
-        		const int index = acVertexBufferIdx(x,y,z,info,GMG_SOLUTIONS[level]);
-        		mesh.vertex_buffer[GMG_SOLUTIONS[level]][index] = 0.0;
-        		mesh.vertex_buffer[GMG_RESIDUALS[level]][index] = 0.0;
-        		if(x == hat_basis_position.x && y == hat_basis_position.y && z == hat_basis_position.z) mesh.vertex_buffer[GMG_SOLUTIONS[level]][index] = 1.0;
-        	}
-        }
-    }
-    gmg_store_and_prolong(mesh,level);
+    acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_write_hat_basis,coarse_dims.n0,coarse_dims.n1),1);
+    gmg_prolong(mesh,level);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_write_del2),1);
-    
-    acDeviceStoreMesh(acGridGetDevice(),STREAM_DEFAULT,&mesh);
-    
-    acGridSynchronizeStream(STREAM_ALL);
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    for(size_t x = dims.n0.x; x < dims.n1.x; ++x)
-    {
-    	for(size_t y = dims.n0.y; y < dims.n1.y; ++y)
-    	{
-    		for(size_t z = dims.n0.z; z < dims.n1.z; ++z)
-    		{
-        			const AcReal val = mesh.vertex_buffer[GMG_RESIDUALS[0]][acVertexBufferIdx(x,y,z,info)];
-        			const AcReal sol_val = mesh.vertex_buffer[GMG_SOLUTIONS[0]][acVertexBufferIdx(x,y,z,info)];
-        			//if(val != 0.0) fprintf(stderr,"DEL2 after prolongation from level %d at (%zu,%zu,%zu): %.14e\n",level,x,y,z,val);
-    		}
-    	}
-    }
-    for(size_t x = dims.n0.x; x < dims.n1.x; ++x)
-    {
-    	for(size_t y = dims.n0.y; y < dims.n1.y; ++y)
-    	{
-    		for(size_t z = dims.n0.z; z < dims.n1.z; ++z)
-    		{
-        			const AcReal val = mesh.vertex_buffer[GMG_RESIDUALS[0]][acVertexBufferIdx(x,y,z,info)];
-        			const AcReal sol_val = mesh.vertex_buffer[GMG_SOLUTIONS[0]][acVertexBufferIdx(x,y,z,info)];
-        			//if(sol_val != 0.0) fprintf(stderr,"Solution after prolongation from level %d at (%zu,%zu,%zu): %.14e\n",level,x,y,z,sol_val);
-    		}
-    	}
-    }
-    for(size_t x = coarse_dims.n0.x; x < coarse_dims.n1.x;++x)
-    {
-       for(size_t y = coarse_dims.n0.y; y < coarse_dims.n1.y;++y)
-       {
-    	for(size_t z = coarse_dims.n0.z; z < coarse_dims.n1.z;++z)
-    	{
-        		const int index = acVertexBufferIdx(x,y,z,info,GMG_SOLUTIONS[level]);
-        		const AcReal val  = mesh.vertex_buffer[GMG_SOLUTIONS[level]][index];
-			//if(val != 0.0) fprintf(stderr,"Source at (%zu,%zu,%zu): %.14e\n",x,y,z,val);
-        	}
-        }
-    }
     gmg_restrict_to_level(level);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_copy_residual_to_tmp,coarse_dims.n0,coarse_dims.n1),1);
     acDeviceStoreMesh(acGridGetDevice(),STREAM_DEFAULT,&mesh);
     acGridSynchronizeStream(STREAM_ALL);
-    for(size_t x = coarse_dims.n0.x; x < coarse_dims.n1.x;++x)
-    {
-    	for(size_t y = coarse_dims.n0.y; y < coarse_dims.n1.y;++y)
-    	{
-    		for(size_t z = coarse_dims.n0.z; z < coarse_dims.n1.z;++z)
-    		{
-        			const int index = acVertexBufferIdx(x,y,z,info,GMG_RHS[level]);
-        			const AcReal val = mesh.vertex_buffer[GMG_RHS[level]][index];
-        			if(val != 0.0)
-        			{
-        				//fprintf(stderr,"Level %d galerkin operator at (%d,%d,%d): %.14e\n",level
-					//		,int(x)-int(hat_basis_position.x)
-					//		,int(y)-int(hat_basis_position.y)
-					//		,int(z)-int(hat_basis_position.z)
-					//		,val);
-        			}
-        		}
-        	}
-    }
-    //fprintf(stderr,"\n");
     AcReal stencil[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
-    //stencil[0][1][1] = 1.0*h2_inv;
-    //stencil[2][1][1] = 1.0*h2_inv;
-
-    //stencil[1][0][1] = 1.0*h2_inv;
-    //stencil[1][2][1] = 1.0*h2_inv;
-
-    //stencil[1][1][0] = 1.0*h2_inv;
-    //stencil[1][1][2] = 1.0*h2_inv;
-
-    //stencil[1][1][1] = -6.0*h2_inv;
     for(int x = -NGHOST; x <= NGHOST; ++x)
     {
     	for(int y = -NGHOST; y <= NGHOST; ++y)
@@ -201,14 +138,13 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     		for(int z = -NGHOST; z <= NGHOST; ++z)
     		{
             		const int index = acVertexBufferIdx(hat_basis_position.x + x,hat_basis_position.y + y,hat_basis_position.z + z,info,GMG_RESIDUALS[level]);
-            		const AcReal val = mesh.vertex_buffer[GMG_RESIDUALS[level]][index];
+            		const AcReal val = mesh.vertex_buffer[GMG_TMPS[level]][index];
     			stencil[z+NGHOST][y+NGHOST][x+NGHOST] = val;
     		}
     	}
     }
     const int central_index = acVertexBufferIdx(hat_basis_position.x,hat_basis_position.y,hat_basis_position.z,info,GMG_RESIDUALS[level]);
     const AcReal central_coeff = mesh.vertex_buffer[GMG_RESIDUALS[level]][central_index];
-    //const AcReal central_coeff = -6.0*h2_inv;
     gmg_central_coeffs[level] = central_coeff;
     //Here we load to both r1 and (r2/r3) since we are not sure is the user using compact poisson or not
     acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r1[level],stencil);

@@ -2443,7 +2443,8 @@ Kernel gmg_restrict_solution_kernel(GMG_LEVEL level)
 {
 	if((int)level < AC_gmg_maximum_level)
 	{
-		restrict_full_weighting(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level+1],get_global_gmg_level_dims(level))
+		res = restrict_full_weighting(GMG_SOLUTIONS[level],get_global_gmg_level_dims(level))
+		write(GMG_SOLUTIONS[level+1],res)
 	}
 }
 
@@ -2691,8 +2692,8 @@ gmg_get_residual_and_rhs_norms(gmg_boundconds)
 	gmg_get_residual_and_rhs_norms_kernel(AC_GMG_LEVEL)
 }
 
-dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P 
-dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R
+GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P 
+GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R
 
 Kernel gmg_cg_compute_alpha(GMG_LEVEL level)
 {
