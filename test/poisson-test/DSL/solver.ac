@@ -18,8 +18,6 @@ int AC_n_solving_steps = 1000
 int AC_charge_radius_points = 10
 real AC_density_charge = 0.0
 
-
-
 //output real AC_MLM[AC_n_spherical_harmonics][AC_n_spherical_harmonics][2]
 output real AC_TEST
 Field Y_11
@@ -33,33 +31,33 @@ Kernel calculate_mlm_kernel()
 {
 	calculate_mlm(DENSITY)
 }
+
 Kernel calculate_potential_with_mlm()
 {
 	calculate_expansion_with_mlm(SPH_LOWER_POTENTIAL,SPH_UPPER_POTENTIAL)	
 }
-
 
 fixed_boundary Kernel jacobi_step_kernel()
 {
 	write(POTENTIAL,poisson_jacobi_update(DENSITY,POTENTIAL))
 }
 
-
 fixed_boundary Kernel sor_red(real omega)
 {
 	poisson_sor_red_black(SOR_RED,DENSITY,POTENTIAL,omega)
 }
+
 fixed_boundary Kernel sor_black(real omega)
 {
 	poisson_sor_red_black(SOR_BLACK,DENSITY,POTENTIAL,omega)
 }
+
 output real AC_residual2
 Kernel residual_kernel()
 {
 	r = laplace(POTENTIAL)-DENSITY
 	reduce_sum(r*r,AC_residual2)
 }
-
 
 Kernel write_residual()
 {
@@ -121,8 +119,8 @@ Kernel init()
 		write(DENSITY,0.0)
 	}
 	write(POTENTIAL,0.0)
-
 }
+
 Kernel init_bicgstab_kernel()
 {
 	r = DENSITY - laplace(POTENTIAL)
@@ -189,13 +187,11 @@ BoundConds jacobi_bcs
 	//periodic(BOUNDARY_XYZ)
 }
 
-ComputeSteps
-initcond(jacobi_bcs)
+ComputeSteps initcond(jacobi_bcs)
 {
 	init()
 	init_bicgstab_kernel()
 }
-
 
 analytic_potential_inside(AcBoundary boundary_region, Field f)
 {
@@ -241,14 +237,12 @@ analytic_potential_outside(AcBoundary boundary_region, Field f)
         }
 }
 
-ComputeSteps
-jacobi_step(jacobi_bcs)
+ComputeSteps jacobi_step(jacobi_bcs)
 {
 	jacobi_step_kernel()
 }
 
-ComputeSteps
-sor_red_black_step(jacobi_bcs)
+ComputeSteps sor_red_black_step(jacobi_bcs)
 {
 	sor_red(AC_SOR_omega)
 	sor_black(AC_SOR_omega)
@@ -271,13 +265,13 @@ Kernel compute_diagnos()
 	reduce_sum(BICGSTAB_P*BICGSTAB_P,DIAGNOS_BICGSTAB_P)
 	reduce_sum(BICGSTAB_V*BICGSTAB_V,DIAGNOS_BICGSTAB_V)
 }
+
 Kernel bicgstab_compute_true_residual()
 {
 	write(BICGSTAB_R,DENSITY-laplace(POTENTIAL))	
 }
 
-ComputeSteps
-bicgstab_step(jacobi_bcs)
+ComputeSteps bicgstab_step(jacobi_bcs)
 {
 	bicgstab_step0()
 	bicgstab_step1()
@@ -294,6 +288,7 @@ Kernel bicgstab_step0_preconditioned()
 {
 	bicgstab_compute_rho_prev()
 }
+
 Kernel bicgstab_compute_y_red()
 {
 	p = value(BICGSTAB_P)
@@ -414,7 +409,6 @@ Kernel bicgstab_compute_z_yellow()
 	}
 }
 
-
 Kernel bicgstab_step3_preconditioned()
 {
 	t = laplace(BICGSTAB_Z)
@@ -434,8 +428,7 @@ Kernel bicgstab_step4_preconditioned()
 	bicgstab_compute_next_solution_preconditioned(POTENTIAL)
 }
 
-ComputeSteps
-bicgstab_preconditioned_step(jacobi_bcs)
+ComputeSteps bicgstab_preconditioned_step(jacobi_bcs)
 {
 	bicgstab_step0_preconditioned()
 	bicgstab_compute_y_red()
@@ -460,28 +453,21 @@ bicgstab_preconditioned_step(jacobi_bcs)
 	bicgstab_step6()
 }
 
-ComputeSteps
-sor_red_step(jacobi_bcs)
+ComputeSteps sor_red_step(jacobi_bcs)
 {
 	sor_red(AC_SOR_omega)
 }
-ComputeSteps
-sor_black_step(jacobi_bcs)
+ComputeSteps sor_black_step(jacobi_bcs)
 {
 	sor_black(AC_SOR_omega)
 }
-ComputeSteps
-get_residual(jacobi_bcs)
+ComputeSteps get_residual(jacobi_bcs)
 {
 	residual_kernel()
 	write_residual()
 }
-ComputeSteps
-get_potential_with_sph(jacobi_bcs)
+ComputeSteps get_potential_with_sph(jacobi_bcs)
 {
 	calculate_mlm_kernel()
 	calculate_potential_with_mlm()
 }
-
-
-
