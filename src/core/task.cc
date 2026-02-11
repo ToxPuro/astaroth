@@ -83,7 +83,8 @@ get_red_black_state()
 	} 
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
-#define MAX_HALO_TAG (10000) //"Namespacing" the MPI tag space to avoid collisions in case of multiple messages
+#define MAX_HALO_TAG (1000) //"Namespacing" the MPI tag space to avoid collisions in case of multiple messages
+#define SINGLE_PRECISION_TAG_OFFSET (100000) //"Namespacing" the single precision tag space
 
 #if AC_USE_HIP
 template <typename T, typename... Args>
@@ -1415,10 +1416,11 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(size_t length_, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_): requests()
+HaloMessage::HaloMessage(size_t length_, size_t single_length_, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_): requests()
 {
     type         = type_;
     length       = length_;
+    single_length = single_length_;
     counterpart_ranks = counterpart_ranks_;
 
     tag = tag0 + tag_;
@@ -1431,13 +1433,25 @@ HaloMessage::HaloMessage(size_t length_, const int tag0, const int tag_, const s
 	    bytes *= counterpart_ranks.size();
     }
     ERRCHK_CUDA_ALWAYS(acMalloc((void**)&data, bytes));
-    single_data = NULL;
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
     	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&data_pinned, bytes));
     }
+    single_bytes = length * sizeof(float);
+    if(type == HaloMessageType::Receive) 
+    {
+	    single_bytes *= counterpart_ranks.size();
+    }
+    ERRCHK_CUDA_ALWAYS(acMalloc((void**)&single_data, single_bytes));
+    if(!ac_get_info()[AC_use_cuda_aware_mpi])
+    {
+    	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&single_data_pinned, single_bytes));
+    }
     for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
+    {
 	requests.push_back(MPI_REQUEST_NULL);
+	single_requests.push_back(MPI_REQUEST_NULL);
+    }
 }
 
 HaloMessage::~HaloMessage()
@@ -1475,23 +1489,24 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
 
-HaloMessageSwapChain::HaloMessageSwapChain(size_t length, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
+HaloMessageSwapChain::HaloMessageSwapChain(size_t length, size_t single_length, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(length,tag0, tag, counterpart_ranks,type);
+        buffers.emplace_back(length,single_length,tag0, tag, counterpart_ranks,type);
     }
 }
 
-HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t nvars,const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
+HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t nvars,size_t nvars_single, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
    
     const size_t length = dims.x*dims.y*dims.z*nvars;
+    const size_t single_length = dims.x*dims.y*dims.z*nvars_single;
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(length,tag0, tag, counterpart_ranks,type);
+        buffers.emplace_back(length,single_length,tag0, tag, counterpart_ranks,type);
     }
 }
 
@@ -1658,6 +1673,27 @@ get_communicated_subset(const std::vector<Field> fields, const facet_class_range
 	}
 	return res;
 }
+size_t
+get_real_field_count(const std::vector<Field>& fields)
+{
+	size_t count = 0;
+	for(auto& field : fields)
+	{
+		count += !vtxbuf_is_single_precision[field];
+	}
+	return count;
+}
+
+size_t
+get_single_precision_field_count(const std::vector<Field>& fields)
+{
+	size_t count = 0;
+	for(auto& field : fields)
+	{
+		count += vtxbuf_is_single_precision[field];
+	}
+	return count;
+}
 
 
 
@@ -1677,8 +1713,11 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
       // MPI tags are namespaced to avoid collisions with other MPI tasks
       //TP: in recv_buffers the dims of input is used instead of output since normally they are the same
       //    and in case of shear periodic then output_dims is larger than the message dims
-      recv_buffers(input_regions[0].dims,  receiving ? input_regions[0].memory.fields.size() : 0,   tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
-      send_buffers(input_regions[0].dims,  sending   ? output_region.memory.fields.size() : 0,   tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
+      recv_buffers(input_regions[0].dims,  receiving ? get_real_field_count(input_regions[0].memory.fields) : 0, receiving ? get_single_precision_field_count(input_regions[0].memory.fields) : 0,  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
+      send_buffers(input_regions[0].dims,  
+		      sending   ? get_real_field_count(output_region.memory.fields) : 0,   
+		      sending   ? get_single_precision_field_count(output_region.memory.fields) : 0,   
+		      tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
 {
     auto& input_region = input_regions[0];
     // Create stream for packing/unpacking
@@ -1875,6 +1914,11 @@ HaloExchangeTask::receiveDevice()
     {
     	ERRCHK_ALWAYS(MPI_Irecv(msg->data + i*msg->length, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
     	          msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
+    	if(msg->single_length != 0) 
+	{
+    	   ERRCHK_ALWAYS(MPI_Irecv(msg->single_data + i*msg->single_length, msg->single_length, MPI_FLOAT, msg->counterpart_ranks[i],
+    	             msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG + SINGLE_PRECISION_TAG_OFFSET, acGridMPIComm(), &msg->single_requests[i]) == MPI_SUCCESS);
+	}
     }
     if (rank == 0) {
         // fprintf(stderr, "Returned from MPI_Irecv\n");
@@ -1891,6 +1935,11 @@ HaloExchangeTask::sendDevice()
     {
     	ERRCHK_ALWAYS(MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
               msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
+    	if(msg->single_length != 0) 
+	{
+	   ERRCHK_ALWAYS(MPI_Isend(msg->single_data, msg->single_length, MPI_FLOAT, msg->counterpart_ranks[i],
+              msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG + SINGLE_PRECISION_TAG_OFFSET, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
+	}
     }
 }
 
@@ -2013,23 +2062,25 @@ bool
 HaloExchangeTask::test()
 {
     switch (static_cast<HaloExchangeState>(state)) {
-    case HaloExchangeState::Moving: {
-        return poll_stream();
-    }
-    case HaloExchangeState::Packing: {
-        return poll_stream();
-    }
-    case HaloExchangeState::Unpacking: {
-        return poll_stream();
-    }
-    case HaloExchangeState::Exchanging: {
-        auto msg = recv_buffers.get_current_buffer();
-	return mpi_test_all(msg->requests.size(), msg->requests.data());
-    }
-    default: {
-        ERROR("HaloExchangeTask in an invalid state.");
-        return false;
-    }
+      case HaloExchangeState::Moving: {
+          return poll_stream();
+      }
+      case HaloExchangeState::Packing: {
+          return poll_stream();
+      }
+      case HaloExchangeState::Unpacking: {
+          return poll_stream();
+      }
+      case HaloExchangeState::Exchanging: {
+          auto msg = recv_buffers.get_current_buffer();
+          return mpi_test_all(msg->requests.size(), msg->requests.data()) &&
+          	(msg->single_length == 0 || mpi_test_all(msg->single_requests.size(), msg->single_requests.data()))
+          	;
+      }
+      default: {
+          ERROR("HaloExchangeTask in an invalid state.");
+          return false;
+      }
     }
 }
 
@@ -2147,7 +2198,7 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
 	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
            Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
-      buffers(input_regions[0].dims, get_nprocs(op.ray_direction),  tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
+      buffers(input_regions[0].dims, get_nprocs(op.ray_direction),  0, tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
 {
     const auto sub_comms = acGridMPISubComms();
     gather_comm = MPI_COMM_NULL;
@@ -2332,7 +2383,9 @@ MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, co
 	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
            Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
-      reduce_buffers(input_regions[0].dims,  input_regions[0].memory.fields.size(),  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
+      reduce_buffers(input_regions[0].dims,  get_real_field_count(input_regions[0].memory.fields),  
+		        get_single_precision_field_count(input_regions[0].memory.fields),			
+		      	tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
 {
     const auto sub_comms = acGridMPISubComms();
     scan_comm = MPI_COMM_NULL;

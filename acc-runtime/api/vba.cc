@@ -236,10 +236,20 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
 
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    ERRCHK_ALWAYS(vba->on_device.in[i]);
-    ERRCHK_ALWAYS(vba->on_device.out[i]);
-    acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)AC_REAL_MAX);
-    acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
+    if(vtxbuf_is_single_precision[i])
+    {
+    	ERRCHK_ALWAYS(vba->on_device.single_in[i]);
+    	ERRCHK_ALWAYS(vba->on_device.single_out[i]);
+    	acKernelFlush(stream, vba->on_device.single_in[i], vba->counts[i], (float)FLT_MAX);
+    	acKernelFlush(stream, vba->on_device.single_out[i], vba->counts[i], (float)0.0);
+    }
+    else
+    {
+    	ERRCHK_ALWAYS(vba->on_device.in[i]);
+    	ERRCHK_ALWAYS(vba->on_device.out[i]);
+    	acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)AC_REAL_MAX);
+    	acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
+    }
   }
 
   for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)

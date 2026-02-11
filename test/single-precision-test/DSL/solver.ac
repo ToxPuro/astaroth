@@ -1,0 +1,25 @@
+
+Field F
+single_precision Field F_SINGLE_PRECISION
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+Kernel rhs_kernel()
+{
+	write(F,F+1.0)
+	write(F_SINGLE_PRECISION,F_SINGLE_PRECISION+1.0)
+}
+
+Kernel init_kernel()
+{
+	write(F,0.0)
+	write(F_SINGLE_PRECISION,0.0)
+}
+
+ComputeSteps rhs(bcs)
+{
+	init_kernel()
+	rhs_kernel()
+}

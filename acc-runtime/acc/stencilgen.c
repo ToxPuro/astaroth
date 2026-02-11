@@ -107,6 +107,26 @@ raise_error(const char* str)
   exit(EXIT_FAILURE);
 }
 
+const char*
+get_field_precision(const int field)
+{
+	if(vtxbuf_is_single_precision[field]) return "float";
+	return "AcReal";
+}
+const char*
+get_field_input_name(const int field)
+{
+	if(vtxbuf_is_single_precision[field]) return "single_in";
+	return "in";
+}
+
+const char*
+get_field_output_name(const int field)
+{
+	if(vtxbuf_is_single_precision[field]) return "single_out";
+	return "out";
+}
+
 void
 gen_stencil_definitions(void)
 {
@@ -1245,8 +1265,11 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
     	for(int field = 0; field < NUM_FIELDS; ++field)
     	{
-    		if(vtxbuf_has_variable_dims[field])
-    			printf("case %s: { return AC_READ_ONLY_LOAD(vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}",field_names[field],vtxbuf_dims_str[field]);
+    		if(vtxbuf_has_variable_dims[field] || vtxbuf_is_single_precision[field])
+		{
+    			printf("case %s: { return (AcReal)AC_READ_ONLY_LOAD(vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}"
+					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field]);
+		}
     	}
     	printf("default: {return AC_READ_ONLY_LOAD(vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))]);}");
     }
@@ -1254,8 +1277,11 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
     	for(int field = 0; field < NUM_FIELDS; ++field)
     	{
-    		if(vtxbuf_has_variable_dims[field])
-    			printf("case %s: { return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}",field_names[field],vtxbuf_dims_str[field]);
+    		if(vtxbuf_has_variable_dims[field] || vtxbuf_is_single_precision[field])
+		{
+    			printf("case %s: { return (AcReal)vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}"
+					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field]);
+		}
     	}
     	printf("default: {return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))];}");
     }
@@ -1409,7 +1435,11 @@ gen_kernel_write_funcs(const int curr_kernel)
 				{
 					printf("shared_mem_for_rays[(threadIdx.x) + blockDim.x*(threadIdx.y) + f%s_ray_index + shared_mem_z_stride + shared_mem_z_offset] = value;",field_names[original_field]);
 				}
-				printf("vba.out[handle][DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s))] = value;",vtxbuf_dims_str[field]);
+				printf("vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s))] = (%s)value;"
+						,get_field_output_name(field)
+						,vtxbuf_dims_str[field]
+						,get_field_precision(field)
+						);
 			}
 			printf("break;}");
 		}
@@ -1430,10 +1460,17 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("switch (handle) {");
 	for(int original_field = 0; original_field < NUM_FIELDS; ++original_field)
 	{
-		if(write_called[curr_kernel][original_field] && vtxbuf_has_variable_dims[original_field])
+		if(write_called[curr_kernel][original_field] && (vtxbuf_has_variable_dims[original_field]
+				|| vtxbuf_is_single_precision[original_field])
+				)
 		{
   	      		const int field = get_original_index(field_remappings,original_field);
-			printf("case %s: { vba.out[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = value; break;}",field_names[field],vtxbuf_dims_str[field]);
+			printf("case %s: { vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = (%s)value; break;}"
+					,field_names[field]
+					,get_field_output_name(field)
+					,vtxbuf_dims_str[field]
+					,get_field_precision(field)
+				);
 		}
 	}
     	printf("default: {vba.out[handle][DEVICE_VTXBUF_IDX(x,y,z)] = value;}");
@@ -1444,8 +1481,11 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("switch (handle) {");
 	for(int field = 0; field < NUM_FIELDS; ++field)
 	{
-		if(vtxbuf_has_variable_dims[field])
-			printf("case %s: { vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = value; break;}",field_names[field],vtxbuf_dims_str[field]);
+		if(vtxbuf_has_variable_dims[field] || vtxbuf_is_single_precision[field])
+		{
+			printf("case %s: { vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = (%s)value; break;}"
+					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field],get_field_precision(field));
+		}
 	}
     	printf("default: {vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))] = value;}");
 	printf("}");
@@ -1547,10 +1587,11 @@ populate_shared_mem_for_z_rays(const int curr_kernel)
         		  const int original_field = get_original_index(field_remappings,field);
 			  if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
 			  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = ",field_names[original_field]);
-        		  printf("vba.in[%s]"
+        		  printf("(AcReal)vba.%s[%s]"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y, "
         		         "vertexIdx.z%s (z_block-1), "
 			         "VAL(%s))]",
+				 get_field_input_name(original_field),
         		         field_names[original_field],
 			         forward_ray ? "+" : "-",
         		         vtxbuf_dims_str[original_field]
@@ -1568,9 +1609,10 @@ populate_shared_mem_for_z_rays(const int curr_kernel)
         		  const int original_field = get_original_index(field_remappings,field);
 			  if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
 			  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = ",field_names[original_field]);
-        		  printf("vba.in[%s]"
+        		  printf("(AcReal)vba.%s[%s]"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y, "
         		         "vertexIdx.z %s (z_block - 1),VAL(%s))]",
+				 get_field_input_name(original_field),
         		         field_names[original_field],
 			         forward_ray ? "+" : "-",
         		         vtxbuf_dims_str[original_field]
@@ -1604,7 +1646,8 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
         	{
 		  if(write_called[curr_kernel][field])
 		  {
-			printf("vba.out[%s][DEVICE_VTXBUF_IDX(vertexIdx.x %s (x_block-VAL(AC_x_ray_shared_mem_block_size)),y_index,vertexIdx.z)] = shared_mem_for_rays[tid_index + shared_mem_x_stride*(x_block+1) + f%s_ray_index];"
+			printf("vba.%s[%s][DEVICE_VTXBUF_IDX(vertexIdx.x %s (x_block-VAL(AC_x_ray_shared_mem_block_size)),y_index,vertexIdx.z)] = shared_mem_for_rays[tid_index + shared_mem_x_stride*(x_block+1) + f%s_ray_index];"
+			,get_field_output_name(field)
 			,field_names[field]
 			,x_ray ? "+" : "-"
 			,field_names[field]);
@@ -1641,9 +1684,10 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
 			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
         		  const int original_field = get_original_index(field_remappings,field);
 			  printf("shared_mem_for_rays[tid_index + shared_mem_x_stride*x_block + f%s_ray_index] = ",field_names[original_field]);
-        		  printf("vba.in[%s]"
+        		  printf("(AcReal)vba.%s[%s]"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x %s (x_block-1),vertexIdx.y, "
         		         "vertexIdx.z,VAL(%s))]",
+				 get_field_input_name(original_field),
         		         field_names[original_field],
 			         x_ray ? "+" : "-",
         		         vtxbuf_dims_str[original_field]
@@ -1663,9 +1707,10 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
 			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
         		  const int original_field = get_original_index(field_remappings,field);
 			  printf("shared_mem_for_rays[tid_index + shared_mem_x_stride*x_block + f%s_ray_index] = ",field_names[original_field]);
-        		  printf("vba.in[%s]"
+        		  printf("(AcReal)vba.%s[%s]"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x %s (x_block-1),y_index, "
         		         "vertexIdx.z,VAL(%s))]",
+				 get_field_input_name(original_field),
         		         field_names[original_field],
 			         x_ray ? "+" : "-",
         		         vtxbuf_dims_str[original_field]
@@ -2041,7 +2086,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
     if(previous_accessed[cur_kernel][original_field])
     {
       const int field = get_original_index(field_remappings,original_field);
-      printf("const auto f%s_prev = vba.out[%s][idx];", field_names[field], field_names[field]);
+      printf("const auto f%s_prev = (AcReal)vba.%s[%s][idx];", get_field_output_name(field), field_names[field], field_names[field]);
     }
   }
 
@@ -2454,10 +2499,11 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
    
    else
    {
-   	printf("AC_READ_ONLY_LOAD(");
-   	printf("vba.in[%s]"
+   	printf("(AcReal)AC_READ_ONLY_LOAD(");
+   	printf("vba.%s[%s]"
    	       "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
    	       "vertexIdx.z+(%d),VAL(%s))])",
+	       get_field_input_name(original_field),
    	       field_names[original_field], -STENCIL_ORDER / 2 + width,
    	       -STENCIL_ORDER / 2 + height,
    	       -STENCIL_ORDER / 2 + depth,
@@ -2630,9 +2676,10 @@ gen_kernel_body(const int curr_kernel)
       	  	   printf("const auto f%s_incoming_r%s = ", field_names[original_field], ray_names[ray]);
       	  	   printf("(");
       	  	   printf("(");
-      	  	   printf("vba.in[%s]"
+      	  	   printf("(AcReal)vba.%s[%s]"
       	  	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x-(%d),vertexIdx.y-(%d), "
       	  	          "vertexIdx.z-(%d),VAL(%s))])",
+			  get_field_input_name(original_field),
       	  	          field_names[original_field],
       	  		  ray_directions[ray].x,
       	  		  ray_directions[ray].y,
@@ -2647,9 +2694,10 @@ gen_kernel_body(const int curr_kernel)
       	  	   printf("const auto f%s_outgoing_r%s = ", field_names[original_field], ray_names[ray]);
       	  	   printf("(");
       	  	   printf("(");
-      	  	   printf("vba.in[%s]"
+      	  	   printf("(AcReal)vba.%s[%s]"
       	  	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
       	  	          "vertexIdx.z+(%d),VAL(%s))])",
+			  get_field_input_name(original_field),
       	  	          field_names[original_field],
       	  		  ray_directions[ray].x,
       	  		  ray_directions[ray].y,

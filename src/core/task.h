@@ -252,9 +252,11 @@ enum class HaloMessageType { Send, Receive};
 typedef struct HaloMessage {
     HaloMessageType type;
     int length;
+    int single_length;
     AcRealPacked* data;
     float* single_data;
     size_t bytes;
+    size_t single_bytes;
     AcRealPacked* data_pinned;
     float*        single_data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
@@ -264,7 +266,7 @@ typedef struct HaloMessage {
     int non_namespaced_tag;
     std::vector<int> counterpart_ranks;
 
-    HaloMessage(size_t size, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessage(size_t size, size_t single_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();
     void pin(const Device device, const cudaStream_t stream);
     void unpin(const Device device, const cudaStream_t stream);
@@ -276,8 +278,8 @@ typedef struct HaloMessageSwapChain {
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(size_t size,const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
-    HaloMessageSwapChain(Volume dims, size_t nvars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessageSwapChain(size_t size,size_t single_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessageSwapChain(Volume dims, size_t nvars, size_t  single_nvars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     void update_counterpart_ranks(const std::vector<int> counterpart_ranks);
 
     HaloMessage* get_current_buffer();
