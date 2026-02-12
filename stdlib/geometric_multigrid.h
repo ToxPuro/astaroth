@@ -48,7 +48,6 @@ gmg_prolong(AcMesh mesh, int level)
 	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_prolong_solution,launch_start,launch_end),1);
     	--level;
     }
-    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &mesh);
 };
 
 void
@@ -77,7 +76,7 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     const AcReal h2_inv = info[AC_inv_ds_2].x/std::pow(4,level);
     const std::array<Stencil,11> galerkin_operator_stencils_r1 = 
     {
-    	(Stencil)0,
+    	stencil_gmg_laplace_level_0_r1,
     	stencil_gmg_laplace_level_1_r1,
     	stencil_gmg_laplace_level_2_r1,
     	stencil_gmg_laplace_level_3_r1,
@@ -89,6 +88,22 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     	stencil_gmg_laplace_level_9_r1,
     	stencil_gmg_laplace_level_10_r1
     };
+
+    const std::array<Stencil,11> galerkin_y_line_operators = 
+    {
+	stencil_gmg_laplace_y_line_l0,
+	stencil_gmg_laplace_y_line_l1,
+	stencil_gmg_laplace_y_line_l2,
+	stencil_gmg_laplace_y_line_l3,
+	stencil_gmg_laplace_y_line_l4,
+	stencil_gmg_laplace_y_line_l5,
+	stencil_gmg_laplace_y_line_l6,
+	stencil_gmg_laplace_y_line_l7,
+	stencil_gmg_laplace_y_line_l8,
+	stencil_gmg_laplace_y_line_l9,
+	stencil_gmg_laplace_y_line_l10
+    };
+
 #if STENCIL_ORDER == 4
     const std::array<Stencil,5> galerkin_operator_stencils_r2 = 
     {
@@ -147,6 +162,8 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
     const AcReal central_coeff = mesh.vertex_buffer[GMG_RESIDUALS[level]][central_index];
     gmg_central_coeffs[level] = central_coeff;
     //Here we load to both r1 and (r2/r3) since we are not sure is the user using compact poisson or not
+    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r1[level],stencil);
+    acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_y_line_operators[level],stencil);
     acDeviceLoadStencil(acGridGetDevice(),STREAM_DEFAULT,galerkin_operator_stencils_r1[level],stencil);
     if(level <= 4)
     {

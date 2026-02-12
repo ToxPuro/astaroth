@@ -14,6 +14,37 @@ run_const int AC_gmg_number_of_levels = 5
 //A_coarse = Restriction(A(Prolongation(U_coarse)))
 //
 Stencil 
+gmg_laplace_level_0_r1
+{
+	[-1][-1][-1] = -1.0, 
+	[0][-1][-1]  = -1.0, 
+	[1][-1][-1]  = -1.0, 
+	[-1][0][-1]  = -1.0, 
+	[0][0][-1]   = -1.0, 
+	[1][0][-1]   = -1.0, 
+	[-1][1][-1]  = -1.0, 
+	[0][1][-1]   = -1.0, 
+	[1][1][-1]   = -1.0, 
+	[-1][-1][0]  = -1.0, 
+	[0][-1][0]   = -1.0, 
+	[1][-1][0]   = -1.0, 
+	[-1][0][0]   = -1.0, 
+	[0][0][0]    = -1.0, 
+	[1][0][0]    = -1.0, 
+	[-1][1][0]   = -1.0, 
+	[0][1][0]    = -1.0, 
+	[1][1][0]    = -1.0, 
+	[-1][-1][1]  = -1.0, 
+	[0][-1][1]   = -1.0, 
+	[1][-1][1]   = -1.0, 
+	[-1][0][1]   = -1.0, 
+	[0][0][1]    = -1.0, 
+	[1][0][1]    = -1.0, 
+	[-1][1][1]   = -1.0, 
+	[0][1][1]    = -1.0, 
+	[1][1][1]    = -1.0 
+}
+Stencil 
 gmg_laplace_level_1_r1
 {
 	[-1][-1][-1] = -1.0, 
@@ -326,6 +357,95 @@ gmg_laplace_level_10_r1
 	[0][1][1]    = -1.0, 
 	[1][1][1]    = -1.0 
 }
+
+Stencil 
+gmg_laplace_y_line_l0
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l1
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l2
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l3
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l4
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l5
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l6
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l7
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l8
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l9
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
+Stencil 
+gmg_laplace_y_line_l10
+{
+	[0][-1][0] = -1.0,
+	[0][ 0][0] = -1.0,
+	[0][ 1][0] = -1.0
+}
+
 #if STENCIL_ORDER == 4
 Stencil 
 gmg_laplace_level_1_r2
@@ -2381,6 +2501,7 @@ gmg_get_fine_grid_operator(Field f)
 	}
 	return anisotropic_laplace(f,AC_gmg_poisson_coeffs)
 }
+
 gmg_laplace(Field f, int level)
 {
 	if(!AC_use_coarse_galerkin_operators) 
@@ -2388,9 +2509,10 @@ gmg_laplace(Field f, int level)
 		inv_spacing_2 = AC_inv_ds_2/pow(4,int(level))
 		return laplace(f,inv_spacing_2)
 	}
-	if(level == 0) return gmg_get_fine_grid_operator(f)
 	if(AC_poisson_radius_1)
 	{
+		if(level == 0)  return gmg_laplace_level_0_r1(f)
+		//if(level == 0)  return gmg_get_fine_grid_operator(f)
 		if(level == 1)  return gmg_laplace_level_1_r1(f)
 		if(level == 2)  return gmg_laplace_level_2_r1(f)
 		if(level == 3)  return gmg_laplace_level_3_r1(f)
@@ -2414,6 +2536,26 @@ gmg_laplace(Field f, int level)
 	if(level == 3) return gmg_laplace_level_3_r3(f)
 	if(level == 4) return gmg_laplace_level_4_r3(f)
 #endif
+	return 0.0;
+}
+
+gmg_laplace_y_line(Field f, int level)
+{
+	fatal_error_message(!AC_poisson_radius_1,"Only supported for radius 1 at the moment!\n");
+	if(AC_poisson_radius_1)
+	{
+		if(level == 0)  return gmg_laplace_y_line_l0(f)
+		if(level == 1)  return gmg_laplace_y_line_l1(f)
+		if(level == 2)  return gmg_laplace_y_line_l2(f)
+		if(level == 3)  return gmg_laplace_y_line_l3(f)
+		if(level == 4)  return gmg_laplace_y_line_l4(f)
+		if(level == 5)  return gmg_laplace_y_line_l5(f)
+		if(level == 6)  return gmg_laplace_y_line_l6(f)
+		if(level == 7)  return gmg_laplace_y_line_l7(f)
+		if(level == 8)  return gmg_laplace_y_line_l8(f)
+		if(level == 9)  return gmg_laplace_y_line_l9(f)
+		if(level == 10) return gmg_laplace_y_line_l10(f)
+	}
 	return 0.0;
 }
 
@@ -2475,7 +2617,6 @@ gmg_copy_rhs_to_residual(gmg_boundconds)
 
 gmg_laplace_central_coeff(int level)
 {
-	if(level == 0) return laplace_central_coeff()
 	return AC_GMG_CENTRAL_COEFFS[level]
 }
 
@@ -2656,7 +2797,6 @@ Kernel gmg_write_del2_kernel()
 	write(GMG_RESIDUALS[0],gmg_get_fine_grid_operator(GMG_SOLUTIONS[0]))
 }
 
-
 ComputeSteps
 gmg_write_del2(gmg_boundconds)
 {
@@ -2734,3 +2874,55 @@ gmg_cg_coarsest_level_step(gmg_boundconds)
 	gmg_cg_advance(AC_GMG_LEVEL)
 	gmg_cg_advance_p()
 }
+
+Kernel gmg_init_smoother_res_kernel(GMG_LEVEL level)
+{
+	write(GMG_SMOOTHER_RES[level],0.0)
+}
+
+ComputeSteps
+gmg_init_iterative_smoother(gmg_boundconds)
+{
+	gmg_init_smoother_res_kernel(AC_GMG_LEVEL)
+	gmg_residual_kernel(AC_GMG_LEVEL)
+}
+
+Kernel
+gmg_y_line_smoother_step_kernel(GMG_LEVEL level)
+{
+	Ax = -gmg_laplace_y_line(GMG_SMOOTHER_RES[level],level)
+	central_coeff = -gmg_laplace_central_coeff(level)
+	residual = GMG_RESIDUALS[0]-Ax
+	write(GMG_SMOOTHER_RES[level], GMG_SMOOTHER_RES[level] + residual/central_coeff)
+}
+ComputeSteps
+gmg_smoother_step(gmg_boundconds)
+{
+	gmg_y_line_smoother_step_kernel(AC_GMG_LEVEL)
+}
+
+global output real AC_smoother_residual_l2_norm[11]
+Kernel gmg_smoother_residual_norm_kernel(GMG_LEVEL level)
+{
+	Ax = -gmg_laplace_y_line(GMG_SMOOTHER_RES[level],level)
+	residual = GMG_RESIDUALS[0]-Ax
+	reduce_l2_norm(residual,AC_smoother_residual_l2_norm[level])
+}
+
+ComputeSteps
+gmg_smoother_residual_norm(gmg_boundconds)
+{
+	gmg_smoother_residual_norm_kernel(AC_GMG_LEVEL)
+}
+
+Kernel gmg_smoother_update_solution_kernel(GMG_LEVEL level)
+{
+	write(GMG_SOLUTIONS[level], GMG_SOLUTIONS[level] + GMG_SMOOTHER_RES[level])
+}
+
+ComputeSteps
+gmg_smoother_update_solution(gmg_boundconds)
+{
+	gmg_smoother_update_solution_kernel(AC_GMG_LEVEL)
+}
+

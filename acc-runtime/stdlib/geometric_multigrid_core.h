@@ -341,6 +341,19 @@ GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_8) Field GMG_RESID
 GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_9) Field GMG_RESIDUAL_9
 GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_10) Field GMG_RESIDUAL_10
 
+GMG_PRECISION dims(AC_mlocal_gmg_level_0)  Field GMG_SMOOTHER_RES_0
+GMG_PRECISION dims(AC_mlocal_gmg_level_1)  Field GMG_SMOOTHER_RES_1
+GMG_PRECISION dims(AC_mlocal_gmg_level_2)  Field GMG_SMOOTHER_RES_2
+GMG_PRECISION dims(AC_mlocal_gmg_level_3)  Field GMG_SMOOTHER_RES_3
+GMG_PRECISION dims(AC_mlocal_gmg_level_4)  Field GMG_SMOOTHER_RES_4
+GMG_PRECISION dims(AC_mlocal_gmg_level_5)  Field GMG_SMOOTHER_RES_5
+GMG_PRECISION dims(AC_mlocal_gmg_level_6)  Field GMG_SMOOTHER_RES_6
+GMG_PRECISION dims(AC_mlocal_gmg_level_7)  Field GMG_SMOOTHER_RES_7
+GMG_PRECISION dims(AC_mlocal_gmg_level_8)  Field GMG_SMOOTHER_RES_8
+GMG_PRECISION dims(AC_mlocal_gmg_level_9)  Field GMG_SMOOTHER_RES_9
+GMG_PRECISION dims(AC_mlocal_gmg_level_10) Field GMG_SMOOTHER_RES_10
+
+auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_TMP_0 
 auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_TMP_1 
 auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_TMP_2
 auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_TMP_3
@@ -399,9 +412,24 @@ const Field GMG_RESIDUALS =
 		GMG_RESIDUAL_10
 	]
 
+const Field GMG_SMOOTHER_RES =
+	[
+		GMG_SMOOTHER_RES_0,
+		GMG_SMOOTHER_RES_1,
+		GMG_SMOOTHER_RES_2,
+		GMG_SMOOTHER_RES_3,
+		GMG_SMOOTHER_RES_4,
+		GMG_SMOOTHER_RES_5,
+		GMG_SMOOTHER_RES_6,
+		GMG_SMOOTHER_RES_7,
+		GMG_SMOOTHER_RES_8,
+		GMG_SMOOTHER_RES_9,
+		GMG_SMOOTHER_RES_10
+	]
+
 const Field GMG_TMPS =
 	[
-		GMG_TMP_1,
+		GMG_TMP_0,
 		GMG_TMP_1,
 		GMG_TMP_2,
 		GMG_TMP_3,
