@@ -186,6 +186,7 @@ reduce_l2_norm(real val, param)
 	postprocess_reduce_result(param,AC_POSTPROCESS_SQRT)
 }
 
+#if AC_DOUBLE_PRECISION
 reduce_l2_norm(float val, param)
 {
 	double_val = (double)val
@@ -193,6 +194,7 @@ reduce_l2_norm(float val, param)
 	reduce_sum((float)res,param)
 	postprocess_reduce_result(param,AC_POSTPROCESS_SQRT)
 }
+#endif
 
 reduce_rms(real3 val, param)
 {
