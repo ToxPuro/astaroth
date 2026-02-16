@@ -57,6 +57,7 @@ const char* OUTPUT_VALUE_STR      = NULL;
 const char* DEAD_STR      = NULL;
 const char* AUXILIARY_STR      = NULL;
 const char* SINGLE_PRECISION_STR      = NULL;
+const char* HALF_PRECISION_STR      = NULL;
 const char* COMMUNICATED_STR      = NULL;
 const char* DEVICE_ONLY_STR       = NULL;
 const char* DIMS_STR = NULL;
@@ -675,6 +676,7 @@ populate_global_strings()
 	ELEMENTAL_STR = intern("elemental");
 	AUXILIARY_STR = intern("auxiliary");
 	SINGLE_PRECISION_STR = intern("single_precision");
+	HALF_PRECISION_STR = intern("half_precision");
 	COMMUNICATED_STR = intern("communicated");
 	DEVICE_ONLY_STR = intern("device_only");
 	DIMS_STR = intern("dims");
@@ -764,7 +766,7 @@ main(int argc, char** argv)
 %token  ASSIGNOP QUESTION UNARY_OP
 %token  SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
 %token  BOOL INTRINSIC LONG_LONG LONG 
-%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED SINGLE_PRECISION AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED HALF_PRECISION SINGLE_PRECISION AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token  FIXED_BOUNDARY
 %token  PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
 %token  HOSTDEFINE
@@ -951,6 +953,7 @@ input:  INPUT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 global_ql: GLOBAL_MEMORY_QL{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 single_precision: SINGLE_PRECISION { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+half_precision: HALF_PRECISION { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 dead:      DEAD        { 
     			if(!ALLOW_DEAD_VARIABLES) {fatal("%s","Must have ALLOW_DEAD_VARIABLES=ON to have dead variables!\n"); }
     			$$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); 
@@ -1136,6 +1139,7 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | global{ $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | auxiliary    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | single_precision { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | half_precision { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dead         { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | inline       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | elemental    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }

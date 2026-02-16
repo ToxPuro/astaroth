@@ -236,7 +236,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
 
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    if(vtxbuf_is_single_precision[i])
+    if(vtxbuf_precision[i] == AC_SINGLE_PRECISION)
     {
     	ERRCHK_ALWAYS(vba->on_device.single_in[i]);
     	ERRCHK_ALWAYS(vba->on_device.single_out[i]);
@@ -281,12 +281,12 @@ acVBACreate(const AcMeshInfo config)
   {
   	vba.dims[i]    = acGetMeshDims(config,Field(i));
   	size_t count = vba.dims[i].m1.x*vba.dims[i].m1.y*vba.dims[i].m1.z;
-  	size_t bytes = vtxbuf_is_single_precision[i] 
+  	size_t bytes = vtxbuf_precision[i] == AC_SINGLE_PRECISION 
 			        ? sizeof(vba.on_device.single_in[0][0]) * count
 				: sizeof(vba.on_device.in[0][0]) * count;
   	vba.counts[i]         = count;
   	vba.bytes[i]          = bytes;
-	if(vtxbuf_is_single_precision[i])
+	if(vtxbuf_precision[i] == AC_SINGLE_PRECISION)
 	{
 		single_in_bytes  += vba.bytes[i];
 		if(vtxbuf_is_auxiliary[i]) continue;
@@ -325,7 +325,7 @@ acVBACreate(const AcMeshInfo config)
   size_t single_out_offset = 0;
   size_t single_in_offset = 0;
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    if(vtxbuf_is_single_precision[i])
+    if(vtxbuf_precision[i] == AC_SINGLE_PRECISION)
     {
       vba.on_device.single_in[i] = vba_single_in_buff + single_in_offset;
       ERRCHK_ALWAYS(vba.on_device.single_in[i] != NULL);

@@ -1683,7 +1683,7 @@ get_real_field_count(const std::vector<Field>& fields)
 	size_t count = 0;
 	for(auto& field : fields)
 	{
-		count += !vtxbuf_is_single_precision[field];
+		count += (vtxbuf_precision[field] == AC_REAL_PRECISION);
 	}
 	return count;
 }
@@ -1694,7 +1694,7 @@ get_single_precision_field_count(const std::vector<Field>& fields)
 	size_t count = 0;
 	for(auto& field : fields)
 	{
-		count += vtxbuf_is_single_precision[field];
+		count += (vtxbuf_precision[field] == AC_SINGLE_PRECISION);
 	}
 	return count;
 }

@@ -183,8 +183,10 @@ typedef struct {
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
-    float* single_in[NUM_VTXBUF_HANDLES];
-    float* single_out[NUM_VTXBUF_HANDLES];
+    float*  single_in[NUM_VTXBUF_HANDLES];
+    float*  single_out[NUM_VTXBUF_HANDLES];
+    _half*   half_in[NUM_VTXBUF_HANDLES];
+    _half*   half_out[NUM_VTXBUF_HANDLES];
     AcComplex* complex_in[NUM_COMPLEX_FIELDS+1];
     acKernelInputParams kernel_input_params;
     int reduce_offset;

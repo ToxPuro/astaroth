@@ -44,12 +44,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 typedef struct int3
 {
 	int x,y,z;
 } int3;
 
+typedef double AcReal;
 #include "builtin_enums.h"
+#include "user_typedefs.h"
 #include "user_defines.h"
 
 #include "stencil_accesses.h"
@@ -110,20 +113,23 @@ raise_error(const char* str)
 const char*
 get_field_precision(const int field)
 {
-	if(vtxbuf_is_single_precision[field]) return "float";
+	if(vtxbuf_precision[field] == AC_SINGLE_PRECISION) return "float";
+	if(vtxbuf_precision[field] == AC_HALF_PRECISION) return "_half";
 	return "AcReal";
 }
 const char*
 get_field_input_name(const int field)
 {
-	if(vtxbuf_is_single_precision[field]) return "single_in";
+	if(vtxbuf_precision[field] == AC_SINGLE_PRECISION) return "single_in";
+	if(vtxbuf_precision[field] == AC_HALF_PRECISION) return "half_in";
 	return "in";
 }
 
 const char*
 get_field_output_name(const int field)
 {
-	if(vtxbuf_is_single_precision[field]) return "single_out";
+	if(vtxbuf_precision[field] == AC_SINGLE_PRECISION) return "single_out";
+	if(vtxbuf_precision[field] == AC_HALF_PRECISION) return "half_out";
 	return "out";
 }
 
@@ -1265,7 +1271,7 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
     	for(int field = 0; field < NUM_FIELDS; ++field)
     	{
-    		if(vtxbuf_has_variable_dims[field] || vtxbuf_is_single_precision[field])
+    		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		{
     			printf("case %s: { return (AcReal)AC_READ_ONLY_LOAD(vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}"
 					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field]);
@@ -1277,7 +1283,7 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
     	for(int field = 0; field < NUM_FIELDS; ++field)
     	{
-    		if(vtxbuf_has_variable_dims[field] || vtxbuf_is_single_precision[field])
+    		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		{
     			printf("case %s: { return (AcReal)vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}"
 					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field]);
@@ -1421,7 +1427,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("switch (handle) {");
 	for(int original_field = 0; original_field < NUM_FIELDS; ++original_field)
 	{
-		if(write_called[curr_kernel][original_field] && (vtxbuf_is_single_precision[original_field] || vtxbuf_has_variable_dims[original_field] || is_x_raytrace_kernel(curr_kernel) || (accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)))
+		if(write_called[curr_kernel][original_field] && (vtxbuf_precision[original_field] != AC_REAL_PRECISION || vtxbuf_has_variable_dims[original_field] || is_x_raytrace_kernel(curr_kernel) || (accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)))
 		{
   	      		const int field = get_original_index(field_remappings,original_field);
 			printf("case %s: {",field_names[field]);
@@ -1460,7 +1466,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 	for(int original_field = 0; original_field < NUM_FIELDS; ++original_field)
 	{
 		if(write_called[curr_kernel][original_field] && (vtxbuf_has_variable_dims[original_field]
-				|| vtxbuf_is_single_precision[original_field])
+				|| vtxbuf_precision[original_field] != AC_REAL_PRECISION)
 				)
 		{
   	      		const int field = get_original_index(field_remappings,original_field);
@@ -1480,7 +1486,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("switch (handle) {");
 	for(int field = 0; field < NUM_FIELDS; ++field)
 	{
-		if(vtxbuf_has_variable_dims[field] || vtxbuf_is_single_precision[field])
+		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		{
 			printf("case %s: { vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = (%s)value; break;}"
 					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field],get_field_precision(field));

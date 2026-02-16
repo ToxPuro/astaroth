@@ -248,7 +248,7 @@ kernel_partial_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start
     {
 	const int j = vtxbufs.data[i];
         const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
-	if(vtxbuf_device_is_single_precision[j])
+	if(vtxbuf_device_precision[j] == AC_SINGLE_PRECISION)
 	{
 		const int dst_idx = packed_idx + single_offset * vtxbuf_offset;
         	single_packed[dst_idx] = vba.single_in[j][unpacked_idx];
@@ -457,7 +457,7 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const float* single_packe
      {
 	     const int j = vtxbufs.data[i];
     	     const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
-	     if(vtxbuf_device_is_single_precision[j])
+	     if(vtxbuf_device_precision[j] == AC_SINGLE_PRECISION)
 	     {
 	        vba.single_in[j][unpacked_idx] = single_packed[packed_idx + single_offset * vtxbuf_offset];
 		++single_offset;
