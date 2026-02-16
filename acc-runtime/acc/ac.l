@@ -61,6 +61,7 @@ void strip_whitespace(char *str) {
 "real"                  { return REAL; }
 "device_only"           { return DEVICE_ONLY; }
 "AcReal"                { return REAL; }
+"half"                  { return HALF; }
 "float"                 { return FLOAT; }
 "double"                { return DOUBLE; }
 "bool"                  { return BOOL; }

@@ -160,3 +160,11 @@ get_diff_to_analytical_solution(boundconds)
 {
 	get_diff_to_analytical_solution_kernel()
 }
+
+Kernel
+using_half_precision_value()
+{
+	half half_value = 1.0;
+	write(DIFF,real(half_value*2.0))
+}
+

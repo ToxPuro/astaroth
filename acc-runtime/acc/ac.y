@@ -760,7 +760,7 @@ main(int argc, char** argv)
 %}
 
 %token  SELECTION_STATEMENT 
-%token  IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE DEFAULT_INITIALIZER
+%token  IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT HALF DOUBLE DEFAULT_INITIALIZER
 %token  NON_RETURNING_FUNC_CALL
 %token  BINARY_OP IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
 %token  ASSIGNOP QUESTION UNARY_OP
@@ -966,6 +966,7 @@ uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 float:  FLOAT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(AC_DOUBLE_PRECISION ? "float" : "AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 double: DOUBLE         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(AC_DOUBLE_PRECISION ? "AcReal": "double", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+half: HALF { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("__half", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("bool", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 tensor: TENSOR { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcTensor", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -1049,6 +1050,7 @@ scalar_type_specifier:
               | real         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | float        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | double       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | half         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 
 
