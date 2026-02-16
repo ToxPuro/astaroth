@@ -375,11 +375,11 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
 
 
 void
-check_file(const FILE* fp, const char* filename)
+check_file(const FILE* fp, const char* filename, const char* error_message)
 {
 	if(!fp)
 	{
-	    fprintf(stderr,"Fatal error did not found file: %s\n",filename);
+	    fprintf(stderr,"Fatal error %s: %s\n",error_message,filename);
 		assert(fp);
 	    exit(EXIT_FAILURE);
 	}
@@ -423,7 +423,7 @@ reset_extra_files()
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    if(!file_exists(files[i])) continue;
             FILE* fp = fopen(files[i], "w");
-	    check_file(fp,files[i]);
+	    check_file(fp,"was not able to create file",files[i]);
             fclose(fp);
           }
 }
@@ -450,7 +450,7 @@ reset_all_files()
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    //if(!file_exists(files[i])) continue;
             FILE* fp = fopen(files[i], "w");
-	    check_file(fp,files[i]);
+	    check_file(fp,"was not able to create file",files[i]);
             fclose(fp);
           }
 	reset_diff_files();
