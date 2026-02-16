@@ -357,7 +357,7 @@ main(int argc, char* argv[])
     const int n_levels = info[AC_gmg_number_of_levels];
     gmg_v_cycle(n_levels,1e-1);
     test_restriction();
-    const AcReal relative_residual_tolerance = 1e-14;
+    const AcReal relative_residual_tolerance = 1e-12;
     const auto jacobi_step = acGetOptimizedDSLTaskGraph(solve_anisotropic_with_jacobian);
     //const AcReal relative_residual_tolerance = 1.5e-1;
     //
@@ -380,7 +380,8 @@ main(int argc, char* argv[])
     	while(residual > 1e-12)
     	{
 	    const AcReal start_time = MPI_Wtime();
-            //gmg_v_cycle(n_levels,relative_residual_tolerance);
+            gmg_v_cycle(n_levels,relative_residual_tolerance);
+	    /**
 	    {
 		    acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
 		    acGridExecuteTaskGraph(init_y_line_smoother,1);
@@ -392,10 +393,10 @@ main(int argc, char* argv[])
 		    	acGridExecuteTaskGraph(y_line_smoother_step,1);
 		    	acGridExecuteTaskGraph(y_line_smoother_get_residual,1);
 			y_line_smoother_relative_residual = acDeviceGetOutput(acGridGetDevice(),AC_smoother_residual_l2_norm[0])/y_line_smoother_residual0;
-			//fprintf(stderr,"Line smoother residual: %.14e\n",y_line_smoother_relative_residual);
 		    }
 		    acGridExecuteTaskGraph(y_line_smoother_finalize,1);
 	    }
+	    **/
 	    //acGridExecuteTaskGraph(jacobi_step,1);
 	    const AcReal end_time   = MPI_Wtime();
 	    sum_time += end_time-start_time;

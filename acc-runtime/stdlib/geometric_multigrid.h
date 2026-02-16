@@ -2512,7 +2512,6 @@ gmg_laplace(Field f, int level)
 	if(AC_poisson_radius_1)
 	{
 		if(level == 0)  return gmg_laplace_level_0_r1(f)
-		//if(level == 0)  return gmg_get_fine_grid_operator(f)
 		if(level == 1)  return gmg_laplace_level_1_r1(f)
 		if(level == 2)  return gmg_laplace_level_2_r1(f)
 		if(level == 3)  return gmg_laplace_level_3_r1(f)
@@ -2892,7 +2891,7 @@ gmg_y_line_smoother_step_kernel(GMG_LEVEL level)
 {
 	Ax = -gmg_laplace_y_line(GMG_SMOOTHER_RES[level],level)
 	central_coeff = -gmg_laplace_central_coeff(level)
-	residual = GMG_RESIDUALS[0]-Ax
+	residual = GMG_RESIDUALS[level]-Ax
 	write(GMG_SMOOTHER_RES[level], GMG_SMOOTHER_RES[level] + residual/central_coeff)
 }
 ComputeSteps
@@ -2905,7 +2904,7 @@ global output real AC_smoother_residual_l2_norm[11]
 Kernel gmg_smoother_residual_norm_kernel(GMG_LEVEL level)
 {
 	Ax = -gmg_laplace_y_line(GMG_SMOOTHER_RES[level],level)
-	residual = GMG_RESIDUALS[0]-Ax
+	residual = GMG_RESIDUALS[level]-Ax
 	reduce_l2_norm(residual,AC_smoother_residual_l2_norm[level])
 }
 

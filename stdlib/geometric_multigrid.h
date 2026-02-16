@@ -242,23 +242,47 @@ gmg_setup(AcMeshInfo* info)
 	}
 	gmg_get_halo_exchange_operators(*info);
 }
+
+void
+gmg_smoothing_step(const int level)
+{
+  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
+
+  /**
+  const auto init_y_line_smoother = acGetOptimizedDSLTaskGraph(gmg_init_iterative_smoother);
+  const auto y_line_smoother_step = acGetOptimizedDSLTaskGraph(gmg_smoother_step);
+  const auto y_line_smoother_get_residual = acGetOptimizedDSLTaskGraph(gmg_smoother_residual_norm);
+  const auto y_line_smoother_finalize = acGetOptimizedDSLTaskGraph(gmg_smoother_update_solution);
+
+  acGridExecuteTaskGraph(init_y_line_smoother,1);
+  acGridExecuteTaskGraph(y_line_smoother_get_residual,1);
+  const AcReal y_line_smoother_residual0 = acDeviceGetOutput(acGridGetDevice(),AC_smoother_residual_l2_norm[level]);
+  AcReal y_line_smoother_relative_residual = 1.0;
+  while(y_line_smoother_relative_residual > 1e-12)
+  {
+  	acGridExecuteTaskGraph(y_line_smoother_step,1);
+  	acGridExecuteTaskGraph(y_line_smoother_get_residual,1);
+      	y_line_smoother_relative_residual = acDeviceGetOutput(acGridGetDevice(),AC_smoother_residual_l2_norm[level])/y_line_smoother_residual0;
+	//fprintf(stderr,"Smoother res: %d %.14e\n",level,y_line_smoother_relative_residual);
+  }
+  acGridExecuteTaskGraph(y_line_smoother_finalize,1);
+  **/
+
+  const auto smoother = acGetOptimizedDSLTaskGraph(gmg_optimized_smoother);
+  acGridExecuteTaskGraph(smoother,1);
+}
 void
 gmg_level_step(const int level, const int number_of_levels, const AcReal relative_residual_tolerance)
 {
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
+  const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
 
-  const auto smoother = acGetOptimizedDSLTaskGraph(gmg_optimized_smoother);
-  //const auto smoother = acGetOptimizedDSLTaskGraph(gmg_jacobi_smoother);
-  //const auto sor_graph         = acGetOptimizedDSLTaskGraph(gmg_poisson_sor_red_black_step);
-  //const auto sor_graph         = acGetOptimizedDSLTaskGraph(sor_red_black_step);
-  //const auto sor_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
-  acGridExecuteTaskGraph(smoother,1); //Pre-smooth step
-  //Now is using CG on the coarsest level
+  gmg_smoothing_step(level); //Pre-smooth step
+  //Now using CG on the coarsest level
   //TODO: option to choose the coarse level solver since we might not always be SPD
   if(level == number_of_levels-1)
   {
-	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(residual_graph,1);
 	const AcReal residual0_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 	AcReal residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
@@ -269,11 +293,11 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
 	while(relative_residual_norm > relative_residual_tolerance)
 	{
 		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_cg_coarsest_level_step,launch_start,launch_dims),1);
-		//acGridExecuteTaskGraph(smoother,1);
     		acGridExecuteTaskGraph(residual_graph,1);
 		residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 		relative_residual_norm = residual_norm/residual0_norm;
 	}
+  	acGridExecuteTaskGraph(residual_graph,1);
   }
   else
   {
@@ -290,7 +314,7 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 	  acGridExecuteTaskGraph(halo_exchange_solutions[level],1);
 	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level
-  	  acGridExecuteTaskGraph(smoother,1); //Post-smooth step
+  	  gmg_smoothing_step(level); //Post-smooth step
   }
 }
 
