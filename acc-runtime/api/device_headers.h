@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <stdint.h>
 
-typedef float _half;
+typedef float __half;
 typedef int cudaStream_t;
 typedef int cudaError_t;
 typedef int cudaSharedMemConfig;
