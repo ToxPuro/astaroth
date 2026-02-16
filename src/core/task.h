@@ -251,22 +251,29 @@ typedef class ComputeTask : public Task {
 enum class HaloMessageType { Send, Receive};
 typedef struct HaloMessage {
     HaloMessageType type;
-    int length;
+    int real_length;
     int single_length;
-    AcRealPacked* data;
+    int half_length;
+    AcRealPacked* real_data;
     float* single_data;
-    size_t bytes;
+    __half* half_data;
+    char* all_data;
+    size_t real_bytes;
     size_t single_bytes;
-    AcRealPacked* data_pinned;
+    size_t half_bytes;
+    size_t all_bytes;
+    size_t all_bytes_per_process;
+    AcRealPacked* real_data_pinned;
     float*        single_data_pinned;
+    __half*       half_data_pinned;
+    char*         all_data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
     std::vector<MPI_Request> requests;
-    std::vector<MPI_Request> single_requests;
     int tag;
     int non_namespaced_tag;
     std::vector<int> counterpart_ranks;
 
-    HaloMessage(size_t size, size_t single_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessage(size_t size, size_t single_length_, size_t half_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();
     void pin(const Device device, const cudaStream_t stream);
     void unpin(const Device device, const cudaStream_t stream);
@@ -278,8 +285,8 @@ typedef struct HaloMessageSwapChain {
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(size_t size,size_t single_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
-    HaloMessageSwapChain(Volume dims, size_t nvars, size_t  single_nvars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessageSwapChain(size_t size,size_t single_length_, size_t half_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessageSwapChain(Volume dims, size_t nvars, size_t  single_nvars, size_t half_nvars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     void update_counterpart_ranks(const std::vector<int> counterpart_ranks);
 
     HaloMessage* get_current_buffer();

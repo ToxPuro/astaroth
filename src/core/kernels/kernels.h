@@ -37,12 +37,16 @@ typedef struct AcShearInterpolationCoeffs
 #include "reindex.h"
 
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
-                          const Volume vba_start, const Volume dims, AcRealPacked* packed,
+                          const Volume vba_start, const Volume dims, 
+			  AcRealPacked* packed,
 			  float* single_packed,
+			  __half* half_packed,
 			  const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
-AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+AcResult acKernelUnpackData(const cudaStream_t stream, 
+			    const AcRealPacked* packed,
 			    const float* single_packed,
+			    const __half* half_packed,
                             const Volume vba_start, const Volume dims, VertexBufferArray vba,
                            const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 AcResult acKernelPackDataRB(const cudaStream_t stream, const VertexBufferArray vba,

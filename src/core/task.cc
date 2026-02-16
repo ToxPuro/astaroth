@@ -85,6 +85,7 @@ get_red_black_state()
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 #define MAX_HALO_TAG (10000) //"Namespacing" the MPI tag space to avoid collisions in case of multiple messages
 #define SINGLE_PRECISION_TAG_OFFSET (1000000) //"Namespacing" the single precision tag space
+#define HALF_PRECISION_TAG_OFFSET (2000000) //"Namespacing" the half precision tag space
 
 #if AC_USE_HIP
 template <typename T, typename... Args>
@@ -1015,12 +1016,16 @@ Task::syncVBA()
             vba.on_device.out[i] = device_vba.on_device.in[i];
             vba.on_device.single_in[i]  = device_vba.on_device.single_out[i];
             vba.on_device.single_out[i] = device_vba.on_device.single_in[i];
+            vba.on_device.half_in[i]  = device_vba.on_device.half_out[i];
+            vba.on_device.half_out[i] = device_vba.on_device.half_in[i];
         }
         else {
             vba.on_device.in[i]  = device_vba.on_device.in[i];
             vba.on_device.out[i] = device_vba.on_device.out[i];
             vba.on_device.single_in[i]  = device_vba.on_device.single_in[i];
             vba.on_device.single_out[i] = device_vba.on_device.single_out[i];
+            vba.on_device.half_in[i]  = device_vba.on_device.half_in[i];
+            vba.on_device.half_out[i] = device_vba.on_device.half_out[i];
         }
     }
     for (int i = 0; i < NUM_PROFILES; ++i) {
@@ -1048,6 +1053,10 @@ Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps)
             float* sg_tmp = vba.on_device.single_in[i];
             vba.on_device.single_in[i]   = vba.on_device.single_out[i];
             vba.on_device.single_out[i]  = sg_tmp;
+
+            __half* hf_tmp = vba.on_device.half_in[i];
+            vba.on_device.half_in[i]   = vba.on_device.half_out[i];
+            vba.on_device.half_out[i]  = hf_tmp;
         }
     }
     for(int i = 0; i < NUM_PROFILES; ++i)
@@ -1420,55 +1429,64 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(size_t length_, size_t single_length_, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_): requests()
+HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_length_, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_): requests()
 {
     type         = type_;
-    length       = length_;
+    real_length       = length_;
     single_length = single_length_;
+    half_length = half_length_;
     counterpart_ranks = counterpart_ranks_;
 
     tag = tag0 + tag_;
     ERRCHK_ALWAYS(tag < MAX_HALO_TAG);
     non_namespaced_tag = tag_;
 
-    bytes = length * sizeof(AcRealPacked);
+    real_bytes = real_length * sizeof(AcRealPacked);
+    single_bytes = single_length * sizeof(float);
+    half_bytes = half_length * sizeof(__half);
     if(type == HaloMessageType::Receive) 
     {
-	    bytes *= counterpart_ranks.size();
-    }
-    ERRCHK_CUDA_ALWAYS(acMalloc((void**)&data, bytes));
-    if(!ac_get_info()[AC_use_cuda_aware_mpi])
-    {
-    	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&data_pinned, bytes));
-    }
-    single_bytes = length * sizeof(float);
-    if(type == HaloMessageType::Receive) 
-    {
+	    real_bytes   *= counterpart_ranks.size();
 	    single_bytes *= counterpart_ranks.size();
+	    half_bytes   *= counterpart_ranks.size();
     }
-    ERRCHK_CUDA_ALWAYS(acMalloc((void**)&single_data, single_bytes));
+    all_bytes = real_bytes + single_bytes + half_bytes;
+    all_bytes_per_process = all_bytes;
+    if(type == HaloMessageType::Receive) 
+    {
+	    all_bytes_per_process /= counterpart_ranks.size();
+    }
+    ERRCHK_CUDA_ALWAYS(acMalloc((void**)&all_data, all_bytes));
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
-    	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&single_data_pinned, single_bytes));
+    	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&all_data_pinned, all_bytes));
     }
+    real_data        = (AcReal*)all_data;
+    real_data_pinned = (AcReal*)all_data_pinned;
+
+    single_data        = (float*)(all_data + real_bytes);
+    single_data_pinned = (float*)(all_data_pinned + real_bytes);
+
+    half_data        = (__half*)(all_data + real_bytes + single_bytes);
+    half_data_pinned = (__half*)(all_data_pinned + real_bytes + single_bytes);
+
     for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
     {
 	requests.push_back(MPI_REQUEST_NULL);
-	single_requests.push_back(MPI_REQUEST_NULL);
     }
 }
 
 HaloMessage::~HaloMessage()
 {
     MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
-    length = -1;
-    acFree(data);
+    real_length = -1;
+    acFree(real_data);
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
-    	acFreeHost(data_pinned);
-	data_pinned = NULL;
+    	acFreeHost(real_data_pinned);
+	real_data_pinned = NULL;
     }
-    data = NULL;
+    real_data = NULL;
 }
 
 void
@@ -1476,7 +1494,7 @@ HaloMessage::pin(const Device device, const cudaStream_t stream)
 {
     set_device(device);
     pinned       = true;
-    ERRCHK_CUDA(acMemcpyAsync(data_pinned, data, bytes, cudaMemcpyDefault, stream));
+    ERRCHK_CUDA(acMemcpyAsync(real_data_pinned, real_data, real_bytes, cudaMemcpyDefault, stream));
 }
 
 void
@@ -1487,30 +1505,31 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 
     set_device(device);
     pinned       = false;
-    ERRCHK_CUDA(acMemcpyAsync(data, data_pinned, bytes, cudaMemcpyDefault, stream));
+    ERRCHK_CUDA(acMemcpyAsync(real_data, real_data_pinned, real_bytes, cudaMemcpyDefault, stream));
 }
 
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
 
-HaloMessageSwapChain::HaloMessageSwapChain(size_t length, size_t single_length, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
+HaloMessageSwapChain::HaloMessageSwapChain(size_t real_length, size_t single_length, size_t half_length, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(length,single_length,tag0, tag, counterpart_ranks,type);
+        buffers.emplace_back(real_length,single_length,half_length,tag0, tag, counterpart_ranks,type);
     }
 }
 
-HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t nvars,size_t nvars_single, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
+HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t nvars,size_t nvars_single,size_t nvars_half, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
    
-    const size_t length = dims.x*dims.y*dims.z*nvars;
+    const size_t real_length = dims.x*dims.y*dims.z*nvars;
     const size_t single_length = dims.x*dims.y*dims.z*nvars_single;
+    const size_t half_length = dims.x*dims.y*dims.z*nvars_half;
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(length,single_length,tag0, tag, counterpart_ranks,type);
+        buffers.emplace_back(real_length,single_length,half_length,tag0, tag, counterpart_ranks,type);
     }
 }
 
@@ -1678,23 +1697,12 @@ get_communicated_subset(const std::vector<Field> fields, const facet_class_range
 	return res;
 }
 size_t
-get_real_field_count(const std::vector<Field>& fields)
+get_precision_field_count(const std::vector<Field>& fields, const AcPrecision precision)
 {
 	size_t count = 0;
 	for(auto& field : fields)
 	{
-		count += (vtxbuf_precision[field] == AC_REAL_PRECISION);
-	}
-	return count;
-}
-
-size_t
-get_single_precision_field_count(const std::vector<Field>& fields)
-{
-	size_t count = 0;
-	for(auto& field : fields)
-	{
-		count += (vtxbuf_precision[field] == AC_SINGLE_PRECISION);
+		count += (vtxbuf_precision[field] == precision);
 	}
 	return count;
 }
@@ -1717,10 +1725,16 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
       // MPI tags are namespaced to avoid collisions with other MPI tasks
       //TP: in recv_buffers the dims of input is used instead of output since normally they are the same
       //    and in case of shear periodic then output_dims is larger than the message dims
-      recv_buffers(input_regions[0].dims,  receiving ? get_real_field_count(input_regions[0].memory.fields) : 0, receiving ? get_single_precision_field_count(input_regions[0].memory.fields) : 0,  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
+      recv_buffers(input_regions[0].dims,  
+		      receiving ? get_precision_field_count(input_regions[0].memory.fields,AC_REAL_PRECISION) : 0, 
+		      receiving ? get_precision_field_count(input_regions[0].memory.fields,AC_SINGLE_PRECISION) : 0,  
+		      receiving ? get_precision_field_count(input_regions[0].memory.fields,AC_HALF_PRECISION) : 0,  
+		      tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), 
+		      HaloMessageType::Receive),
       send_buffers(input_regions[0].dims,  
-		      sending   ? get_real_field_count(output_region.memory.fields) : 0,   
-		      sending   ? get_single_precision_field_count(output_region.memory.fields) : 0,   
+		      sending   ? get_precision_field_count(output_region.memory.fields,AC_REAL_PRECISION) : 0,   
+		      sending   ? get_precision_field_count(output_region.memory.fields,AC_SINGLE_PRECISION) : 0,   
+		      sending   ? get_precision_field_count(output_region.memory.fields,AC_HALF_PRECISION) : 0,   
 		      tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
 {
     auto& input_region = input_regions[0];
@@ -1802,11 +1816,11 @@ HaloExchangeTask::pack()
     {
 	const int3 offset = (int3){0,0,0};
     	acKernelPackDataRB(stream, vba, input_regions[0].position, input_regions[0].dims,
-    	                         msg->data, input_regions[0].memory.fields.data(),
+    	                         msg->real_data, input_regions[0].memory.fields.data(),
     	                         input_regions[0].memory.fields.size(),offset);
     }
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
-                             msg->data, msg->single_data, input_regions[0].memory.fields.data(),
+                             msg->real_data, msg->single_data, msg->half_data,input_regions[0].memory.fields.data(),
                              input_regions[0].memory.fields.size());
 }
 
@@ -1849,7 +1863,7 @@ HaloExchangeTask::unpack()
 					;
 	    //We shift by NGHOST since we update the whole side from 0 to AC_mlocal.y
 	    const int final_offset = offset-NGHOST;
-	    acKernelShearUnpackData(stream, msg->data, output_region.position, output_region.dims,
+	    acKernelShearUnpackData(stream, msg->real_data, output_region.position, output_region.dims,
 	                               vba, output_region.memory.fields.data(),
 			    		output_region.memory.fields.size(),
 					shear_periodic_interpolation_coeffs(),
@@ -1860,12 +1874,12 @@ HaloExchangeTask::unpack()
     {
 	    const int3 offset = get_red_black_offset(input_regions[0].position,red_black);
     	    acKernelPackDataRB(stream, vba, input_regions[0].position, input_regions[0].dims,
-    	                         msg->data, input_regions[0].memory.fields.data(),
+    	                         msg->real_data, input_regions[0].memory.fields.data(),
     	                         input_regions[0].memory.fields.size(),offset);
     }
     else
     {
-	    acKernelUnpackData(stream, msg->data, msg->single_data, output_region.position, output_region.dims,
+	    acKernelUnpackData(stream, msg->real_data, msg->single_data, msg->half_data,output_region.position, output_region.dims,
 	                               vba, output_region.memory.fields.data(),
 			    		output_region.memory.fields.size());
     }
@@ -1916,13 +1930,8 @@ HaloExchangeTask::receiveDevice()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
-    	ERRCHK_ALWAYS(MPI_Irecv(msg->data + i*msg->length, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
+    	ERRCHK_ALWAYS(MPI_Irecv(msg->all_data + i*msg->all_bytes_per_process, msg->all_bytes_per_process, MPI_BYTE, msg->counterpart_ranks[i],
     	          msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
-    	if(msg->single_length != 0) 
-	{
-    	   ERRCHK_ALWAYS(MPI_Irecv(msg->single_data + i*msg->single_length, msg->single_length, MPI_FLOAT, msg->counterpart_ranks[i],
-    	             msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG + SINGLE_PRECISION_TAG_OFFSET, acGridMPIComm(), &msg->single_requests[i]) == MPI_SUCCESS);
-	}
     }
     if (rank == 0) {
         // fprintf(stderr, "Returned from MPI_Irecv\n");
@@ -1937,13 +1946,8 @@ HaloExchangeTask::sendDevice()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
-    	ERRCHK_ALWAYS(MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
+    	ERRCHK_ALWAYS(MPI_Isend(msg->all_data, msg->all_bytes, MPI_BYTE, msg->counterpart_ranks[i],
               msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
-    	if(msg->single_length != 0) 
-	{
-	   ERRCHK_ALWAYS(MPI_Isend(msg->single_data, msg->single_length, MPI_FLOAT, msg->counterpart_ranks[i],
-              msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG + SINGLE_PRECISION_TAG_OFFSET, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
-	}
     }
 }
 
@@ -1966,7 +1970,7 @@ HaloExchangeTask::receiveHost()
     auto msg = recv_buffers.get_fresh_buffer();
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
-        ERRCHK_ALWAYS(MPI_Irecv(msg->data_pinned + i*msg->length, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
+        ERRCHK_ALWAYS(MPI_Irecv(msg->real_data_pinned + i*msg->real_length, msg->real_length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
                   msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
     msg->pinned = true;
@@ -1981,7 +1985,7 @@ HaloExchangeTask::sendHost()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
-        ERRCHK_ALWAYS(MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
+        ERRCHK_ALWAYS(MPI_Isend(msg->real_data_pinned, msg->real_length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
               msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
 }
@@ -2077,9 +2081,7 @@ HaloExchangeTask::test()
       }
       case HaloExchangeState::Exchanging: {
           auto msg = recv_buffers.get_current_buffer();
-          return mpi_test_all(msg->requests.size(), msg->requests.data()) &&
-          	(msg->single_length == 0 || mpi_test_all(msg->single_requests.size(), msg->single_requests.data()))
-          	;
+          return mpi_test_all(msg->requests.size(), msg->requests.data());
       }
       default: {
           ERROR("HaloExchangeTask in an invalid state.");
@@ -2202,7 +2204,7 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
 	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
            Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
-      buffers(input_regions[0].dims, get_nprocs(op.ray_direction),  0, tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
+      buffers(input_regions[0].dims, get_nprocs(op.ray_direction),0,0,tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
 {
     const auto sub_comms = acGridMPISubComms();
     gather_comm = MPI_COMM_NULL;
@@ -2285,7 +2287,7 @@ PeriodicRayTask::compute()
    auto dst         = buffers.get_fresh_buffer();
    //const size_t nvars = input_regions[0].memory.fields.size();
    //const size_t buffer_length = (packed_data->length/nprocs)*nvars;
-   const size_t variable_len = (packed_data->length/nprocs);
+   const size_t variable_len = (packed_data->real_length/nprocs);
    vba.on_device.kernel_input_params.sum_periodic_rays.ray_direction = ray_direction;
    vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_src = &packed_data->data[0];
    vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_dst = &dst->data[0];
@@ -2344,7 +2346,7 @@ PeriodicRayTask::pack()
 {
     auto msg = buffers.get_fresh_buffer();
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
-                             msg->data, msg->single_data, input_regions[0].memory.fields.data(),
+                             msg->real_data, msg->single_data, msg->half_data, input_regions[0].memory.fields.data(),
                              input_regions[0].memory.fields.size());
 }
 
@@ -2353,7 +2355,7 @@ PeriodicRayTask::unpack()
 {
     //TP: we only unpack to the first Field which is assumed to Qrad or similar
     auto msg = buffers.get_current_buffer();
-    acKernelUnpackData(stream, msg->data, msg->single_data, output_region.position, output_region.dims,
+    acKernelUnpackData(stream, msg->real_data, msg->single_data, msg->half_data, output_region.position, output_region.dims,
                                vba, output_region.memory.fields.data(),
 			        1
         	    		//output_region.memory.fields.size()
@@ -2366,13 +2368,13 @@ PeriodicRayTask::communicate()
    auto packed_data = buffers.get_current_buffer();
    auto dst          = buffers.get_fresh_buffer();
    const size_t nvars = input_regions[0].memory.fields.size();
-   const size_t buffer_length = (packed_data->length/nprocs)*nvars;
-   const size_t variable_len = (packed_data->length/nprocs);
+   const size_t buffer_length = (packed_data->real_length/nprocs)*nvars;
+   const size_t variable_len = (packed_data->real_length/nprocs);
 
    for(size_t i = 0; i < nvars; ++i)
    {
-	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->data[0]+i*variable_len,variable_len,AC_REAL_MPI_TYPE,
-				        &dst->data[0]+i*buffer_length,variable_len,AC_REAL_MPI_TYPE,
+	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->real_data[0]+i*variable_len,variable_len,AC_REAL_MPI_TYPE,
+				        &dst->real_data[0]+i*buffer_length,variable_len,AC_REAL_MPI_TYPE,
 					gather_comm
 					,&dst->requests[i]
 				   ) == MPI_SUCCESS);
@@ -2387,8 +2389,10 @@ MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, co
 	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
            Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
-      reduce_buffers(input_regions[0].dims,  get_real_field_count(input_regions[0].memory.fields),  
-		        get_single_precision_field_count(input_regions[0].memory.fields),			
+      reduce_buffers(input_regions[0].dims,  
+		        get_precision_field_count(input_regions[0].memory.fields,AC_REAL_PRECISION),  
+		        get_precision_field_count(input_regions[0].memory.fields,AC_SINGLE_PRECISION),			
+		        get_precision_field_count(input_regions[0].memory.fields,AC_HALF_PRECISION),			
 		      	tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
 {
     const auto sub_comms = acGridMPISubComms();
@@ -2499,7 +2503,7 @@ MPIScanTask::pack()
 {
     auto msg = reduce_buffers.get_fresh_buffer();
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
-                             msg->data, msg->single_data, input_regions[0].memory.fields.data(),
+                             msg->real_data, msg->single_data, msg->half_data, input_regions[0].memory.fields.data(),
                              input_regions[0].memory.fields.size());
 }
 
@@ -2508,7 +2512,7 @@ MPIScanTask::unpack()
 {
 
     auto msg = reduce_buffers.get_current_buffer();
-    acKernelUnpackData(stream, msg->data, msg->single_data, output_region.position, output_region.dims,
+    acKernelUnpackData(stream, msg->real_data, msg->single_data, msg->half_data, output_region.position, output_region.dims,
                                vba, output_region.memory.fields.data(),
         	    		output_region.memory.fields.size());
 }
@@ -2517,7 +2521,7 @@ void
 MPIScanTask::communicate()
 {
    auto msg = reduce_buffers.get_current_buffer();
-   ERRCHK_ALWAYS(MPI_Iexscan(MPI_IN_PLACE,&msg->data[0],msg->length,AC_REAL_MPI_TYPE,MPI_SUM,scan_comm,&msg->requests[0]) == MPI_SUCCESS);
+   ERRCHK_ALWAYS(MPI_Iexscan(MPI_IN_PLACE,&msg->real_data[0],msg->real_length,AC_REAL_MPI_TYPE,MPI_SUM,scan_comm,&msg->requests[0]) == MPI_SUCCESS);
 }
 
 AcSubCommunicators

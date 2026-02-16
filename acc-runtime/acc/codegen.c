@@ -6692,7 +6692,7 @@ gen_field_info(FILE* fp)
   fprintf(fp_vtxbuf_is_comm_func,"default: return false;\n");
   fprintf(fp_vtxbuf_is_comm_func, "}\n}\n");
 
-  fprintf(fp_vtxbuf_is_comm_func, "static __device__ const bool vtxbuf_device_precision[] = {");
+  fprintf(fp_vtxbuf_is_comm_func, "static __device__ const AcPrecision vtxbuf_device_precision[] = {");
   for(size_t i = 0; i < num_of_fields; ++i)
     if(field_is_single_precision[i])
         fprintf(fp_vtxbuf_is_comm_func, "%s,", "AC_SINGLE_PRECISION");

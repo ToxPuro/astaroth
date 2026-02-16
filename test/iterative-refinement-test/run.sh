@@ -1,1 +1,1 @@
-mpiexec --oversubscribe -n 1 build/iterative-refinement-test
+mpiexec --oversubscribe -n 8 build/iterative-refinement-test

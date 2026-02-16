@@ -62,7 +62,7 @@ BoundConds boundconds{
 	ac_const_bc(BOUNDARY_XYZ,D,0.0)
 }
 
-output real AC_residual2
+global output real AC_residual2
 Kernel residual_kernel()
 {
 	r = HEAT_INIT- (-laplace(HEAT_SOLUTION))
@@ -101,7 +101,7 @@ fixed_boundary Kernel sor_black(real omega)
 {
 	poisson_sor_red_black_extended(SOR_BLACK,RESIDUAL,D,omega,-1.0)
 }
-output float AC_inner_l2_norm
+global output float AC_inner_l2_norm
 Kernel
 get_inner_l2_norm_kernel()
 {
