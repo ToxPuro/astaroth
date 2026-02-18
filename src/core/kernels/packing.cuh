@@ -582,7 +582,7 @@ AcResult
 acKernelUnpackData(const cudaStream_t stream, 
 		          const AcRealPacked* packed, 
 			  const float* single_packed,
-			  const float* half_packed,
+			  const __half* half_packed,
                           const Volume vba_start, const Volume dims, VertexBufferArray vba,
                           const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs)
 {

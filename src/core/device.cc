@@ -856,7 +856,7 @@ acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle)
     device->vba.on_device.single_in[handle]  = device->vba.on_device.single_out[handle];
     device->vba.on_device.single_out[handle] = sg_tmp;
 
-    float* hf_tmp = device->vba.on_device.half_in[handle];
+    __half* hf_tmp = device->vba.on_device.half_in[handle];
     device->vba.on_device.half_in[handle]  = device->vba.on_device.half_out[handle];
     device->vba.on_device.half_out[handle] = hf_tmp;
 
