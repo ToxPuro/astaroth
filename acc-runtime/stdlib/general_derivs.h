@@ -526,22 +526,6 @@ derz_upwind_front(Field f)
 
 #if STENCIL_ORDER == 4
 
-derxx_neighbours_stencil(Field f)
-{
-	fatal_error_message(true,"derxx_neighbours_stencil not implemented with order 4!\n");
-	return 0.0
-}
-deryy_neighbours_stencil(Field f)
-{
-	fatal_error_message(true,"deryy_neighbours_stencil not implemented with order 4!\n");
-	return 0.0
-}
-derzz_neighbours_stencil(Field f)
-{
-	fatal_error_message(true,"derzz_neighbours_stencil not implemented with order 4!\n");
-	return 0.0
-}
-
 #undef DER1_2
 #undef DER1_1
 #undef DER1_0
@@ -636,6 +620,28 @@ Stencil derzz_stencil {
 	[ 1][0][0]  =  DER2_1,
 	[ 2][0][0]  =  DER2_2
 }
+
+Stencil derxx_neighbours_stencil {
+	[0][0][-2]  =  DER2_2,
+	[0][0][-1]  =  DER2_1,
+	[0][0][ 1]  =  DER2_1,
+	[0][0][ 2]  =  DER2_2
+}
+
+Stencil deryy_neighbours_stencil {
+	[0][-2][0]  =  DER2_2,
+	[0][-1][0]  =  DER2_1,
+	[0][ 1][0]  =  DER2_1,
+	[0][ 2][0]  =  DER2_2
+}
+
+Stencil derzz_neigbours_stencil {
+	[-2][0][0]  =  DER2_2,
+	[-1][0][0]  =  DER2_1,
+	[ 1][0][0]  =  DER2_1,
+	[ 2][0][0]  =  DER2_2
+}
+
 
 derxy_non_diagonal_stencil(Field f)
 {
