@@ -184,7 +184,34 @@ get_galerkin_operator(AcMeshInfo& info, const int level)
 void
 gmg_populate_central_coeffients(AcMeshInfo* info)
 {
-    (*info)[AC_GMG_CENTRAL_COEFFS] = &gmg_central_coeffs[0];
+  AcMeshInfo& config = *info;
+  int nx = config[AC_ngrid].x;
+  int ny = config[AC_ngrid].y;
+  int nz = config[AC_ngrid].z;
+  int max_level = 0;
+  while(nx >= 1 && ny >= 1 && nz >= 1)
+  {
+  	nx /= 2;
+  	ny /= 2;
+  	nz /= 2;
+  	++max_level;
+  }
+  if(max_level < config[AC_gmg_number_of_levels])
+  {
+  	acPushToConfig(config,AC_gmg_number_of_levels,max_level);
+  	int rank = 0;
+#if AC_MPI_ENABLED
+  	if(config.comm != NULL && config.comm->handle!= MPI_COMM_NULL)
+  	{
+  		MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  	}
+#endif
+  	if(rank == 0)
+  	{
+  		fprintf(stderr,"Astaroth Warning: Limited maximum gmg levels to %d to avoid impossible coarse grids\n",max_level);
+  	}
+  }
+  (*info)[AC_GMG_CENTRAL_COEFFS] = &gmg_central_coeffs[0];
 }
 
 void
@@ -236,11 +263,13 @@ gmg_get_halo_exchange_operators(const AcMeshInfo info)
 void
 gmg_setup(AcMeshInfo* info)
 {
-	if((*info)[AC_use_coarse_galerkin_operators])
+	AcMeshInfo& config = *info;
+
+	if(config[AC_use_coarse_galerkin_operators])
 	{
 		get_galerkin_operators(info);
 	}
-	gmg_get_halo_exchange_operators(*info);
+	gmg_get_halo_exchange_operators(config);
 }
 
 void
