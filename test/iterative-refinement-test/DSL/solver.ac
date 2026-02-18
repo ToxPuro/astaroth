@@ -9,12 +9,14 @@ Field HEAT_SOLUTION
 Field ANALYTICAL_SOLUTION
 single_precision Field RESIDUAL
 single_precision Field D
+//half_precision Field RESIDUAL
+//half_precision Field D
 
 //Field RESIDUAL
 //Field D
 
 real AC_k = 1.0
-global output real AC_rhs2
+global output real AC_rhs_l2_norm
 Kernel init_kernel()
 {
 	pos = grid_position()
@@ -23,7 +25,7 @@ Kernel init_kernel()
 	write(HEAT_INIT,rhs)
 	write(ANALYTICAL_SOLUTION,(1.0/3.0)*rhs)
 	write(HEAT_SOLUTION,0.0)
-	reduce_sum(rhs*rhs,AC_rhs2)
+	reduce_l2_norm(rhs,AC_rhs_l2_norm)
 }
 
 rhs_boundconds(AcBoundary boundary)
@@ -62,11 +64,11 @@ BoundConds boundconds{
 	ac_const_bc(BOUNDARY_XYZ,D,0.0)
 }
 
-global output real AC_residual2
+global output real AC_residual_l2_norm
 Kernel residual_kernel()
 {
 	r = HEAT_INIT- (-laplace(HEAT_SOLUTION))
-	reduce_sum(r*r,AC_residual2)
+	reduce_l2_norm(r,AC_residual_l2_norm)
 }
 
 Kernel get_sg_residual_kernel()
@@ -165,6 +167,7 @@ Kernel
 using_half_precision_value()
 {
 	half half_value = 1.0;
-	write(DIFF,real(half_value*2.0))
+	half two_value = 2.0
+	write(DIFF,real(half_value*two_value))
 }
 

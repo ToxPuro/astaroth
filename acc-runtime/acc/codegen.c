@@ -103,6 +103,7 @@ extern const char* DEAD_STR     ;
 extern const char* AUXILIARY_STR     ;
 extern const char* SINGLE_PRECISION_STR     ;
 extern const char* HALF_PRECISION_STR     ;
+extern const char* HALF_STR     ;
 extern const char* COMMUNICATED_STR     ;
 extern const char* DEVICE_ONLY_STR      ;
 extern const char* DIMS_STR;
@@ -4793,13 +4794,18 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
         else if (add_auto(node))
 	{
 	  const bool is_reference = tspecifier_out && tspecifier_out[strlen(tspecifier_out)-1] == '&';
-	  if(!is_reference && node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
 	  if(node->expr_type)
 	  {
 		tspecifier_out = node->expr_type;
 	  }
-	  else
-          	fprintf(stream, "auto ");
+	  if(!is_reference && node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) 
+	  {
+		if(tspecifier_out == HALF_STR)
+		  fprintf(stream, " const ");
+	        else
+		  fprintf(stream, " constexpr ");
+	  }
+	  if(!node->expr_type) fprintf(stream, "auto ");
 	}
 	if(tspecifier_out)
 	{
@@ -7887,7 +7893,14 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 	  	if(is_constexpr && get_node(NODE_TSPEC,node->lhs))
 	  	{
 	  	        ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,node->lhs);
-	  	        astnode_sprintf(tspec->lhs," constexpr %s",tspec->lhs->buffer);
+			if(tspec->lhs->buffer == HALF_STR)
+			{
+	  	        	astnode_sprintf(tspec->lhs," const %s",tspec->lhs->buffer);
+			}
+			else
+			{
+	  	        	astnode_sprintf(tspec->lhs," constexpr %s",tspec->lhs->buffer);
+			}
 	  	}
 	  }
 	}

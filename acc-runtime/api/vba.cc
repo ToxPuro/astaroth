@@ -333,11 +333,17 @@ acVBACreate(const AcMeshInfo config)
   ERRCHK_ALWAYS(vba_out_buff == NULL);
   ERRCHK_ALWAYS(vba_single_in_buff == NULL);
   ERRCHK_ALWAYS(vba_single_out_buff == NULL);
+  ERRCHK_ALWAYS(vba_half_in_buff == NULL);
+  ERRCHK_ALWAYS(vba_half_out_buff == NULL);
+
   acDeviceMalloc((void**)&vba_in_buff,real_in_bytes);
   acDeviceMalloc((void**)&vba_out_buff,real_out_bytes);
 
   acDeviceMalloc((void**)&vba_single_in_buff ,single_in_bytes);
   acDeviceMalloc((void**)&vba_single_out_buff,single_out_bytes);
+
+  acDeviceMalloc((void**)&vba_half_in_buff ,half_in_bytes);
+  acDeviceMalloc((void**)&vba_half_out_buff,half_out_bytes);
 
   size_t out_offset = 0;
   size_t in_offset = 0;

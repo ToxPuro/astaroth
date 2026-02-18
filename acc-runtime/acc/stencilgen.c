@@ -114,7 +114,7 @@ const char*
 get_field_precision(const int field)
 {
 	if(vtxbuf_precision[field] == AC_SINGLE_PRECISION) return "float";
-	if(vtxbuf_precision[field] == AC_HALF_PRECISION) return "_half";
+	if(vtxbuf_precision[field] == AC_HALF_PRECISION) return "__half";
 	return "AcReal";
 }
 const char*

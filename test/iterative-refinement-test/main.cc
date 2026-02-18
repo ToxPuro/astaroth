@@ -110,31 +110,36 @@ main(void)
     const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     acGridExecuteTaskGraph(initcond_graph,1);
-    const AcReal rhs_l2 = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_rhs2));
+    const AcReal rhs_l2 = acDeviceGetOutput(acGridGetDevice(),AC_rhs_l2_norm);
     AcReal relative_residual = 10e8;
     const int max_step = 100000;
     int step = 0;
-    while(relative_residual > 1e-15 && step < max_step)
+    {
+    	acGridExecuteTaskGraph(residual_graph,1);
+	const AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_l2_norm);
+	relative_residual = residual/rhs_l2;
+	acLogFromRootProc(pid,"Initial relative residual: %.14e\n",relative_residual);
+    }
+    while(relative_residual > 5e-15 && step < max_step)
     {
         acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_sg_residual),1);
         acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_inner_l2_norm),1);
 	const AcReal r0 = acDeviceGetOutput(acGridGetDevice(),AC_inner_l2_norm);
 	AcReal inner_relative_residual = 1.0;	
 	//fprintf(stderr,"R0: %.14e\n",r0);
-	while(inner_relative_residual > 1e-5)
+	while(inner_relative_residual > 5e-6)
 	{
     		acGridExecuteTaskGraph(sor_graph,1);
-		const AcReal r = acDeviceGetOutput(acGridGetDevice(),AC_inner_l2_norm);
         	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_inner_l2_norm),1);
+		const AcReal r = acDeviceGetOutput(acGridGetDevice(),AC_inner_l2_norm);
 		inner_relative_residual = r/r0;
 		//fprintf(stderr,"Inner relative residual: %.14e\n",inner_relative_residual);
 	}
         acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(update_solution),1);
     	acGridExecuteTaskGraph(residual_graph,1);
-	const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
-	const AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
+	const AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_l2_norm);
 	relative_residual = residual/rhs_l2;
-	fprintf(stderr,"Relative residual: %.14e\n",relative_residual);
+	acLogFromRootProc(pid,"Relative residual: %.14e\n",relative_residual);
 	++step;
     }
     if(pid == 0) fprintf(stderr,"Final relative residual: %14e\n",relative_residual);

@@ -58,6 +58,7 @@ const char* DEAD_STR      = NULL;
 const char* AUXILIARY_STR      = NULL;
 const char* SINGLE_PRECISION_STR      = NULL;
 const char* HALF_PRECISION_STR      = NULL;
+const char* HALF_STR      = NULL;
 const char* COMMUNICATED_STR      = NULL;
 const char* DEVICE_ONLY_STR       = NULL;
 const char* DIMS_STR = NULL;
@@ -677,6 +678,7 @@ populate_global_strings()
 	AUXILIARY_STR = intern("auxiliary");
 	SINGLE_PRECISION_STR = intern("single_precision");
 	HALF_PRECISION_STR = intern("half_precision");
+	HALF_STR = intern("__half");
 	COMMUNICATED_STR = intern("communicated");
 	DEVICE_ONLY_STR = intern("device_only");
 	DIMS_STR = intern("dims");
