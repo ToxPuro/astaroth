@@ -110,7 +110,6 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
     
-    acPushToConfig(info,AC_ngrid,(int3){63,63,63});
     gmg_setup_parallel_grid_decomposition(&info);
 
 //    fprintf(stderr,"%d Local Mesh: (%d,%d,%d)\n"
