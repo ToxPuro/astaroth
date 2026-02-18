@@ -14,7 +14,7 @@ restrict_full_weighting_1d(Field fine_residual)
 		for di in -1:2
 		{
 			//Facet class 3 has the weight 1
-			weight = 1
+			weight = 1.0
 			facet_class = abs(di)
 			if(facet_class == 0)
 			{
@@ -36,7 +36,7 @@ restrict_full_weighting_1d(Field fine_residual)
 restrict_full_weighting_3d_even(Field fine_residual)
 {
 	fine_vertexIdx = localCompdomainVertexIdx*2 + AC_nmin
-	interpolation_weights = [1,3,3,1]
+	interpolation_weights = [1.0,3.0,3.0,1.0]
 	res = 0.0
 	for di in 0:3
 	{
@@ -72,19 +72,19 @@ restrict_full_weighting_3d_odd(Field fine_residual)
 			for dk in -1:2
 			{
 				//Facet class 3 has the weight 1
-				weight = 1
+				weight = 1.0
 				facet_class = abs(di) + abs(dj) + abs(dk)
 				if(facet_class == 0)
 				{
-					weight = 8
+					weight = 8.0
 				}
 				else if(facet_class == 1)
 				{
-					weight = 4
+					weight = 4.0
 				}
 				else if(facet_class == 2)
 				{
-					weight = 2
+					weight = 2.0
 				}
 				res += weight*fine_residual[i+di][j+dj][k+dk]
 			}
