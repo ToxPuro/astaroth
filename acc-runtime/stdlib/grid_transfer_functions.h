@@ -200,78 +200,31 @@ trilinear_prolongation_even(Field coarse_residual)
 trilinear_prolongation_odd(Field coarse_residual)
 {
 	const int3 shifted_index = localCompdomainVertexIdx + 1
-	const bool I_even = (shifted_index.x % 2 == 0)
-	const bool J_even = (shifted_index.y % 2 == 0)
-	const bool K_even = (shifted_index.z % 2 == 0)
+	const bool I_odd = shifted_index.x & 1
+	const bool J_odd = shifted_index.y & 1
+	const bool K_odd = shifted_index.z & 1
+
 
 	const int3 coarse_vertexIdx = (shifted_index/ 2) + NGHOST - 1
 
-	if(I_even && J_even && K_even)
-	{
-		return coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-	}
-	if(I_even && J_even && !K_even)
-	{
-		return 0.5*(
-								coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
-				)
-	}
-	if(I_even && !J_even && K_even)
-	{
-		return 0.5*(
-								coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
-				)
-	}
-	if(!I_even && J_even && K_even)
-	{
-		return 0.5*(
-								coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z]
-				)
-	}
-	if(I_even && !J_even && !K_even)
-	{
-		return 0.25*(
-								coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
-				)
-	}
-	if(!I_even && J_even && !K_even)
-	{
-		return 0.25*(
-								coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
-				)
-	}
-	if(!I_even && !J_even && K_even)
-	{
-		return 0.25*(
-								coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
-				)
-	}
-	if(!I_even && !J_even && !K_even)
-	{
-		return 0.125*(
-								coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
-								+coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
-								+coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
-				)
-	}
-	return 0.0
+	//Branch-free way to get the required neighbours
+	res = coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z]
+	res += I_odd*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z]
+	res += J_odd*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
+	res += K_odd*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
+	res += I_odd*J_odd*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z]
+	res += I_odd*K_odd*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y][coarse_vertexIdx.z+1]
+	res += J_odd*K_odd*coarse_residual[coarse_vertexIdx.x][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
+	res += I_odd*J_odd*K_odd*coarse_residual[coarse_vertexIdx.x+1][coarse_vertexIdx.y+1][coarse_vertexIdx.z+1]
+
+	//Branch-free way to get the correct weights
+	/**
+	 * 1.0 for center, 0.5 for faces, 0.25 for diagonals and 0.125 for cubicals
+	 */
+	res *= (2.0-I_odd)*0.5;
+	res *= (2.0-J_odd)*0.5;
+	res *= (2.0-K_odd)*0.5;
+	return res
 }
 /*
  * Meant to be launched on the fine grid
