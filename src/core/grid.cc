@@ -1873,7 +1873,9 @@ static void
 check_ops(const std::vector<AcTaskDefinition> ops)
 {
     if (ops.size() == 0) {
+#if AC_VERBOSE
 	if(ac_pid() == 0) WARNING("\nUnusual task graph {}:\n - Task graph is empty.\n")
+#endif
 	return;
     }
 
