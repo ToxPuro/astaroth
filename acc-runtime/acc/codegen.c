@@ -6681,12 +6681,20 @@ gen_field_info(FILE* fp)
   fprintf(fp, "static const AcPrecision vtxbuf_precision[] = {");
 
   for(size_t i = 0; i < num_of_fields; ++i)
+  {
     if(field_is_single_precision[i])
+    {
         fprintf(fp, "%s,", "AC_SINGLE_PRECISION");
+    }
     else if(field_is_half_precision[i])
+    {
         fprintf(fp, "%s,", "AC_HALF_PRECISION");
+    }
     else
+    {
         fprintf(fp, "%s,", "AC_REAL_PRECISION");
+    }
+  }
   fprintf(fp, "};");
 
 
@@ -6702,12 +6710,20 @@ gen_field_info(FILE* fp)
 
   fprintf(fp_vtxbuf_is_comm_func, "static __device__ const AcPrecision vtxbuf_device_precision[] = {");
   for(size_t i = 0; i < num_of_fields; ++i)
+  {
     if(field_is_single_precision[i])
+    {
         fprintf(fp_vtxbuf_is_comm_func, "%s,", "AC_SINGLE_PRECISION");
+    }
     else if(field_is_half_precision[i])
+    {
         fprintf(fp_vtxbuf_is_comm_func, "%s,", "AC_HALF_PRECISION");
+    }
     else
+    {
         fprintf(fp_vtxbuf_is_comm_func, "%s,", "AC_REAL_PRECISION");
+    }
+  }
   fprintf(fp_vtxbuf_is_comm_func, "};");
 
   fprintf(fp_vtxbuf_is_comm_func, "static __device__ const bool vtxbuf_device_is_half_precision[] = {");
