@@ -1271,7 +1271,8 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
     	for(int field = 0; field < NUM_FIELDS; ++field)
     	{
-    		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
+    		if(!stencils_accessed[curr_kernel][field_remappings[field]][0]) continue;
+		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		{
     			printf("case %s: { return (AcReal)AC_READ_ONLY_LOAD(vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}"
 					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field]);
@@ -1283,6 +1284,7 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
     	for(int field = 0; field < NUM_FIELDS; ++field)
     	{
+    		if(!stencils_accessed[curr_kernel][field_remappings[field]][0]) continue;
     		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		{
     			printf("case %s: { return (AcReal)vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}"
