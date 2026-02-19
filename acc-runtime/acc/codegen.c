@@ -6575,6 +6575,8 @@ gen_field_info(FILE* fp)
     const bool is_device_only = str_vec_contains(sym->tqualifiers,DEVICE_ONLY_STR) || is_single_precision || is_half_precision;
     field_is_auxiliary[num_of_fields]    = is_aux;
     field_is_communicated[num_of_fields] = is_comm;
+    field_is_single_precision[num_of_fields] = is_single_precision;
+    field_is_half_precision[num_of_fields] = is_half_precision;
     field_has_variable_dims[num_of_fields] = has_variable_dims;
     num_of_communicated_fields           += is_comm;
     num_of_single_precision_fields           += is_single_precision;
