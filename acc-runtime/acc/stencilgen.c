@@ -1433,13 +1433,13 @@ gen_kernel_write_funcs(const int curr_kernel)
 			printf("case %s: {",field_names[field]);
 			if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
 			{
-				printf("shared_mem_for_rays[(threadIdx.y) + shared_mem_z_stride*(threadIdx.z) + f%s_ray_index + shared_mem_x_stride + shared_mem_x_offset] = value;",field_names[original_field]);
+				printf("shared_mem_for_rays[(threadIdx.y) + shared_mem_z_stride*(threadIdx.z) + f%s_ray_index + shared_mem_x_stride + shared_mem_x_offset] = value;",field_names[field]);
 			}
 			else
 			{
 				if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)
 				{
-					printf("shared_mem_for_rays[(threadIdx.x) + blockDim.x*(threadIdx.y) + f%s_ray_index + shared_mem_z_stride + shared_mem_z_offset] = value;",field_names[original_field]);
+					printf("shared_mem_for_rays[(threadIdx.x) + blockDim.x*(threadIdx.y) + f%s_ray_index + shared_mem_z_stride + shared_mem_z_offset] = value;",field_names[field]);
 				}
 				printf("vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s))] = (%s)value;"
 						,get_field_output_name(field)
