@@ -1425,7 +1425,7 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
     	printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
 	printf("switch (handle) {");
-	for(int original_field = 0; original_field < NUM_FIELDS; ++original_field)
+	for(int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
 	{
 		if(!write_called[curr_kernel][original_field]) continue;
   	      	const int field = get_original_index(field_remappings,original_field);
@@ -1464,7 +1464,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 
     	printf("const auto write_at_point __attribute__((unused)) = [&](const Field& handle, const AcReal& value, const int& x, const int& y, const int& z) {");
 	printf("switch (handle) {");
-	for(int original_field = 0; original_field < NUM_FIELDS; ++original_field)
+	for(int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
 	{
 		if(!write_called[curr_kernel][original_field]) continue;
   	      	const int field = get_original_index(field_remappings,original_field);
