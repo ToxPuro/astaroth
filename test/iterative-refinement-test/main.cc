@@ -120,7 +120,7 @@ main(void)
 	relative_residual = residual/rhs_l2;
 	acLogFromRootProc(pid,"Initial relative residual: %.14e\n",relative_residual);
     }
-    while(relative_residual > 5e-15 && step < max_step)
+    while(relative_residual > 1e-14 && step < max_step)
     {
         acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_sg_residual),1);
         acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_inner_l2_norm),1);
@@ -145,8 +145,8 @@ main(void)
     if(pid == 0) fprintf(stderr,"Final relative residual: %14e\n",relative_residual);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_diff_to_analytical_solution),1);
     const AcReal l2_diff = sqrt(info[AC_ds].x*info[AC_ds].y*info[AC_ds].z*acDeviceGetOutput(acGridGetDevice(),AC_l2_from_analytical_solution));
-    fprintf(stderr,"L2 diff to solution: %.14e\n",l2_diff);
-    fprintf(stderr,"h is: %.14e\n",info[AC_ds].x);
+    acLogFromRootProc(pid,"L2 diff to solution: %.14e\n",l2_diff);
+    acLogFromRootProc(pid,"h is: %.14e\n",info[AC_ds].x);
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -157,7 +157,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "SOR_TEST complete: %s\n",
+        fprintf(stderr, "ITERATIVE REFINEMENT complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;

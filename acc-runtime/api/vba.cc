@@ -225,14 +225,9 @@ init_scratchpads(VertexBufferArray* vba)
     }
 }
 
-static AcReal*  vba_in_buff = NULL;
-static AcReal*  vba_out_buff = NULL;
+static char* vba_in_buff  = NULL;
+static char* vba_out_buff = NULL;
 
-static float*  vba_single_in_buff = NULL;
-static float*  vba_single_out_buff = NULL;
-
-static __half*  vba_half_in_buff = NULL;
-static __half*  vba_half_out_buff = NULL;
 
 AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
@@ -331,19 +326,19 @@ acVBACreate(const AcMeshInfo config)
 
   ERRCHK_ALWAYS(vba_in_buff == NULL);
   ERRCHK_ALWAYS(vba_out_buff == NULL);
-  ERRCHK_ALWAYS(vba_single_in_buff == NULL);
-  ERRCHK_ALWAYS(vba_single_out_buff == NULL);
-  ERRCHK_ALWAYS(vba_half_in_buff == NULL);
-  ERRCHK_ALWAYS(vba_half_out_buff == NULL);
 
-  acDeviceMalloc((void**)&vba_in_buff,real_in_bytes);
-  acDeviceMalloc((void**)&vba_out_buff,real_out_bytes);
+  acDeviceMalloc((void**)&vba_in_buff,real_in_bytes + single_in_bytes + half_in_bytes);
+  acDeviceMalloc((void**)&vba_out_buff,real_out_bytes + single_out_bytes + single_in_bytes);
 
-  acDeviceMalloc((void**)&vba_single_in_buff ,single_in_bytes);
-  acDeviceMalloc((void**)&vba_single_out_buff,single_out_bytes);
+  AcReal* vba_real_in_buff  = (AcReal*)vba_in_buff;
+  AcReal* vba_real_out_buff = (AcReal*)vba_out_buff;
 
-  acDeviceMalloc((void**)&vba_half_in_buff ,half_in_bytes);
-  acDeviceMalloc((void**)&vba_half_out_buff,half_out_bytes);
+  float* vba_single_in_buff  = (float*)(vba_in_buff + real_in_bytes);
+  float* vba_single_out_buff = (float*)(vba_out_buff + real_out_bytes);
+
+  __half* vba_half_in_buff  = (__half*)(vba_in_buff + real_in_bytes + single_in_bytes);
+  __half* vba_half_out_buff = (__half*)(vba_out_buff + real_out_bytes + single_out_bytes);
+
 
   size_t out_offset = 0;
   size_t in_offset = 0;
@@ -390,7 +385,7 @@ acVBACreate(const AcMeshInfo config)
     }
     else
     {
-      vba.on_device.in[i] = vba_in_buff + in_offset;
+      vba.on_device.in[i] = vba_real_in_buff + in_offset;
       ERRCHK_ALWAYS(vba.on_device.in[i] != NULL);
       in_offset += vba.counts[i];
       if (vtxbuf_is_auxiliary[i])
@@ -398,7 +393,7 @@ acVBACreate(const AcMeshInfo config)
         vba.on_device.out[i] = vba.on_device.in[i];
         ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
       }else{
-        vba.on_device.out[i] = (vba_out_buff + out_offset);
+        vba.on_device.out[i] = (vba_real_out_buff + out_offset);
         out_offset += vba.counts[i];
         if(vba.on_device.out[i] == NULL)
         {
@@ -495,10 +490,8 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
   destroy_scratchpads(vba);
   //TP: does not work for compressible memory TODO: fix it if needed
-  acDeviceFree(&(vba_in_buff), 0);
-  acDeviceFree(&(vba_out_buff), 0);
-  acDeviceFree((void**)&(vba_single_in_buff), 0);
-  acDeviceFree((void**)&(vba_single_out_buff), 0);
+  acDeviceFree((void**)(&vba_in_buff), 0);
+  acDeviceFree((void**)(&vba_out_buff), 0);
   for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
   {
   	acDeviceFree(&vba->on_device.complex_in[field], 0);
