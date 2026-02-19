@@ -296,9 +296,7 @@ gmg_smoothing_step(const int level)
   }
   acGridExecuteTaskGraph(y_line_smoother_finalize,1);
   **/
-
-  const auto smoother = acGetOptimizedDSLTaskGraph(gmg_optimized_smoother);
-  acGridExecuteTaskGraph(smoother,1);
+  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_optimized_smoother),1);
 }
 void
 gmg_level_step(const int level, const int number_of_levels, const AcReal relative_residual_tolerance)
