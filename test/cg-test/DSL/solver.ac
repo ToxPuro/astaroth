@@ -91,7 +91,7 @@ Kernel
 init_cg_residual()
 {
 	r = HEAT_INIT -(-laplace(HEAT_SOLUTION))
-	write(CG_P,r)
+	write(CG_P,-r/laplace_central_coeff())
 	write(CG_R,r)
 }
 
@@ -101,7 +101,8 @@ Kernel cg_compute_alpha(real laplace_sign)
 	Ap = laplace_sign*laplace(CG_P)
  	r  = value(CG_R)
 	p  = value(CG_P)
-	cg_compute_inner_products(Ap,p,r)
+	z = -r/laplace_central_coeff()
+	cg_compute_inner_products(Ap,p,r,z)
 }
 
 
@@ -111,11 +112,16 @@ Kernel cg_advance(real laplace_sign)
 	p  = value(CG_P)
 	cg_advance_solution(HEAT_SOLUTION,Ap,p,CG_R)
 }
+Kernel cg_compute_beta()
+{
+	z = -CG_R/laplace_central_coeff()	
+	cg_compute_p1Tzp1(CG_R,z)
+}
 
 
 Kernel cg_advance_p()
 {
-	cg_next_direction(CG_P,CG_R)
+	cg_next_direction(CG_P,-CG_R/laplace_central_coeff())
 }
 
 ComputeSteps
@@ -130,6 +136,7 @@ cg_step(boundconds)
 {
 	cg_compute_alpha(AC_laplace_sign)
 	cg_advance(AC_laplace_sign)
+	cg_compute_beta()
 	cg_advance_p()
 }
 

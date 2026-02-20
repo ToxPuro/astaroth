@@ -72,6 +72,7 @@ main(void)
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_cg_preconditioned,true);
     acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
     info.comm->handle = MPI_COMM_WORLD;
 
@@ -134,7 +135,8 @@ main(void)
            fprintf(stderr,"Residual: %.14e\n",residual);
            fprintf(stderr,"%d: Residual (not scaled): %.14e\n",step,sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)));
        }
-       fprintf(stderr,"Final residual: %14e\n",residual);
+       fprintf(stderr,"CG took %d steps\n",step);
+       //fprintf(stderr,"Final residual: %14e\n",residual);
     };
 
     const auto sor_solve = [&]()
@@ -154,10 +156,10 @@ main(void)
        	   acGridExecuteTaskGraph(residual_graph,1);
            const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
            residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)/N);
-           fprintf(stderr,"Residual: %.14e\n",residual);
-           fprintf(stderr,"%d: Residual (not scaled): %.14e\n",step,sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)));
+           //fprintf(stderr,"Residual: %.14e\n",residual);
+           //fprintf(stderr,"%d: Residual (not scaled): %.14e\n",step,sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2)));
        }
-       fprintf(stderr,"Final residual: %14e\n",residual);
+       fprintf(stderr,"SOR took %d steps\n",step);
     };
 
 
