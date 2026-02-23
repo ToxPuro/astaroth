@@ -1,12 +1,15 @@
 real intrinsic sin(real) 
 real intrinsic cos(real) 
 real intrinsic tan(real) 
-real intrinsic atan(real)
 real intrinsic atan2(real)
 
 real intrinsic sinh(real) 
 real intrinsic cosh(real) 
 real intrinsic tanh(real)
+
+real intrinsic asin(real)
+real intrinsic acos(real)
+real intrinsic atan(real)
 
 real intrinsic exp(real)
 real intrinsic log(real)
