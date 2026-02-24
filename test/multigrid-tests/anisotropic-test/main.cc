@@ -96,6 +96,7 @@ main(int argc, char* argv[])
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_GMG_SMOOTHER,Y_LINE_SMOOTHER);
     info.comm->handle = MPI_COMM_WORLD;
 
     const int max_devices = 1;
@@ -133,6 +134,8 @@ main(int argc, char* argv[])
     gmg_populate_central_coeffients(&info);
     acGridInit(info);
     gmg_setup(&info);
+
+
     //Test that can build test ComputeSteps
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_write_del2),1);

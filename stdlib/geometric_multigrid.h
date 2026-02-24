@@ -273,30 +273,48 @@ gmg_setup(AcMeshInfo* info)
 }
 
 void
+gmg_iterative_smoother_step(const int level)
+{
+	const auto init_iterative_smoother = acGetOptimizedDSLTaskGraph(gmg_init_iterative_smoother);
+	const auto iterative_smoother_step = acGetOptimizedDSLTaskGraph(gmg_smoother_step);
+	const auto iterative_smoother_get_residual = acGetOptimizedDSLTaskGraph(gmg_smoother_residual_norm);
+	const auto iterative_smoother_finalize = acGetOptimizedDSLTaskGraph(gmg_smoother_update_solution);
+	
+	acGridExecuteTaskGraph(init_iterative_smoother,1);
+	acGridExecuteTaskGraph(iterative_smoother_get_residual,1);
+	const AcReal iterative_smoother_residual0 = acDeviceGetOutput(acGridGetDevice(),AC_smoother_residual_l2_norm[level]);
+	AcReal iterative_smoother_relative_residual = 1.0;
+	while(iterative_smoother_relative_residual > 1e-12)
+	{
+		acGridExecuteTaskGraph(iterative_smoother_step,1);
+		acGridExecuteTaskGraph(iterative_smoother_get_residual,1);
+	    	iterative_smoother_relative_residual = acDeviceGetOutput(acGridGetDevice(),AC_smoother_residual_l2_norm[level])/iterative_smoother_residual0;
+	}
+	acGridExecuteTaskGraph(iterative_smoother_finalize,1);
+}
+
+void
 gmg_smoothing_step(const int level)
 {
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
-
-  /**
-  const auto init_y_line_smoother = acGetOptimizedDSLTaskGraph(gmg_init_iterative_smoother);
-  const auto y_line_smoother_step = acGetOptimizedDSLTaskGraph(gmg_smoother_step);
-  const auto y_line_smoother_get_residual = acGetOptimizedDSLTaskGraph(gmg_smoother_residual_norm);
-  const auto y_line_smoother_finalize = acGetOptimizedDSLTaskGraph(gmg_smoother_update_solution);
-
-  acGridExecuteTaskGraph(init_y_line_smoother,1);
-  acGridExecuteTaskGraph(y_line_smoother_get_residual,1);
-  const AcReal y_line_smoother_residual0 = acDeviceGetOutput(acGridGetDevice(),AC_smoother_residual_l2_norm[level]);
-  AcReal y_line_smoother_relative_residual = 1.0;
-  while(y_line_smoother_relative_residual > 1e-12)
+  const auto smoother = acDeviceGetLocalConfig(acGridGetDevice())[AC_GMG_SMOOTHER];
+  switch(smoother)
   {
-  	acGridExecuteTaskGraph(y_line_smoother_step,1);
-  	acGridExecuteTaskGraph(y_line_smoother_get_residual,1);
-      	y_line_smoother_relative_residual = acDeviceGetOutput(acGridGetDevice(),AC_smoother_residual_l2_norm[level])/y_line_smoother_residual0;
-	//fprintf(stderr,"Smoother res: %d %.14e\n",level,y_line_smoother_relative_residual);
+	  case SPAI_SMOOTHER:
+	  {
+		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_optimized_smoother),1);
+		break;
+	  }
+	  case Y_LINE_SMOOTHER:
+	  {
+		for(int color = 0; color < 2; ++color)
+		{
+  			acDeviceSetInput(acGridGetDevice(),AC_GMG_SMOOTHER_COLOR,color);
+			gmg_iterative_smoother_step(level);
+		}
+		break;
+	  }
   }
-  acGridExecuteTaskGraph(y_line_smoother_finalize,1);
-  **/
-  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_optimized_smoother),1);
 }
 void
 gmg_level_step(const int level, const int number_of_levels, const AcReal relative_residual_tolerance)
@@ -304,8 +322,11 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
   const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
-
-  gmg_smoothing_step(level); //Pre-smooth step
+  
+  for(int i = 0; i < info[AC_GMG_pre_smooth_steps]; ++i)
+  {
+  	gmg_smoothing_step(level); //Pre-smooth step
+  }
   //Now using CG on the coarsest level
   //TODO: option to choose the coarse level solver since we might not always be SPD
   if(level == number_of_levels-1)
@@ -324,7 +345,6 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
 		residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 		relative_residual_norm = residual_norm/residual0_norm;
 	}
-  	acGridExecuteTaskGraph(residual_graph,1);
   }
   else
   {
@@ -341,7 +361,10 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 	  acGridExecuteTaskGraph(halo_exchange_solutions[level],1);
 	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level
-  	  gmg_smoothing_step(level); //Post-smooth step
+  	  for(int i = 0; i < info[AC_GMG_post_smooth_steps]; ++i)
+  	  {
+  	  	gmg_smoothing_step(level); //Post-smooth step
+  	  }
   }
 }
 
