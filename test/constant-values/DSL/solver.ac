@@ -13,6 +13,12 @@ Kernel singlepass_solve(MY_STEP_NUM step_num, real scaling_factor) {
     write(FIELD, int(step_num)*scaling_factor)
     //write(FIELD, 1.0)
 }
+FieldSymmetricTensor T
+Kernel test_symmetric_tensor_calc()
+{
+	real_symmetric_tensor t
+	write(T,T-t)
+}
 
 BoundConds bcs
 {

@@ -3202,7 +3202,7 @@ is_subtype(const char* a, const char* b)
 bool
 is_field_expr(const char* expr)
 {
-	return expr && (expr == COMPLEX_FIELD_STR || expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
+	return expr && (expr == COMPLEX_FIELD_STR || expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR) || all_same_struct(expr,FIELD_STR));
 }
 bool
 is_value_applicable_type(const char* expr)
@@ -9245,7 +9245,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 				const int j = all_field_structs.data[l];
 				const char* name = s_info.user_structs.data[j];
 				const size_t num_members = s_info.user_struct_field_names[j].size;
-				char real_name[50000];
+				char real_name[5000];
 				sprintf(real_name,"real%zu",num_members);
 				if(!strcmp(name,"FieldSymmetricTensor"))
 				{
