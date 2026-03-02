@@ -8239,6 +8239,7 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		   || ((is_intrinsic || params_info.types.data[i] == REAL3_PTR_STR ) && call_info.types.data[i] == FIELD3_PTR_STR)
 		   || ((is_intrinsic || params_info.types.data[i] == REAL_STR      ) && strstr(call_info.types.data[i],"Profile"))
 		   || ((is_intrinsic || params_info.types.data[i] == call_info.types.data[i]) && is_output_type(param_expr))
+		   || ((is_intrinsic && all_same_struct(call_info.types.data[i],FIELD_STR)))
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
