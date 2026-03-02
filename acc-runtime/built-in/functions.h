@@ -547,7 +547,7 @@ mod(a,p)
 {
 	return a - (int(a/p)*p)
 }
-max(FieldSymmetricTensor T)
+max_tensor(FieldSymmetricTensor T)
 {
 	return max(max(max(max(max(value(T.xx),value(T.yy)),value(T.zz)),value(T.xy)),value(T.xz)),value(T.yz))
 
