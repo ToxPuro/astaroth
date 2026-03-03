@@ -9246,7 +9246,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 				const int j = all_field_structs.data[l];
 				const char* name = s_info.user_structs.data[j];
 				const size_t num_members = s_info.user_struct_field_names[j].size;
-				char real_name[5000];
+				char real_name[500];
 				sprintf(real_name,"real%zu",num_members);
 				if(!strcmp(name,"FieldSymmetricTensor"))
 				{
