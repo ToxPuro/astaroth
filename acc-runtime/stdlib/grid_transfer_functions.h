@@ -1,6 +1,8 @@
 #ifndef AC_GRID_TRANSFER_FUNCTIONS_H
 #define AC_GRID_TRANSFER_FUNCTIONS_H
 
+#include "$AC_HOME/acc-runtime/stdlib/general_grid"
+
 /*
  * Meant to be launched on the coarse grid
  */

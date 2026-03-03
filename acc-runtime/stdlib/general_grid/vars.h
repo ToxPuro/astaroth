@@ -1,5 +1,4 @@
 #ifndef AC_GENERAL_GRID_VARS_H
-
 #define AC_GENERAL_GRID_VARS_H
 
 hostdefine AC_GENERAL_GRID_VARS_INCLUDED (1)
@@ -38,6 +37,7 @@ gmem real AC_mapping_func_derivative_x_extended[AC_extended_mlocal.x]
 gmem real AC_mapping_func_derivative_y_extended[AC_extended_mlocal.y]
 gmem real AC_mapping_func_derivative_z_extended[AC_extended_mlocal.z]
 
+
 gmem real AC_mapping_func_2nd_derivative_x_extended[AC_extended_mlocal.x]
 gmem real AC_mapping_func_2nd_derivative_y_extended[AC_extended_mlocal.y]
 gmem real AC_mapping_func_2nd_derivative_z_extended[AC_extended_mlocal.z]
@@ -59,6 +59,50 @@ gmem real AC_cot_theta_extended[AC_extended_mlocal.y]
 gmem real AC_inv_mapping_func_derivative_x[AC_mlocal.x]
 gmem real AC_inv_mapping_func_derivative_y[AC_mlocal.y]
 gmem real AC_inv_mapping_func_derivative_z[AC_mlocal.z]
+
+#ifdef AC_GEOMETRIC_MULTIGRID_H
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_1[AC_mlocal_gmg_level_1.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_1[AC_mlocal_gmg_level_1.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_1[AC_mlocal_gmg_level_1.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_2[AC_mlocal_gmg_level_2.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_2[AC_mlocal_gmg_level_2.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_2[AC_mlocal_gmg_level_2.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_3[AC_mlocal_gmg_level_3.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_3[AC_mlocal_gmg_level_3.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_3[AC_mlocal_gmg_level_3.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_4[AC_mlocal_gmg_level_4.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_4[AC_mlocal_gmg_level_4.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_4[AC_mlocal_gmg_level_4.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_5[AC_mlocal_gmg_level_5.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_5[AC_mlocal_gmg_level_5.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_5[AC_mlocal_gmg_level_5.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_6[AC_mlocal_gmg_level_6.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_6[AC_mlocal_gmg_level_6.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_6[AC_mlocal_gmg_level_6.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_7[AC_mlocal_gmg_level_7.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_7[AC_mlocal_gmg_level_7.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_7[AC_mlocal_gmg_level_7.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_8[AC_mlocal_gmg_level_8.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_8[AC_mlocal_gmg_level_8.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_8[AC_mlocal_gmg_level_8.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_9[AC_mlocal_gmg_level_9.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_9[AC_mlocal_gmg_level_9.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_9[AC_mlocal_gmg_level_9.z]
+
+gmem real AC_inv_mapping_func_derivative_x_gmg_level_10[AC_mlocal_gmg_level_10.x]
+gmem real AC_inv_mapping_func_derivative_y_gmg_level_10[AC_mlocal_gmg_level_10.y]
+gmem real AC_inv_mapping_func_derivative_z_gmg_level_10[AC_mlocal_gmg_level_10.z]
+
+#endif
 
 gmem real AC_inv_mapping_func_derivative_x_extended[AC_extended_mlocal.x]
 gmem real AC_inv_mapping_func_derivative_y_extended[AC_extended_mlocal.y]

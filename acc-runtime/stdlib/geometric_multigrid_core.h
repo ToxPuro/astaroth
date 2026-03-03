@@ -3,7 +3,9 @@
  * -Δu = f, in Cartesian coordinates.
  *  For a good introduction to multigrid methods see the book Multigrid by Trottenberg.
  */
-#include "$AC_HOME/acc-runtime/stdlib/grid_transfer_functions.h"
+#ifndef AC_GEOMETRIC_MULTIGRID_CORE_H
+#define AC_GEOMETRIC_MULTIGRID_CORE_H
+
 #define GMG_PRECISION
 #define GMG_OUTPUT_PRECISION real
 //#define GMG_PRECISION single_precision
@@ -523,3 +525,4 @@ gmg_copy_residual_to_tmp(gmg_boundconds)
 {
 	gmg_copy_residual_to_tmp_kernel(AC_GMG_LEVEL)
 }
+#endif

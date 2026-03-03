@@ -1,9 +1,14 @@
+#ifndef AC_GEOMETRIC_MULTIGRID_H
+#define AC_GEOMETRIC_MULTIGRID_H
+
 /**
  * This file is for a geometric multigrid (GMG) implementation of the Poisson equation
  * -Δu = f, in Cartesian coordinates.
  *  For a good introduction to multigrid methods see the book Multigrid by Trottenberg.
  */
+
 #include "$AC_HOME/acc-runtime/stdlib/geometric_multigrid_core.h"
+#include "$AC_HOME/acc-runtime/stdlib/grid_transfer_functions.h"
 #include "$AC_HOME/acc-runtime/stdlib/poisson.h"
 #include "$AC_HOME/acc-runtime/stdlib/cg.h"
 hostdefine AC_GMG_ENABLED (1)
@@ -2944,3 +2949,4 @@ gmg_smoother_update_solution(gmg_boundconds)
 	gmg_smoother_update_solution_kernel(AC_GMG_LEVEL)
 }
 
+#endif
