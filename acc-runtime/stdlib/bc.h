@@ -145,6 +145,8 @@ elemental ac_set_ghosts_for_onesided_derivs(AcBoundary boundary, Field f)
 }
 elemental ac_const_bc(AcBoundary boundary, Field f, real const_val)
 {
+// Sets Field f in ghost points of boundary to const_val, but not on boundary proper.
+
 	const int3 normal = get_normal(boundary)
 	const int3 boundary_point = get_boundary(normal)
 	int3 ghost  = boundary_point
@@ -155,8 +157,10 @@ elemental ac_const_bc(AcBoundary boundary, Field f, real const_val)
 	}
 }
 
-ac_const_bc(AcBoundary boundary,  real const_val)
+ac_const_bc(AcBoundary boundary, real const_val)
 {
+// Sets all NUM_FIELDS in ghost points of boundary to const_val, but not on boundary proper.
+
 	for f in 0:NUM_FIELDS
 	{
 		ac_const_bc(boundary,Field(f),const_val)
@@ -165,6 +169,8 @@ ac_const_bc(AcBoundary boundary,  real const_val)
 
 utility Kernel BOUNDCOND_CONST(Field f, real const_val)
 {
+// Sets FIELD f in ghost points of all boundaries to const_val, but not on boundary proper.
+
 	ac_const_bc(BOUNDARY_XYZ,f,const_val)
 }
 
