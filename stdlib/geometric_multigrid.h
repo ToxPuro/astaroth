@@ -185,11 +185,11 @@ void
 gmg_populate_central_coeffients(AcMeshInfo* info)
 {
   AcMeshInfo& config = *info;
-  int nx = config[AC_ngrid].x;
-  int ny = config[AC_ngrid].y;
-  int nz = config[AC_ngrid].z;
+  int nx = config[AC_nlocal].x;
+  int ny = config[AC_nlocal].y;
+  int nz = config[AC_nlocal].z;
   int max_level = 0;
-  while(nx >= 1 && ny >= 1 && nz >= 1)
+  while(nx >= 2*NGHOST+1 && ny >= 2*NGHOST+1 && nz >= 2*NGHOST+1)
   {
   	nx /= 2;
   	ny /= 2;
