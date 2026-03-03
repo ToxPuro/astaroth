@@ -321,7 +321,6 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
 {
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
-  const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
   
   for(int i = 0; i < info[AC_GMG_pre_smooth_steps]; ++i)
   {
@@ -331,6 +330,7 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   //TODO: option to choose the coarse level solver since we might not always be SPD
   if(level == number_of_levels-1)
   {
+  	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
     	acGridExecuteTaskGraph(residual_graph,1);
 	const AcReal residual0_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 	AcReal residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);

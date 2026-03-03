@@ -1,3 +1,4 @@
+#ifndef AC_GRID_FUNCS_H
 #ifndef AC_GENERAL_GRID_FUNCS_H
 
 hostdefine AC_GENERAL_GRID_INCLUDED (1)
@@ -283,4 +284,5 @@ grid_inv_spacing_extended()
 	}
 	return res
 }
+#endif
 #endif

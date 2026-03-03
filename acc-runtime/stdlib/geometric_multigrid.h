@@ -2841,6 +2841,12 @@ gmg_get_residual_norm(gmg_boundconds)
 }
 
 ComputeSteps
+gmg_get_residual_norm_at_the_finest_level(gmg_boundconds)
+{
+	gmg_get_residual_norm_kernel(GMG_LEVEL_0)
+}
+
+ComputeSteps
 gmg_get_residual_and_rhs_norms(gmg_boundconds)
 {
 	gmg_get_residual_and_rhs_norms_kernel(AC_GMG_LEVEL)
