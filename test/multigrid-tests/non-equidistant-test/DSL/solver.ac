@@ -1,0 +1,148 @@
+hostdefine STENCIL_ORDER (2)
+
+#include "$AC_HOME/acc-runtime/stdlib/geometric_multigrid.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+
+real AC_k = 1.0
+real AC_laplace_sign = -1.0
+
+real AC_init_val = 0.0
+Field ANALYTICAL_SOLUTION
+Kernel init_kernel()
+{
+	pos = grid_position()
+	val = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+	write(GMG_INITIAL_RHS,val)
+	write(ANALYTICAL_SOLUTION,(1.0/3.0)*val)
+	write(GMG_SOLUTIONS[0],AC_init_val)
+}
+
+
+BoundConds gmg_boundconds{
+	ac_const_bc(BOUNDARY_XYZ,GMG_SOLUTIONS[0],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_SOLUTIONS[1],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_SOLUTIONS[2],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_SOLUTIONS[3],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_SOLUTIONS[4],0.0)
+
+	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[0],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[1],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[2],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[3],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_RESIDUALS[4],0.0)
+
+	ac_const_bc(BOUNDARY_XYZ,GMG_SMOOTHER_RES[0],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_SMOOTHER_RES[1],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_SMOOTHER_RES[2],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_SMOOTHER_RES[3],0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_SMOOTHER_RES[4],0.0)
+
+	ac_const_bc(BOUNDARY_XYZ,GMG_COARSE_CG_P,0.0)
+	ac_const_bc(BOUNDARY_XYZ,GMG_COARSE_CG_R,0.0)
+
+}
+
+
+
+
+
+
+ComputeSteps
+initcond(gmg_boundconds)
+{
+	init_kernel()
+}
+
+Stencil laplace_neighbours_without_spacing
+{
+	[-1][0][0] = 1.0,
+	[1][0][0] = 1.0,
+	[0][-1][0] = 1.0,
+	[0][1][0] = 1.0,
+	[0][0][-1] = 1.0,
+	[0][0][1] = 1.0
+}
+
+
+
+Kernel jacobi_step_kernel(GMG_LEVEL level)
+{
+	spacing = AC_inv_ds_2/pow(4,int(level))
+	h  = 1.0/spacing.x;
+	old_res = (laplace_neighbours_without_spacing(GMG_SOLUTIONS[level]) + h*GMG_RHS[level])/6.0
+	new_res = poisson_jacobi_update(GMG_RHS[level],GMG_SOLUTIONS[level],AC_laplace_sign,spacing)
+	//if(vertexIdx == (int3){8,8,8})
+	//{
+	//	print("Old res: %.14e\n",old_res)
+	//	print("New res: %.14e\n",new_res)
+	//}
+	write(GMG_SOLUTIONS[level],new_res)
+}
+
+ComputeSteps
+jacobi_step(gmg_boundconds)
+{
+	jacobi_step_kernel(AC_GMG_LEVEL)
+}
+
+Kernel randomize_residual_and_solution_kernel(GMG_LEVEL level) {
+	write(GMG_SOLUTIONS[level],rand_uniform())
+	write(GMG_RESIDUALS[level],rand_uniform())
+}
+
+ComputeSteps
+randomize_residual_and_solution(gmg_boundconds)
+{
+	randomize_residual_and_solution_kernel(AC_GMG_LEVEL)
+}
+
+Kernel print_kernel(GMG_LEVEL level)
+{
+	if(vertexIdx.x == NGHOST && vertexIdx.y == NGHOST)
+	{
+		print("RHS: %d %.14e\n",vertexIdx.z,value(GMG_RHS[level]))
+		print("Solution: %d %.14e\n",vertexIdx.z,value(GMG_SOLUTIONS[level]))
+	}
+	write(GMG_RHS[level],GMG_RHS[level])
+	write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level])
+}
+Field LAPLACE_SOLUTION
+Field LAPLACE_GMG_SOLUTION
+Field FINAL_RESIDUAL 
+Field FINAL_GMG_RESIDUAL 
+Kernel get_laplace_solution_kernel()
+{
+	write(LAPLACE_SOLUTION,-laplace(GMG_SOLUTIONS[0]))
+	res = GMG_RHS[0] + laplace(GMG_SOLUTIONS[0])
+	write(FINAL_RESIDUAL,res)
+	write(LAPLACE_GMG_SOLUTION,-gmg_laplace(GMG_SOLUTIONS[0],0))
+	res = GMG_RHS[0] + gmg_laplace(GMG_SOLUTIONS[0],0)
+	write(FINAL_GMG_RESIDUAL,res)
+}
+
+ComputeSteps get_laplace_solution(gmg_boundconds)
+{
+	get_laplace_solution_kernel()
+}
+ComputeSteps 
+print_values(gmg_boundconds)
+{
+	print_kernel(AC_GMG_LEVEL)
+}
+Kernel solve_anisotropic_with_jacobian_kernel()
+{
+	coeff = -anisotropic_laplace_central_coeff(AC_gmg_poisson_coeffs)
+	Ax    = -anisotropic_laplace(GMG_SOLUTIONS[0],AC_gmg_poisson_coeffs)
+	write(GMG_SOLUTIONS[0],GMG_SOLUTIONS[0] + (GMG_INITIAL_RHS-Ax)/coeff)
+}
+ComputeSteps
+solve_anisotropic_with_jacobian(gmg_boundconds)
+{
+	solve_anisotropic_with_jacobian_kernel()
+}
+
+

@@ -322,7 +322,7 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
   
-  for(int i = 0; i < info[AC_GMG_pre_smooth_steps]; ++i)
+  for(int i = 0; i < info[AC_gmg_pre_smooth_steps]; ++i)
   {
   	gmg_smoothing_step(level); //Pre-smooth step
   }
@@ -361,7 +361,7 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 	  acGridExecuteTaskGraph(halo_exchange_solutions[level],1);
 	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level
-  	  for(int i = 0; i < info[AC_GMG_post_smooth_steps]; ++i)
+  	  for(int i = 0; i < info[AC_gmg_post_smooth_steps]; ++i)
   	  {
   	  	gmg_smoothing_step(level); //Post-smooth step
   	  }
