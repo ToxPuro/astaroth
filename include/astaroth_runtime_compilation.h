@@ -4,7 +4,7 @@
 extern "C"
 {
 #endif
-void
+AcResult
 acCompile(const char* compilation_string, const char* target, AcMeshInfo info);
 void
 acLoadRunConsts(AcMeshInfo info);

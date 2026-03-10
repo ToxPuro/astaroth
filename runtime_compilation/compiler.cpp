@@ -150,7 +150,7 @@ get_cmake_options(const char* user_cmake_options)
 	return options;
 }
 
-void
+AcResult
 run_cmake(const char* user_cmake_options, const char* log_dst)
 {
   
@@ -175,7 +175,7 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   	fprintf(stderr,"Cmake command: %s\n",cmd);
   	fflush(stdout);
   	fflush(stderr);
-  	exit(EXIT_FAILURE);
+	return AC_FAILURE;
   }
   sprintf(cmd,"echo %s > %s", get_cmake_options(user_cmake_options), previous_cmake_options_path().c_str());
   const int echo_retval = system(cmd);
@@ -185,11 +185,12 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   	fprintf(stderr,"Storing command: %s\n",cmd);
   	fflush(stdout);
   	fflush(stderr);
-  	exit(EXIT_FAILURE);
+	return AC_FAILURE;
   }
-
+  return AC_SUCCESS;
 }
-void
+
+AcResult
 acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
         ac_unset_floating_point_exceptions();
@@ -260,7 +261,7 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 				fflush(stdout);
 				fflush(stderr);
 				fprintf(stderr,"Fatal error was not able to remove build directory: %s\n",runtime_astaroth_build_path().c_str());
-				exit(EXIT_FAILURE);
+				return AC_FAILURE;
 			}
 
 			sprintf(cmd,"mkdir -p %s",runtime_astaroth_build_path().c_str());
@@ -270,10 +271,10 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 				fflush(stdout);
 				fflush(stderr);
 				fprintf(stderr,"%s","Fatal error was not able to make build directory\n");
-				exit(EXIT_FAILURE);
+				return AC_FAILURE;
 			}
 			acLoadRunConstsBase(ac_overrides_path().c_str(),mesh_info);
-			run_cmake(user_cmake_options,log_dst);
+			if(run_cmake(user_cmake_options,log_dst) != AC_SUCCESS) return AC_FAILURE;
 		}
 		else
 		{
@@ -287,7 +288,7 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 			fprintf(stderr,"%s","Fatal error was not able to go into build directory\n");
 			fflush(stdout);
 			fflush(stderr);
-			exit(EXIT_FAILURE);
+			return AC_FAILURE;
 		}
 		if(log_dst)
 		{
@@ -307,11 +308,12 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 			}
 			fflush(stdout);
 			fflush(stderr);
-			exit(EXIT_FAILURE);
+			return AC_FAILURE;
 		}
 	}
 #if AC_MPI_ENABLED
 	MPI_Barrier(mesh_info.comm->handle);
 #endif
         ac_restore_floating_point_exceptions();
+	return AC_SUCCESS;
 }
