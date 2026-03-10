@@ -106,10 +106,6 @@ main(int argc, char* argv[])
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    const int nx = argc > 1 ? atoi(argv[1]): 31;
-    const int ny = argc > 2 ? atoi(argv[2]): 31;
-    const int nz = argc > 3 ? atoi(argv[3]): 31;
-    
     //const int nx = 63;
     //const int ny = 63;
     //const int nz = 63;
@@ -388,6 +384,9 @@ main(int argc, char* argv[])
 	fprintf(stderr,"On average a single V cycle took: %.14e seconds\n",sum_time/n_steps);
     }
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_laplace_solution),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_diff_to_analytical),1);
+    const auto l2_diff = acDeviceGetOutput(acGridGetDevice(),AC_l2_from_analytical_solution);
+    fprintf(stderr,"L2 diff: %.14e\n",l2_diff);
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     int retval = AC_SUCCESS;
     acGridQuit();

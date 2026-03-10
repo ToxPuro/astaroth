@@ -18,7 +18,7 @@ Kernel init_kernel()
 	pos = grid_position()
 	val = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
 	write(GMG_INITIAL_RHS,val)
-	write(ANALYTICAL_SOLUTION,3.0*val)
+	write(ANALYTICAL_SOLUTION,(1.0/3.0)*val)
 	write(GMG_SOLUTIONS[0],AC_init_val)
 }
 
@@ -126,5 +126,16 @@ print_values(gmg_boundconds)
 	print_kernel(AC_GMG_LEVEL)
 }
 
+
+global output real AC_l2_from_analytical_solution
+Kernel get_diff_to_analytical_solution_kernel()
+{
+	diff = ANALYTICAL_SOLUTION-GMG_SOLUTIONS[0]
+	reduce_l2_norm(diff,AC_l2_from_analytical_solution)
+}
+ComputeSteps get_diff_to_analytical(gmg_boundconds)
+{
+	get_diff_to_analytical_solution_kernel()
+}
 
 
