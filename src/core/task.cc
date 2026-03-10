@@ -882,6 +882,7 @@ Task::Task(int order_, std::vector<Region> input_regions_, Region output_region_
     : device(device_), vba(acDeviceGetVBA(device)), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
       order(order_), active(true), boundary(BOUNDARY_NONE), input_regions(input_regions_),
       output_region(output_region_),
+      launch_region(output_region_),
       input_parameters(op.parameters, op.parameters + op.num_parameters)
 {
     MPI_Comm_rank(acGridMPIComm(), &rank);

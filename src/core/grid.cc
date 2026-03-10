@@ -2533,7 +2533,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 			//TP: This is sort of abusing this func to be able to autotune iff there is no autotune entry.
 			//    I make sure the autotuning is done in this way to not get nasty problems about the parallelized autotuning where only a portion of the
 			//    processes are executing specific kernels
-        		acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
+        		acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->launch_region.position, task->launch_region.position + task->launch_region.dims);
 		        if(!is_on_boundary && !globally_imposed_bcs) continue;
                 	graph->all_tasks.push_back(task);
 		}

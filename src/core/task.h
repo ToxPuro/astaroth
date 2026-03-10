@@ -176,6 +176,7 @@ typedef class Task {
 
     std::vector<Region> input_regions;
     Region output_region;
+    Region launch_region;
 
     std::vector<AcRealParam> input_parameters;
 

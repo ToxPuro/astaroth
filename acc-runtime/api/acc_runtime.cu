@@ -186,6 +186,7 @@ static bool
 is_large_launch(const int3 dims)
 {
   const int3 ghosts = get_ghosts();
+  if((size_t)(dims.x*dims.y*dims.z) < (size_t)get_device_prop().warpSize) return false;
   return ((int)dims.x > ghosts.x && (int)dims.y > ghosts.y && (int)dims.z > ghosts.z);
 }
 
@@ -223,7 +224,6 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   const size_t ymax         = (size_t)(warp_size * ceil_div(dims.y,warp_size));
   const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
   const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
-  const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
   if (is_coop_raytracing_kernel(kernel))
   {
 	int maxBlocksPerSM{};
@@ -261,6 +261,7 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
 //  const bool single_tb      = (tpb.x >= dims.x) && (tpb.y >= dims.y) && (tpb.z >= dims.z);
 
   //TP: if not utilizing the whole warp invalid, expect if dims are so small that could not utilize a whole warp 
+  const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
   if (not_full_warp && is_large_launch(dims)) return false;
 
   switch (IMPLEMENTATION) {
@@ -1141,7 +1142,10 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   if (samples.size() == 0)
   {
 	fprintf(stderr,"Found no suitable thread blocks for Kernel %s!\n",kernel_names[kernel]);
-	fprintf(stderr,"Launch dims (%d:%d,%d:%d,%d:%d)",start.x,end.x,start.y,end.y,start.z,end.z);
+	fprintf(stderr,"Launch dims (%d:%d,%d:%d,%d:%d)\n",start.x,end.x,start.y,end.y,start.z,end.z);
+	fprintf(stderr,"Maximum tpb were: (%d,%d,%d)\n",tpb_end.x,tpb_end.y,tpb_end.z);
+	fprintf(stderr,"Dims were: (%d,%d,%d)\n",dims.x,dims.y,dims.z);
+	fprintf(stderr,"X increment was: %d\n",x_increment);
 	fflush(stderr);
   	ERRCHK_ALWAYS(samples.size() > 0);
   }
