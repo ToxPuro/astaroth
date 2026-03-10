@@ -128,9 +128,11 @@ print_values(gmg_boundconds)
 
 
 global output real AC_l2_from_analytical_solution
+Field DIFF
 Kernel get_diff_to_analytical_solution_kernel()
 {
 	diff = ANALYTICAL_SOLUTION-GMG_SOLUTIONS[0]
+	write(DIFF,diff)
 	reduce_l2_norm(diff,AC_l2_from_analytical_solution)
 }
 ComputeSteps get_diff_to_analytical(gmg_boundconds)

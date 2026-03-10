@@ -73,9 +73,9 @@ main(int argc, char* argv[])
     acLoadConfig("mg.conf", &info);
     acPushToConfig(info,AC_ds,
     (AcReal3){
-    	    (2.0*AC_REAL_PI)/info[AC_ngrid].x,
-    	    (2.0*AC_REAL_PI)/info[AC_ngrid].y,
-    	    (2.0*AC_REAL_PI)/info[AC_ngrid].z
+    	    (2.0*AC_REAL_PI)/(info[AC_ngrid].x+1),
+    	    (2.0*AC_REAL_PI)/(info[AC_ngrid].y+1),
+    	    (2.0*AC_REAL_PI)/(info[AC_ngrid].z+1)
     });
 
     acPushToConfig(info,AC_first_gridpoint,
@@ -109,8 +109,8 @@ main(int argc, char* argv[])
     //const int nx = 63;
     //const int ny = 63;
     //const int nz = 63;
-    acSetGridMeshDims(nx,ny,nz, &info);
-    acSetLocalMeshDims(nx,ny,nz, &info);
+    //acSetGridMeshDims(nx,ny,nz, &info);
+    //acSetLocalMeshDims(nx,ny,nz, &info);
 
     #if AC_RUNTIME_COMPILATION
     const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
