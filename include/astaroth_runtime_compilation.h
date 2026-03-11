@@ -15,10 +15,10 @@ acLoadRunConsts(AcMeshInfo info);
 #endif
 #ifdef __cplusplus
 
-static UNUSED void
+static UNUSED AcResult
 acCompile(const char* compilation_string, AcMeshInfo info)
 {
-	acCompile(compilation_string,"",info);
+	return acCompile(compilation_string,"",info);
 }
 
 #endif
