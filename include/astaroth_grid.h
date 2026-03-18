@@ -34,7 +34,7 @@ Destroys the communicator and calls MPI_Finalize
 FUNC_DEFINE(void, ac_MPI_Finalize,());
 
 /** Returns the rank of the Astaroth communicator */
-int ac_MPI_Comm_rank();
+FUNC_DEFINE(int, ac_MPI_Comm_rank,());
 
 /** If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD */
 FUNC_DEFINE(MPI_Comm, acGridMPIComm,());
