@@ -512,7 +512,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(ac_MPI_Init,stream)
 	LOAD_DSYM(ac_MPI_Init_thread,stream)
 	LOAD_DSYM(ac_MPI_Finalize,stream);
-	LOAD_DSYM(AC_MPI_Comm_rank,stream);
+	LOAD_DSYM(ac_MPI_Comm_rank,stream);
 	LOAD_DSYM(acGridInitialized,stream);
 	LOAD_DSYM(acGridMPIComm,stream);
 	LOAD_DSYM(acGridMPISubComms,stream);
