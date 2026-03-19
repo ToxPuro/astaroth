@@ -3507,6 +3507,13 @@ acGridDiskAccessSync(void)
     running = false;
     return AC_SUCCESS;
 }
+AcResult
+acGridDiskAccessLaunch(const AccessType type)
+{
+	ERRCHK_ALWAYS(false); //Not supported when using C++ threads
+			      //TP: Not sure why the below is commented out, does it not work?
+	return AC_FAILURE;
+}
 
 /*
 AcResult

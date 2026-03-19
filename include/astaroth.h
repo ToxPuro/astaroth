@@ -508,7 +508,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acDeviceFFTR2PlanarXY,stream)
 	LOAD_DSYM(acDeviceFFTBackwardTransformPlanar2RXY,stream)
 #if AC_MPI_ENABLED
-	LOAD_DSYM(BASE_FUNC_NAME(acBoundaryCondition),stream)
+	*(void**)(&BASE_FUNC_NAME(acBoundaryCondition)) = dlsym(handle,"acBoundaryCondition");
 	LOAD_DSYM(ac_MPI_Init,stream)
 	LOAD_DSYM(ac_MPI_Init_thread,stream)
 	LOAD_DSYM(ac_MPI_Finalize,stream);
@@ -528,7 +528,9 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridLoadInt3Uniform,stream);
 	LOAD_DSYM(acGridLoadMesh,stream);
 	LOAD_DSYM(acGridStoreMesh,stream);
+#if AC_INTEGRATION_ENABLED
 	LOAD_DSYM(acGridIntegrate,stream);
+#endif
 	LOAD_DSYM(acGridSwapBuffers,stream);
 	LOAD_DSYM(acGridHaloExchange,stream);
 	LOAD_DSYM(acGridPeriodicBoundconds,stream);

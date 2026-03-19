@@ -61,7 +61,7 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acLoadConfig("cg.conf", &info);
     acPushToConfig(info,AC_ds,
     (AcReal3){
 	    (2*AC_REAL_PI)/info[AC_ngrid].x,
@@ -76,7 +76,7 @@ main(void)
     acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
     info.comm->handle = MPI_COMM_WORLD;
 
-    const int max_devices = 1;
+    const int max_devices = 8;
     if (nprocs > max_devices) {
         fprintf(stderr,
                 "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
@@ -84,8 +84,6 @@ main(void)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetGridMeshDims(info[AC_ngrid].x,info[AC_ngrid].y,info[AC_ngrid].z, &info);
-    acSetLocalMeshDims(info[AC_ngrid].x,info[AC_ngrid].y,info[AC_ngrid].z, &info);
 
     #if AC_RUNTIME_COMPILATION
     const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
@@ -95,16 +93,12 @@ main(void)
     #endif
 
     AcMesh model, candidate;
-    if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
-    }
+    acHostMeshCreate(info, &model);
+    acHostMeshCreate(info, &candidate);
+    acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
 
     acGridInit(info);
-    printf("DS: %.14e,%.14e,%.14e\n",acDeviceGetLocalConfig(acGridGetDevice())[AC_ds].x,acDeviceGetLocalConfig(acGridGetDevice())[AC_ds].y,acDeviceGetLocalConfig(acGridGetDevice())[AC_ds].z);
-    printf("LEN: %.14e,%.14e,%.14e\n",acDeviceGetLocalConfig(acGridGetDevice())[AC_len].x,acDeviceGetLocalConfig(acGridGetDevice())[AC_len].y,acDeviceGetLocalConfig(acGridGetDevice())[AC_len].z);
     //Test that can build test ComputeSteps
     const auto empty_graph = acGetOptimizedDSLTaskGraph(empty_steps);
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
