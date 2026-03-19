@@ -122,13 +122,21 @@ init_cg_residual()
 	write(CG_R,r)
 }
 
+Field CG_Z
+
+Kernel 
+cg_get_z(real laplace_sign)
+{
+	write(CG_Z,r/(laplace_sign*laplace_central_coeff()))
+}
+
 
 Kernel cg_compute_alpha(real laplace_sign)
 {
 	Ap = laplace_sign*laplace(CG_P)
  	r  = value(CG_R)
 	p  = value(CG_P)
-	z = -r/laplace_central_coeff()
+	z  = value(CG_Z)
 	cg_compute_inner_products(Ap,p,r,z)
 }
 
@@ -141,8 +149,7 @@ Kernel cg_advance(real laplace_sign)
 }
 Kernel cg_compute_beta()
 {
-	z = -CG_R/laplace_central_coeff()	
-	cg_compute_p1Tzp1(CG_R,z)
+	cg_compute_p1Tzp1(CG_R,CG_Z)
 }
 
 
@@ -161,8 +168,12 @@ init_cg(boundconds)
 ComputeSteps
 cg_step(boundconds)
 {
+	cg_get_z(AC_laplace_sign)
+
 	cg_compute_alpha(AC_laplace_sign)
 	cg_advance(AC_laplace_sign)
+
+	cg_get_z(AC_laplace_sign)
 	cg_compute_beta()
 	cg_advance_p()
 }
