@@ -1069,6 +1069,10 @@ compute_next_level_set(std::array<bool,NUM_KERNELS>& dst, const std::vector<AcKe
 	//TP: padded since cray compiler does not like zero sized arrays when debug flags are on
 	std::array<bool,NUM_PROFILES+1> profile_consumed{};
 	std::fill(profile_consumed.begin(), profile_consumed.end(),false);
+	std::array<bool,NUM_REAL_OUTPUTS+1> real_output_consumed{};
+	std::fill(real_output_consumed.begin(), real_output_consumed.end(),false);
+
+
 	for(size_t i = 0; i < kernel_calls.size(); ++i)
 	{
 		if(call_level_set[i] == -1)
@@ -1090,9 +1094,25 @@ compute_next_level_set(std::array<bool,NUM_KERNELS>& dst, const std::vector<AcKe
 		  }
 		  for(size_t j = 0; j < NUM_FIELDS; ++j)
 		  	field_written_to[j] |= (can_compute && info[i].written_fields[j]);
+
+		  for(size_t j = 0; j < info[i].n_reduce_inputs; ++j)
+		  {
+			  const auto output = info[i].reduce_inputs[j];
+			  if(output.type != AC_REAL_TYPE) continue;
+			  can_compute &= !real_output_consumed[output.variable];
+		  }
+		  for(size_t j = 0; j < info[i].n_reduce_outputs; ++j)
+		  {
+			  const auto output = info[i].reduce_outputs[j];
+			  if(output.type != AC_REAL_TYPE) continue;
+			  can_compute &= !real_output_consumed[output.variable];
+			  real_output_consumed[output.variable] = true;
+		  }
 		  if(can_compute) dst[i] = true;
 		}
 	}
+
+
 };
 
 typedef struct
