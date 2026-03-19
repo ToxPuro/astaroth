@@ -17,6 +17,7 @@ Field RESIDUAL
 
 Field CG_P 
 Field CG_R
+
 input real AC_laplace_sign
 
 Kernel init_kernel(real init_sign)
@@ -54,6 +55,18 @@ bc_heat_source(AcBoundary boundary, Field f)
 
 }
 
+bc_schwarz(AcBoundary boundary, Field f)
+{
+	if(local_boundary_is_a_global_boundary(boundary))
+	{
+		bc_heat(boundary,f)
+	}
+	else
+	{
+		ac_fixed_bc(boundary,f)
+	}
+}
+
 
 BoundConds boundconds{
 	bc_heat(BOUNDARY_XYZ,HEAT_SOLUTION)
@@ -61,13 +74,26 @@ BoundConds boundconds{
 	bc_heat(BOUNDARY_XYZ,TEST_SOLUTION)
 }
 
-output real AC_residual2
-Kernel residual_kernel(real laplace_sign)
+BoundConds schwarz_bcs {
+	bc_schwarz(BOUNDARY_XYZ,HEAT_SOLUTION)
+	ac_const_bc(BOUNDARY_XYZ,CG_P,0.0)
+}
+
+global output real AC_residual_l2_norm
+output real AC_residual_local_l2_norm
+Kernel global_residual_kernel(real laplace_sign)
 {
 	r = HEAT_INIT-(laplace_sign*laplace(HEAT_SOLUTION))
 	write(RESIDUAL,r)
-	reduce_sum(r*r,AC_residual2)
+	reduce_l2_norm(r,AC_residual_l2_norm)
 	write(TEST_HEAT,(-laplace_sign*laplace(TEST_SOLUTION)))
+}
+
+Kernel local_residual_kernel(real laplace_sign)
+{
+	r = HEAT_INIT-(laplace_sign*laplace(HEAT_SOLUTION))
+	write(RESIDUAL,r)
+	reduce_l2_norm(r,AC_residual_local_l2_norm)
 }
 
 ComputeSteps
@@ -81,6 +107,7 @@ ComputeSteps
 empty_steps(boundconds)
 {
 }
+
 Kernel
 init_cg_solution()
 {
@@ -127,7 +154,7 @@ Kernel cg_advance_p()
 ComputeSteps
 init_cg(boundconds)
 {
-	init_cg_solution()
+	//init_cg_solution()
 	init_cg_residual()
 }
 
@@ -156,9 +183,52 @@ sor_red_black_step(boundconds)
 	sor_black(AC_laplace_sign,1.0)
 }
 
+Kernel cg_compute_alpha_local(real laplace_sign)
+{
+	Ap = laplace_sign*laplace(CG_P)
+ 	r  = value(CG_R)
+	p  = value(CG_P)
+	z = -r/laplace_central_coeff()
+	cg_compute_inner_products_local(Ap,p,r,z)
+}
+
+
+Kernel cg_advance_local(real laplace_sign)
+{
+	Ap = laplace_sign*laplace(CG_P)
+	p  = value(CG_P)
+	cg_advance_solution_local(HEAT_SOLUTION,Ap,p,CG_R)
+}
+Kernel cg_compute_beta_local()
+{
+	z = -CG_R/laplace_central_coeff()	
+	cg_compute_p1Tzp1_local(CG_R,z)
+}
+
+
+Kernel cg_advance_p_local()
+{
+	cg_next_direction_local(CG_P,-CG_R/laplace_central_coeff())
+}
+
+ComputeSteps
+cg_local_step(schwarz_bcs)
+{
+	cg_compute_alpha_local(AC_laplace_sign)
+	cg_advance_local(AC_laplace_sign)
+	cg_compute_beta_local()
+	cg_advance_p_local()
+}
+
 ComputeSteps
 get_residual(boundconds)
 {
-	residual_kernel(AC_laplace_sign)
+	global_residual_kernel(AC_laplace_sign)
+}
+
+ComputeSteps
+get_local_residual(schwarz_bcs)
+{
+	local_residual_kernel(AC_laplace_sign)
 }
 

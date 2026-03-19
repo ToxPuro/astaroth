@@ -48,3 +48,46 @@ cg_next_direction(Field p, real z)
 	beta = CG_rp1Tzp1/CG_rTz
 	write(p, z + beta*p)
 }
+
+output real CG_local_rTz
+output real CG_local_pTAp
+output real CG_local_rp1Tzp1
+
+cg_compute_inner_products_local(real Ap,real p,real r, real z)
+{
+	reduce_sum(r*z, CG_local_rTz)	
+	reduce_sum(p*Ap,CG_local_pTAp)	
+}
+
+cg_compute_inner_products_local(real Ap,real p,real r)
+{
+	cg_compute_inner_products_local(Ap,p,r,r)
+}
+
+
+cg_advance_solution_local(Field x,real Ap,real p,Field r)
+{
+	alpha = CG_local_rTz/CG_local_pTAp
+	write(x,x + alpha*p)
+	rp1 = r - alpha*Ap
+	write(r,rp1)
+	if(!AC_cg_preconditioned)
+	{
+		reduce_sum(rp1*rp1,CG_local_rp1Tzp1)	
+	}
+	
+}
+
+cg_compute_p1Tzp1_local(real rp1, real zp1)
+{
+	if(AC_cg_preconditioned)
+	{
+		reduce_sum(rp1*zp1,CG_local_rp1Tzp1)	
+	}
+}
+
+cg_next_direction_local(Field p, real z)
+{
+	beta = CG_local_rp1Tzp1/CG_local_rTz
+	write(p, z + beta*p)
+}

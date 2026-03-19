@@ -9,6 +9,17 @@ inline get_normal(AcBoundary boundary)
 			-((boundary & BOUNDARY_X_BOT) != 0)*(start.x < AC_nmin.x));
 	   return (int3){x,y,z}
 }
+
+local_boundary_is_a_global_boundary(AcBoundary boundary)
+{
+	const int3 normal = get_normal(boundary)
+	return (normal.x == -1 & AC_domain_coordinates.x == 0)
+	      +(normal.x == +1 & AC_domain_coordinates.x == AC_domain_decomposition.x-1)
+	      +(normal.y == -1 & AC_domain_coordinates.y == 0)
+	      +(normal.y == +1 & AC_domain_coordinates.y == AC_domain_decomposition.y-1)
+	      +(normal.z == -1 & AC_domain_coordinates.z == 0)
+	      +(normal.z == +1 & AC_domain_coordinates.z == AC_domain_decomposition.y-1)
+}
 inline get_boundary(int3 normal)
 {
 	const int x =  normal.x == 1  ? start.x-1
