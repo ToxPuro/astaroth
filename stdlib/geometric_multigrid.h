@@ -1,4 +1,5 @@
 #include "math_utils.h"
+#include "astaroth_grid.h"
 
 AcReal gmg_central_coeffs[11]{};
 const std::array<AcInt3Param,11> level_dims = 
@@ -317,7 +318,7 @@ gmg_smoothing_step(const int level)
   }
 }
 void
-gmg_level_step(const int level, const int number_of_levels, const AcReal relative_residual_tolerance)
+gmg_level_step(const int level, const int number_of_levels, const AcReal relative_residual_tolerance, AcReal *cum_time=NULL)
 {
   const auto info = acGridGetLocalMeshInfo();
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
@@ -337,6 +338,8 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
 	AcReal relative_residual_norm = residual_norm/residual0_norm;
         const Volume launch_start = to_volume(info[AC_nmin]);
         const Volume launch_dims = to_volume(info[level_dims[level]]);
+        AcReal start_time;
+        if (cum_time!=NULL) start_time = MPI_Wtime();
 	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_init_cg_residual,launch_start,launch_dims),1);
 	while(relative_residual_norm > relative_residual_tolerance)
 	{
@@ -345,6 +348,10 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
 		residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 		relative_residual_norm = residual_norm/residual0_norm;
 	}
+        //int pid;
+        //MPI_Comm_rank(MPI_COMM_WORLD,&pid);
+        //acLogFromRootProc(pid,"coarsest grid time: %14e\n",MPI_Wtime()-start_time);
+        if (cum_time!=NULL) *cum_time += MPI_Wtime()-start_time;
   }
   else
   {
@@ -357,7 +364,7 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
 	  
           const auto restrict_graph = acGetOptimizedDSLTaskGraph(gmg_restrict_residual, launch_start, launch_end); 
           acGridExecuteTaskGraph(restrict_graph,1); //Restrict residual to the next level
-	  gmg_level_step(level+1,number_of_levels,relative_residual_tolerance);
+	  gmg_level_step(level+1,number_of_levels,relative_residual_tolerance,cum_time);
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 	  acGridExecuteTaskGraph(halo_exchange_solutions[level],1);
 	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level
@@ -369,9 +376,9 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
 }
 
 void
-gmg_v_cycle(const int number_of_levels, const AcReal relative_residual_tolerance)
+gmg_v_cycle(const int number_of_levels, const AcReal relative_residual_tolerance,AcReal *cum_time=NULL)
 {
-	gmg_level_step(0,number_of_levels,relative_residual_tolerance);
+	gmg_level_step(0,number_of_levels,relative_residual_tolerance,cum_time);
 }
 void
 gmg_setup_parallel_grid_decomposition(AcMeshInfo* dst)
