@@ -450,3 +450,8 @@ run_const bool AC_only_default_stream_for_taskgraphs = false
  * By default the grid has to be divisible evenly to processes
  */
 run_const bool AC_allow_non_divisible_grid = false
+/**
+ * Size below of which grids are never decomposed into regions for taskgraphs
+ */
+dconst int3 AC_no_mantle_below_this_size = (int3){0,0,0}
+

@@ -2265,13 +2265,20 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 				  || kernel_only_writes_profile(PROFILE_Z,op.analysis_info);
 	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
 	    //TP: if the subdomain we compute on is too small to form the 'mantle' around the 'core' we compute the subdomain as one big block
-	    const bool small_dims  =
+	    const bool too_small_dims  =
 		    	(int)dims.x < 2*grid.submesh.info[AC_nmin].x ||
 		    	(int)dims.y < 2*grid.submesh.info[AC_nmin].y ||
 		    	(int)dims.z < 2*grid.submesh.info[AC_nmin].z;
 
+	    //TP: if the subdomain is small enough we pay too more for the slowness of the small launch dimensions compared to the possibility to overlap some communication
+	    const bool user_set_small_dims =
+		    	(int)dims.x < grid.submesh.info[AC_no_mantle_below_this_size].x ||
+		    	(int)dims.y < grid.submesh.info[AC_no_mantle_below_this_size].y ||
+		    	(int)dims.z < grid.submesh.info[AC_no_mantle_below_this_size].z ;
 
-	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim || small_dims) ? 0 : 3;
+
+
+	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim || too_small_dims || user_set_small_dims) ? 0 : 3;
 	    {
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;

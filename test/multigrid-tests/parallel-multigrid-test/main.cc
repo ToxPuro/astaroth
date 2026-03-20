@@ -101,14 +101,6 @@ main(int argc, char* argv[])
     //acPushToConfig(info,AC_domain_decomposition,(int3){2,1,1});
     info.comm->handle = MPI_COMM_WORLD;
 
-    const int max_devices = 8;
-    if (nprocs > max_devices) {
-        fprintf(stderr,
-                "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
-                nprocs, max_devices);
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-        return EXIT_FAILURE;
-    }
     
     gmg_setup_parallel_grid_decomposition(&info);
 
@@ -164,8 +156,10 @@ main(int argc, char* argv[])
     }
 
 
+    fprintf(stderr,"Before first V-cycle\n");
+    fflush(stderr);
 
-    gmg_v_cycle(n_levels,1e-1);
+    //gmg_v_cycle(n_levels,1e-1);
     {
 	acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
     	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
@@ -174,7 +168,7 @@ main(int argc, char* argv[])
     	AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
     	acLogFromRootProc(pid,"Initial Residual: %14e\n",residual);
 	const AcReal init_residual = residual;
-	const AcReal relative_convergence_rate = 1e-14;
+	const AcReal relative_convergence_rate = 7e-2;
 	AcReal sum_time = 0.0;
     	int n_steps = 0;
     	while(residual > 1e-8)
@@ -182,17 +176,19 @@ main(int argc, char* argv[])
 	    const AcReal start_time = MPI_Wtime();
             gmg_v_cycle(n_levels,relative_convergence_rate);
 	    const AcReal end_time   = MPI_Wtime();
+	    if(pid == 0) fprintf(stderr,"V cycle took: %.14e\n",end_time-start_time);
+    	    fflush(stderr);
 	    sum_time += end_time-start_time;
     	    acGridExecuteTaskGraph(residual_graph,1);
     	    residual = acDeviceGetOutput(acGridGetDevice(),AC_GMG_residual_l2_norm[0]);
     	    acLogFromRootProc(pid,"Residual: %14e\n",residual);
-    	    acGridWriteSlicesToDiskCollectiveSynchronous("slices", n_steps, 0.0);
     	    ++n_steps;
     	}
     	acLogFromRootProc(pid,"Final residual: %14e\n",residual);
     	acLogFromRootProc(pid,"Took %d steps\n",n_steps);
 	acLogFromRootProc(pid,"Asymptotic convergence factor: %.14e\n",pow(residual/init_residual,1.0/n_steps));
 	acLogFromRootProc(pid,"On average a single V cycle took: %.14e seconds\n",sum_time/n_steps);
+    	acGridWriteSlicesToDiskCollectiveSynchronous("slices", n_steps, 0.0);
     }
     int retval = AC_SUCCESS;
     acGridQuit();
