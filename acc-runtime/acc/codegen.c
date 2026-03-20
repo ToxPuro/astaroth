@@ -5973,6 +5973,10 @@ print_const_array(FILE* fp, const char* datatype_scalar, const char* name, int n
 {
 	//TP: zero-sized arrays not supported by all GPU compilers
 	if(num_of_elems == 0) num_of_elems = 1;
+	if(datatype_scalar == intern("floatOutputParam"))
+	{
+		datatype_scalar = "AcFloatOutputParam";
+	}
 	fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] %s const constexpr %s %s[%d] = %s;\n#endif\n",static_str,datatype_scalar, name, num_of_elems, assignment_val);
 }
 
