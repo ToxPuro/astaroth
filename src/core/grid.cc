@@ -2270,13 +2270,11 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		    	(int)dims.y < 2*grid.submesh.info[AC_nmin].y ||
 		    	(int)dims.z < 2*grid.submesh.info[AC_nmin].z;
 
-	    //TP: if the subdomain is small enough we pay too more for the slowness of the small launch dimensions compared to the possibility to overlap some communication
+	    //TP: if the subdomain is small enough we pay too much for the slowness of the small launch dimensions compared to the possibility to overlap some communication
 	    const bool user_set_small_dims =
 		    	(int)dims.x < grid.submesh.info[AC_no_mantle_below_this_size].x ||
 		    	(int)dims.y < grid.submesh.info[AC_no_mantle_below_this_size].y ||
 		    	(int)dims.z < grid.submesh.info[AC_no_mantle_below_this_size].z ;
-
-
 
 	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim || too_small_dims || user_set_small_dims) ? 0 : 3;
 	    {
