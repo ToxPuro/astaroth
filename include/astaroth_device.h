@@ -277,9 +277,6 @@ FUNC_DEFINE(AcResult, acDeviceBenchmarkKernel,(const Device device, const AcKern
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadStencilsFromConfig,(const Device device, const Stream stream));
 
-/** */
-FUNC_DEFINE(AcBoundary, acDeviceStencilAccessesBoundaries,(const Device device, const Stencil stencil));
-
 FUNC_DEFINE(AcResult, acDeviceLoadStencil,(const Device device, const Stream stream, const Stencil stencil,const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadStencils,(const Device device, const Stream stream, const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));

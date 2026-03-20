@@ -35,7 +35,7 @@ cg_advance_solution(Field x,real Ap,real p,Field r)
 	
 }
 
-cg_compute_p1Tzp1(real rp1, real zp1)
+cg_compute_rp1Tzp1(real rp1, real zp1)
 {
 	if(AC_cg_preconditioned)
 	{
@@ -78,7 +78,7 @@ cg_advance_solution_local(Field x,real Ap,real p,Field r)
 	
 }
 
-cg_compute_p1Tzp1_local(real rp1, real zp1)
+cg_compute_rp1Tzp1_local(real rp1, real zp1)
 {
 	if(AC_cg_preconditioned)
 	{

@@ -679,7 +679,6 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acDeviceLoadStencil,stream)
 	LOAD_DSYM(acDeviceLoadStencils,stream)
 	LOAD_DSYM(acDeviceLoadStencilsFromConfig,stream)
-	LOAD_DSYM(acDeviceStencilAccessesBoundaries,stream)
 	LOAD_DSYM(acDeviceStoreStencil,stream)
 	LOAD_DSYM(acDeviceVolumeCopy,stream)
 #include "device_set_input_loads.h"

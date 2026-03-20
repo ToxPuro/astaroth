@@ -104,28 +104,55 @@ main(void)
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
     const auto cg_init_graph = acGetOptimizedDSLTaskGraph(init_cg);
     const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step);
-    const auto local_sor_graph = acGetOptimizedDSLTaskGraph(cg_local_step,true);
     const auto cg_graph = acGetOptimizedDSLTaskGraph(cg_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     const auto local_residual_graph = acGetOptimizedDSLTaskGraph(get_local_residual,true);
     const int MAX_STEPS = 200;
 
+    const auto get_z = [&]()
+    {
+      
+      acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_cg_z),1);
+
+      //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(init_local_cg),1);
+      //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_local_residual,true),1);
+      //auto local_residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_local_l2_norm);
+      //while(local_residual > 1e-8)
+      //{
+      // acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(cg_local_step,true),1);
+      // acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_local_residual,true),1);
+      // local_residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_local_l2_norm);
+      // //fprintf(stderr,"Local res: %.14e\n",local_residual);
+      //}
+    };
     const auto cg_solve = [&]()
     {
-	int step  = 0;
-    	acGridExecuteTaskGraph(cg_init_graph,1);
+       int step  = 0;
+       acGridExecuteTaskGraph(cg_init_graph,1);
+       acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
+
+       get_z();
+       acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_z_to_p),1);
        {
+           //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_z_to_solution),1);
            acGridExecuteTaskGraph(residual_graph,1);
+           //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_residual_for_z),1);
            const AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_l2_norm);
-    	   acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &model);
            acLogFromRootProc(pid,"Initial residual: %.14e\n",residual);
        }
        AcReal residual = 10e8;
        while(residual > 1e-8 && step++ < MAX_STEPS)
        {
-       	acGridExecuteTaskGraph(cg_graph,1);
+       	//acGridExecuteTaskGraph(cg_graph,1);
+	{
+          get_z();
+	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(cg_compute_alpha_and_advance),1);
+          get_z();
+	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(cg_compute_beta_and_advance_p),1);
+        }
        	acGridExecuteTaskGraph(residual_graph,1);
         residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_l2_norm);
+	acLogFromRootProc(pid,"Residual: %.14e\n",residual);
        }
        acLogFromRootProc(pid,"CG took %d steps\n",step);
        acLogFromRootProc(pid,"Final residual: %.14e\n",residual);
@@ -152,34 +179,6 @@ main(void)
        acLogFromRootProc(pid,"Final residual: %.14e\n",residual);
     };
 
-    const auto additive_schwarz_solve = [&]()
-    {
-	int step  = 0;
-       {
-           acGridExecuteTaskGraph(residual_graph,1);
-           const AcReal residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_l2_norm);
-    	   acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &model);
-           acLogFromRootProc(pid,"Initial residual: %.14e\n",residual);
-       }
-       AcReal residual = 10e8;
-       while(residual > 1e-8 && step++ < MAX_STEPS)
-       {
-           acGridExecuteTaskGraph(local_residual_graph,1);
-           AcReal local_residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_local_l2_norm);
-	   while(local_residual > 1e-8)
-	   {
-       	   	acGridExecuteTaskGraph(local_sor_graph,1);
-       	   	acGridExecuteTaskGraph(local_residual_graph,1);
-           	local_residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_local_l2_norm);
-		//fprintf(stderr,"Local residual: %.14e\n",local_residual);
-	   }
-       	   acGridExecuteTaskGraph(residual_graph,1);
-           residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_l2_norm);
-           //fprintf(stderr,"Residual: %.14e\n",residual);
-       }
-       acLogFromRootProc(pid,"Additive Schwarz took %d steps\n",step);
-       acLogFromRootProc(pid,"Final residual: %.14e\n",residual);
-    };
 
 
     acDeviceSetInput(acGridGetDevice(),AC_laplace_sign,-1.0);
@@ -191,24 +190,9 @@ main(void)
     acGridExecuteTaskGraph(initcond_graph,1);
     sor_solve();
 
-    /**
-    acLogFromRootProc(pid,"Additive Schwarz: \n");
-    acGridExecuteTaskGraph(initcond_graph,1);
-    additive_schwarz_solve();
-    **/
 
     acLogFromRootProc(pid,"Additive Schwarz + CG: \n");
     acGridExecuteTaskGraph(initcond_graph,1);
-    acGridExecuteTaskGraph(cg_init_graph,1);
-    acGridExecuteTaskGraph(local_residual_graph,1);
-    AcReal local_residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_local_l2_norm);
-    while(local_residual > 1e-6)
-    {
-    	acGridExecuteTaskGraph(local_sor_graph,1);
-    	acGridExecuteTaskGraph(local_residual_graph,1);
-    	local_residual = acDeviceGetOutput(acGridGetDevice(),AC_residual_local_l2_norm);
-	fprintf(stderr,"Local (%d): %.14e\n",pid,local_residual);
-    }
     cg_solve();
 
 
