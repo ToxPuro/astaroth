@@ -889,6 +889,12 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const
 	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false,acGetComputeStepsBCs(graph));
 }
 
+static UNUSED AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool globally_imposed_bcs)
+{
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,true,acGetComputeStepsBCs(graph));
+}
+
 static UNUSED AcTaskGraph* 
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs)
 {

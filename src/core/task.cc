@@ -303,7 +303,7 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.include_boundaries = false;
     facet_class_range* halo_types = (facet_class_range*)malloc(sizeof(facet_class_range)*num_fields);
     for(size_t i = 0; i < num_fields; ++i) halo_types[i].min = 1;
-    for(size_t i = 0; i < num_fields; ++i) halo_types[i].max = 2;
+    for(size_t i = 0; i < num_fields; ++i) halo_types[i].max = 3;
     task_def.halo_types = halo_types;
     task_def.red_black_state = get_red_black_state();
     return task_def;

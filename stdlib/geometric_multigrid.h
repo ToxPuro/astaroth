@@ -230,6 +230,11 @@ get_galerkin_operators(AcMeshInfo* info)
 
 std::array<AcTaskGraph*,11> halo_exchange_residuals{};
 std::array<AcTaskGraph*,11> halo_exchange_solutions{};
+std::array<AcTaskGraph*,11> halo_exchange_solutions_current{};
+AcTaskGraph* coarsest_level_cg_step  = NULL;
+AcTaskGraph* coarsest_level_cg_init  = NULL;
+AcTaskGraph* coarsest_level_residual = NULL;
+AcTaskGraph* test_comm_graph = NULL;
 void
 gmg_get_halo_exchange_operators(const AcMeshInfo info)
 {
@@ -245,6 +250,12 @@ gmg_get_halo_exchange_operators(const AcMeshInfo info)
     				       acHaloExchange({GMG_RESIDUALS[level]})
     				}
 				,launch_start,launch_end);
+			halo_exchange_solutions_current[level] = acGridBuildTaskGraph(
+    				{
+    				       acHaloExchange({GMG_SOLUTIONS[level]})
+    				}
+				,launch_start,launch_end);
+
 		}
 
 		{
@@ -259,6 +270,23 @@ gmg_get_halo_exchange_operators(const AcMeshInfo info)
 		}
 
 	}
+	const int level = number_of_levels-1;
+        acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
+        const Volume launch_start = to_volume(info[AC_nmin]);
+        const Volume launch_dims = to_volume(info[level_dims[level]]);
+        const Volume launch_end = launch_dims + launch_start;
+	coarsest_level_cg_step = acGetOptimizedDSLTaskGraph(gmg_cg_coarsest_level_step,launch_start,launch_dims);
+	coarsest_level_cg_init = acGetOptimizedDSLTaskGraph(gmg_init_cg_residual,launch_start,launch_dims);
+	test_comm_graph =
+			acGridBuildTaskGraph(
+    					{
+    					       acHaloExchange({GMG_SOLUTIONS[level]}),
+					       acCompute(gmg_get_residual_norm_kernel___optimized_6,{})
+					       //acBoundaryCondition(BOUNDARY_XYZ,gmg_boundconds__ac_const_bc__AC_INTERNAL_NUMBERING__6,{GMG_SOLUTIONS[level]})
+    					}
+				,launch_start,launch_end);
+  	coarsest_level_residual  = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
+        acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
 }
 
 void
@@ -295,7 +323,39 @@ gmg_iterative_smoother_step(const int level)
 }
 
 void
-gmg_smoothing_step(const int level)
+gmg_get_residual_func(const int level)
+{
+    const auto info = acGridGetLocalMeshInfo();
+    const Volume launch_start = to_volume(info[AC_nmin]);
+    const Volume launch_dims = to_volume(info[level_dims[level]]);
+    const Volume launch_end = launch_dims + launch_start;
+    acKernelInputParams params{};
+    params.gmg_residual_kernel.level = (GMG_LEVEL)level;
+    const AcKernel residual_kernel = acGetOptimizedKernel(gmg_residual_kernel,params);
+    acGridExecuteTaskGraph(halo_exchange_solutions_current[level],1);
+    acDeviceLaunchKernel(acGridGetDevice(),STREAM_2,residual_kernel,launch_start,launch_end);
+    acDeviceSynchronizeStream(acGridGetDevice(),STREAM_2);
+    acDeviceSwapBuffer(acGridGetDevice(), GMG_RESIDUALS[level]);
+}
+
+void
+gmg_apply_optimized_smoother(const int level)
+{
+    const auto info = acGridGetLocalMeshInfo();
+    const Volume launch_start = to_volume(info[AC_nmin]);
+    const Volume launch_dims = to_volume(info[level_dims[level]]);
+    const Volume launch_end = launch_dims + launch_start;
+    acKernelInputParams params{};
+    params.gmg_optimized_smoother_kernel.level = (GMG_LEVEL)level;
+    const AcKernel smoother_kernel = acGetOptimizedKernel(gmg_optimized_smoother_kernel,params);
+    acGridExecuteTaskGraph(halo_exchange_residuals[level],1);
+    acDeviceLaunchKernel(acGridGetDevice(),STREAM_2,smoother_kernel,launch_start,launch_end);
+    acDeviceSynchronizeStream(acGridGetDevice(),STREAM_2);
+    acDeviceSwapBuffer(acGridGetDevice(), GMG_SOLUTIONS[level]);
+}
+
+void
+gmg_smoothing_step(const int level, const int nsteps)
 {
   acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
   const auto smoother = acDeviceGetLocalConfig(acGridGetDevice())[AC_GMG_SMOOTHER];
@@ -303,75 +363,89 @@ gmg_smoothing_step(const int level)
   {
 	  case SPAI_SMOOTHER:
 	  {
-		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_optimized_smoother),1);
+		for(int i = 0; i < nsteps; ++i) 
+		{
+			gmg_get_residual_func(level);
+			gmg_apply_optimized_smoother(level);
+		}
+		//acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_optimized_smoother),nsteps);
 		break;
 	  }
 	  case Y_LINE_SMOOTHER:
 	  {
-		for(int color = 0; color < 2; ++color)
+		for(int step = 0; step < nsteps; ++step)
 		{
-  			acDeviceSetInput(acGridGetDevice(),AC_GMG_SMOOTHER_COLOR,color);
-			gmg_iterative_smoother_step(level);
+		  for(int color = 0; color < 2; ++color)
+		  {
+  		  	acDeviceSetInput(acGridGetDevice(),AC_GMG_SMOOTHER_COLOR,color);
+		  	gmg_iterative_smoother_step(level);
+		  }
 		}
 		break;
 	  }
   }
 }
+
 void
 gmg_level_step(const int level, const int number_of_levels, const AcReal relative_residual_tolerance, AcReal *cum_time=NULL)
 {
+  //int pid;
+  //MPI_Comm_rank(MPI_COMM_WORLD,&pid);
   const auto info = acGridGetLocalMeshInfo();
-  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
-  
-  for(int i = 0; i < info[AC_gmg_pre_smooth_steps]; ++i)
-  {
-  	gmg_smoothing_step(level); //Pre-smooth step
-  }
+  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level); 
+  gmg_smoothing_step(level,info[AC_gmg_pre_smooth_steps]); //Post-smooth step
   //Now using CG on the coarsest level
   //TODO: option to choose the coarse level solver since we might not always be SPD
   if(level == number_of_levels-1)
   {
-  	const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual_norm);
-    	acGridExecuteTaskGraph(residual_graph,1);
+        AcReal start_time;
+        if(cum_time) start_time = MPI_Wtime();
+    	acGridExecuteTaskGraph(coarsest_level_residual,1);
 	const AcReal residual0_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 	AcReal residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 	AcReal relative_residual_norm = residual_norm/residual0_norm;
-        const Volume launch_start = to_volume(info[AC_nmin]);
-        const Volume launch_dims = to_volume(info[level_dims[level]]);
-        AcReal start_time;
-        if (cum_time!=NULL) start_time = MPI_Wtime();
-	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_init_cg_residual,launch_start,launch_dims),1);
+	acGridExecuteTaskGraph(coarsest_level_cg_init,1);
+	int nsteps = 0;
 	while(relative_residual_norm > relative_residual_tolerance)
 	{
-		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_cg_coarsest_level_step,launch_start,launch_dims),1);
-    		acGridExecuteTaskGraph(residual_graph,1);
+		acGridExecuteTaskGraph(coarsest_level_cg_step,1);
+    		acGridExecuteTaskGraph(coarsest_level_residual,1);
 		residual_norm = acDeviceGetOutput(acGridGetDevice(), AC_GMG_residual_l2_norm[level]);
 		relative_residual_norm = residual_norm/residual0_norm;
+		++nsteps;
 	}
-        //int pid;
-        //MPI_Comm_rank(MPI_COMM_WORLD,&pid);
         //acLogFromRootProc(pid,"coarsest grid time: %14e\n",MPI_Wtime()-start_time);
         if (cum_time!=NULL) *cum_time += MPI_Wtime()-start_time;
+	
   }
   else
   {
-  	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_residual),1); //Get residual
+	  const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual);
+	  gmg_get_residual_func(level);
 	  acGridExecuteTaskGraph(halo_exchange_residuals[level],1);
-
-          const Volume launch_start = to_volume(info[AC_nmin]);
-          const Volume launch_dims = to_volume(info[level_dims[level+1]]);
-          const Volume launch_end = launch_dims + launch_start;
-	  
-          const auto restrict_graph = acGetOptimizedDSLTaskGraph(gmg_restrict_residual, launch_start, launch_end); 
-          acGridExecuteTaskGraph(restrict_graph,1); //Restrict residual to the next level
+	  {
+            const Volume launch_start = to_volume(info[AC_nmin]);
+            const Volume launch_dims = to_volume(info[level_dims[level+1]]);
+            const Volume launch_end = launch_dims + launch_start;
+            const auto restrict_graph = acGetOptimizedDSLTaskGraph(gmg_restrict_residual, launch_start, launch_end); 
+            acGridExecuteTaskGraph(restrict_graph,1); //Restrict residual to the next level
+	  }
 	  gmg_level_step(level+1,number_of_levels,relative_residual_tolerance,cum_time);
   	  acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)level);
 	  acGridExecuteTaskGraph(halo_exchange_solutions[level],1);
-	  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_get_correction_from_next_level),1); //Prolong and add the solution from the next level
-  	  for(int i = 0; i < info[AC_gmg_post_smooth_steps]; ++i)
-  	  {
-  	  	gmg_smoothing_step(level); //Post-smooth step
-  	  }
+	  //Prolong and add the solution from the next level
+	  {
+            const Volume launch_start = to_volume(info[AC_nmin]);
+            const Volume launch_dims = to_volume(info[level_dims[level]]);
+            const Volume launch_end = launch_dims + launch_start;
+	    acKernelInputParams params{};
+	    params.gmg_get_correction_from_next_level_kernel.level = (GMG_LEVEL)level;
+	    const AcKernel correction_kernel = acGetOptimizedKernel(gmg_get_correction_from_next_level_kernel,params);
+	    acDeviceLaunchKernel(acGridGetDevice(),STREAM_2,correction_kernel,launch_start,launch_end);
+	    acDeviceSynchronizeStream(acGridGetDevice(),STREAM_2);
+	    acDeviceSwapBuffer(acGridGetDevice(), GMG_SOLUTIONS[level]);
+	  }
+  	  gmg_smoothing_step(level,info[AC_gmg_post_smooth_steps]); //Post-smooth step
   }
 }
 

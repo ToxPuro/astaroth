@@ -61,7 +61,8 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const AcMeshDims*
 {
   // Set pba.in data to all-nan and pba.out to 0
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),dims[i].m1), (AcReal)AC_REAL_MAX);
+    //acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),dims[i].m1), (AcReal)AC_REAL_MAX);
+    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),dims[i].m1), (AcReal)0);
     acKernelFlush(stream, pba->out[i], prof_count(Profile(i),dims[i].m1), (AcReal)0);
   }
   return AC_SUCCESS;
@@ -238,7 +239,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     {
     	ERRCHK_ALWAYS(vba->on_device.single_in[i]);
     	ERRCHK_ALWAYS(vba->on_device.single_out[i]);
-    	acKernelFlush(stream, vba->on_device.single_in[i], vba->counts[i], (float)FLT_MAX);
+    	acKernelFlush(stream, vba->on_device.single_in[i], vba->counts[i], (float)0.0);
     	acKernelFlush(stream, vba->on_device.single_out[i], vba->counts[i], (float)0.0);
     }
     else if(vtxbuf_precision[i] == AC_HALF_PRECISION)
@@ -251,7 +252,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     {
     	ERRCHK_ALWAYS(vba->on_device.in[i]);
     	ERRCHK_ALWAYS(vba->on_device.out[i]);
-    	acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)AC_REAL_MAX);
+    	acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)0.0);
     	acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
     }
   }

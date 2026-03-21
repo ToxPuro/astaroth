@@ -2817,8 +2817,8 @@ gmg_write_del2(gmg_boundconds)
 	gmg_write_del2_kernel()
 }
 
-global output real AC_GMG_residual_l2_norm[11]
-global output real AC_GMG_rhs_l2_norm[11]
+global output GMG_OUTPUT_PRECISION AC_GMG_residual_l2_norm[11]
+global output GMG_OUTPUT_PRECISION AC_GMG_rhs_l2_norm[11]
 Kernel gmg_get_residual_norm_kernel(GMG_LEVEL level)
 {
 	const real res = -gmg_laplace(GMG_SOLUTIONS[level],level)
@@ -2854,6 +2854,9 @@ gmg_get_residual_and_rhs_norms(gmg_boundconds)
 
 GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P 
 GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R
+GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_Z
+GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P_LOCAL
+GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R_LOCAL
 
 Kernel gmg_cg_compute_alpha(GMG_LEVEL level)
 {
@@ -2878,8 +2881,74 @@ Kernel
 gmg_init_cg_residual_kernel(GMG_LEVEL level)
 {
 	r = GMG_RHS[level] + gmg_laplace(GMG_SOLUTIONS[level],level)
-	write(GMG_COARSE_CG_P,r)
 	write(GMG_COARSE_CG_R,r)
+	write(GMG_COARSE_CG_P,r)
+}
+
+Kernel
+gmg_init_z(GMG_LEVEL level)
+{
+	write(GMG_COARSE_CG_Z,0.0)
+}
+
+Kernel
+gmg_init_inner_cg_kernel(GMG_LEVEL level)
+{
+	r = GMG_COARSE_CG_R +gmg_laplace(GMG_COARSE_CG_Z,level)
+	write(GMG_COARSE_CG_P_LOCAL,r)
+	write(GMG_COARSE_CG_R_LOCAL,r)
+}
+ComputeSteps
+gmg_init_inner_cg(gmg_boundconds)
+{
+	gmg_init_inner_cg_kernel(AC_GMG_LEVEL)
+}
+
+Kernel cg_compute_alpha_local(GMG_LEVEL level)
+{
+	Ap = -gmg_laplace(GMG_COARSE_CG_P_LOCAL,level)
+ 	r  = value(GMG_COARSE_CG_R_LOCAL)
+	p  = value(GMG_COARSE_CG_P_LOCAL)
+	cg_compute_inner_products_local(Ap,p,r)
+}
+
+
+Kernel cg_advance_local(GMG_LEVEL level)
+{
+	Ap = -gmg_laplace(GMG_COARSE_CG_P_LOCAL,level)
+	p  = value(GMG_COARSE_CG_P_LOCAL)
+	cg_advance_solution_local(GMG_COARSE_CG_Z,Ap,p,GMG_COARSE_CG_R_LOCAL)
+}
+
+Kernel cg_compute_beta_local()
+{
+	cg_compute_rp1Tzp1_local(GMG_COARSE_CG_R_LOCAL,GMG_COARSE_CG_R_LOCAL)
+}
+
+
+Kernel cg_advance_p_local()
+{
+	cg_next_direction_local(GMG_COARSE_CG_P_LOCAL,GMG_COARSE_CG_R_LOCAL)
+}
+
+ComputeSteps
+gmg_cg_inner_step(gmg_boundconds)
+{
+	cg_compute_alpha_local(AC_GMG_LEVEL)
+	cg_advance_local(AC_GMG_LEVEL)
+	cg_compute_beta_local()
+	cg_advance_p_local()
+}
+
+Kernel
+gmg_cg_copy_z_to_p_kernel()
+{
+	write(GMG_COARSE_CG_P,GMG_COARSE_CG_Z)
+}
+ComputeSteps
+gmg_cg_copy_z_to_p(gmg_boundconds)
+{
+	gmg_cg_copy_z_to_p_kernel()
 }
 ComputeSteps
 gmg_init_cg_residual(gmg_boundconds)
