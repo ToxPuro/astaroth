@@ -190,12 +190,6 @@ main(void)
     acGridExecuteTaskGraph(initcond_graph,1);
     sor_solve();
 
-
-    acLogFromRootProc(pid,"Additive Schwarz + CG: \n");
-    acGridExecuteTaskGraph(initcond_graph,1);
-    cg_solve();
-
-
     //TP: CG will fail due to not being SPD
     /**
     fprintf(stderr,"Switching sign -1 ---> +1\n");
