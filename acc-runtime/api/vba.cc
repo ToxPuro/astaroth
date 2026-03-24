@@ -329,7 +329,7 @@ acVBACreate(const AcMeshInfo config)
   ERRCHK_ALWAYS(vba_out_buff == NULL);
 
   acDeviceMalloc((void**)&vba_in_buff,real_in_bytes + single_in_bytes + half_in_bytes);
-  acDeviceMalloc((void**)&vba_out_buff,real_out_bytes + single_out_bytes + half_out_bytes);
+  acDeviceMalloc((void**)&vba_out_buff,real_out_bytes + single_out_bytes + single_in_bytes);
 
   AcReal* vba_real_in_buff  = (AcReal*)vba_in_buff;
   AcReal* vba_real_out_buff = (AcReal*)vba_out_buff;
