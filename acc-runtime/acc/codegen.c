@@ -9734,7 +9734,13 @@ get_used_vars_base(const ASTNode* node, string_vec* dst, bool skip, const char* 
 	}
         if(node->lhs)
         {
-                get_used_vars_base(node->lhs,dst,skip | (node->type & NODE_ASSIGNMENT),assigned_var);
+		bool skip_left = skip;
+		if(node->parent && node->parent->type & NODE_FUNCTION_CALL)
+		{
+			const char* func_name = get_node_by_token(IDENTIFIER,node->parent)->buffer;
+			skip_left |= func_name == intern("broadcast_scalar");
+		}
+                get_used_vars_base(node->lhs,dst,skip_left | (node->type & NODE_ASSIGNMENT),assigned_var);
         }
         if(node->rhs)
         {
@@ -9755,6 +9761,27 @@ bool
 remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 {
 	TRAVERSE_PREAMBLE_PARAMS(remove_dead_assignments,vars_used);
+	if(node->type & NODE_FUNCTION_CALL)
+	{
+		const char* func_name = get_node_by_token(IDENTIFIER,node)->buffer;
+		if(func_name == intern("broadcast_scalar"))
+		{
+			func_params_info params_info =  get_func_call_params_info(node);
+			const char* dst_param =  intern(combine_all_new(params_info.expr_nodes.data[0]));
+			if(!str_vec_contains(vars_used,dst_param))
+			{
+				node->lhs = NULL;
+				node->rhs = NULL;
+				node->parent->postfix = NULL;
+				node->type = NODE_UNKNOWN;
+				node->buffer=NULL;
+				node->prefix=NULL;
+				node->infix=NULL;
+				node->postfix=NULL;
+				return true;
+			}
+		}
+	}
 	if(!(node->type & NODE_ASSIGNMENT)) return false;
 	const char* expr_type = get_expr_type(node);
 	if(!expr_type) return false;
@@ -9765,7 +9792,6 @@ remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 	if(check_symbol(NODE_ANY,var,0,GLOBAL_MEM_STR)) return false;
 	if(check_symbol(NODE_ANY,var,FIELD_STR,0)) return false;
 	if(check_symbol(NODE_ANY,var,FIELD3_STR,0)) return false;
-	//if(strstr(expr_type,"*")) return;
 	if(strstr(var,"AC_INTERNAL_gmem_")) return false;
 	if(calls_non_pure_returning_func(node->rhs)) return false;
 	if(!str_vec_contains(vars_used,var))
