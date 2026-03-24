@@ -167,7 +167,7 @@ get_data_layout(const Volume domain_size, const Volume subdomain_size)
     check_rocfft_status(rocfft_plan_description_add_outfield(desc,get_rocfft_field(domain_size,subdomain_size)));
 
 #if AC_MPI_ENABLED
-    //TP: has to be on comment for now since 1.) doesn't work
+    //TP: has to be on comment for now since 1.) doesn't work if RocFFT has not been MPI-enabled
     //                                       2.) requires at least rocm/6.3.0
     //rocfft_plan_description_set_comm(desc,rocfft_comm_mpi,&communicator);
 #endif
