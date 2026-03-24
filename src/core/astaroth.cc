@@ -508,7 +508,7 @@ acStoreConfig(const AcMeshInfo info, const char* filename)
 	AcArrayTypes::run<load_arrays>(info,fp, "", false);
 
 	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
-	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts,    fp, "", false);
+	AcArrayCompTypes::run<load_comp_arrays>(info,    fp, "", false);
 	if(filename != NULL) fclose(fp);
 }
 

@@ -628,7 +628,14 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 		  }
 		  if(dims[i].member == NULL)
 		  {
-			  res[i] = info.int_params[dims[i].base];
+			  if(dims[i].run_const)
+			  {
+			    res[i] = info.run_const.config.int_params[dims[i].base];
+			  }
+			  else
+			  {
+			    res[i] = info.int_params[dims[i].base];
+			  }
 			  continue;
 		  }
 		  if(!strcmp(dims[i].member,"x"))

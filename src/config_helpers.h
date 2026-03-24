@@ -131,8 +131,9 @@ get_value_type(V value)
 template <typename P>
 struct load_comp_arrays
 {
-	void operator()(const AcCompInfo info, FILE* fp, const char* prefix, const bool output_datatype)
+	void operator()(const AcMeshInfo mesh_info, FILE* fp, const char* prefix, const bool output_datatype)
 	{
+		const AcCompInfo info = mesh_info.run_consts;
 		const auto default_value = get_default_value<P>();
 		const std::string type = output_datatype ? get_value_type(default_value) : "";
 		for (P array : get_params<P>())
@@ -141,7 +142,7 @@ struct load_comp_arrays
 			const char* name = get_array_name(array);
 			auto* loaded_val = info.config[array];
 			const bool has_value = (loaded_val != NULL && info.is_loaded[array]) || info.has_default_value[array];
-			const auto dims = get_array_dim_sizes(array,{});
+			const auto dims = get_array_dim_sizes(array,mesh_info);
 			if (n_dims == 1)
 			{
 				fprintf(fp,"%s %s %s = [",prefix,type.c_str(),name);
