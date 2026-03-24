@@ -630,7 +630,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 		  {
 			  if(dims[i].run_const)
 			  {
-			    res[i] = info.run_const.config.int_params[dims[i].base];
+			    res[i] = info.run_consts.config.int_params[dims[i].base];
 			  }
 			  else
 			  {
