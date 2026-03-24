@@ -74,7 +74,7 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acLoadConfig("fft.conf", &info);
     acPushToConfig(info,AC_ds,
     (AcReal3){
 	    (2*AC_REAL_PI)/info[AC_ngrid].x,
