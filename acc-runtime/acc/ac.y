@@ -1910,9 +1910,9 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 		if(!strstr(type_specifier->lhs->buffer,"*"))
 			astnode_sprintf(type_specifier->lhs,"%s*",type_specifier->lhs->buffer);
 
-		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
+		//if dconst array evaluate the dimension to a single integer to make further transformations easier
 		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
-		if(!tqual || has_qualifier(variable_definition,DCONST_STR) || has_qualifier(variable_definition,RUN_CONST_STR))
+		if(!tqual || has_qualifier(variable_definition,DCONST_STR))
 		{
 			
 			node_vec dims = VEC_INITIALIZER;

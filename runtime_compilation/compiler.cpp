@@ -73,7 +73,7 @@ acLoadRunConstsBase(const char* filename, AcMeshInfo info)
 {
 	FILE* fp = fopen(filename,"w");
 	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp,"override const", true);
-	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts, fp,"override const", true);
+	AcArrayCompTypes::run<load_comp_arrays>(info, fp,"override const", true);
 	fclose(fp);
 }
 const char* dynamic_base_path   = astaroth_base_path;

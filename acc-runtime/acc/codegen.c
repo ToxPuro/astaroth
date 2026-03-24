@@ -1103,27 +1103,28 @@ output_array_info(FILE* fp, array_info info, const ASTNode* root)
 		const char* from_config = integer_dim ? "false" : "true";
 		if(dim >= info.dims.size) 
 		{
-			fprintf(fp,"{-1,NULL,%s},",from_config);
+			fprintf(fp,"{-1,NULL,%s,false},",from_config);
 			continue;
 		}
 		const ASTNode* base = get_node_by_token(IDENTIFIER,info.dims.data[dim]);
+		const bool run_const = base && check_symbol(NODE_VARIABLE_ID,base->buffer,NULL,RUN_CONST_STR);
 		const ASTNode* member = get_node(NODE_MEMBER_ID,info.dims.data[dim]);
 		if(!base)
 		{
-			fprintf(fp,"{%s,NULL,%s},",combine_all_new(info.dims.data[dim]),from_config);
+			fprintf(fp,"{%s,NULL,%s,%d},",combine_all_new(info.dims.data[dim]),from_config,run_const);
 			continue;
 		}
 		if(!member)
-			fprintf(fp,"{%s,NULL,%s},",base->buffer,from_config);
+			fprintf(fp,"{%s,NULL,%s,%d},",base->buffer,from_config,run_const);
 		else
 		{
 			if(integer_dim)
 			{
 				const char* res = get_const_int3_val(base->buffer,root,member->buffer);
-				fprintf(fp,"{%s,\"%s\",%s},",res,member->buffer,from_config);
+				fprintf(fp,"{%s,\"%s\",%s,%d},",res,member->buffer,from_config,run_const);
 			}
 			else
-				fprintf(fp,"{%s,\"%s\",%s},",base->buffer,member->buffer,from_config);
+				fprintf(fp,"{%s,\"%s\",%s,%d},",base->buffer,member->buffer,from_config,run_const);
 		}
 	}
 
@@ -11276,7 +11277,7 @@ gen_array_infos(const ASTNode* root, const bool gen_mem_accesses)
   	  FILE* fp_info = fopen("array_info.h","w");
   	  fprintf(fp_info,"\n #ifdef __cplusplus\n");
   	  fprintf(fp_info,"\n#include <array>\n");
-  	  fprintf(fp_info,"typedef struct {int base; const char* member; bool from_config;} AcArrayLen;\n");
+  	  fprintf(fp_info,"typedef struct {int base; const char* member; bool from_config; bool run_const;} AcArrayLen;\n");
   	  fprintf(fp_info,"typedef struct { bool is_dconst; int num_dims; std::array<AcArrayLen,%d> dims; const char* name; bool is_alive; bool is_accessed;} array_info;\n",MAX_ARRAY_RANK);
 	  gen_array_qualifiers(root);
   	  for (size_t i = 0; i < datatypes.size; ++i)
