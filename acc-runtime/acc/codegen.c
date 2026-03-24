@@ -9751,39 +9751,37 @@ get_used_vars(const ASTNode* node, string_vec* dst)
         get_used_vars_base(node,dst,false,NULL);
 }
 
-bool
+void
 remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 {
 	TRAVERSE_PREAMBLE_PARAMS(remove_dead_assignments,vars_used);
-	if(!(node->type & NODE_ASSIGNMENT)) return false;
+	if(!(node->type & NODE_ASSIGNMENT)) return;
 	const char* expr_type = get_expr_type(node);
-	if(!expr_type) return false;
-	if(expr_type == FIELD_STR) return false;
-	if(expr_type == FIELD3_STR) return false;
+	if(!expr_type) return;
+	if(expr_type == FIELD_STR) return;
+	if(expr_type == FIELD3_STR) return;
 	const char* var = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	if(check_symbol(NODE_ANY,var,0,DYNAMIC_STR)) return false;
-	if(check_symbol(NODE_ANY,var,0,GLOBAL_MEM_STR)) return false;
-	if(check_symbol(NODE_ANY,var,FIELD_STR,0)) return false;
-	if(check_symbol(NODE_ANY,var,FIELD3_STR,0)) return false;
-	//if(strstr(expr_type,"*")) return;
-	if(strstr(var,"AC_INTERNAL_gmem_")) return false;
-	if(calls_non_pure_returning_func(node->rhs)) return false;
+	if(check_symbol(NODE_ANY,var,0,DYNAMIC_STR)) return;
+	if(check_symbol(NODE_ANY,var,0,GLOBAL_MEM_STR)) return;
+	if(check_symbol(NODE_ANY,var,FIELD_STR,0)) return;
+	if(check_symbol(NODE_ANY,var,FIELD3_STR,0)) return;
+	if(strstr(expr_type,"*")) return;
+	if(strstr(var,"AC_INTERNAL_gmem_")) return;
+	if(calls_non_pure_returning_func(node->rhs)) return;
 	if(!str_vec_contains(vars_used,var))
 	{
 		node->lhs = NULL;
 		node->rhs = NULL;
 		node->parent->postfix = NULL;
 		node->type = NODE_UNKNOWN;
-		return true;
 	}
-	return false;
 }
-bool
+void
 remove_dead_declarations(ASTNode* node, const string_vec vars_used)
 {
 	TRAVERSE_PREAMBLE_PARAMS(remove_dead_declarations,vars_used);
-	if(!(node->type & NODE_DECLARATION)) return false;
-	if(node->parent->token != VARIABLE_DECLARATION) return false;
+	if(!(node->type & NODE_DECLARATION)) return;
+	if(node->parent->token != VARIABLE_DECLARATION) return;
 	const char* var = get_node_by_token(IDENTIFIER,node)->buffer;
 	if(!str_vec_contains(vars_used,var))
 	{
@@ -9791,47 +9789,26 @@ remove_dead_declarations(ASTNode* node, const string_vec vars_used)
 		node->rhs = NULL;
 		node->parent->postfix = NULL;
 		node->type = NODE_UNKNOWN;
-		return true;
 	}
-	return false;
 }
-bool
-remove_dead_writes_base(ASTNode* node)
+void
+remove_dead_writes(ASTNode* node)
 {
-	bool res = false;
-	if(node->lhs)
-	{
-		res |= remove_dead_writes_base(node->lhs);
-	}
-	if(node->rhs)
-	{
-		res |= remove_dead_writes_base(node->rhs);
-	}
-	if(!(node->type & NODE_FUNCTION)) return res;
-	if((node->type & NODE_DFUNCTION)) return res;
+	TRAVERSE_PREAMBLE(remove_dead_writes);
+	if(!(node->type & NODE_FUNCTION)) return;
+	if((node->type & NODE_DFUNCTION)) return;
 	const ASTNode* statements_node = node->rhs->rhs->lhs;
-	if(!statements_node) return res;
+	if(!statements_node) return;
 	node_vec statements = get_nodes_in_list(statements_node);
 	string_vec vars_used = VEC_INITIALIZER;
 	for(int i = (int)statements.size-1; i >= 0; --i)
 	{
 		get_used_vars(statements.data[i],&vars_used);
-		res |= remove_dead_assignments((ASTNode*)statements.data[i],vars_used);
+		remove_dead_assignments((ASTNode*)statements.data[i],vars_used);
 	}
-	res |= remove_dead_declarations(node,vars_used);
+	remove_dead_declarations(node,vars_used);
 	free_str_vec(&vars_used);
 	free_node_vec(&statements);
-	return res;
-}
-
-void
-remove_dead_writes(ASTNode* node)
-{
-	bool removed_write = true;
-	while(removed_write)
-	{
-		removed_write = remove_dead_writes_base(node);
-	}
 }
 void
 gen_ssa_in_basic_blocks(ASTNode* node)
