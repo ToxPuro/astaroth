@@ -100,7 +100,7 @@ main(void)
     acSetLocalMeshDims(info[AC_ngrid].x/decomp.x,info[AC_ngrid].y/decomp.y,info[AC_ngrid].z/decomp.z, &info);
 
     #if AC_RUNTIME_COMPILATION
-    const char* build_str = "-DFFT_ENABLED=ON -DUSE_HEFFTE=ON -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
+    const char* build_str = "-DFFT_ENABLED=ON -DUSE_HEFFTE=OFF -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
     acCompile(build_str,info);
     acLoadLibrary(stdout,info);
     acLoadUtils(stdout,info);
@@ -250,6 +250,7 @@ main(void)
     }
 
     fprintf(stderr,"3d sin(kx)+sin(ky)+sin(kz)\n");
+    bool threed_correct = true;
     {
     	acHostMeshRandomize(&model);
     	acHostMeshRandomize(&candidate);
@@ -296,13 +297,14 @@ main(void)
 		   }
 	   }
 	}
-    	forward_and_back_correct &= (number_of_nonzero_components == 6);
+    	threed_correct &= (number_of_nonzero_components == 6);
 	if(number_of_nonzero_components != 6)
 	{
 		fprintf(stderr,"Expected six non-zero components but got %d\n",number_of_nonzero_components);
 	}
     }
 
+    bool twod_correct = true;
     fprintf(stderr,"2d sin(kx)+sin(ky)\n");
     {
     	acHostMeshRandomize(&model);
@@ -348,12 +350,12 @@ main(void)
 					fprintf(stderr,"2d Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,real,imag);
 					fprintf(stderr,"2d Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(real*real + imag*imag));
 				}
-    				forward_and_back_correct &= (z == z_layer);
+    				twod_correct &= (z == z_layer);
 			}
 		   }
 	   }
 	}
-    	forward_and_back_correct &= (number_of_nonzero_components == 4);
+    	twod_correct &= (number_of_nonzero_components == 4);
 	if(number_of_nonzero_components != 4)
 	{
 		fprintf(stderr,"Expected four non-zero components but got %d\n",number_of_nonzero_components);
@@ -423,6 +425,9 @@ main(void)
     }
     **/
  
+    fprintf(stderr,"FORWARD AND BACK ... %s\n", forward_and_back_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"3D CORRECT       ... %s\n", threed_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"2D CORRECT       ... %s\n", twod_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     bool correct = forward_and_back_correct && poisson_correct && xy_correct;
     int retval = correct ? AC_SUCCESS : AC_FAILURE;
 
