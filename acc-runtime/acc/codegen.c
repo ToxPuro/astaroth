@@ -1222,7 +1222,7 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   //pad one extra to silence warnings
   fprintf(fp,"\n{false,-1,{{");
   for(int i = 0; i  < MAX_ARRAY_RANK; ++i)
-	  fprintf(fp,"{-1,NULL,false,false}%s",i < MAX_ARRAY_RANK-1 ? "," : "");
+	  fprintf(fp,"{-1,NULL,false}%s",i < MAX_ARRAY_RANK-1 ? "," : "");
   fprintf(fp,"}},");
   fprintf(fp,"\"AC_EXTRA_PADDING\",true,true}");
   fprintf(fp, "\n};");
