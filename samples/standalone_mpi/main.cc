@@ -1030,6 +1030,8 @@ main(int argc, char** argv)
 	    0.5*info[AC_ds].y,
 	    0.5*info[AC_ds].z
     });
+
+#if LSPHERICAL_SINK_PARTICLE
     const AcReal G_NEWTON = 6.67428e-08;
     acPushToConfig(info,AC_coordinate_system,AC_SPHERICAL_COORDINATES);
     acPushToConfig(info,AC_nonequidistant_grid,(AcBool3){true,false,false});
@@ -1067,6 +1069,7 @@ main(int argc, char** argv)
     fclose(fp);
     fclose(fp_prime);
     fclose(fp_prime2);
+#endif
 
     //const AcReal initial_sink_particle_mass = (2.0*info[AC_first_gridpoint].x*info[AC_cs_sound]*info[AC_cs_sound])/G_NEWTON;
 
@@ -1074,13 +1077,10 @@ main(int argc, char** argv)
 
     //const AcReal initial_sink_particle_mass = (2.0*info[AC_r][NGHOST-1]*info[AC_cs_sound]*info[AC_cs_sound])/G_NEWTON; // the first point to the left on the AC_r array
 
+#if LSPHERICAL_SINK_PARTICLE
     const AcReal initial_sink_particle_mass = (2.0*info[AC_x12][NGHOST-1]*info[AC_cs_sound]*info[AC_cs_sound])/G_NEWTON; // in between these last two examples, which may be what I need for Zeus comparison
-    
-    
-
-    
-    
     acPushToConfig(info,AC_central_sink_particle_mass ,initial_sink_particle_mass);
+#endif
 
 
     
@@ -1527,6 +1527,7 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Starting simulation\n");
 
+#if LSPHERICAL_SINK_PARTICLE
     {
 	const Volume start = (Volume){NGHOST,NGHOST,NGHOST};
 	const Volume end   = (Volume)
@@ -1537,6 +1538,7 @@ main(int argc, char** argv)
 	};
     	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(init_extended_grid,start,end),1);
     }
+#endif
     for (int i = start_step;; ++i) {
 
         /////////////////////////////////////////////////////////////////////
@@ -1706,9 +1708,9 @@ main(int argc, char** argv)
 
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
+#if LSELFGRAVITY
     	        acDeviceSetInput(acGridGetDevice(),AC_SOR_omega,1.8);
     	        acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
-#if LSELFGRAVITY
 		const auto sph_graph = acGetOptimizedDSLTaskGraph(AC_get_sph);
 		acGridExecuteTaskGraph(sph_graph,1);
 		const Volume start = (Volume){NGHOST,NGHOST,NGHOST};
@@ -1764,7 +1766,9 @@ main(int argc, char** argv)
 		acDeviceLoadScalarUniform(acGridGetDevice(),STREAM_DEFAULT,AC_central_sink_particle_mass,sink_particle);
 #endif
     	}
+#if LSPHERICAL_SINK_PARTICLE
 	info[AC_central_sink_particle_mass] = sink_particle;
+#endif
         simulation_time += dt;
 
         if (log_progress) {
