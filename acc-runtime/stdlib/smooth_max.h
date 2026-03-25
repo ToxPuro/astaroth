@@ -766,6 +766,16 @@ Stencil smooth_121_xyz_stencil {
           [1][1][1] = 0.015625
 }
 
+Stencil smooth_x_stencil {
+	[0][0][-3] = 0.10539922,
+	[0][0][-2] = 0.36787944,
+	[0][0][-1] = 0.77880078,
+	[0][0][ 0] = 1.0,
+	[0][0][ 1] = 0.77880078,
+	[0][0][ 2] = 0.36787944,
+	[0][0][ 3] = 0.10539922,
+}
+
 Stencil smooth_xy_stencil {
 	  [0][-3][-3] = 3.08641975308642e-05,
 	  [0][-3][-2] = 0.0002777777777777778,
@@ -1163,6 +1173,7 @@ Stencil smooth_xyz_binomial_stencil
 	  [3][3][2] = 2.288818359375e-05,
 	  [3][3][3] = 3.814697265625e-06
 }
+
 Stencil smooth_xy_binomial_stencil
 {
 	  [0][-3][-3] = 0.000244140625,
@@ -1219,6 +1230,10 @@ Stencil smooth_xy_binomial_stencil
 elemental smooth(Field f)
 {
 
+	if(AC_dimension_inactive.y && AC_dimension_inactive.z)
+	{
+		return smooth_x_stencil(f)
+	}
 	if(AC_dimension_inactive.z)
 	{
 		return smooth_xy_stencil(f)
@@ -1760,6 +1775,16 @@ Max Stencil max5_xyz_stencil_r3 {
 	[ 3][ 3][ 3] = 1
 }
 
+Max Stencil max5_x_stencil_r3 {
+	[0][0][-3] = 1,
+	[0][0][-2] = 1,
+	[0][0][-1] = 1,
+	[0][0][0] = 1,
+	[0][0][1] = 1,
+	[0][0][2] = 1,
+	[0][0][3] = 1
+}
+
 Max Stencil max5_xy_stencil_r3 {
 	[0][-3][0] = 1,
 	[0][-2][-2] = 1,
@@ -1836,6 +1861,10 @@ elemental max5(Field f, int radius)
 {
 	if(AC_dimension_inactive.z)
 	{
+		if(AC_dimension_inactive.y)
+		{
+		        return max5_x_stencil_r3(f)
+		}
 		if(radius == 1)
 		{
 			return max5_xy_stencil_r1(f)
