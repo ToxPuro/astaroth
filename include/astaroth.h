@@ -528,7 +528,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridLoadInt3Uniform,stream);
 	LOAD_DSYM(acGridLoadMesh,stream);
 	LOAD_DSYM(acGridStoreMesh,stream);
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
 	LOAD_DSYM(acGridIntegrate,stream);
 #endif
 	LOAD_DSYM(acGridSwapBuffers,stream);
