@@ -1,10 +1,11 @@
 import numpy as np
 
+
 def main():
-    '''This is a template to create a minimal Astroth Python interface. The purpose of
+    """This is a template to create a minimal Astroth Python interface. The purpose of
     it is to do base essential interface between Astaroth and Python, to help
-    create initial building blocks for simulations and multi-GPU implementations. 
-    '''
+    create initial building blocks for simulations and multi-GPU implementations.
+    """
     # ------------------------------------------------------------------
     # 1. Load config
     # ------------------------------------------------------------------
@@ -25,7 +26,7 @@ def main():
     # 5. Kernel loop
     # ------------------------------------------------------------------
 
-    steps = 10 #Dummy value
+    steps = 10  # Dummy value
     for step in range(steps):
         # (a) Launch the kernel
 
@@ -34,8 +35,8 @@ def main():
         # (c) Apply periodic boundary conditions -- fill ghost zones
 
         # (d) Diagnostics every N steps
-        field_max = 0.0 #Dummy value
-        field_min = 1.0 #Dummy value
+        field_max = 0.0  # Dummy value
+        field_min = 1.0  # Dummy value
         if np.isnan(field_max) or np.isnan(field_min):
             print("NaN detected, stopping.")
             break
