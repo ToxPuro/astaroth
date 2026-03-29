@@ -63,9 +63,9 @@ option(VERBOSE                    "Enables various status and warning messages" 
 ## Project-wide compilation flags
 # -Werror TODO read
 if(NOT SUPPRESS_COMPILER_WARNINGS)
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+    set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 endif()
 
 set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
@@ -75,36 +75,34 @@ set(AC_BINARY_PATH "${CMAKE_BINARY_DIR}")
 add_definitions(-DAC_BINARY_PATH="${AC_BINARY_PATH}")
 
 if (RUNTIME_COMPILATION)
-	add_definitions(-DAC_RUNTIME_COMPILATION=1)
+    add_definitions(-DAC_RUNTIME_COMPILATION=1)
 else()
-	add_definitions(-DAC_RUNTIME_COMPILATION=0)
+    add_definitions(-DAC_RUNTIME_COMPILATION=0)
 endif()
 
 if (LAGRANGIAN_GRID)
-	add_definitions(-DAC_LAGRANGIAN_GRID=1)
+    add_definitions(-DAC_LAGRANGIAN_GRID=1)
 else()
-	add_definitions(-DAC_LAGRANGIAN_GRID=0)
+    add_definitions(-DAC_LAGRANGIAN_GRID=0)
 endif()
 if(PROFILING_ENABLED)
-	add_definitions(-DPROFILING_ENABLED=1)
+    add_definitions(-DPROFILING_ENABLED=1)
 else()
-	add_definitions(-DPROFILING_ENABLED=0)
+    add_definitions(-DPROFILING_ENABLED=0)
 endif()
 
 #TP: If CPU_BUILD is explicitly asked for it takes presedence over env variable.
 #    The command line argument should anyways always takes presedence but the CMake code
 #    for it seems unnecessary ugly/verbose so implemented the more important case for now
-    
 if (NOT CPU_BUILD AND DEFINED ENV{AC_CPU_BUILD})
-	set(CPU_BUILD $ENV{AC_CPU_BUILD})
-	message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
+    set(CPU_BUILD $ENV{AC_CPU_BUILD})
+    message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
 endif()
 
 if (SUPPORT_OLD_ARCHITECTURES AND DEFINED ENV{AC_SUPPORT_OLD_ARCHITECTURES})
-	set(SUPPORT_OLD_ARCHITECTURES $ENV{AC_SUPPORT_OLD_ARCHITECTURES})
-	message("Set SUPPORT_OLD_ARCHITECTURES=${SUPPORT_OLD_ARCHITECTURES} from ENV value")
+    set(SUPPORT_OLD_ARCHITECTURES $ENV{AC_SUPPORT_OLD_ARCHITECTURES})
+    message("Set SUPPORT_OLD_ARCHITECTURES=${SUPPORT_OLD_ARCHITECTURES} from ENV value")
 endif()
-
 
 if(NOT SUPPRESS_COMPILER_WARNINGS)
 add_compile_options(# C/CXX/CUDA/HIP
@@ -123,7 +121,6 @@ add_compile_options(# C/CXX/CUDA/HIP
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-DOMPI_SKIP_MPICXX>
 )
 endif()
-
 
 set(USE_CUDA OFF)
 ## CUDA and HIP
@@ -175,9 +172,9 @@ else()
 endif()
 
 if(CPU_BUILD)
-	add_definitions(-DAC_CPU_BUILD=1)
+    add_definitions(-DAC_CPU_BUILD=1)
 else()
-	add_definitions(-DAC_CPU_BUILD=0)
+    add_definitions(-DAC_CPU_BUILD=0)
 endif()
 
 include(FetchContent)
@@ -186,14 +183,17 @@ include(FetchContent)
 if (USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
 endif()
+
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
 else()
     add_definitions(-DAC_DOUBLE_PRECISION=0)
 endif()
+
 if (VERBOSE)
     add_definitions(-DAC_VERBOSE=1)
 endif ()
+
 if (MPI_ENABLED)
     add_definitions(-DAC_MPI_ENABLED=1)
 else()
@@ -201,19 +201,18 @@ else()
 endif ()
 
 function(ac_link_mpi target)
-  if(CMAKE_CXX_COMPILER MATCHES "mpic\\+\\+$")
-  elseif (MPI_ENABLED)
-      set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
-      find_package(MPI REQUIRED COMPONENTS C)
-      target_link_libraries(${target} PUBLIC MPI::MPI_C)
-      target_include_directories(${target} PUBLIC ${MPI_INCLUDE_PATH})
-  endif()
+    if (MPI_ENABLED)
+        set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
+        find_package(MPI REQUIRED COMPONENTS C)
+        target_link_libraries(${target} PUBLIC MPI::MPI_C)
+        target_include_directories(${target} PUBLIC ${MPI_INCLUDE_PATH})
+    endif()
 endfunction()
 
 if (FFT_ENABLED)
-	add_definitions(-DAC_FFT_ENABLED=1)
+    add_definitions(-DAC_FFT_ENABLED=1)
 else()
-	add_definitions(-DAC_FFT_ENABLED=0)
+    add_definitions(-DAC_FFT_ENABLED=0)
 endif()
 if (USE_POSIX_IO)
     add_definitions(-DUSE_POSIX_IO=1)
@@ -236,9 +235,9 @@ if (DEBUG_SYNC)
 endif()
 
 if (2D)
-     add_definitions(-DTWO_D=1)
+    add_definitions(-DTWO_D=1)
 else () 
-     add_definitions(-DTWO_D=0)
+    add_definitions(-DTWO_D=0)
 endif ()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
@@ -247,7 +246,7 @@ add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
 # 3rd party
 if (INCLUDE_3RD_PARTIES)
-	add_subdirectory(3rdparty/inih)
+    add_subdirectory(3rdparty/inih)
 endif()
 
 # Astaroth modules
@@ -255,15 +254,15 @@ add_subdirectory(src/core/helpers)
 add_subdirectory(src/core/decomposition)
 add_subdirectory(src/core/update_params)
 add_subdirectory(src/core/cuda_wrappers)
-add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
+add_subdirectory(acc-runtime)
 
 if (BUILD_TESTS)
-	add_subdirectory(test)
-	add_definitions(-DINCLUDE_MODEL_SOLVER=0)
+    add_subdirectory(test)
+    add_definitions(-DINCLUDE_MODEL_SOLVER=0)
 else()
-	add_definitions(-DINCLUDE_MODEL_SOLVER=1)
+    add_definitions(-DINCLUDE_MODEL_SOLVER=1)
 endif()
 
 if (BUILD_UTILS)
@@ -272,33 +271,28 @@ endif()
 
 add_subdirectory(runtime_compilation)
 ## Have this as a separate option when no other "samples" are needed.
+
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
 if (BUILD_STANDALONE AND NOT BUILD_TESTS)
     add_subdirectory(samples/standalone_mpi)
 endif()
 
-if(BUILD_ADVECTION_EXAMPLE)
+if (BUILD_ADVECTION_EXAMPLE)
     add_subdirectory(samples/advection-example)
 endif()
 if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     add_subdirectory(samples/ctest)
     add_subdirectory(samples/cpptest)
+
     #TP: we should make a wrapper functions for the CUDA calls
     add_subdirectory(samples/benchmark-device)
-    if  (NOT RUNTIME_COMPILATION)
-    add_subdirectory(samples/benchmark)
-    add_subdirectory(samples/benchmark-node)
-    endif()
+
     add_subdirectory(samples/mpi-io)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
-    if (NOT CPU_BUILD)
-    	add_subdirectory(samples/microbenchmark)
-    endif()
-    #add_subdirectory(samples/stress)
 
-    
-    # add_subdirectory(samples/standalone)
+    #add_subdirectory(samples/stress)
+    #add_subdirectory(samples/standalone)
     #add_subdirectory(samples/standalone_mpi)
     #add_subdirectory(samples/ctest)
     #add_subdirectory(samples/cpptest)
@@ -311,20 +305,29 @@ if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     #add_subdirectory(samples/benchmark)
     #add_subdirectory(samples/benchmark-device)
     #add_subdirectory(samples/boundcond_test)
-    
+
     #add_subdirectory(samples/mpi-io)
     #add_subdirectory(samples/genbenchmarkscripts)
     #add_subdirectory(samples/mpi_reduce_bench)
     #add_subdirectory(samples/fortrantest)
-    
+
+    if (NOT RUNTIME_COMPILATION)
+        add_subdirectory(samples/benchmark)
+        add_subdirectory(samples/benchmark-node)
+    endif()
+
+    if (NOT CPU_BUILD)
+        add_subdirectory(samples/microbenchmark)
+    endif()
+
     #if (MPI_ENABLED)
     #  add_subdirectory(samples/bwtest)
     #endif()
 endif()
 
 if (BUILD_SAMPLES AND BUILD_MLLIB_SAMPLES)
-# Workaround for finding miopen on Triton
-link_directories(/opt/rocm/miopen/lib/)
+    # Workaround for finding miopen on Triton
+    link_directories(/opt/rocm/miopen/lib/)
     add_subdirectory(samples/microbenchmark-nn)
 endif ()
 
@@ -352,5 +355,5 @@ if (PROGRAM_MODULE_DIR)
 endif()
 
 if(EXTRA_SOURCES_DIR)
-	add_subdirectory(${EXTRA_SOURCES_DIR} ${EXTRA_SOURCES_DIR}/cmake)
+    add_subdirectory(${EXTRA_SOURCES_DIR} ${EXTRA_SOURCES_DIR}/cmake)
 endif()
