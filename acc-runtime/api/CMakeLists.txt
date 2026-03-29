@@ -60,18 +60,19 @@ else()
 	set(ACC_COMPILER ${PROJECT_BINARY_DIR}/acc/acc)
 endif()
 
-
+## Collect DSL files at build configuration-time
+## Note: New/removed files are not taken into account until the build is
+##       reconfigured.
+aux_source_directory(DSL_MODULE_DIR DSL_MODULE_SOURCES)
 
 ## Generate acc-runtime-headers
-set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
+set(DSL_SOURCES ${DSL_MODULE_SOURCES}
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
                 "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-		"${PROJECT_SOURCE_DIR}/built-in/*"
-		"${PROJECT_SOURCE_DIR}/stdlib/*"
+		${DSL_BUILTIN_SOURCES}
+		${DSL_STDLIB_SOURCES}
 		${DSL_EXT_SOURCES}
 		)
-
-#"${PROJECT_SOURCE_DIR}/${EXT_SOURCES}")
 
 if (NOT RUNTIME_COMPILATION)
 	set(DSL_HEADERS "user_kernels.h"
