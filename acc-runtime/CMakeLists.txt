@@ -94,6 +94,9 @@ else()
 endif()
 
 ## Subdirectories
+add_subdirectory(built-in)
+add_subdirectory(stdlib)
+
 add_subdirectory(acc)
 add_subdirectory(api)
 #add_subdirectory(transpilers)
