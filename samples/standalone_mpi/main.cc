@@ -28,7 +28,6 @@
 #include "../../stdlib/reduction.h"
 
 #include "timer_hires.h"
-#include "../../stdlib/grid.h"
 
 #include <getopt.h>
 #include <mpi.h>
@@ -228,17 +227,7 @@ print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
         fprintf(diag_file, "bb_total_min  bb_total_rms  bb_total_max  ");
         fprintf(diag_file, "vA_total_min  vA_total_rms  vA_total_max  ");
 #endif
-	const auto info = acDeviceGetLocalConfig(acGridGetDevice());
         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    	    AcMeshDims dims = acGetMeshDims(info,Field(i));
-	    if(
-	    	(int)dims.m1.x != info[AC_mlocal].x
-	    	|| (int)dims.m1.y != info[AC_mlocal].y
-	    	|| (int)dims.m1.z != info[AC_mlocal].z
-	    		)
-	    {
-	    	continue;
-	    }
             fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
                     vtxbuf_names[i]);
         }
@@ -255,9 +244,6 @@ print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
 
 #if LSINK
         fprintf(diag_file, "sink_mass  accreted_mass  ");
-#endif
-#if LSPHERICAL_SINK_PARTICLE
-	fprintf(diag_file, "sink_mass  ");
 #endif
         fprintf(diag_file, "\n");
     }
@@ -328,19 +314,8 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     }
 #endif
 
-    const auto info = acGridGetLocalMeshInfo();
     // Calculate rms, min and max from the variables as scalars
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-
-    	AcMeshDims dims = acGetMeshDims(info,Field(i));
-	if(
-		(int)dims.m1.x != info[AC_mlocal].x
-		|| (int)dims.m1.y != info[AC_mlocal].y
-		|| (int)dims.m1.z != info[AC_mlocal].z
-			)
-	{
-		continue;
-	}
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VertexBufferHandle(i), &buf_max);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
@@ -402,14 +377,6 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
             fprintf(diag_file, "%e %e ", double(sink_mass), double(accreted_mass));
         }
     }
-#if LSPHERICAL_SINK_PARTICLE
-    	if(pid == 0)
-	{
-		const AcReal sink_particle_mass = acDeviceGetLocalConfig(acGridGetDevice())[AC_central_sink_particle_mass];
-		fprintf(diag_file, "%e ",double(sink_particle_mass));
-    		acLogFromRootProc(pid, "  %*s: %.14e\n", max_name_width, "SINK PARTICLE MASS",sink_particle_mass);
-	}
-#endif
 
     if (pid == 0) {
         fprintf(diag_file, "\n");
@@ -1017,73 +984,7 @@ main(int argc, char** argv)
     AcMeshInfo info;
     acLogFromRootProc(pid,"Loading config file %s\n", config_path);
     acLoadConfig(config_path, &info);
-    acHostUpdateParams(&info);
-    acPushToConfig(info,AC_ds,
-    (AcReal3){
-	    info[AC_ds].x,
-	    AC_REAL_PI/info[AC_ngrid].y,
-	    (2.0*AC_REAL_PI)/info[AC_ngrid].z
-    });
-    acPushToConfig(info,AC_first_gridpoint,
-    (AcReal3){
-    	    info[AC_first_gridpoint].x,
-	    0.5*info[AC_ds].y,
-	    0.5*info[AC_ds].z
-    });
 
-#if LSPHERICAL_SINK_PARTICLE
-    const AcReal G_NEWTON = 6.67428e-08;
-    acPushToConfig(info,AC_coordinate_system,AC_SPHERICAL_COORDINATES);
-    acPushToConfig(info,AC_nonequidistant_grid,(AcBool3){true,false,false});
-    fprintf(stderr,"Computing metric coefficients\n");
-    fflush(stderr);
-    ac_compute_inv_sin_theta(&info);
-    ac_compute_cot_theta(&info);
-    ac_compute_theta(&info);
-    ac_compute_phi(&info);
-    ac_compute_spherical_harmonics(&info);
-    ac_compute_sin_theta(&info);
-    ac_compute_sin_phi(&info);
-    ac_compute_cos_phi(&info);
-    ac_compute_phi(&info);
-    fprintf(stderr,"Computing r\n");
-    fflush(stderr);
-    ac_compute_r(&info);
-    fprintf(stderr,"Computing inv r\n");
-    fflush(stderr);
-    ac_compute_inv_r(&info);
-    fprintf(stderr,"Computed metric coefficients\n");
-    fflush(stderr);
-    //ac_compute_power_law_mapping_x(&info,info[AC_power_law_mapping_exponent]);
-    //fprintf(stderr,"Power law mapping exponent: %.14e\n",info[AC_power_law_mapping_exponent]);
-    ac_compute_exp_mapping_x(&info);
-    FILE* fp = fopen("x.dat","w");
-    FILE* fp_prime = fopen("xprime.dat","w");
-    FILE* fp_prime2 = fopen("xprime2.dat","w");
-    for(int i = 0*NGHOST; i  < info[AC_extended_mlocal].x; ++i)
-    {
-	    fprintf(fp,"%.14e,",info[AC_r_extended][i]);
-	    fprintf(fp_prime,"%.14e,",info[AC_mapping_func_derivative_x_extended][i]);
-	    fprintf(fp_prime2,"%.14e,",info[AC_mapping_func_2nd_derivative_x_extended][i]);
-    }
-    fclose(fp);
-    fclose(fp_prime);
-    fclose(fp_prime2);
-#endif
-
-    //const AcReal initial_sink_particle_mass = (2.0*info[AC_first_gridpoint].x*info[AC_cs_sound]*info[AC_cs_sound])/G_NEWTON;
-
-    //const AcReal initial_sink_particle_mass = (2.0*info[AC_r][NGHOST]*info[AC_cs_sound]*info[AC_cs_sound])/G_NEWTON; //same point as before, the first active zone
-
-    //const AcReal initial_sink_particle_mass = (2.0*info[AC_r][NGHOST-1]*info[AC_cs_sound]*info[AC_cs_sound])/G_NEWTON; // the first point to the left on the AC_r array
-
-#if LSPHERICAL_SINK_PARTICLE
-    const AcReal initial_sink_particle_mass = (2.0*info[AC_x12][NGHOST-1]*info[AC_cs_sound]*info[AC_cs_sound])/G_NEWTON; // in between these last two examples, which may be what I need for Zeus comparison
-    acPushToConfig(info,AC_central_sink_particle_mass ,initial_sink_particle_mass);
-#endif
-
-
-    
 #if LMULTIFLUID
     const AcReal drag_coefficients[AC_N_SPECIES] = {1.0};
     info[AC_drag_coefficients] = (AcReal*)drag_coefficients;
@@ -1096,7 +997,7 @@ main(int argc, char** argv)
     info.comm->handle = MPI_COMM_WORLD;
     acLogFromRootProc(pid, "Done loading config file\n");
 #if AC_RUNTIME_COMPILATION
-    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DELIMINATE_CONDITIONALS=ON -DBUILD_ACM=OFF"
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF"
 	    		    ;
     info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
@@ -1125,7 +1026,6 @@ main(int argc, char** argv)
         // Print config to stdout
         acLogFromRootProc(pid, "Printing config to stdout\n");
         acPrintMeshInfo(info);
-	//exit(EXIT_SUCCESS);
 
         acLogFromRootProc(pid, "Logging build configuration\n");
         const char* is_on  = "ON";
@@ -1190,18 +1090,6 @@ main(int argc, char** argv)
     //  allocate mesh                     //
     //  load config to GPU                //
     ////////////////////////////////////////
-
-#ifdef AC_GENERAL_GRID_INCLUDED
-    ac_compute_inv_sin_theta(&info);
-    ac_compute_cot_theta(&info);
-    ac_compute_theta(&info);
-    ac_compute_phi(&info);
-    ac_compute_spherical_harmonics(&info);
-    ac_compute_sin_theta(&info);
-    ac_compute_sin_phi(&info);
-    ac_compute_cos_phi(&info);
-    ac_compute_phi(&info);
-#endif
 
     acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
     //these are the defaults but better to state them explicitly
@@ -1526,19 +1414,6 @@ main(int argc, char** argv)
     ///////////////////////////////////////////////////////////////
 
     acLogFromRootProc(pid, "Starting simulation\n");
-
-#if LSPHERICAL_SINK_PARTICLE
-    {
-	const Volume start = (Volume){NGHOST,NGHOST,NGHOST};
-	const Volume end   = (Volume)
-	{
-		(size_t)info[AC_extended_nlocal_max].x,
-		(size_t)info[AC_extended_nlocal_max].y,
-		(size_t)info[AC_extended_nlocal_max].z
-	};
-    	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(init_extended_grid,start,end),1);
-    }
-#endif
     for (int i = start_step;; ++i) {
 
         /////////////////////////////////////////////////////////////////////
@@ -1691,84 +1566,11 @@ main(int argc, char** argv)
 	// If we would do all substeps together
         //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
 	const int num_substeps = 3;
-	AcReal rk3_alpha[3];
-	AcReal rk3_beta[3];
-	rk3_alpha[0] = 0.0;
-	rk3_alpha[1] = -5./9.;
-	rk3_alpha[2] = -153./128.;
-
-	rk3_beta[0] = 1./3.;
-	rk3_beta[1] = 15./16.;
-	rk3_beta[2] = 8./15.;
-
-#if LSPHERICAL_SINK_PARTICLE
-	AcReal sink_particle_w = 0.0;
-	AcReal sink_particle = info[AC_central_sink_particle_mass];
-#endif
-
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
-#if LSELFGRAVITY
-    	        acDeviceSetInput(acGridGetDevice(),AC_SOR_omega,1.8);
     	        acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
-		const auto sph_graph = acGetOptimizedDSLTaskGraph(AC_get_sph);
-		acGridExecuteTaskGraph(sph_graph,1);
-		const Volume start = (Volume){NGHOST,NGHOST,NGHOST};
-		const Volume end   = (Volume)
-		{
-			(size_t)info[AC_extended_nlocal_max].x,
-			(size_t)info[AC_extended_nlocal_max].y,
-			(size_t)info[AC_extended_nlocal_max].z
-		};
-		const auto copy_to_extended = acGetOptimizedDSLTaskGraph(copy_density_to_extended_grid,start,end);
-		acGridExecuteTaskGraph(copy_to_extended,1);
-		const auto sor_graph = acGetOptimizedDSLTaskGraph(sor_red_black_step,start,end);
-		const auto bicgstab_graph = acGetOptimizedDSLTaskGraph(bicgstab_step,start,end);
-		const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual,start,end);
-		const auto rhs_norm_graph = acGetOptimizedDSLTaskGraph(get_rhs_norm,start,end);
-		acGridExecuteTaskGraph(residual_graph,1);
-		acGridExecuteTaskGraph(rhs_norm_graph,1);
-		AcReal residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-		const AcReal rhs_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_rhs_norm2));
-		AcReal relative_residual = residual/rhs_norm;
-		int sor_step=0;
-		while(relative_residual > 1e-4)
-		{
-			acGridExecuteTaskGraph(sor_graph,1);
-			//acGridExecuteTaskGraph(bicgstab_graph,1);
-			acGridExecuteTaskGraph(residual_graph,1);
-			residual = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-			relative_residual = residual/rhs_norm;
-			sor_step++;
-			//fprintf(stderr,"Relative residual: %.14e\n",relative_residual);
-		}
-		if(1){
-		  fprintf(stderr,"SOR step, substep, main loop %d %d %d\n",sor_step, substep, i);
-		  fprintf(stderr,"SOR Rhs norm: %.14e\n",rhs_norm);
-		  fprintf(stderr,"SOR Normal residual: %.14e\n",residual);
-		  fprintf(stderr,"SOR Relative residual: %.14e\n",relative_residual);
-		  //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(print_residual),1);
-		  fflush(stderr);
-		  fflush(stdout);
-		  if(std::isnan(relative_residual) || std::isinf(relative_residual)){
-		    fprintf(stderr,"SOR Relative residual was inf or NaN: %.14e!\n",relative_residual);
-		    exit(EXIT_SUCCESS);
-		  }
-		}
-		const auto copy_back = acGetOptimizedDSLTaskGraph(copy_potential_back);
-		acGridExecuteTaskGraph(copy_back,1);
-#endif
     		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
-#if LSPHERICAL_SINK_PARTICLE
-		const AcReal sink_particle_dt = acDeviceGetOutput(acGridGetDevice(),AC_central_sink_particle_rhs);
-		sink_particle_w = rk3_alpha[substep]*sink_particle_w + dt*sink_particle_dt;
-		sink_particle += rk3_beta[substep]*sink_particle_w;
-		acDeviceLoadScalarUniform(acGridGetDevice(),STREAM_DEFAULT,AC_central_sink_particle_mass,sink_particle);
-#endif
     	}
-#if LSPHERICAL_SINK_PARTICLE
-	info[AC_central_sink_particle_mass] = sink_particle;
-#endif
         simulation_time += dt;
 
         if (log_progress) {
