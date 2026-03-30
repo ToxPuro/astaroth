@@ -6,14 +6,15 @@ if(RUNTIME_COMPILATION)
 	add_library(astaroth_utils config_loader.cc)
 	target_link_libraries(astaroth_utils astaroth_core)
 else()
-
 	add_library(astaroth_utils memory.cc verification.cc modelreduce.cc modelsolver.cc profiles.cc config_loader.cc)
 	target_link_libraries(astaroth_utils PUBLIC astaroth_core)
 
 	add_library(astaroth_random astaroth_random.cc)
+	set_property(TARGET astaroth_random PROPERTY POSITION_INDEPENDENT_CODE ON)
 	target_link_libraries(astaroth_random astaroth_core)
 
 	add_library(astaroth_forcing astaroth_forcing.cc helical_forcing.cc)
+	set_property(TARGET astaroth_forcing PROPERTY POSITION_INDEPENDENT_CODE ON)
 	target_link_libraries(astaroth_forcing astaroth_core astaroth_random)
 	#TP: for parallelizing modelsolver
 	if(OPENMP_ENABLED)
@@ -24,3 +25,4 @@ else()
 	endif()
 endif()
 
+set_property(TARGET astaroth_utils PROPERTY POSITION_INDEPENDENT_CODE ON)

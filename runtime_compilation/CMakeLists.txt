@@ -16,6 +16,7 @@ if(RUNTIME_COMPILATION)
 else()
   add_library(acc_runtime_compiler OBJECT nocompiler.cpp)
 endif()
+set_property(TARGET acc_runtime_compiler PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_compile_definitions(acc_runtime_compiler PRIVATE -DAC_STENCIL_ORDER=${AC_STENCIL_ORDER})
 target_link_libraries(acc_runtime_compiler PRIVATE acc-runtime-headers)

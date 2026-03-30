@@ -7,4 +7,5 @@
 #	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 #endif()
 add_executable(mpitest main.cc)
+set_property(TARGET mpitest PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(mpitest astaroth_core astaroth_utils)

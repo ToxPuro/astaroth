@@ -4,6 +4,8 @@ ac_run_mpi
 	simulation_rng.cc
 )
 
+set_property(TARGET ac_run_mpi PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 target_include_directories(
 ac_run_mpi
 PRIVATE
