@@ -212,6 +212,7 @@ render_slice
 Render a slice (a full one)
 """
 def render_slice(full_slice, field_name, time, step, z):
+    if(full_slice.shape[0] == 1): return
     global dsx
     global dsy
     print(f"Rendering {MA}{field_name:>20}{CLR} slice at step {CY}{int(step):<8}{CLR}...", end="")
