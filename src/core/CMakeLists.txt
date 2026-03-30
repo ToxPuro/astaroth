@@ -90,6 +90,7 @@ target_link_libraries(astaroth_core PUBLIC astaroth_core_obj)
 if (NOT RUNTIME_COMPILATION)
 	target_link_libraries(astaroth_core PUBLIC static_kernels acc_runtime_compiler)
 else()
+	set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
 	target_link_libraries(astaroth_core PUBLIC acc_runtime_compiler acc-runtime-headers dl)
 endif()
 

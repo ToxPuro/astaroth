@@ -4,6 +4,11 @@ if (CPU_BUILD)
 else()
 	add_library(ac_cuda_wrappers OBJECT cuda.cc)
 endif()
+
+if(RUNTIME_COMPILATION)
+	set_property(TARGET ac_cuda_wrappers PROPERTY POSITION_INDEPENDENT_CODE ON)
+endif()
+
 target_link_libraries(ac_cuda_wrappers PRIVATE)
 target_include_directories(ac_cuda_wrappers PRIVATE ${AC_BASE_PATH}/include)
 target_include_directories(ac_cuda_wrappers PRIVATE ${AC_BASE_PATH}/acc-runtime/api)
