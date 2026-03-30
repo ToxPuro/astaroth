@@ -13,6 +13,7 @@ endif()
 
 if(RUNTIME_COMPILATION)
   add_library(acc_runtime_compiler OBJECT compiler.cpp)
+  set_property(TARGET acc_runtime_compiler PROPERTY POSITION_INDEPENDENT_CODE ON)
 else()
   add_library(acc_runtime_compiler OBJECT nocompiler.cpp)
 endif()

@@ -4,6 +4,7 @@ option(OPENMP_ENABLED "Enables OPENMP (used in modelsolver for now)" ON)
 
 if(RUNTIME_COMPILATION)
 	add_library(astaroth_utils config_loader.cc)
+	set_property(TARGET astaroth_utils PROPERTY POSITION_INDEPENDENT_CODE ON)
 	target_link_libraries(astaroth_utils astaroth_core)
 else()
 
