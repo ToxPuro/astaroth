@@ -323,7 +323,8 @@ for vector_field, components in vector_fields.items():
 
             # Render slice
             if args.write_png:
-                render_slice(**slice_data)
+                if not args.only_lines:
+                  render_slice(**slice_data)
                 plot_line1d(**slice_data)
 
             # Write binary
@@ -356,7 +357,8 @@ for vector_field, components in vector_fields.items():
 
         # Render slice
         if args.write_png:
-            render_slice(vector_slice, field_name,time, step, z)
+            if not args.only_lines:
+              render_slice(vector_slice, field_name,time, step, z)
             plot_line1d(vector_slice, field_name, time, step, z)
 
         # Write binary
