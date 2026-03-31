@@ -547,11 +547,23 @@ mod(a,p)
 {
 	return a - (int(a/p)*p)
 }
+
+/*
+ * Getting the maximum among the components of symmetric 3x3 tensor
+ */
 max_tensor(FieldSymmetricTensor T)
 {
 	return max(max(max(max(max(value(T.xx),value(T.yy)),value(T.zz)),value(T.xy)),value(T.xz)),value(T.yz))
 
 }
+/*
+ * Function for getting vectors of 3xNxM of tensors along the first dimension
+ */
+get_first_dim_vector(T, int index1, int index2)
+{
+        return real3(T[0][index1][index2], T[1][index1][index2], T[2][index1][index2])
+}
+
 
 
 
