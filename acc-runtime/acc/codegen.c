@@ -4826,14 +4826,18 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		  {
 		  	fprintf(stream, "%s ", get_array_elem_type(tspecifier_out));
 		  	string_vec sizes = get_array_elem_size(tspecifier_out);
+			//TP: even though it is not intended rest of the dims come from traversing
+			//TP: works for now but a bit hacky
+			res = sprintf_intern("[%s]",sizes.data[0]);
+			/**
 			if(sizes.size == 1)
-				res = sprintf_intern("[%s]",sizes.data[0]);
+			   res = sprintf_intern("[%s]",sizes.data[0]);
+			res = sprintf_intern("[%s]",sizes.data[0]);
 			else if(sizes.size == 2)
-				//TP: even though it is not intended rest of the dims come from traversing
-				//TP: works for now but a bit hacky
 				res = sprintf_intern("[%s]",sizes.data[0]);
 			else
 				fatal("Add missing dimensionality initialization!\n");
+			**/
 			free_str_vec(&sizes);
 		  }
 	  }
@@ -7557,6 +7561,10 @@ transform_arrays_to_std_arrays_in_func(ASTNode* node)
         else if(dims.size == 2)
         {
                 astnode_sprintf(tspec->lhs,"AcArray<%s,%s,%s>",tspec->lhs->buffer,strdup(combine_all_new(dims.data[0])),strdup(combine_all_new(dims.data[1])));
+        }
+        else if(dims.size == 3)
+        {
+                astnode_sprintf(tspec->lhs,"AcArray<%s,%s,%s,%s,%s>",tspec->lhs->buffer,strdup(combine_all_new(dims.data[0])),strdup(combine_all_new(dims.data[1])),strdup(combine_all_new(dims.data[2])));
         }
         free_node_vec(&dims);
         node->rhs->lhs->infix = NULL;
