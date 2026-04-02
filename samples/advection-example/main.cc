@@ -57,8 +57,11 @@ main()
 
     //We now generate handles out of the ComputeSteps defined in the DSL
     //TaskGraphs are the objects to be invoked which include the required bcs and communications, which are added to the compute steps as needed by the operations
-    AcTaskGraph* init_graph = acGetDSLTaskGraph(initial_condition);
-    AcTaskGraph* update_graph = acGetDSLTaskGraph(euler_update);
+    //Optimized in this context mean that you allow the creator to drop steps of computation if 
+    //it can infer launching the kernel does not have any observable effect i.e. basically if it does not update anything!
+    //If you do not have a reason to used the optimized API it is recommended to use it.
+    AcTaskGraph* init_graph = acGetOptimizedDSLTaskGraph(initial_condition);
+    AcTaskGraph* update_graph = acGetOptimizedDSLTaskGraph(euler_update);
 
 
     AcReal simulation_time =  0.0;

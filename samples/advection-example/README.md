@@ -6,7 +6,7 @@ This is the hello world setup of Astaroth: simulating the advection of the conce
 * . ./sourceme.sh
 * cd samples/advection-example
 * ./build.sh
-* Run with `sbatch disbatch.sh` (You have to modify the sbatch file to fit your cluster) 
+* Run with `sbatch disbatch.sh` (You have to modify the sbatch file to fit your cluster. Or if on your own computer simply run ./build/advection-example) 
 * In the end there should be a movie of a moving sine wave in output-postprocessed/movies/lines/C.png 
 
 # Learning
