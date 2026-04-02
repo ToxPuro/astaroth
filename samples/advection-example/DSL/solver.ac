@@ -42,7 +42,7 @@ Kernel euler_update_kernel(real dt)
 	//It is equivalent to the following functional DSL
 	//C[vertexIdx.x][vertexIdx.y][vertexIdx.z] = C[vertexIdx.x][vertexIdx.y][vertexIdx.z] + dt*rhs_update
 
-	//But whenever the dependency on the current vertex is recommended to be kept implicit due to performance and safety, less likely to have bugs, reasons.
+	//But whenever possible the dependency on the current vertex is recommended to be kept implicit due to performance and safety, less likely to have bugs, reasons.
 	//For example with the write function it semantically means to update the Field at all vertex points, since the Kernel has the implicit loop over grid points.
 	//Explicit indexing can have the same behaviour but is not guaranteed
 }
