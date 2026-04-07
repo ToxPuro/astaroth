@@ -988,7 +988,10 @@ acGridQuit(void)
 	grid.vertex_buffer_copied_from_user[i] = false;
     }
     acDeviceDestroy(&grid.device);
-    compat_acDecompositionQuit();
+    if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_HIERARCHICAL)
+    {
+      compat_acDecompositionQuit();
+    }
     acKernelsClean();
     acRuntimeQuit();
     // acDecompositionInfoDestroy(&grid.decomposition_info);
