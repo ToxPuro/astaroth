@@ -18,6 +18,7 @@
 */
 #include "device_headers.h"
 #include "decomposition.h"
+#include "astaroth.h"
 
 #include <limits.h> // INT_MAX
 #include <string.h> // memcpy
@@ -30,17 +31,52 @@ bool TWO_DIMENSIONAL_SETUP = false;
 
 #define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_ZORDER)
 // #define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_HIERARCHICAL)
+//
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 
 void
-acInitDecomposition(const bool two_dimensional_setup)
+acInitDecomposition(const AcMeshInfo info, const size_t nprocs)
 {
-	if(two_dimensional_setup)
-	{
-		MPI_DECOMPOSITION_AXES = 2;
-		TWO_DIMENSIONAL_SETUP  = true;
-	}
+    const int n_active_dimensions = !info[AC_dimension_inactive].x + !info[AC_dimension_inactive].y + !info[AC_dimension_inactive].z;
+    const bool two_dimensional_setup = n_active_dimensions == 2;
+    if(two_dimensional_setup)
+    {
+    	MPI_DECOMPOSITION_AXES = 2;
+    	TWO_DIMENSIONAL_SETUP  = true;
+    }
+    if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_HIERARCHICAL)
+    {
+        int device_count = -1;
+        acGetDeviceCount(&device_count);
+        // Decompose
+        const AcMeshDims mesh_dims = acGetMeshDims(info);
+        const size_t global_dims[] = {
+                as_size_t(mesh_dims.nn.x),
+                as_size_t(mesh_dims.nn.y),
+                as_size_t(mesh_dims.nn.z),
+        };
+        const size_t ndims                  = ARRAY_SIZE(global_dims);
+        const size_t node_count             = as_size_t((nprocs + device_count - 1) / device_count);
+        const size_t partitions_per_layer[] = {as_size_t(device_count), as_size_t(node_count)};
+        const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
+        compat_acDecompositionInit(ndims, global_dims, nlayers, partitions_per_layer);
+        // grid.decomposition_info = acDecompositionInit(ndims, global_dims,
+        // nlayers,partitions_per_layer);
+        acVerifyDecomposition(decompose(nprocs,info[AC_decompose_strategy]),info[AC_proc_mapping_strategy]);
+    }
+
 }
+
+void
+acQuitDecomposition(const AcDecomposeStrategy decompose_strategy)
+{
+  if(decompose_strategy == AC_DECOMPOSE_STRATEGY_HIERARCHICAL)
+  {
+    compat_acDecompositionQuit();
+  }
+}
+
 static void
 acPrint_size_t(const char* label, const size_t value)
 {

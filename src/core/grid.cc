@@ -63,7 +63,6 @@
 #include "astaroth_cuda_wrappers.h"
 #include "ac_fft.h"
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 AcResult acAnalysisLoadMeshInfo(const AcMeshInfo info);
 
@@ -147,6 +146,7 @@ ac_decomp_strategy()
 {
 	return (AcDecomposeStrategy)grid.submesh.info[AC_decompose_strategy];
 }
+
 static int 
 ac_nprocs()
 {
@@ -814,29 +814,7 @@ acGridInitBase(const AcMesh user_mesh)
     check_that_device_allocation_valid();
 
 
-    const int n_active_dimensions = !info[AC_dimension_inactive].x + !info[AC_dimension_inactive].y + !info[AC_dimension_inactive].z;
-    acInitDecomposition(n_active_dimensions == 2);
-    if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_HIERARCHICAL)
-    {
-        int device_count = -1;
-        acGetDeviceCount(&device_count);
-    	// Decompose
-    	const AcMeshDims mesh_dims = acGetMeshDims(info);
-    	const size_t global_dims[] = {
-        	as_size_t(mesh_dims.nn.x),
-        	as_size_t(mesh_dims.nn.y),
-        	as_size_t(mesh_dims.nn.z),
-    	};
-    	const size_t ndims                  = ARRAY_SIZE(global_dims);
-    	const size_t node_count             = as_size_t((ac_nprocs() + device_count - 1) / device_count);
-    	const size_t partitions_per_layer[] = {as_size_t(device_count), as_size_t(node_count)};
-    	const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
-    	compat_acDecompositionInit(ndims, global_dims, nlayers, partitions_per_layer);
-    	// grid.decomposition_info = acDecompositionInit(ndims, global_dims,
-    	// nlayers,partitions_per_layer);
-    	acVerifyDecomposition(decompose(ac_nprocs(),AC_DECOMPOSE_STRATEGY_HIERARCHICAL),ac_proc_mapping_strategy());
-    }
-
+    acInitDecomposition(info,ac_nprocs());
     // grid.decomposition_info = acDecompositionInit(ndims, global_dims,
     // nlayers,partitions_per_layer);
     check_that_decomp_valid(info);
@@ -988,10 +966,7 @@ acGridQuit(void)
 	grid.vertex_buffer_copied_from_user[i] = false;
     }
     acDeviceDestroy(&grid.device);
-    if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_HIERARCHICAL)
-    {
-      compat_acDecompositionQuit();
-    }
+    acQuitDecomposition(grid.submesh.info[AC_decompose_strategy]);
     acKernelsClean();
     acRuntimeQuit();
     // acDecompositionInfoDestroy(&grid.decomposition_info);

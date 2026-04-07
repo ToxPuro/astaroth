@@ -64,4 +64,9 @@ int getPid(const int3 pid_raw, const uint3_64 decomp,const AcProcMappingStrategy
 
 int3 getPid3D(const uint64_t pid, const uint3_64 decomp,const AcProcMappingStrategy proc_mapping_strategy);
 void acVerifyDecomposition(const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy);
-void acInitDecomposition(const bool two_dimensional_setup);
+
+extern "C"
+{
+  void acInitDecomposition(const AcMeshInfo info, const size_t nprocs);
+  void acQuitDecomposition(const AcDecomposeStrategy decompose_strategy);
+}
