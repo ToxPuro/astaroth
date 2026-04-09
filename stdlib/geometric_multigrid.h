@@ -363,12 +363,18 @@ gmg_smoothing_step(const int level, const int nsteps)
   {
 	  case SPAI_SMOOTHER:
 	  {
-		for(int i = 0; i < nsteps; ++i) 
+		if(level == 0)
 		{
-			gmg_get_residual_func(level);
-			gmg_apply_optimized_smoother(level);
+		  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_optimized_smoother),nsteps);
 		}
-		//acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_optimized_smoother),nsteps);
+		else
+		{
+		  for(int i = 0; i < nsteps; ++i) 
+		  {
+		  	gmg_get_residual_func(level);
+		  	gmg_apply_optimized_smoother(level);
+		  }
+		}
 		break;
 	  }
 	  case Y_LINE_SMOOTHER:
@@ -420,7 +426,6 @@ gmg_level_step(const int level, const int number_of_levels, const AcReal relativ
   }
   else
   {
-	  const auto residual_graph = acGetOptimizedDSLTaskGraph(gmg_get_residual);
 	  gmg_get_residual_func(level);
 	  acGridExecuteTaskGraph(halo_exchange_residuals[level],1);
 	  {
