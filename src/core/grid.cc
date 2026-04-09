@@ -2254,7 +2254,9 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		    	(int)dims.y < grid.submesh.info[AC_no_mantle_below_this_size].y ||
 		    	(int)dims.z < grid.submesh.info[AC_no_mantle_below_this_size].z ;
 
-	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim || too_small_dims || user_set_small_dims) ? 0 : 3;
+	    const bool no_halo = (op.halo_sizes.x + op.halo_sizes.y + op.halo_sizes.z == 0);
+
+	    const int max_comp_facet_class = (no_halo || oned_launch || raytracing || single_gpu_optim || too_small_dims || user_set_small_dims) ? 0 : 3;
 	    {
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
