@@ -635,7 +635,7 @@ Stencil deryy_neighbours_stencil {
 	[0][ 2][0]  =  DER2_2
 }
 
-Stencil derzz_neigbours_stencil {
+Stencil derzz_neighbours_stencil {
 	[-2][0][0]  =  DER2_2,
 	[-1][0][0]  =  DER2_1,
 	[ 1][0][0]  =  DER2_1,
