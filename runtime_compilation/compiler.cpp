@@ -78,6 +78,7 @@ acLoadRunConstsBase(const char* filename, AcMeshInfo info)
 }
 const char* dynamic_base_path   = astaroth_base_path;
 const char* dynamic_binary_path = astaroth_binary_path;
+const char* dynamic_acc_compiler_path = NULL;
 
 static std::string
 get_astaroth_base_path()
@@ -98,6 +99,7 @@ runtime_astaroth_build_path()
 static std::string
 acc_compiler_path()
 {
+	if(dynamic_acc_compiler_path != NULL) return dynamic_acc_compiler_path;
 	return get_astaroth_binary_path() + std::string("/acc-runtime/acc/acc");
 }
 
@@ -196,6 +198,7 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
         ac_unset_floating_point_exceptions();
 	if(mesh_info.runtime_compilation_build_path) dynamic_binary_path = mesh_info.runtime_compilation_build_path;
 	if(mesh_info.runtime_compilation_base_path)  dynamic_base_path  = mesh_info.runtime_compilation_base_path;
+	if(mesh_info.acc_compiler_path)  dynamic_acc_compiler_path  = mesh_info.acc_compiler_path;
 	check_that_built_ins_loaded(mesh_info.run_consts);
 	acHostUpdateParams(&mesh_info);
 #if AC_MPI_ENABLED

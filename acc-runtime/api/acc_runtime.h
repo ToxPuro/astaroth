@@ -159,6 +159,7 @@ typedef struct
   const char* runtime_compilation_log_dst;
   const char* runtime_compilation_build_path;
   const char* runtime_compilation_base_path;
+  const char* acc_compiler_path;
   AcCommunicator* comm;
 #ifdef __cplusplus
 #include "info_access_operators.h"
