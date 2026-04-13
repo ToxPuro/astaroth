@@ -191,6 +191,7 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   }
   return AC_SUCCESS;
 }
+
 AcResult
 acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
@@ -300,6 +301,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 		fflush(stderr);
 		return AC_FAILURE;
 	}
+	return AC_SUCCESS;
 }
 
 AcResult
