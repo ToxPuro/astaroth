@@ -191,6 +191,116 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   }
   return AC_SUCCESS;
 }
+AcResult
+acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
+{
+	acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);
+	char cmd[2*10000];
+	char cwd[5024];
+	if (getcwd(cwd, sizeof(cwd)) == NULL) {
+		fprintf(stderr,"Failed to get current working directory!\n");
+		exit(EXIT_FAILURE);
+	}
+	char log_buffer[10024];
+
+	if(mesh_info.runtime_compilation_log_dst == NULL)
+		sprintf(log_buffer,"%s","/dev/stderr");
+	else if (mesh_info.runtime_compilation_log_dst[0] == '/')
+		sprintf(log_buffer,"%s",mesh_info.runtime_compilation_log_dst);
+	else
+		sprintf(log_buffer,"%s/%s",cwd,mesh_info.runtime_compilation_log_dst);
+	const char* log_dst =  (mesh_info.runtime_compilation_log_dst == NULL) ? NULL : log_buffer;
+	check_for_cmake();
+	sprintf(cmd,"diff tmp_astaroth_run_consts.h %s",ac_overrides_path().c_str());
+	const bool runtime_build_existed = file_exists(runtime_astaroth_build_path().c_str());
+	const bool previous_build_exists = file_exists(ac_overrides_path().c_str()) && runtime_build_existed;
+	const bool loaded_different = 
+			       previous_build_exists 
+				? system(cmd) : true;
+	system("rm tmp_astaroth_run_consts.h");
+	const bool stored_cmake = file_exists(previous_cmake_options_path().c_str());
+	sprintf(cmd,"echo %s | diff - %s",get_cmake_options(user_cmake_options),previous_cmake_options_path().c_str());
+	const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
+	const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
+	char logging_to_message[100000];
+	if(log_dst) sprintf(logging_to_message," logging to %s",log_dst);
+	else        sprintf(logging_to_message,"%s","");
+	if(!previous_build_exists)
+	{
+		fprintf(stderr,"acCompile: Compiling Astaroth;%s\n",logging_to_message);
+	}
+	if(compile)
+	{
+		if(loaded_different && previous_build_exists)  
+		{
+			fprintf(stderr,"acCompile: Loaded different run_const values; recompiling;%s\n",logging_to_message);
+		}
+		else if(previous_build_exists && different_cmake_string && stored_cmake) 
+		{
+			fprintf(stderr,"acCompile: Gave different cmake options; recompiling;%s\n",logging_to_message);
+		}
+		sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path().c_str());
+		int retval = system(cmd);
+		if(retval)
+		{
+			fflush(stdout);
+			fflush(stderr);
+			fprintf(stderr,"Fatal error was not able to remove build directory: %s\n",runtime_astaroth_build_path().c_str());
+			return AC_FAILURE;
+		}
+
+		sprintf(cmd,"mkdir -p %s",runtime_astaroth_build_path().c_str());
+		retval = system(cmd);
+		if(retval)
+		{
+			fflush(stdout);
+			fflush(stderr);
+			fprintf(stderr,"%s","Fatal error was not able to make build directory\n");
+			return AC_FAILURE;
+		}
+		acLoadRunConstsBase(ac_overrides_path().c_str(),mesh_info);
+		if(run_cmake(user_cmake_options,log_dst) != AC_SUCCESS) return AC_FAILURE;
+	}
+	else
+	{
+		if(mesh_info.runtime_compilation_skip_make_if_nothing_has_changed)
+		{
+		        fprintf(stderr,"acCompile: No changes in input; Skipping compilation;\n");
+			return AC_SUCCESS;
+		}
+		fprintf(stderr,"acCompile: No changes in input; running make in case DSL code has changed;%s\n",logging_to_message);
+	}
+	sprintf(cmd,"cd %s",
+	       runtime_astaroth_build_path().c_str());
+	int retval = system(cmd);
+	if(retval)
+	{
+		fprintf(stderr,"%s","Fatal error was not able to go into build directory\n");
+		fflush(stdout);
+		fflush(stderr);
+		return AC_FAILURE;
+	}
+	if(log_dst)
+	{
+		sprintf(cmd,"cd %s && make %s -j >> %s 2>&1",runtime_astaroth_build_path().c_str(),target,log_dst);
+	}
+	else
+	{
+		sprintf(cmd,"cd %s && make %s -j",runtime_astaroth_build_path().c_str(),target);
+	}
+	retval = system(cmd);
+	if(retval)
+	{
+		fprintf(stderr,"%s","Fatal was not able to compile\n");
+		if(log_dst)
+		{
+			fprintf(stderr,"Check %s for the compilation log!\n",log_dst);
+		}
+		fflush(stdout);
+		fflush(stderr);
+		return AC_FAILURE;
+	}
+}
 
 AcResult
 acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
@@ -210,118 +320,14 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 	const int pid = 0;
 #endif
 	acHostUpdateParams(&mesh_info);
+	AcResult res = AC_SUCCESS;
 	if(pid == 0)
 	{
-		acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);
-		char cmd[2*10000];
-		char cwd[5024];
-		if (getcwd(cwd, sizeof(cwd)) == NULL) {
-			fprintf(stderr,"Failed to get current working directory!\n");
-			exit(EXIT_FAILURE);
-    		}
-		char log_buffer[10024];
-
-    		if(mesh_info.runtime_compilation_log_dst == NULL)
-			sprintf(log_buffer,"%s","/dev/stderr");
-		else if (mesh_info.runtime_compilation_log_dst[0] == '/')
-			sprintf(log_buffer,"%s",mesh_info.runtime_compilation_log_dst);
-		else
-			sprintf(log_buffer,"%s/%s",cwd,mesh_info.runtime_compilation_log_dst);
-		const char* log_dst =  (mesh_info.runtime_compilation_log_dst == NULL) ? NULL : log_buffer;
-		check_for_cmake();
-		sprintf(cmd,"diff tmp_astaroth_run_consts.h %s",ac_overrides_path().c_str());
-		const bool runtime_build_existed = file_exists(runtime_astaroth_build_path().c_str());
-		const bool previous_build_exists = file_exists(ac_overrides_path().c_str()) && runtime_build_existed;
-		const bool loaded_different = 
-				       previous_build_exists 
-					? system(cmd) : true;
-		system("rm tmp_astaroth_run_consts.h");
-		const bool stored_cmake = file_exists(previous_cmake_options_path().c_str());
-		sprintf(cmd,"echo %s | diff - %s",get_cmake_options(user_cmake_options),previous_cmake_options_path().c_str());
-		const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
-		const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
-		char logging_to_message[100000];
-		if(log_dst) sprintf(logging_to_message," logging to %s",log_dst);
-		else        sprintf(logging_to_message,"%s","");
-		if(!previous_build_exists)
-		{
-			fprintf(stderr,"acCompile: Compiling Astaroth;%s\n",logging_to_message);
-		}
-		if(compile)
-		{
-			if(loaded_different && previous_build_exists)  
-			{
-				fprintf(stderr,"acCompile: Loaded different run_const values; recompiling;%s\n",logging_to_message);
-			}
-			else if(previous_build_exists && different_cmake_string && stored_cmake) 
-			{
-				fprintf(stderr,"acCompile: Gave different cmake options; recompiling;%s\n",logging_to_message);
-			}
-			sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path().c_str());
-			int retval = system(cmd);
-			if(retval)
-			{
-				fflush(stdout);
-				fflush(stderr);
-				fprintf(stderr,"Fatal error was not able to remove build directory: %s\n",runtime_astaroth_build_path().c_str());
-				return AC_FAILURE;
-			}
-
-			sprintf(cmd,"mkdir -p %s",runtime_astaroth_build_path().c_str());
-			retval = system(cmd);
-			if(retval)
-			{
-				fflush(stdout);
-				fflush(stderr);
-				fprintf(stderr,"%s","Fatal error was not able to make build directory\n");
-				return AC_FAILURE;
-			}
-			acLoadRunConstsBase(ac_overrides_path().c_str(),mesh_info);
-			if(run_cmake(user_cmake_options,log_dst) != AC_SUCCESS) return AC_FAILURE;
-		}
-		else
-		{
-			if(mesh_info.runtime_compilation_skip_make_if_nothing_has_changed)
-			{
-			        fprintf(stderr,"acCompile: No changes in input; Skipping compilation;\n");
-				return AC_SUCCESS;
-			}
-			fprintf(stderr,"acCompile: No changes in input; running make in case DSL code has changed;%s\n",logging_to_message);
-		}
-		sprintf(cmd,"cd %s",
-		       runtime_astaroth_build_path().c_str());
-		int retval = system(cmd);
-		if(retval)
-		{
-			fprintf(stderr,"%s","Fatal error was not able to go into build directory\n");
-			fflush(stdout);
-			fflush(stderr);
-			return AC_FAILURE;
-		}
-		if(log_dst)
-		{
-			sprintf(cmd,"cd %s && make %s -j >> %s 2>&1",runtime_astaroth_build_path().c_str(),target,log_dst);
-		}
-		else
-		{
-			sprintf(cmd,"cd %s && make %s -j",runtime_astaroth_build_path().c_str(),target);
-		}
-		retval = system(cmd);
-		if(retval)
-		{
-			fprintf(stderr,"%s","Fatal was not able to compile\n");
-			if(log_dst)
-			{
-				fprintf(stderr,"Check %s for the compilation log!\n",log_dst);
-			}
-			fflush(stdout);
-			fflush(stderr);
-			return AC_FAILURE;
-		}
+		res = acCompileFromRoot(user_cmake_options,target,mesh_info);
 	}
 #if AC_MPI_ENABLED
 	MPI_Barrier(mesh_info.comm->handle);
 #endif
         ac_restore_floating_point_exceptions();
-	return AC_SUCCESS;
+	return res;
 }
