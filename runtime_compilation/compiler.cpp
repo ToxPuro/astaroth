@@ -323,7 +323,7 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 	AcResult res = AC_SUCCESS;
 	if(pid == 0)
 	{
-		res = acCompileFromRoot(user_cmake_options,target,mesh_info);
+		res = acCompileFromRootProc(user_cmake_options,target,mesh_info);
 	}
 #if AC_MPI_ENABLED
 	MPI_Barrier(mesh_info.comm->handle);
