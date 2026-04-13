@@ -281,6 +281,11 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 		}
 		else
 		{
+			if(mesh_info.runtime_compilation_skip_make_if_nothing_has_changed)
+			{
+			        fprintf(stderr,"acCompile: No changes in input; Skipping compilation;\n");
+				return AC_SUCCESS;
+			}
 			fprintf(stderr,"acCompile: No changes in input; running make in case DSL code has changed;%s\n",logging_to_message);
 		}
 		sprintf(cmd,"cd %s",
