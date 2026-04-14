@@ -27,6 +27,31 @@ get_wavevector()
 	)
 }
 
+get_wavevector_x(int global_idx_)
+{
+	global_idx  = global_idx_ - AC_nmin
+	return AC_frequency_spacing.x*((global_idx.x <= AC_ngrid.x/2) ? global_idx.x : global_idx.x - AC_ngrid.x)
+}
+get_wavevector_y(int global_idx_)
+{
+	global_idx  = global_idx_ - AC_nmin
+	return AC_frequency_spacing.y*((global_idx.y <= AC_ngrid.y/2) ? global_idx.y : global_idx.y - AC_ngrid.y)
+}
+get_wavevector_z(int global_idx_)
+{
+	global_idx  = global_idx_ - AC_nmin
+	return AC_frequency_spacing.z*((global_idx.z <= AC_ngrid.z/2) ? global_idx.z : global_idx.z - AC_ngrid.z)
+}
+get_wavevector(int3 global_idx)
+{
+	return real3
+	(
+	 	get_wavevector_x(global_idx.x),
+	 	get_wavevector_y(global_idx.y),
+	 	get_wavevector_z(global_idx.z)
+	)
+}
+
 poisson_fft_solve(Field real_dst, Field imag_dst, Field real_src, Field imag_src)
 {
         const real3 k = get_wavevector()

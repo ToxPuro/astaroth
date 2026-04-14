@@ -256,24 +256,11 @@ main(void)
     	acHostMeshRandomize(&candidate);
         acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
 	acGridSynchronizeStream(STREAM_ALL);
-	const int3 pos = (int3){8,8,8};
-	const AcReal3 k = get_wavevector(pos,model.info);
-    	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
-    	{
-    	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
-    	   {
-    	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
-    	           {
-		      const AcReal3 spatial_pos = (AcReal3){(x-NGHOST)*info[AC_ds].x,(y-NGHOST)*info[AC_ds].y,(z-NGHOST)*info[AC_ds].z};
-		      model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y)+sin(k.z*spatial_pos.z);
-		      model.vertex_buffer[HEAT_PLANAR_REAL][IDX(x,y,z)] = 0.0;
-		      model.vertex_buffer[HEAT_PLANAR_IMAG][IDX(x,y,z)] = 0.0;
-		   }
-	   }
-	}
-        acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
+        acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(three_dimensional_test_setup),1);
 	acGridSynchronizeStream(STREAM_ALL);
         acDeviceFFTR2Planar(acGridGetDevice(),HEAT_INIT,HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG);
+        acDeviceFFTR2PlanarBatched(acGridGetDevice(),HEAT_INIT_SINGLE,HEAT_PLANAR_REAL_SINGLE,HEAT_PLANAR_IMAG_SINGLE,1);
+        acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_single_to_output),1);
         acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
 	acGridSynchronizeStream(STREAM_ALL);
 	int number_of_nonzero_components = 0;
@@ -285,6 +272,8 @@ main(void)
 		   {
         		const AcReal real = candidate.vertex_buffer[HEAT_PLANAR_REAL][IDX(x,y,z)];
 			const AcReal imag = candidate.vertex_buffer[HEAT_PLANAR_IMAG][IDX(x,y,z)];
+        		const AcReal single_real = candidate.vertex_buffer[HEAT_PLANAR_REAL_SINGLE_OUTPUT][IDX(x,y,z)];
+			const AcReal single_imag = candidate.vertex_buffer[HEAT_PLANAR_IMAG_SINGLE_OUTPUT][IDX(x,y,z)];
 			if(fabs(real) > epsilon || fabs(imag) > epsilon)
 			{
 				++number_of_nonzero_components;
@@ -292,6 +281,9 @@ main(void)
 				{
 					fprintf(stderr,"3d Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,real,imag);
 					fprintf(stderr,"3d Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(real*real + imag*imag));
+
+					fprintf(stderr,"Single precision 3d Fourier coeffs at (%zu,%zu,%zu): %.14e,%.14e\n",x,y,z,single_real,single_imag);
+					fprintf(stderr,"Single precision 3d Amplitude at (%zu,%zu,%zu): %.14e\n",x,y,z,sqrt(single_real*single_real + single_imag*single_imag));
 				}
 			}
 		   }

@@ -50,6 +50,7 @@ typedef struct
 
 #include <unordered_map>
 static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
+static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans_single{};
 static std::unordered_map<size_t,heffte::fft3d_r2c<heffte::backend::rocfft>> plans_r2c{};
 
 
@@ -146,21 +147,21 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
 	    (int)domain_size.z
     };
     const int3 upper = lower+dims-(int3){1,1,1};
-    if(plans.find(count) == plans.end())
+    if(plans_single.find(count) == plans_single.end())
     {
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
         heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
-	plans.emplace(count,std::move(fft));
+	plans_single.emplace(count,std::move(fft));
 	work_buffers[count] = get_fresh_complex_float_buffer(batch_size*fft.size_workspace());
     }
     AcComplexFloat* workspace = work_buffers[count];
     if(inverse)
     {
-    	plans.at(count).backward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::none);
+    	plans_single.at(count).backward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::none);
     }
     else
     {
-    	plans.at(count).forward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::full);
+    	plans_single.at(count).forward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::full);
     }
     return AC_SUCCESS;
 }
