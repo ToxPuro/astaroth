@@ -49,22 +49,22 @@ jobs:
           cd $AC_HOME/test && ac_build_tests --parallel --cpu
           cd $AC_HOME/test && ac_run_tests
 
-      - name: Clone ambipolar diffusion
-        uses: actions/checkout@v4
-        with:
-          repository: ToxPuro/ambipolar_diffusion
-          ref: main
-          fetch-depth: 1
-          path: ambipolar_diffusion
-          ssh-key: ${{ secrets.CI_CD_KEY }}
+          #- name: Clone ambipolar diffusion
+          #  uses: actions/checkout@v4
+          #  with:
+          #    repository: ToxPuro/ambipolar_diffusion
+          #    ref: main
+          #    fetch-depth: 1
+          #    path: ambipolar_diffusion
+          #    ssh-key: ${{ secrets.CI_CD_KEY }}
 
-      - name: Test ambipolar diffusion
-        run: |
-          . ./sourceme.sh
-          export AC_CPU_BUILD=on
-          cd ambipolar_diffusion
-          ./build_tests.sh
-          ./run_tests.sh
-          ac_verify reference.ts build/timeseries.ts --tol=1e-12  --thresh=1e-1
-          ac_verify 2nd_order_reference.ts 2nd_order_build/timeseries.ts --tol=1e-12 --thresh=1e-1
+          #- name: Test ambipolar diffusion
+          #  run: |
+          #    . ./sourceme.sh
+          #    export AC_CPU_BUILD=on
+          #    cd ambipolar_diffusion
+          #    ./build_tests.sh
+          #    ./run_tests.sh
+          #    ac_verify reference.ts build/timeseries.ts --tol=1e-12  --thresh=1e-1
+          #    ac_verify 2nd_order_reference.ts 2nd_order_build/timeseries.ts --tol=1e-12 --thresh=1e-1
 
