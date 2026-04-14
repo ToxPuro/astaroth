@@ -8,9 +8,7 @@
 //     int job_id;
 // } Arguments;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEIN_C_DECLARATIONS
 
 // int acParseArguments(const int argc, char* argv[], Arguments* args);
 
@@ -31,9 +29,7 @@ int acPrintMeshInfoTFM(const AcMeshInfo config);
 AcReal calc_timestep(const AcReal uumax, const AcReal vAmax, const AcReal shock_max,
                      const AcMeshInfo info);
 
-#ifdef __cplusplus
-}
-#endif
+AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
 #include <vector>

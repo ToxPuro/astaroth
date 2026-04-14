@@ -2,9 +2,9 @@
 
 
 #include "device_headers.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
+
+AC_BEGIN_C_DECLARATIONS
+
 AcResult acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in, const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer);
 AcResult acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in);
 AcResult acFFTForwardTransformR2C(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst);
@@ -17,6 +17,5 @@ AcResult acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src,const V
 AcResult acFFTBackwardTransformC2R(const AcComplex* transformed_in, const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer);
 AcResult acFFTInit(const AcCommunicator* comm, const int* global_offset);
 AcResult acFFTQuit();
-#ifdef __cplusplus
-}
-#endif
+
+AC_END_C_DECLARATIONS
