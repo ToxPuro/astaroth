@@ -295,7 +295,7 @@ astnode_sprintf(ASTNode* node, const char* format, ...)
 static inline void
 astnode_sprintf_postfix(ASTNode* node, const char* format, ...)
 {
-	static char buffer[10000];
+	static char buffer[100000];
 	va_list args;
 	va_start(args,format);
 	vsprintf(buffer, format, args);

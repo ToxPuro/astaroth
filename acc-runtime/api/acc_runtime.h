@@ -187,8 +187,13 @@ typedef struct {
     AcReal* out[NUM_VTXBUF_HANDLES];
     float*  single_in[NUM_VTXBUF_HANDLES];
     float*  single_out[NUM_VTXBUF_HANDLES];
+//At least on CUDA __half is not defined for C-sources.
+//At the same time they never have to worry themselves about these internal
+//buffers so all good.
+#ifdef __cplusplus
     __half*   half_in[NUM_VTXBUF_HANDLES];
     __half*   half_out[NUM_VTXBUF_HANDLES];
+#endif
     AcComplex* complex_in[NUM_COMPLEX_FIELDS+1];
     acKernelInputParams kernel_input_params;
     int reduce_offset;
