@@ -7,7 +7,6 @@
 Field HEAT_INIT
 Field HEAT_SOLUTION
 real AC_k = 1.0
-real AC_SOR_omega = 1.8
 Kernel init_kernel()
 {
 	pos = grid_position()
@@ -39,20 +38,20 @@ empty_steps(boundconds)
 }
 
 
-fixed_boundary Kernel sor_red()
+fixed_boundary Kernel sor_red(real omega)
 {
-	poisson_sor_red_black_extended(SOR_RED,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_RED,HEAT_INIT,HEAT_SOLUTION,omega)
 }
-fixed_boundary Kernel sor_black()
+fixed_boundary Kernel sor_black(real omega)
 {
-	poisson_sor_red_black_extended(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,omega)
 }
 
 ComputeSteps
 sor_red_black_step(boundconds)
 {
-	sor_red()
-	sor_black()
+	sor_red(AC_SOR_omega)
+	sor_black(AC_SOR_omega)
 }
 
 fixed_boundary Kernel jacobi_kernel()

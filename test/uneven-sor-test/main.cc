@@ -84,7 +84,6 @@ main(void)
 	   );
 
     acPushToConfig(info,AC_allow_non_divisible_grid,true);
-    acPushToConfig(info,AC_SOR_omega,1.0);
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
@@ -118,6 +117,7 @@ main(void)
 		    ,info[AC_nlocal].z
 	   );
     acGridInit(info);
+    acDeviceSetInput(acGridGetDevice(),AC_SOR_omega,1.0);
     const auto empty_graph = acGetOptimizedDSLTaskGraph(empty_steps);
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);
 
