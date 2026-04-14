@@ -47,6 +47,7 @@ safe_array<bool>   AC_INTERNAL_run_const_bool_array_here{};
 safe_array<int>    AC_INTERNAL_run_const_int_array_here{};
 safe_array<float>  AC_INTERNAL_run_const_float_array_here{};
 safe_array<AcComplex>    AC_INTERNAL_run_const_AcComplex_array_here{};
+safe_array<AcComplexFloat>    AC_INTERNAL_run_const_AcComplexFloat_array_here{};
 
 safe_array<AcReal>
 RCONST(AcRealCompArrayParam)

@@ -310,7 +310,8 @@ acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Fie
 				input_dims.n0,
 				device->vba.on_device.in[real_dst_start],
 				device->vba.on_device.in[imag_dst_start],
-				batch_size
+				batch_size,
+				AC_REAL_PRECISION
 			);
 }
 

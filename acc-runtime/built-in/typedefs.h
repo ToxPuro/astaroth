@@ -57,6 +57,12 @@ typedef AcComplex struct complex
 	real y;
 };
 
+typedef AcComplexFloat struct complex_float
+{
+	float x;
+	float y;
+};
+
 typedef AcBool3 struct bool3
 {
 	bool x;

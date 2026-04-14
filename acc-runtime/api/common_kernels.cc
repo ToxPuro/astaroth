@@ -108,6 +108,15 @@ acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* arra
 }
 
 AcResult
+acMultiplyInplaceComplexFloat(const float value, const size_t count, AcComplexFloat* array)
+{
+  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE_COMPLEX_FLOAT,0,size_t(0),count,value,array);
+  ERRCHK_CUDA_KERNEL();
+  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
+  return AC_SUCCESS;
+}
+
+AcResult
 acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 {
   acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE,0,size_t(0),count,value,array);
@@ -161,6 +170,22 @@ acKernelVolumeCopyRealToComplex(const cudaStream_t stream,                      
     return AC_SUCCESS;
 }
 
+
+AcResult
+acKernelVolumeCopyFloatToComplexFloat(const cudaStream_t stream,                                    //
+                   const float* in, const Volume in_offset, const Volume in_volume, const Volume embedded_in_volume,//
+                   AcComplexFloat* out, const Volume out_offset, const Volume out_volume, const Volume embedded_out_volume)
+{
+    VertexBufferArray vba{};
+    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_FLOAT_TO_COMPLEX_FLOAT_BATCHED,(float*)in,in_offset,embedded_in_volume,out,out_offset,embedded_out_volume,1); 
+    const Volume start = {0,0,0};
+    const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
+    acLaunchKernel(AC_VOLUME_COPY_FLOAT_TO_COMPLEX_FLOAT_BATCHED,stream,start,nn,vba);
+    ERRCHK_CUDA_KERNEL();
+
+    return AC_SUCCESS;
+}
+
 AcResult
 acKernelVolumeCopyComplexToReal(const cudaStream_t stream,                                    //
                    const AcComplex* in, const Volume in_offset, const Volume in_volume, const Volume embemdded_in_volume,//
@@ -171,6 +196,38 @@ acKernelVolumeCopyComplexToReal(const cudaStream_t stream,                      
     const Volume start = {0,0,0};
     const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
     acLaunchKernel(AC_VOLUME_COPY_COMPLEX_TO_REAL_BATCHED,stream,start,nn,vba);
+    ERRCHK_CUDA_KERNEL();
+
+    return AC_SUCCESS;
+}
+
+
+
+AcResult
+acKernelVolumeCopyRealToComplexBatched(const cudaStream_t stream,                                    //
+                   const AcReal* in, const Volume in_offset, const Volume in_volume, //
+                   AcComplex* out, const Volume out_offset, const Volume out_volume, const int batch_size)
+{
+    VertexBufferArray vba{};
+    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED,(AcReal*)in,in_offset,in_volume,out,out_offset,out_volume,batch_size); 
+    const Volume start = {0,0,0};
+    const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
+    acLaunchKernel(AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED,stream,start,nn,vba);
+    ERRCHK_CUDA_KERNEL();
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acKernelVolumeCopyFloatToComplexFloatBatched(const cudaStream_t stream,                                    //
+                   const float* in, const Volume in_offset, const Volume in_volume, //
+                   AcComplexFloat* out, const Volume out_offset, const Volume out_volume, const int batch_size)
+{
+    VertexBufferArray vba{};
+    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_FLOAT_TO_COMPLEX_FLOAT_BATCHED,(float*)in,in_offset,in_volume,out,out_offset,out_volume,batch_size); 
+    const Volume start = {0,0,0};
+    const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
+    acLaunchKernel(AC_VOLUME_COPY_FLOAT_TO_COMPLEX_FLOAT_BATCHED,stream,start,nn,vba);
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
@@ -194,22 +251,6 @@ acKernelVolumeCopyComplexToPlanar(const cudaStream_t stream,                    
     return AC_SUCCESS;
 }
 
-
-AcResult
-acKernelVolumeCopyRealToComplexBatched(const cudaStream_t stream,                                    //
-                   const AcReal* in, const Volume in_offset, const Volume in_volume, //
-                   AcComplex* out, const Volume out_offset, const Volume out_volume, const int batch_size)
-{
-    VertexBufferArray vba{};
-    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED,(AcReal*)in,in_offset,in_volume,out,out_offset,out_volume,batch_size); 
-    const Volume start = {0,0,0};
-    const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
-    acLaunchKernel(AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED,stream,start,nn,vba);
-    ERRCHK_CUDA_KERNEL();
-
-    return AC_SUCCESS;
-}
-
 AcResult
 acKernelVolumeCopyComplexToPlanarBatched(const cudaStream_t stream,                                    //
                    const AcComplex* in, const Volume in_offset, const Volume in_volume, //
@@ -220,6 +261,21 @@ acKernelVolumeCopyComplexToPlanarBatched(const cudaStream_t stream,             
     const Volume start = {0,0,0};
     const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
     acLaunchKernel(AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED,stream,start,nn,vba);
+    ERRCHK_CUDA_KERNEL();
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acKernelVolumeCopyComplexFloatToPlanarFloatBatched(const cudaStream_t stream,                                    //
+                   const AcComplexFloat* in, const Volume in_offset, const Volume in_volume, //
+                   float* real_out,float* imag_out,const Volume out_offset, const Volume out_volume, const int batch_size)
+{
+    VertexBufferArray vba{};
+    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY_COMPLEX_FLOAT_TO_PLANAR_FLOAT_BATCHED,(AcComplexFloat*)in,in_offset,in_volume,real_out,imag_out,out_offset,out_volume,batch_size); 
+    const Volume start = {0,0,0};
+    const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
+    acLaunchKernel(AC_VOLUME_COPY_COMPLEX_FLOAT_TO_PLANAR_FLOAT_BATCHED,stream,start,nn,vba);
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;

@@ -88,8 +88,37 @@ utility Kernel AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED(const real[] src,Volume in
     }
 }
 
+utility Kernel AC_VOLUME_COPY_FLOAT_TO_COMPLEX_FLOAT_BATCHED(const float[] src,Volume in_offset, Volume in_volume, complex_float[] out,Volume out_offset,Volume out_volume, int batch_size)
+{
+    const size_t in_size  = in_volume.x*in_volume.y*in_volume.z
+    const size_t out_size = out_volume.x*out_volume.y*out_volume.z
+    indexes = get_copy_indexes(in_offset,out_offset,in_volume,out_volume)
+    for i in 0:batch_size
+    {
+	const size_t idx_out = indexes.out_index + i*out_size;
+	const size_t idx_in  = indexes.in_index + i*in_size;
+    	out[idx_out].x = src[idx_in];
+    	out[idx_out].y = 0.0;
+    }
+}
+
 utility Kernel AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED(const complex[] src,Volume in_offset, Volume in_volume, 
 			      real[] real_out,real[] imag_out,Volume out_offset,Volume out_volume, int batch_size)
+{
+    const size_t in_size  = in_volume.x*in_volume.y*in_volume.z
+    const size_t out_size = out_volume.x*out_volume.y*out_volume.z
+    indexes = get_copy_indexes(in_offset,out_offset,in_volume,out_volume)
+    for i in 0:batch_size
+    {
+	const size_t idx_out = indexes.out_index + i*out_size;
+	const size_t idx_in  = indexes.in_index + i*in_size;
+    	real_out[idx_out]    = src[idx_in].x;
+    	imag_out[idx_out]    = src[idx_in].y;
+    }
+}
+
+utility Kernel AC_VOLUME_COPY_COMPLEX_FLOAT_TO_PLANAR_FLOAT_BATCHED(const complex_float[] src,Volume in_offset, Volume in_volume, 
+			      float[] real_out,float[] imag_out,Volume out_offset,Volume out_volume, int batch_size)
 {
     const size_t in_size  = in_volume.x*in_volume.y*in_volume.z
     const size_t out_size = out_volume.x*out_volume.y*out_volume.z
@@ -163,6 +192,12 @@ utility Kernel AC_COMPLEX_TO_PLANAR(complex[] src, real[] real_dst, real[] imag_
 }
 
 utility Kernel AC_MULTIPLY_INPLACE_COMPLEX(const real val, complex[] dst)
+{
+	dst[vertexIdx.x].x *= val
+	dst[vertexIdx.x].y *= val
+}
+
+utility Kernel AC_MULTIPLY_INPLACE_COMPLEX_FLOAT(const float val, complex_float[] dst)
 {
 	dst[vertexIdx.x].x *= val
 	dst[vertexIdx.x].y *= val

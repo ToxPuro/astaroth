@@ -25,11 +25,28 @@ get_fresh_complex_buffer(const size_t count)
     return res;
 }
 
+static AcComplexFloat*
+get_fresh_complex_float_buffer(const size_t count)
+{
+    const size_t bytes = sizeof(AcComplexFloat)*count;
+    AcComplexFloat* res = NULL;
+    acDeviceMalloc((void**)&res,bytes);
+    acMultiplyInplaceComplexFloat(float(0.0),count,res);
+    return res;
+}
+
+
 typedef struct
 {
 	AcComplex* in;
 	AcComplex* out;
 } AcComplexInAndOut;
+
+typedef struct
+{
+	AcComplexFloat* in;
+	AcComplexFloat* out;
+} AcComplexFloatInAndOut;
 
 #include <unordered_map>
 static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
@@ -103,6 +120,47 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
     else
     {
     	plans_r2c.at(count).forward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    }
+    return AC_SUCCESS;
+}
+
+//This copy-paste is ugly.
+//TODO: refactor this
+AcResult
+acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcComplexFloat* dst,
+		  const bool inverse, const int batch_size)
+{
+    static std::unordered_map<size_t,AcComplexFloat*> work_buffers{};
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    //HeFFTe is surprisingly inclusive in the domain
+    const int3 lower = (int3)
+    {
+	    (int)global_offset.x,
+	    (int)global_offset.y,
+	    domain_size.z == 1 ? 0 : (int)global_offset.z
+    };
+    const int3 dims = (int3)
+    {
+	    (int)domain_size.x,
+	    (int)domain_size.y,
+	    (int)domain_size.z
+    };
+    const int3 upper = lower+dims-(int3){1,1,1};
+    if(plans.find(count) == plans.end())
+    {
+        heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
+        heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
+	plans.emplace(count,std::move(fft));
+	work_buffers[count] = get_fresh_complex_float_buffer(batch_size*fft.size_workspace());
+    }
+    AcComplexFloat* workspace = work_buffers[count];
+    if(inverse)
+    {
+    	plans.at(count).backward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::none);
+    }
+    else
+    {
+    	plans.at(count).forward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::full);
     }
     return AC_SUCCESS;
 }
@@ -283,8 +341,37 @@ acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src, const Volume do
 }
 
 AcResult
-acFFTForwardTransformR2PlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size)
+acFFTForwardTransformR2PlanarBatched(const void* src_, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, void* real_dst_, void* imag_dst_, const int batch_size, const AcPrecision precision)
 {
+    if(precision == AC_SINGLE_PRECISION)
+    {
+    	const float* src      = (float*)src_;
+    	float* real_dst       = (float*)real_dst_;
+    	float* imag_dst       = (float*)imag_dst_;
+    	const size_t count = subdomain_size.x*subdomain_size.y*subdomain_size.z*batch_size;
+    	static std::unordered_map<size_t,AcComplexFloatInAndOut> tmp_buffers{};
+    	if (tmp_buffers.find(count) == tmp_buffers.end())
+    	{
+    	    AcComplexFloat* tmp  = get_fresh_complex_float_buffer(count);
+    	    AcComplexFloat* tmp2 = get_fresh_complex_float_buffer(count);
+    	    tmp_buffers[count].in  = tmp;
+    	    tmp_buffers[count].out = tmp2;
+    	}
+
+    	AcComplexFloat* tmp_in  = tmp_buffers[count].in;
+    	AcComplexFloat* tmp_out = tmp_buffers[count].out;
+    	acKernelVolumeCopyFloatToComplexFloatBatched(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,batch_size);
+    	acFFTTransformCF2CFBase(tmp_in,subdomain_size,tmp_out,false,batch_size);
+    	acKernelVolumeCopyComplexFloatToPlanarFloatBatched(0,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size,batch_size);
+
+    	return AC_SUCCESS;
+    }
+
+    if(precision != AC_HALF_PRECISION) return AC_FAILURE;
+
+    const AcReal* src      = (AcReal*)src_;
+    AcReal* real_dst = (AcReal*)real_dst_;
+    AcReal* imag_dst = (AcReal*)imag_dst_;
     const size_t count = subdomain_size.x*subdomain_size.y*subdomain_size.z*batch_size;
     static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
     if (tmp_buffers.find(count) == tmp_buffers.end())

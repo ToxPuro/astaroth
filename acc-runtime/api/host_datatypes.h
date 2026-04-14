@@ -8,6 +8,13 @@ typedef struct
 { 
 	size_t x,y,z;
 } Volume;
+
+enum AcPrecision
+{
+	AC_REAL_PRECISION,
+	AC_SINGLE_PRECISION,
+	AC_HALF_PRECISION
+};
 #define VOLUME_DEFINED
 #endif
 
@@ -17,6 +24,11 @@ typedef struct
 { 
 	AcReal x,y;
 } AcComplex;
+
+typedef struct
+{ 
+	float x,y;
+} AcComplexFloat;
 #define COMPLEX_DEFINED
 #endif
 
