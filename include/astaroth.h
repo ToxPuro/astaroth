@@ -37,15 +37,13 @@
 #include "device_get_input_decls.h"
 #include "get_vtxbufs_declares.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * =============================================================================
  * Legacy interface
  * =============================================================================
  */
+
+AC_BEGIN_C_DECLARATIONS
 
 FUNC_DEFINE(AcResult, acCheckDeviceAvailability,(void));
 FUNC_DEFINE(int, acGetNumDevicesPerNode,(void));
@@ -72,6 +70,8 @@ FUNC_DEFINE(const char*,acGetFieldName,(const Field field));
 
 /** */
 FUNC_DEFINE(Node, acGetNode,(void));
+
+AC_END_C_DECLARATIONS
 
 /*
  * =============================================================================
@@ -107,6 +107,9 @@ FUNC_DEFINE(Node, acGetNode,(void));
  * Helper functions
  * =============================================================================
  */
+
+AC_BEGIN_C_DECLARATIONS
+
 AcResult 
 acHostUpdateParams(AcMeshInfo* config);
 
@@ -451,9 +454,23 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
   static AcResult __attribute__((unused)) acCloseLibrary() {return AC_FAILURE;}
 #endif
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
+/** Inits the profile to cosine wave */
+AcResult acHostInitProfileToCosineWave(const AcReal spacing, const AcReal initial_pos,
+                                       const AcReal amplitude, const AcReal wavenumber,
+                                       const size_t mz, AcReal* profile);
+
+/** Inits the profile to sine wave */
+AcResult acHostInitProfileToSineWave(const AcReal spacing, const AcReal initial_pos,
+                                     const AcReal amplitude, const AcReal wavenumber,
+                                     const size_t mz, AcReal* profile);
+
+/** Initialize a profile to a constant value */
+AcResult acHostInitProfileToValue(const long double value, const size_t profile_count,
+                                  AcReal* profile);
+
+/** Writes the host profile to a file */
+AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
+                                  const size_t profile_count);
 
 static UNUSED AcCompInfo
 acInitCompInfo()
@@ -503,6 +520,8 @@ acInitMesh()
       res.info = acInitInfo();
       return res;
 }
+
+AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
 

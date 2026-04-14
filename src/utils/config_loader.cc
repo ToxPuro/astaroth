@@ -39,8 +39,9 @@
  \return Index in range 0...n if the keyword is in names. -1 if the keyword was
  not found.
  */
-extern "C"
-{
+
+AC_BEGIN_C_DECLARATIONS
+
 static int
 find_str(const char keyword[], const char* names[], const int n)
 {
@@ -307,4 +308,5 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
 
     return uninitialized_config_val ? AC_FAILURE : AC_SUCCESS;
 }
-}
+
+AC_END_C_DECLARATIONS

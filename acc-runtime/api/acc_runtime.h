@@ -272,11 +272,10 @@ acGetFieldHalos(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 #include "common_kernels.h"
 
 typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
-  #ifdef __cplusplus
-  extern "C" {
-  #endif
 
-  #include "user_declarations.h"
+AC_BEGIN_C_DECLARATIONS
+
+#include "user_declarations.h"
 
 #if AC_MPI_ENABLED
    FUNC_DEFINE(AcResult, acInitializeRuntimeMPI,(const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
@@ -397,9 +396,9 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   }
 #endif
 
-  #ifdef __cplusplus
-  } // extern "C"
-    //
+AC_END_C_DECLARATIONS
+
+#ifdef __cplusplus
 #if AC_RUNTIME_COMPILATION
 #else
 AcResult
@@ -773,6 +772,8 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 #endif
   #endif
 
+AC_BEGIN_C_DECLARATIONS
+
 static UNUSED size_t
 prof_count(const Profile prof, const size3_t counts)
 {
@@ -819,3 +820,4 @@ ac_get_scratchpad_size_float(const size_t i);
 void
 ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
 
+AC_END_C_DECLARATIONS

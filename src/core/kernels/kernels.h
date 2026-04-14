@@ -22,9 +22,8 @@
 
 typedef AcReal AcRealPacked;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
+
 AcResult acKernelDummy(void);
 
 typedef struct AcShearInterpolationCoeffs
@@ -124,9 +123,9 @@ acKernelsClean();
 
 // Astaroth 2.0 backwards compatibility.
 
-#ifdef __cplusplus
-} // extern "C"
+AC_END_C_DECLARATIONS
 
+#ifdef __cplusplus
 // cplusplus overloads
 //
 

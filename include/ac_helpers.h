@@ -1,4 +1,7 @@
 #pragma once 
+
+#include "func_define.h"
+
 typedef struct device_s* Device;
   typedef struct AcBuffer{
       AcReal* data;
@@ -10,10 +13,7 @@ typedef struct device_s* Device;
 #endif
   } AcBuffer;
 
-#ifdef __cplusplus
-extern "C" 
-{
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 void
 ac_unset_floating_point_exceptions();
@@ -78,8 +78,9 @@ void acBufferDestroy(AcBuffer* buffer);
 AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
 AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
 
+AC_END_C_DECLARATIONS
+
 #ifdef __cplusplus
-}
 
 int3
 ceil(AcReal3 a);
