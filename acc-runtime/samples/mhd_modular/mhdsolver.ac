@@ -93,8 +93,8 @@ hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
-hostdefine LSELFGRAVITY (1)
-hostdefine LSPHERICAL_SINK_PARTICLE (1)
+hostdefine LSELFGRAVITY (0)
+hostdefine LSPHERICAL_SINK_PARTICLE (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
@@ -371,21 +371,6 @@ momentum() {
 #if LSPHERICAL_SINK_PARTICLE
 	+force_from_sink_particle(G_NEWTON)
 #endif
-	phi = value(GRAVITY_POTENTIAL)
-	//if(vertexIdx == (int3){1,1,1})
-	//{
-        //  	gas_pressure = - cs2 * gradient(VTXBUF_LNRHO)
-	//	G_phi = -gradient(GRAVITY_POTENTIAL)
-	//	F = force_from_sink_particle(G_NEWTON)
-	//	print("Force from sink particle: %.14e\n",F.x)
-	//	print("Momentum: %.14e\n",mom.x)
-	//	print("Force from self-gravity: %.14e\n",G_phi.x)
-	//	print("Force from gas: %.14e\n",gas_pressure.x)
-	//	print("Sink particle mass: %.14e\n",AC_central_sink_particle_mass)
-	//	print("Gravity potential: %.14e\n"
-	//			,phi
-	//	     )
-	//}	
 
     return mom
 }
@@ -558,47 +543,39 @@ Kernel singlepass_solve(int step_num, TimeParams time_params) {
 #endif
 }
 
-
 calc_timestep()
 {
     rho = exp(VTXBUF_LNRHO)
     bb = curl(AA)
     b2 = dot(bb,bb)
     alfven_speed = sqrt(b2/rho);
-    //dlr=AC_ds.x
-    dlr = AC_mapping_func_derivative_x[vertexIdx.x]
-    dltheta=AC_ds.y * AC_r[vertexIdx.x]
-    dlphi=AC_ds.z * AC_sin_theta[vertexIdx.y] * AC_r[vertexIdx.x]
-    dsmin=min(dlr,dltheta,dlphi)
-    dsmin_2=dsmin*dsmin
     if(AC_additive_timestep)
     {
-        visc_max =
-              max(max(AC_nu_visc, AC_eta), AC_gamma * AC_chi)
+    	visc_max =
+	      max(max(AC_nu_visc, AC_eta), AC_gamma * AC_chi)
 #if LSHOCK
                          + AC_nu_shock * VTXBUF_SHOCK
 #endif
-        visc_dt =  (AC_cdtv*dsmin_2) / visc_max;
-        advec_sum = norm(UU) + sqrt(AC_cs2_sound + alfven_speed*alfven_speed)
+    	visc_dt =  (AC_cdtv*AC_dsmin_2) / visc_max;
+    	advec_sum = norm(UU) + sqrt(AC_cs2_sound + alfven_speed*alfven_speed)
 #if LADONEFLUID
              + (pow(rho,AC_onefluid_ad_exp)/b2)
 #endif
-        advec_dt = (AC_cdt*dsmin)/advec_sum; // combining all velocities is pessimistic
-        reduce_min(min(visc_dt,advec_dt),AC_dt_min);
+    	advec_dt = (AC_cdt*AC_dsmin)/advec_sum;
+    	reduce_min(min(visc_dt,advec_dt),AC_dt_min);
     }
     else
     {
-        reduce_max(norm(UU),UU_MAX_ADVEC)
-        reduce_max(alfven_speed,ALFVEN_SPEED_MAX)
+	reduce_max(norm(UU),UU_MAX_ADVEC)
+	reduce_max(alfven_speed,ALFVEN_SPEED_MAX)
 #if LSHOCK
-        reduce_max(VTXBUF_SHOCK,AC_MAX_SHOCK)
+        reduce_max(VTXBUF_SHOCK,AC_MAX_SHOCK)	
 #endif
 #if LADONEFLUID
-        reduce_max(pow(rho,AC_onefluid_ad_exp)/b2,AD_ONE_FLUID_MAX_ADVEC)
+        reduce_max(pow(rho,AC_onefluid_ad_exp)/b2,AD_ONE_FLUID_MAX_ADVEC)	
 #endif
     }
 }
-
 
 Kernel twopass_solve_intermediate(AC_SUBSTEP_NUMBER step_num, real dt) {
 
@@ -875,10 +852,14 @@ BoundConds boundconds{
 **/
 
 BoundConds boundconds{
+       periodic(BOUNDARY_XYZ)
+/**
+#if LSELFGRAVITY
 	copy_extended_to_grid(BOUNDARY_X_BOT, GRAVITY_POTENTIAL, EXTENDED_GRAVITY_POTENTIAL)
 	copy_extended_to_grid(BOUNDARY_X_TOP, GRAVITY_POTENTIAL, EXTENDED_GRAVITY_POTENTIAL)
 	multipole_expansion_bc_inner_extended(BOUNDARY_X_BOT, EXTENDED_GRAVITY_POTENTIAL, G_NEWTON)
 	multipole_expansion_bc_outer_extended(BOUNDARY_X_TOP, EXTENDED_GRAVITY_POTENTIAL, G_NEWTON)
+#endif
 	ac_bc_a2(BOUNDARY_X,UU)
 	ac_bc_a2(BOUNDARY_X,AA)
 	ac_bc_a2(BOUNDARY_X,VTXBUF_LNRHO)
@@ -889,10 +870,12 @@ BoundConds boundconds{
         ac_const_bc(BOUNDARY_X,EXTENDED_BICGSTAB_S,0.0)
         ac_const_bc(BOUNDARY_X,EXTENDED_BICGSTAB_Y,0.0)
         ac_const_bc(BOUNDARY_X,EXTENDED_BICGSTAB_Z,0.0)
+**/
 }
 
 input AC_SUBSTEP_NUMBER AC_SUBSTEP
 
+#if LSELFGRAVITY
 Kernel calculate_mlm_density()
 {
 	calculate_mlm(exp(VTXBUF_LNRHO))
@@ -901,6 +884,7 @@ ComputeSteps AC_get_sph(boundconds)
 {
 	calculate_mlm_density()
 }
+#endif
 
 ComputeSteps AC_rhs_substep(boundconds)
 {
@@ -924,6 +908,7 @@ Kernel calc_timestep_kernel() {calc_timestep()}
 dims(AC_extended_mlocal) Field OMEGA
 Kernel init()
 {
+#if LSELFGRAVITY
 	r = AC_r[vertexIdx.x]
 	density = AC_cs2_sound/(G_NEWTON*2.0*AC_REAL_PI*r*r)
 	write(VTXBUF_LNRHO,log(density))
@@ -934,6 +919,7 @@ Kernel init()
 	}	
 	write(UU,real3(0.,0.,0.))
 	write(AA,real3(0.,0.,0.))
+#endif
 }
 #if LSELFGRAVITY
 Kernel init_extended_grid_kernel()

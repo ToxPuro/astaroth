@@ -42,6 +42,10 @@ grid_position() {
 grid_position_extended() {
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
 	{
+	    	if(AC_equidistant_in_all_directions)
+	    	{
+    	    	    return ((globalVertexIdx - AC_nmin)*AC_ds) + AC_first_gridpoint
+	    	}
 		return 
 			real3(
 				AC_x[vertexIdx.x],
@@ -68,6 +72,10 @@ grid_position_extended() {
 grid_xyz() {
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
 	{
+	    	if(AC_equidistant_in_all_directions)
+	    	{
+    	    	    return ((globalVertexIdx - AC_nmin)*AC_ds) + AC_first_gridpoint
+	    	}
 		return 
 			real3(
 				AC_x[vertexIdx.x],
@@ -125,6 +133,11 @@ grid_position(int3 local_point) {
 }
 
 grid_position_extended(int3 local_point) {
+	if(AC_equidistant_in_all_directions)
+	{
+    		global_point = (local_point-AC_nmin) + AC_multigpu_offset
+    		return global_point*AC_ds + AC_first_gridpoint
+	}
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
 	{
 		return 
