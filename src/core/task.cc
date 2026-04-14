@@ -2290,9 +2290,9 @@ PeriodicRayTask::compute()
    //const size_t buffer_length = (packed_data->length/nprocs)*nvars;
    const size_t variable_len = (packed_data->real_length/nprocs);
    vba.on_device.kernel_input_params.sum_periodic_rays.ray_direction = ray_direction;
-   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_src = &packed_data->data[0];
-   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_dst = &dst->data[0];
-   vba.on_device.kernel_input_params.sum_periodic_rays.tau_src = &packed_data->data[variable_len];
+   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_src = &packed_data->real_data[0];
+   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_dst = &dst->real_data[0];
+   vba.on_device.kernel_input_params.sum_periodic_rays.tau_src = &packed_data->real_data[variable_len];
    const Volume start{0,0,0};
    const Volume end = input_regions[0].dims;
    acLaunchKernel(sum_periodic_rays,stream,start,end,vba);
