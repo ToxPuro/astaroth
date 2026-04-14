@@ -164,14 +164,19 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
 }
 
 AcResult
-acFFTForwardTransformR2HermitianPlanarBatched(const void* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, void* real_dst, void* imag_dst, const int batch_size, cudaStream_t stream, AcPrecision precision)
+acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size, cudaStream_t stream)
 {
 	return AC_FAILURE;
 }
 
 AcResult
-acFFTForwardTransformR2PlanarBatched(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst, const int batch_size)
+acFFTForwardTransformR2PlanarBatched(const void* src_, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, void* real_dst_, void* imag_dst_, const int batch_size, AcPrecision precision)
 {
+    if(precision != AC_REAL_PRECISION) return;
+
+    const AcReal* src = (AcReal*)src_;
+    AcReal* real_dst = (AcReal*)real_dst_;
+    AcReal* imag_dst = (AcReal*)imag_dst_;
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
     for(int offset = 0; offset < batch_size; ++offset)
     {
