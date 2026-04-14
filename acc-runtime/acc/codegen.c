@@ -102,6 +102,7 @@ extern const char* OUTPUT_VALUE_STR     ;
 extern const char* DEAD_STR     ;
 extern const char* AUXILIARY_STR     ;
 extern const char* SINGLE_PRECISION_STR     ;
+extern const char* PRECISION_STR     ;
 extern const char* HALF_PRECISION_STR     ;
 extern const char* HALF_STR     ;
 extern const char* COMMUNICATED_STR     ;
@@ -9928,7 +9929,7 @@ process_overrides_recursive(ASTNode* node, const string_vec overrided_vars)
 {
 	TRAVERSE_PREAMBLE_PARAMS(process_overrides_recursive,overrided_vars);
 	if(!((node->type & NODE_DECLARATION))) return;
-	const ASTNode* id = get_node_by_token(IDENTIFIER,node);
+	const ASTNode* id = get_node_by_token(IDENTIFIER,node->rhs);
 	if(!id) return;
 	if(str_vec_contains(overrided_vars,id->buffer) && !has_qualifier(node,OVERRIDE_STR))
 	{
@@ -10229,9 +10230,43 @@ add_casts(ASTNode* node)
 	}
 }
 void
+process_precision(ASTNode* node, const ASTNode* root)
+{
+  TRAVERSE_PREAMBLE_PARAMS(process_precision,root);
+  if(node->token == PRECISION)
+  {
+	node = node->parent;
+	const char* id = get_node_by_token(IDENTIFIER,node->rhs)->buffer;
+	const ASTNode* val = get_var_val(id, root);
+	if(val == NULL) return;
+	const char* precision = intern(combine_all_new(val));
+	if(precision == intern("AC_SINGLE_PRECISION"))
+	{
+		node->lhs->buffer  = intern("single_precision");
+		node->rhs = NULL;
+	}
+	else if(precision == intern("AC_HALF_PRECISION"))
+	{
+		node->lhs->buffer  = intern("half_precision");
+		node->rhs = NULL;
+	}
+	else if(precision == intern("AC_REAL_PRECISION"))
+	{
+		node->lhs->buffer  = intern("real_precision");
+		node->rhs = NULL;
+	}
+	else
+	{
+		fatal("Unknown precision given: %s!\n",precision);
+	}
+  }
+}
+
+void
 preprocess(ASTNode* root, const bool optimize_input_params)
 {
   process_overrides(root);
+  process_precision(root,root);
 
   if(duplicate_dfuncs.names.size == 0) duplicate_dfuncs = get_duplicate_dfuncs(root);
   replace_const_ints(root,const_int_values,const_ints);

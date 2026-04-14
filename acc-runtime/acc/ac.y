@@ -57,6 +57,7 @@ const char* OUTPUT_VALUE_STR      = NULL;
 const char* DEAD_STR      = NULL;
 const char* AUXILIARY_STR      = NULL;
 const char* SINGLE_PRECISION_STR      = NULL;
+const char* PRECISION_STR      = NULL;
 const char* HALF_PRECISION_STR      = NULL;
 const char* HALF_STR      = NULL;
 const char* COMMUNICATED_STR      = NULL;
@@ -677,6 +678,7 @@ populate_global_strings()
 	ELEMENTAL_STR = intern("elemental");
 	AUXILIARY_STR = intern("auxiliary");
 	SINGLE_PRECISION_STR = intern("single_precision");
+	PRECISION_STR = intern("precision");
 	HALF_PRECISION_STR = intern("half_precision");
 	HALF_STR = intern("__half");
 	COMMUNICATED_STR = intern("communicated");
@@ -768,7 +770,7 @@ main(int argc, char** argv)
 %token  ASSIGNOP QUESTION UNARY_OP
 %token  SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
 %token  BOOL INTRINSIC LONG_LONG LONG 
-%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED HALF_PRECISION SINGLE_PRECISION AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED HALF_PRECISION PRECISION SINGLE_PRECISION AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token  FIXED_BOUNDARY
 %token  PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
 %token  HOSTDEFINE
@@ -926,8 +928,9 @@ break_node: BREAK { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_b
 continue_node: CONTINUE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 device_only:  DEVICE_ONLY{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-dims: DIMS { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("dims", $$); $$->token = 255 + DIMS; astnode_set_postfix(" ", $$); };
-halo: HALO { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("halo", $$); $$->token = 255 + DIMS; astnode_set_postfix(" ", $$); };
+dims: DIMS { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("dims", $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+halo: HALO { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("halo", $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+precision: PRECISION { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("precision", $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field_order: FIELD_ORDER{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(RUNTIME_COMPILATION ? "inactive" : "field_order", $$); $$->token = 255 + DIMS; astnode_set_postfix(" ", $$); };
 dconst_ql: DCONST_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 profile_x:  PROFILE_X   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -1107,6 +1110,7 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | device_only  { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dims '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
+              | precision '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | halo '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | field_order '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); 
 						int err = 0;

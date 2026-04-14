@@ -114,6 +114,7 @@ void strip_whitespace(char *str) {
 "gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }
 "single_precision"          { return SINGLE_PRECISION; }
+"precision"          { return PRECISION; }
 "half_precision"          { return HALF_PRECISION; }
 "dead"             { return DEAD; }
 
