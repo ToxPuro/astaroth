@@ -259,7 +259,11 @@ main(void)
         acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(three_dimensional_test_setup),1);
 	acGridSynchronizeStream(STREAM_ALL);
         acDeviceFFTR2Planar(acGridGetDevice(),HEAT_INIT,HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG);
+
+	//Test both single to single and real to single
+        acDeviceFFTR2PlanarBatched(acGridGetDevice(),HEAT_INIT,HEAT_PLANAR_REAL_SINGLE,HEAT_PLANAR_IMAG_SINGLE,1);
         acDeviceFFTR2PlanarBatched(acGridGetDevice(),HEAT_INIT_SINGLE,HEAT_PLANAR_REAL_SINGLE,HEAT_PLANAR_IMAG_SINGLE,1);
+
         acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_single_to_output),1);
         acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &candidate);
 	acGridSynchronizeStream(STREAM_ALL);

@@ -303,10 +303,9 @@ acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Fie
   	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst_start);
 	ERRCHK_ALWAYS(input_dims == output_real_dims);
 	ERRCHK_ALWAYS(input_dims == output_imag_dims);
-	ERRCHK_ALWAYS(vtxbuf_precision[src_start] == vtxbuf_precision[real_dst_start]);
-	ERRCHK_ALWAYS(vtxbuf_precision[src_start] == vtxbuf_precision[imag_dst_start]);
+	ERRCHK_ALWAYS(vtxbuf_precision[real_dst_start] == vtxbuf_precision[imag_dst_start]);
 
-    	if(vtxbuf_precision[src_start] == AC_SINGLE_PRECISION) 
+    	if(vtxbuf_precision[src_start] == AC_SINGLE_PRECISION && vtxbuf_precision[imag_dst_start] == AC_SINGLE_PRECISION) 
 	{
 		return acFFTForwardTransformR2PlanarBatched(
 					device->vba.on_device.single_in[src_start],
@@ -316,6 +315,21 @@ acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Fie
 					device->vba.on_device.single_in[real_dst_start],
 					device->vba.on_device.single_in[imag_dst_start],
 					batch_size,
+					AC_SINGLE_PRECISION,
+					AC_SINGLE_PRECISION
+				);
+	}
+	else if(vtxbuf_precision[src_start] == AC_REAL_PRECISION && vtxbuf_precision[imag_dst_start] == AC_SINGLE_PRECISION) 
+	{
+		return acFFTForwardTransformR2PlanarBatched(
+					device->vba.on_device.in[src_start],
+					input_dims.m1,	
+					input_dims.nn,	
+					input_dims.n0,
+					device->vba.on_device.single_in[real_dst_start],
+					device->vba.on_device.single_in[imag_dst_start],
+					batch_size,
+					AC_REAL_PRECISION,
 					AC_SINGLE_PRECISION
 				);
 	}
@@ -327,6 +341,7 @@ acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Fie
 				device->vba.on_device.in[real_dst_start],
 				device->vba.on_device.in[imag_dst_start],
 				batch_size,
+				AC_REAL_PRECISION,
 				AC_REAL_PRECISION
 			);
 

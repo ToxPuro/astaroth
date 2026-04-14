@@ -38,6 +38,9 @@ AcResult acKernelVolumeCopyComplexToPlanar(const cudaStream_t stream,           
 AcResult acKernelVolumeCopyRealToComplexBatched(const cudaStream_t stream,                                    //
                             const AcReal* in, const Volume in_offset, const Volume in_volume, //
                             AcComplex* out, const Volume out_offset, const Volume out_volume, const int batch_size);
+AcResult acKernelVolumeCopyRealToComplexFloatBatched(const cudaStream_t stream,                                    //
+                            const AcReal* in, const Volume in_offset, const Volume in_volume, //
+                            AcComplexFloat* out, const Volume out_offset, const Volume out_volume, const int batch_size);
 AcResult acKernelVolumeCopyFloatToComplexFloatBatched(const cudaStream_t stream,                                    //
                             const float* in, const Volume in_offset, const Volume in_volume, //
                             AcComplexFloat* out, const Volume out_offset, const Volume out_volume, const int batch_size);

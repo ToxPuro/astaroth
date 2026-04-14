@@ -342,11 +342,12 @@ acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src, const Volume do
 }
 
 AcResult
-acFFTForwardTransformR2PlanarBatched(const void* src_, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, void* real_dst_, void* imag_dst_, const int batch_size, const AcPrecision precision)
+acFFTForwardTransformR2PlanarBatched(const void* src_, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, void* real_dst_, void* imag_dst_, const int batch_size, const AcPrecision input_precision, const AcPrecision output_precision)
 {
-    if(precision == AC_SINGLE_PRECISION)
+    if(input_precision == AC_SINGLE_PRECISION && output_precision == AC_REAL_PRECISION) return AC_FAILURE;
+    if(input_precision == AC_HALF_PRECISION || output_precision == AC_HALF_PRECISION) return AC_FAILURE;
+    if(output_precision == AC_SINGLE_PRECISION)
     {
-    	const float* src      = (float*)src_;
     	float* real_dst       = (float*)real_dst_;
     	float* imag_dst       = (float*)imag_dst_;
     	const size_t count = subdomain_size.x*subdomain_size.y*subdomain_size.z*batch_size;
@@ -361,14 +362,26 @@ acFFTForwardTransformR2PlanarBatched(const void* src_, const Volume domain_size,
 
     	AcComplexFloat* tmp_in  = tmp_buffers[count].in;
     	AcComplexFloat* tmp_out = tmp_buffers[count].out;
-    	acKernelVolumeCopyFloatToComplexFloatBatched(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,batch_size);
+	if(input_precision == AC_SINGLE_PRECISION)
+	{
+    		const float* src      = (float*)src_;
+    		acKernelVolumeCopyFloatToComplexFloatBatched(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,batch_size);
+	}
+	else if(input_precision == AC_REAL_PRECISION)
+	{
+    		const AcReal* src      = (AcReal*)src_;
+    		acKernelVolumeCopyRealToComplexFloatBatched(0,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,batch_size);
+	}
+	else
+	{
+		return AC_FAILURE;
+	}
     	acFFTTransformCF2CFBase(tmp_in,subdomain_size,tmp_out,false,batch_size);
     	acKernelVolumeCopyComplexFloatToPlanarFloatBatched(0,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size,batch_size);
 
     	return AC_SUCCESS;
     }
 
-    if(precision != AC_HALF_PRECISION) return AC_FAILURE;
 
     const AcReal* src      = (AcReal*)src_;
     AcReal* real_dst = (AcReal*)real_dst_;

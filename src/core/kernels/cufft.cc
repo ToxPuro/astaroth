@@ -232,7 +232,7 @@ acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src, const Volume do
 AcResult
 acFFTForwardTransformR2PlanarBatched(const void* src_, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, void* real_dst_, void* imag_dst_, const int batch_size, const AcPrecision precision)
 {
-    if(precision != AC_REAL_PRECISION) return AC_FAILURE;
+    if(input_precision != AC_REAL_PRECISION || output_precision != AC_REAL_PRECISION) return AC_FAILURE;
 
     const AcReal* src      = (AcReal*)src_;
     AcReal* real_dst = (AcReal*)real_dst_;
