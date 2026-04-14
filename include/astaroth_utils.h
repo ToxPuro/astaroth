@@ -44,19 +44,6 @@ typedef struct {
     int z;
 } Error;
 
-#if AC_RUNTIME_COMPILATION
-
-#ifndef FUNC_DEFINE
-#define FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*func_name) __VA_ARGS__
-#endif
-
-#else
-
-#ifndef FUNC_DEFINE
-#define FUNC_DEFINE(return_type, func_name, ...) return_type func_name __VA_ARGS__
-#endif
-#endif
-
 /** */
 FUNC_DEFINE(AcResult, acHostVertexBufferSet,(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh));
 
