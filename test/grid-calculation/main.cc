@@ -141,7 +141,6 @@ main(void)
     fprintf(stderr,"%d: First point: %.14e\n",pid,info[AC_r][NGHOST]);
     fprintf(stderr,"%d: Last point: %.14e\n",pid,info[AC_r][info[AC_last_active_local_point].x]);
     fflush(stderr);
-    finalized = true;
 
     fprintf(stderr,"First grid point theta: %.14e\n",info[AC_first_gridpoint].y);
     fprintf(stderr,"First + Len theta: %.14e\n",info[AC_len].y + info[AC_first_gridpoint].y);
@@ -150,7 +149,13 @@ main(void)
     fprintf(stderr,"First grid point phi: %.14e\n",info[AC_first_gridpoint].z);
     fprintf(stderr,"First + Len phi: %.14e\n",info[AC_len].z + info[AC_first_gridpoint].z);
     fprintf(stderr,"%d: Last point phi: %.14e\n",pid,info[AC_phi][info[AC_last_active_local_point].z]);
-    exit(EXIT_SUCCESS);
+    int retval = AC_SUCCESS;
+    MPI_Finalize();
+    finalized = true;
+    if (pid == 0)
+        fprintf(stderr, "GRID_CALCULATION_TEST complete: %s\n",
+                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
+    return retval;
     //const AcReal R_max = info[AC_r][info[AC_nlocal].x+NGHOST-1] + 0.0*info[AC_ds].x;
     //const AcReal R_min = info[AC_r][NGHOST] - 0.0*info[AC_ds].x;
     /**
@@ -373,7 +378,6 @@ main(void)
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
 
 
-    int retval = AC_SUCCESS;
     if(residual_norm > 4e-8)
     {
 	    fprintf(stderr,"Residual is too large: %.14e\n",residual_norm);
@@ -385,7 +389,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "POISSON_TEST complete: %s\n",
+        fprintf(stderr, "GRID_CALCULATION_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return retval;
