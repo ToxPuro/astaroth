@@ -151,7 +151,7 @@ static size_t current_nest           = 0;
 static Symbol*
 symboltable_lookup(const char* identifier)
 {
-    // TODO assert tha symbol not function! cannot be since we allow overloads->conflicts if not
+    // TODO assert that symbol not function! cannot be since we allow overloads->conflicts if not
     // explicit
 
     if (!identifier)
@@ -518,7 +518,6 @@ static const char* builtin_int_params[] = {
 };
 
 static const char* builtin_int3_params[] = {
-    "AC_global_grid_n",
     "AC_multigpu_offset",
 };
 
@@ -947,6 +946,17 @@ main(void)
     for (size_t i = 0; i < ARRAY_SIZE(builtin_int_params); ++i)
         add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, builtin_int_params[i]);
 
+    // Add built-in params
+    /*
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_mxy");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_nxy");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_nxyz");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_xy_plate_bufsize");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_xz_plate_bufsize");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_yz_plate_bufsize");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT3, "AC_global_grid_n");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT3, "AC_multigpu_offset");
+    */
     for (size_t i = 0; i < ARRAY_SIZE(builtin_int3_params); ++i)
         add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT3, builtin_int3_params[i]);
 
@@ -982,3 +992,4 @@ main(void)
 
     return EXIT_SUCCESS;
 }
+:q

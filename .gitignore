@@ -25,11 +25,75 @@ makefile~
 build/
 build*/
 benchmark-data/
-
 # Clangd files
 .cache/
 
 # Other
 compile_commands.json
+compilation_log.txt
+FAIL
 .DS_Store
 .vscode
+acc-comm/acm/detail/accruntime_wrapper_test.cc
+acc-comm/acm/detail/drafting-remove.cc
+acc-comm/acm/detail/vector-non-class.h
+acc-comm/acm/thrust-test.cc
+samples/tfm-comm/tmp/buffer.h
+samples/tfm-comm/tmp/dalloc.cu
+samples/tfm-comm/tmp/dalloc.h
+samples/tfm-comm/tmp/device_buffer copy.h
+samples/tfm-comm/tmp/device_buffer.cc
+samples/tfm-comm/tmp/device_buffer.h
+samples/tfm-comm/tmp/gpu copy 2.cu
+samples/tfm-comm/tmp/gpu copy 3.cu
+samples/tfm-comm/tmp/gpu copy 4.cu
+samples/tfm-comm/tmp/gpu copy 5.cu
+samples/tfm-comm/tmp/gpu copy 6.cu
+samples/tfm-comm/tmp/gpu copy.cu
+samples/tfm-comm/tmp/io copy-unique-ptr-attempit.h
+samples/tfm-comm/tmp/io copy.h
+samples/tfm-comm/thrust-test copy.cc
+samples/tfm-mpi/tfm copy 2.cc
+samples/tfm-mpi/tfm copy.cc
+src/core/grid-debug-tests-tmp.cc
+acc-comm/acm/detail/tensor.h
+acc-comm/acm/detail/static_ntuple.cc
+acc-comm/acm/detail/static_ntuple.h
+acc-comm/acm/detail/pack copy.cu
+samples/thrusttest/build-cuda.sh
+samples/thrusttest/build-hip.sh
+samples/thrusttest/build-host.sh
+samples/thrusttest/thrust.cu
+samples/tfm-mpi/visualize-simple.py
+acc-comm/acm/detail/test-merged-mpi-cuda/
+acc-comm/acm/detail/halo_exchange_batched_v1.h
+acc-comm/tests/async_io copy.cc.backup
+scripts/genavgstencil.py
+acc-comm/benchmarks/bm_pack_old_wip_backup.cc
+acc-comm/benchmarks/bm_rank_reordering_old.cc
+acc-comm/benchmarks/bm_pack_old.cc
+acc-comm/benchmarks/bm_pack_v2.cc
+acc-comm/benchmarks/bm_plot_old.py
+acc-comm/benchmarks/bm_rank_reordering copy.cc
+acc-comm/benchmarks/bm_rank_reordering-backup.cc
+acc-comm/benchmarks/bm_rank_reordering-test.cc
+acc-comm/benchmarks/pack_strategy.h
+acc-comm/acm/detail/experimental/deprecated/
+acc-comm/tests/acm/experimental/deprecated/
+acc-runtime/acc/stencilgen copy 2.c
+acc-runtime/acc/stencilgen copy 3.c
+acc-runtime/acc/stencilgen copy 4.c
+acc-runtime/acc/stencilgen copy 5.c
+acc-runtime/api/acc_runtime copy.cu
+acc-runtime/api/mapreduce-with-thrust.cuh
+pilot/astaroth-512-snapshot.conf
+pilot/astaroth-512-varfile.conf
+pilot/pilot-1.sh
+pilot/pilot-8-from-snapshot.sh
+pilot/pilot-8-from-varfile.sh
+samples/bwtest/bwtest-io copy.cu
+scripts/smem-calculator.py
+scripts/zorder.py
+src/core/grid copy.cc
+stencilgen-nth-copy.c
+acc-comm/tests/test_config.cc.unused

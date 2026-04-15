@@ -1,0 +1,321 @@
+hostdefine STENCIL_ORDER (6)
+
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/cg.h"
+Field HEAT_INIT
+Field HEAT_SOLUTION
+real AC_k = 1.0
+Field TEST_SOLUTION
+Field TEST_HEAT
+
+Field RESIDUAL
+
+Field CG_P 
+Field CG_R
+Field CG_Z
+
+input real AC_laplace_sign
+
+Kernel init_kernel(real init_sign)
+{
+	//Not using the sine wave example since due to being eigensolution would converge in a single step
+	pos = grid_position()
+	write(HEAT_INIT,init_sign*(pos.x + pos.y + pos.z))
+	write(HEAT_SOLUTION,0.0)
+	write(TEST_SOLUTION, (1.0/6.0)*(pos.x*pos.x*pos.x + pos.y*pos.y*pos.y + pos.z*pos.z*pos.z))
+}
+bc_heat(AcBoundary boundary, Field f) {
+   const int3 normal = get_normal(boundary)
+   const int3 boundary_point = get_boundary(normal)
+   int3 ghost  = boundary_point
+   for i in 0:NGHOST
+   {
+           ghost  = ghost  + normal
+	   pos = grid_position(ghost)
+           f[ghost.x][ghost.y][ghost.z] = (1.0/6.0)*((pos.x*pos.x*pos.x) + (pos.y*pos.y*pos.y) + (pos.z*pos.z*pos.z));
+   }
+
+}
+
+bc_heat_source(AcBoundary boundary, Field f)
+{
+   const int3 normal = get_normal(boundary)
+   const int3 boundary_point = get_boundary(normal)
+   int3 ghost  = boundary_point
+   for i in 0:NGHOST
+   {
+           ghost  = ghost  + normal
+	   pos = grid_position(ghost)
+           f[ghost.x][ghost.y][ghost.z] = pos.x + pos.y + pos.z;
+   }
+
+}
+
+bc_schwarz(AcBoundary boundary, Field f)
+{
+	if(local_boundary_is_a_global_boundary(boundary))
+	{
+		bc_heat(boundary,f)
+	}
+	else
+	{
+		ac_fixed_bc(boundary,f)
+	}
+}
+
+
+BoundConds boundconds{
+	bc_heat(BOUNDARY_XYZ,HEAT_SOLUTION)
+	bc_heat(BOUNDARY_XYZ,CG_Z)
+	ac_const_bc(BOUNDARY_XYZ,CG_P,0.0)
+	bc_heat(BOUNDARY_XYZ,TEST_SOLUTION)
+}
+
+BoundConds schwarz_bcs {
+	//bc_schwarz(BOUNDARY_XYZ,CG_Z)
+	ac_const_bc(BOUNDARY_XYZ,CG_Z,0.0)
+	ac_const_bc(BOUNDARY_XYZ,CG_P_LOCAL,0.0)
+}
+
+global output real AC_residual_l2_norm
+output real AC_residual_local_l2_norm
+Kernel global_residual_kernel(real laplace_sign)
+{
+	r = HEAT_INIT-(laplace_sign*laplace(HEAT_SOLUTION))
+	write(RESIDUAL,r)
+	reduce_l2_norm(r,AC_residual_l2_norm)
+	write(TEST_HEAT,(-laplace_sign*laplace(TEST_SOLUTION)))
+}
+
+Kernel global_residual_kernel_for_z(real laplace_sign)
+{
+	r = HEAT_INIT-(laplace_sign*laplace(CG_Z))
+	write(RESIDUAL,r)
+	reduce_l2_norm(r,AC_residual_l2_norm)
+}
+
+Kernel local_residual_kernel(real laplace_sign)
+{
+	r = CG_R-(laplace_sign*laplace(CG_Z))
+	reduce_l2_norm(r,AC_residual_local_l2_norm)
+}
+
+ComputeSteps
+initcond(boundconds)
+{
+	init_kernel(AC_laplace_sign)
+}
+
+
+ComputeSteps
+empty_steps(boundconds)
+{
+}
+
+Kernel
+init_cg_solution()
+{
+	write(HEAT_SOLUTION,0.0)
+}
+
+Kernel
+init_cg_residual()
+{
+	r = HEAT_INIT -(-laplace(HEAT_SOLUTION))
+	write(CG_R,r)
+	//write(CG_R,HEAT_INIT)
+}
+
+
+
+
+Kernel cg_compute_alpha_kernel(real laplace_sign)
+{
+	Ap = laplace_sign*laplace(CG_P)
+	cg_compute_inner_products(Ap,CG_P,CG_R,CG_Z)
+}
+
+
+Kernel cg_advance_kernel(real laplace_sign)
+{
+	Ap = laplace_sign*laplace(CG_P)
+	cg_advance_solution(HEAT_SOLUTION,Ap,CG_P,CG_R)
+}
+Kernel cg_compute_beta_kernel()
+{
+	cg_compute_rp1Tzp1(CG_R,CG_Z)
+}
+
+
+Kernel cg_advance_p_kernel()
+{
+	cg_next_direction(CG_P,CG_Z)
+}
+
+ComputeSteps
+init_cg(boundconds)
+{
+	init_cg_solution()
+	init_cg_residual()
+}
+
+ComputeSteps
+cg_step(boundconds)
+{
+
+	cg_compute_alpha_kernel(AC_laplace_sign)
+	cg_advance_kernel(AC_laplace_sign)
+
+	cg_compute_beta_kernel()
+	cg_advance_p_kernel()
+}
+
+
+
+ComputeSteps
+cg_compute_alpha_and_advance(boundconds)
+{
+	cg_compute_alpha_kernel(AC_laplace_sign)
+	cg_advance_kernel(AC_laplace_sign)
+}
+
+ComputeSteps
+cg_compute_beta_and_advance_p(boundconds)
+{
+	cg_compute_beta_kernel()
+	cg_advance_p_kernel()
+}
+
+fixed_boundary Kernel sor_red(real laplace_sign, real omega)
+{
+	poisson_sor_red_black_extended(SOR_RED,value(HEAT_INIT),HEAT_SOLUTION,omega,laplace_sign)
+}
+fixed_boundary Kernel sor_black(real laplace_sign, real omega)
+{
+	poisson_sor_red_black_extended(SOR_BLACK,value(HEAT_INIT),HEAT_SOLUTION,omega,laplace_sign)
+}
+
+ComputeSteps
+sor_red_black_step(boundconds)
+{
+	sor_red(AC_laplace_sign,1.0)
+	sor_black(AC_laplace_sign,1.0)
+}
+
+Field CG_P_LOCAL
+Field CG_R_LOCAL
+
+Kernel
+init_cg_local_solution()
+{
+	write(CG_Z,0.0)
+}
+
+Kernel get_cg_z_kernel(real laplace_sign)
+{
+	write(CG_Z,CG_R/(laplace_sign*laplace_central_coeff()))
+}
+
+ComputeSteps
+get_cg_z(boundconds)
+{
+	get_cg_z_kernel(AC_laplace_sign)
+}
+
+Kernel
+init_cg_local_residual()
+{
+	r = CG_R -(-laplace(CG_Z))
+	write(CG_P_LOCAL,r)
+	write(CG_R_LOCAL,r)
+}
+
+ComputeSteps
+init_local_cg(schwarz_bcs)
+{	
+	init_cg_local_solution()
+	init_cg_local_residual()
+}
+
+Kernel cg_compute_alpha_local(real laplace_sign)
+{
+	Ap = laplace_sign*laplace(CG_P_LOCAL)
+ 	r  = value(CG_R_LOCAL)
+	p  = value(CG_P_LOCAL)
+	cg_compute_inner_products_local(Ap,p,r)
+}
+
+
+Kernel cg_advance_local(real laplace_sign)
+{
+	Ap = laplace_sign*laplace(CG_P_LOCAL)
+	p  = value(CG_P_LOCAL)
+	cg_advance_solution_local(CG_Z,Ap,p,CG_R_LOCAL)
+}
+
+Kernel cg_compute_beta_local()
+{
+	cg_compute_rp1Tzp1_local(CG_R_LOCAL,CG_R_LOCAL)
+}
+
+
+Kernel cg_advance_p_local()
+{
+	cg_next_direction_local(CG_P_LOCAL,CG_R_LOCAL)
+}
+
+ComputeSteps
+cg_local_step(schwarz_bcs)
+{
+	cg_compute_alpha_local(AC_laplace_sign)
+	cg_advance_local(AC_laplace_sign)
+	cg_compute_beta_local()
+	cg_advance_p_local()
+}
+
+ComputeSteps
+get_residual(boundconds)
+{
+	global_residual_kernel(AC_laplace_sign)
+}
+
+ComputeSteps
+get_residual_for_z(boundconds)
+{
+	global_residual_kernel_for_z(AC_laplace_sign)
+}
+
+ComputeSteps
+get_local_residual(schwarz_bcs)
+{
+	local_residual_kernel(AC_laplace_sign)
+}
+Kernel
+copy_z_to_p_kernel()
+{
+	write(CG_P,CG_Z)
+}
+
+Kernel
+copy_z_to_solution_kernel()
+{
+	write(HEAT_SOLUTION,CG_Z)
+}
+
+ComputeSteps
+copy_z_to_p(boundconds)
+{
+	copy_z_to_p_kernel()
+}
+
+ComputeSteps
+copy_z_to_solution(boundconds)
+{
+	copy_z_to_solution_kernel()
+}
+

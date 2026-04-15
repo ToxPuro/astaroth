@@ -1,0 +1,143 @@
+hostdefine STENCIL_ORDER (2)
+
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/geometric_multigrid.h"
+
+real AC_k = 1.0
+real AC_laplace_sign = -1.0
+
+Field Y_SMOOTH_SOLUTION
+real AC_init_val = 0.0
+Kernel init_kernel()
+{
+	pos = grid_position()
+	val = sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z)
+	write(GMG_INITIAL_RHS,val)
+	write(GMG_SOLUTIONS[0],AC_init_val)
+	write(Y_SMOOTH_SOLUTION,0.0)
+}
+
+
+BoundConds gmg_boundconds{
+	ac_const_bc(BOUNDARY_XYZ,0.0)
+}
+
+
+
+
+ComputeSteps
+initcond(gmg_boundconds)
+{
+	init_kernel()
+}
+
+Stencil laplace_neighbours_without_spacing
+{
+	[-1][0][0] = 1.0,
+	[1][0][0] = 1.0,
+	[0][-1][0] = 1.0,
+	[0][1][0] = 1.0,
+	[0][0][-1] = 1.0,
+	[0][0][1] = 1.0
+}
+
+
+
+Kernel jacobi_step_kernel(GMG_LEVEL level)
+{
+	spacing = AC_inv_ds_2/pow(4,int(level))
+	h  = 1.0/spacing.x;
+	old_res = (laplace_neighbours_without_spacing(GMG_SOLUTIONS[level]) + h*GMG_RHS[level])/6.0
+	new_res = poisson_jacobi_update(GMG_RHS[level],GMG_SOLUTIONS[level],AC_laplace_sign,spacing)
+	//if(vertexIdx == (int3){8,8,8})
+	//{
+	//	print("Old res: %.14e\n",old_res)
+	//	print("New res: %.14e\n",new_res)
+	//}
+	write(GMG_SOLUTIONS[level],new_res)
+}
+
+ComputeSteps
+jacobi_step(gmg_boundconds)
+{
+	jacobi_step_kernel(AC_GMG_LEVEL)
+}
+
+Kernel randomize_residual_and_solution_kernel(GMG_LEVEL level) {
+	write(GMG_SOLUTIONS[level],rand_uniform())
+	write(GMG_RESIDUALS[level],rand_uniform())
+}
+
+output real AC_residual2
+output real AC_rhs2
+Field Y_SMOOTH_RHS
+Kernel compute_y_smooth_rhs_kernel()
+{
+	x_phi = -derxx(Y_SMOOTH_SOLUTION)
+	z_phi = -derzz(Y_SMOOTH_SOLUTION)
+	rhs = GMG_INITIAL_RHS - x_phi - z_phi
+	write(Y_SMOOTH_RHS,rhs)
+}
+
+Kernel line_y_smoother_step_kernel()
+{
+	coeff = -deryy_central_coeff()
+	Ax    = -deryy(Y_SMOOTH_SOLUTION)
+	residual = Y_SMOOTH_RHS - Ax
+	write(Y_SMOOTH_SOLUTION,Y_SMOOTH_SOLUTION + (residual)/coeff)
+}
+ComputeSteps
+compute_y_smooth_rhs(gmg_boundconds)
+{
+	compute_y_smooth_rhs_kernel()
+}
+
+ComputeSteps
+line_y_smoother_step(gmg_boundconds)
+{
+	line_y_smoother_step_kernel()
+}
+
+Kernel line_y_smoother_residual_kernel()
+{
+	Ax    = -deryy(Y_SMOOTH_SOLUTION)
+	residual = Y_SMOOTH_RHS - Ax
+	reduce_sum(residual*residual,AC_residual2)
+	reduce_sum(Y_SMOOTH_RHS*Y_SMOOTH_RHS,AC_rhs2)
+}
+
+ComputeSteps
+line_y_smoother_residual(gmg_boundconds)
+{
+	line_y_smoother_residual_kernel()
+}
+
+ComputeSteps
+randomize_residual_and_solution(gmg_boundconds)
+{
+	randomize_residual_and_solution_kernel(AC_GMG_LEVEL)
+}
+
+Kernel print_kernel(GMG_LEVEL level)
+{
+	if(vertexIdx.x == NGHOST && vertexIdx.y == NGHOST)
+	{
+		print("RHS: %d %.14e\n",vertexIdx.z,value(GMG_RHS[level]))
+		print("Solution: %d %.14e\n",vertexIdx.z,value(GMG_SOLUTIONS[level]))
+	}
+	write(GMG_RHS[level],GMG_RHS[level])
+	write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level])
+}
+ComputeSteps 
+print_values(gmg_boundconds)
+{
+	print_kernel(AC_GMG_LEVEL)
+}
+
+
+

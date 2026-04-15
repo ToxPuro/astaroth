@@ -33,18 +33,15 @@ load_stencil_from_config(const AcMeshInfo info)
     // Fill stencils with garbage to ensure the coefficients calculated in the next step are correct
     acGridLoadStencils(STREAM_DEFAULT, stencils);
 
-    // Midpoint
-    stencils[stencil_value][MID][MID][MID] = 1;
-
     AcReal der1[]     = {-DER1_3, -DER1_2, -DER1_1, DER1_0, DER1_1, DER1_2, DER1_3};
     AcReal der2[]     = {DER2_3, DER2_2, DER2_1, DER2_0, DER2_1, DER2_2, DER2_3};
     AcReal derx[]     = {DERX_3, DERX_2, DERX_1, DERX_0, DERX_1, DERX_2, DERX_3};
     AcReal der6upwd[] = {DER6UPWD_3, DER6UPWD_2, DER6UPWD_1, DER6UPWD_0,
                          DER6UPWD_1, DER6UPWD_2, DER6UPWD_3};
 
-    const AcReal inv_dsx = AcReal(1.0) / info.real_params[AC_dsx];
-    const AcReal inv_dsy = AcReal(1.0) / info.real_params[AC_dsy];
-    const AcReal inv_dsz = AcReal(1.0) / info.real_params[AC_dsz];
+    const AcReal inv_dsx = AcReal(1.0) / info.real3_params[AC_ds].x;
+    const AcReal inv_dsy = AcReal(1.0) / info.real3_params[AC_ds].y;
+    const AcReal inv_dsz = AcReal(1.0) / info.real3_params[AC_ds].z;
 
     // 1st and 2nd order derivatives
     for (size_t i = 0; i < STENCIL_ORDER + 1; ++i) {
@@ -81,12 +78,14 @@ load_stencil_from_config(const AcMeshInfo info)
             stencils[stencil_derxz][i][MID][STENCIL_ORDER - i] = -inv_dsx * inv_dsz * derx[i];
     }
 
-    // Upwinding
+// Upwinding
+#if defined(LUPWD) && (LUPWD == 1)
     for (size_t i = 0; i < STENCIL_ORDER + 1; ++i) {
         stencils[stencil_der6x_upwd][MID][MID][i] = inv_dsx * der6upwd[i];
         stencils[stencil_der6y_upwd][MID][i][MID] = inv_dsy * der6upwd[i];
         stencils[stencil_der6z_upwd][i][MID][MID] = inv_dsz * der6upwd[i];
     }
+#endif
 
     // Load all stencils at once
     acGridLoadStencils(STREAM_DEFAULT, stencils);

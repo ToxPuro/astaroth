@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.17) # Required for moder CUDA::cudart linking
 
-find_package(MPI COMPONENTS C)
+set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
+find_package(MPI REQUIRED COMPONENTS C)
 find_package(OpenMP)
 find_package(CUDAToolkit)
 

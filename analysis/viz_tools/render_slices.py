@@ -5,6 +5,7 @@ import pathlib
 import re
 
 import numpy as np
+import pandas as pd
 
 parser = argparse.ArgumentParser(description='A tool for rendering slices from binary files')
 parser.add_argument('--input', type=pathlib.Path, nargs='+', required=True, help='List of slice binaries')
@@ -15,8 +16,11 @@ parser.add_argument('--termcolor', type=str, default='on', choices=['on', 'off']
 parser.add_argument('--dtype', type=str, default='double', help='The datatype of a single data element (default: double). Accepted values: numpy dtypes')
 parser.add_argument('--dpi', type=int, default=150, help='Set DPI of the output images')
 parser.add_argument('--vrange', type=float, nargs=2, required=False, help='Manually set the value range of the plots as --vrange {min} {max}')
-parser.add_argument('--write-png', action=argparse.BooleanOptionalAction, help='Write slices to png images')
-parser.add_argument('--write-bin', action=argparse.BooleanOptionalAction, help='Write slices to binary files')
+parser.add_argument('--write-png',   default=False,action="store_true", help='Write slices to png images')
+parser.add_argument('--only-lines',  default=False,action="store_true", help='Write only x lines')
+parser.add_argument('--write-movie', default=False,action="store_true", help='Write slices to gif movies')
+parser.add_argument('--write-bin',   default=False,action="store_true", help='Write slices to binary files')
+parser.add_argument('--spherical',   default=False,action="store_true", help='Plots spherical data')
 args = parser.parse_args()
 
 #Term colors
@@ -38,16 +42,37 @@ if args.termcolor == "on":
 # Output directories
 output_dir = args.output
 render_dir = output_dir/'render'
+slices_render_dir = output_dir/'render/slices'
+lines_render_dir = output_dir/'render/lines'
+line_movies_render_dir = output_dir/'render/movies/lines'
+slice_movies_render_dir = output_dir/'render/movies/slices'
 binary_dir = output_dir/'binary'
 
 output_dir.mkdir(parents=True, exist_ok=True)
 if args.write_png:
     render_dir.mkdir(parents=True, exist_ok=True)
+    slices_render_dir.mkdir(parents=True,exist_ok=True)
+    lines_render_dir.mkdir(parents=True,exist_ok=True)
     import matplotlib.pyplot as plt
 if args.write_bin:
     binary_dir.mkdir(parents=True, exist_ok=True)
 
+if args.write_movie:
+    line_movies_render_dir.mkdir(parents=True,exist_ok=True)
+    slice_movies_render_dir.mkdir(parents=True,exist_ok=True)
+
 segmented_filename_regex = re.compile(r'([^-]*)-segment-at_(\d+)_(\d+)_(\d+)-dims_(\d+)_(\d+)-step_(\d+).slice')
+monolithic_filename_regex = re.compile(r'([^-]*)-dims_(\d+)_(\d+)-step_(\d+).slice')
+
+info = pd.read_csv("ac_slices_info.csv",sep=",")
+grid_info = pd.read_csv("ac_grid_info.csv",sep=',')
+nxgrid  = grid_info["nxgrid"].iloc[0]
+nygrid  = grid_info["nygrid"].iloc[0]
+nzgrid  = grid_info["nzgrid"].iloc[0]
+
+dsx = grid_info["dsx"].iloc[0]
+dsy = grid_info["dsy"].iloc[0]
+dsz = grid_info["dsz"].iloc[0]
 
 #Parse filenames, build up a tree structure
 steps = {}
@@ -55,10 +80,11 @@ field_headers = {}
 for file_path in args.input:
     filename = pathlib.PurePath(file_path).name
     print(filename)
-    m = segmented_filename_regex.match(filename)
-    if m:
+    if segmented_filename_regex.match(filename):
+        m = segmented_filename_regex.match(filename)
         field = m.group(1)
         pos = [int(m.group(2)), int(m.group(3)), int(m.group(4))]
+        z = pos[2]
         dims = [int(m.group(5)), int(m.group(6))]
         #step = int(m.group(7))
         step = m.group(7)
@@ -67,9 +93,40 @@ for file_path in args.input:
 
         steps.setdefault(step, {})
 
-        z = pos[2]
         #This is the slice data, this is what will be rendered
-        steps[step].setdefault(field, {"z":z, "columns":{}, "field_name":field, "step": step})
+        info_row = info[info["step"] == int(step)]
+        time  = info_row["t"].iloc[0]
+
+        steps[step].setdefault(field, {"z":z, "columns":{}, "field_name":field, "time": time, "step": step})
+
+        #Z should be the same across slice segments
+        #TODO: make z another hierarchy to allow rendering of multiple slice locations
+        old_z = steps[step][field]["z"]
+        if old_z != z:
+            print("f{RD}Error:{CLR} Slice segments for field {field} step {step} have multiple dissimilar z-values: {old_z} and {z}")
+            exit(1)
+
+        steps[step][field]["columns"].setdefault(pos[0], {})
+        steps[step][field]["columns"][pos[0]].setdefault(pos[1], {})
+        steps[step][field]["columns"][pos[0]][pos[1]] = {"dims":dims, "file_path":file_path}
+    elif monolithic_filename_regex.match(filename):
+        m = monolithic_filename_regex.match(filename)
+        field = m.group(1)
+        pos = [0,0,0]
+        dims = [int(m.group(2)), int(m.group(3))]
+        #step = int(m.group(7))
+        step = m.group(4)
+
+        field_headers.setdefault(field, {"vmin":math.inf, "vmax":-math.inf})
+
+        steps.setdefault(step, {})
+
+        z = nzgrid/2
+        #This is the slice data, this is what will be rendered
+        info_row = info[info["step"] == int(step)]
+        time  = info_row["t"].iloc[0]
+
+        steps[step].setdefault(field, {"z":z, "columns":{}, "field_name":field, "time": time, "step": step})
 
         #Z should be the same across slice segments
         #TODO: make z another hierarchy to allow rendering of multiple slice locations
@@ -83,6 +140,7 @@ for file_path in args.input:
         steps[step][field]["columns"][pos[0]][pos[1]] = {"dims":dims, "file_path":file_path}
     else:
         print(f"File {filename}, did not match filename regex, skipping it")
+
 
 vector_fields = {}
 if args.render_vectors == "on":
@@ -153,20 +211,48 @@ render_slice
 
 Render a slice (a full one)
 """
-def render_slice(full_slice, field_name, step, z):
+def render_slice(full_slice, field_name, time, step, z):
+    if(full_slice.shape[0] == 1): return
+    global dsx
+    global dsy
     print(f"Rendering {MA}{field_name:>20}{CLR} slice at step {CY}{int(step):<8}{CLR}...", end="")
     vmin = field_headers[field_name]["vmin"]
     vmax = field_headers[field_name]["vmax"]
-    plt.imshow(full_slice, cmap='plasma', interpolation='nearest', vmin=vmin, vmax=vmax)
-    plt.colorbar()
-    plt.ylabel('y')
-    plt.xlabel('x')
-    title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
-    plt.title(f'{title_field_name}, step = {int(step)}')
-    output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
-    print(f"writing to {GR}{output_file}{CLR}")
-    plt.savefig(output_file, dpi=args.dpi)
-    plt.clf()
+    if(args.spherical):
+      r = np.linspace(0.0,1.0, full_slice.shape[1]+1)
+      theta = np.linspace(0, np.pi, full_slice.shape[0]+1)
+
+      R, Theta = np.meshgrid(r, theta, indexing='ij')
+
+      # Convert to Cartesian for plotting
+      X = R[:-1, :-1] * np.sin(Theta[:-1, :-1])
+      Y = R[:-1, :-1] * np.cos(Theta[:-1, :-1])
+
+      plt.figure(figsize=(6, 6))
+      plt.pcolormesh(X, Y, full_slice.T, shading='auto', cmap='viridis')
+      plt.gca().set_aspect('equal')
+      plt.colorbar(label='Potential')
+      plt.title("Potential in polar (r, θ) view")
+      plt.xlabel('r')
+      plt.ylabel('θ')
+      title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
+      plt.title(f'{title_field_name}, step = {int(step)}')
+      output_file = slices_render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
+      plt.savefig(output_file, dpi=args.dpi)
+      plt.clf()
+    else:
+      x = np.array([i*dsx for i in range(full_slice.shape[1])])
+      y = np.array([i*dsy for i in range(full_slice.shape[0])])
+      plt.imshow(full_slice, cmap='plasma', interpolation='nearest', vmin=vmin, vmax=vmax, extent=[x[0],x[-1],y[0],y[-1]], aspect=x[-1]/y[-1]) #workingv2
+      plt.colorbar()
+      plt.ylabel('y')
+      plt.xlabel('x')
+      title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
+      plt.title(f'{title_field_name}, t={time:e}, step={int(step)}')
+      output_file = slices_render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
+      print(f"Writing to {GR}{output_file}{CLR}")
+      plt.savefig(output_file, dpi=args.dpi)
+      plt.clf()
 
 def write_binary(full_slice, field_name, step, z):
     output_file = binary_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.slice'
@@ -174,12 +260,63 @@ def write_binary(full_slice, field_name, step, z):
     print(f"to {GR}{output_file}{CLR}")
     full_slice.tofile(output_file)
 
+def plot_line1d(full_slice, field_name, time, step, z):
+    global dsx
+    print(f"Plotting {MA}{field_name:>20}{CLR} 1D cut at step {CY}{int(step):<8}{CLR}...", end="")
+    y = int((full_slice.shape[0])/2)
+    data = full_slice[y, :]
+    n = len(full_slice[y,:])
+    # Apply exp only for VTXBUF_LNRHO
+    if field_name == 'VTXBUF_LNRHO':
+        data = np.exp(data)
+        title_field_name = 'rho'
+        #plt.axhline(y=5.74952226429356E-19, color='k', linestyle='--') #initial lnrho0
+        #plt.axhline(y=2.299808905717424E-18,  color='k', linestyle='-') #M^2*lnrho0, M=2
+        #plt.axhline(y=2.87476113214678e-18,  color='k', linestyle='-') #(M^2+1)*lnrho0, M=2
+        #plt.axhline(y=2.2998089057174243e-20,  color='r', linestyle='-') #M^2*lnrho0, M=0.2
+        #plt.axhline(y=5.979503154865302e-19, color='r', linestyle='-') #(M^2+1)*lnrho0, M=0.2
+    else:
+        title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
+    x = np.array([i*dsx for i in range(n)])
+    #plt.plot(x,full_slice[y,:], '.')
+    plt.plot(x,data, '.')
+    plt.xlabel('x')
+    plt.ylabel(title_field_name)
+    plt.grid(True)
+    plt.title(f'{title_field_name}, t = {time:e}, step={int(step)}')
+    output_file = lines_render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.y_{y}.step_{step}.png'
+    print(f"Writing to {GR}{output_file}{CLR}")
+    plt.savefig(output_file, dpi=args.dpi)
+    plt.clf()
+
+
+def plot_rho_vs_rhouux(full_slice, field_name, time, step, z):
+    global VTXBUF_RHOUUX  # for x-axis
+    y = int((VTXBUF_RHOUUX.shape[0])/2)
+    datay = VTXBUF_RHOUUX[y, :]
+    if field_name == 'VTXBUF_RHO': # for y-axis
+        x = int((full_slice.shape[0])/2)
+        n = len(full_slice[y,:])
+        datax = np.exp(full_slice[y, :])
+        plt.plot(datax, datay, '.')
+        plt.xlabel('rho')
+        plt.ylabel('rhouux')
+        plt.grid(True)
+        plt.title(f'rhouux vs rho, t = {time:e}, step={int(step)}')
+        output_file = lines_render_dir/f'rho_vs_rhouux.z_{z}.y_{y}.step_{step}.png'
+        print(f"Writing to {GR}{output_file}{CLR}")
+        plt.savefig(output_file, dpi=args.dpi)
+        plt.clf()
+
+
 #Render the vector fields
 for vector_field, components in vector_fields.items():
     #render each slice, but keep the frames
     for step in steps:
         vector_slice = None
         z = steps[step][components[0]]["z"]
+        time = steps[step][components[0]]["time"]
+        y = 16
         vmax_l2_norm = 0
         for comp_field in components:
             slice_data = steps[step][comp_field]
@@ -187,7 +324,9 @@ for vector_field, components in vector_fields.items():
 
             # Render slice
             if args.write_png:
-                render_slice(**slice_data)
+                if not args.only_lines:
+                  render_slice(**slice_data)
+                plot_line1d(**slice_data)
 
             # Write binary
             if args.write_bin:
@@ -219,7 +358,9 @@ for vector_field, components in vector_fields.items():
 
         # Render slice
         if args.write_png:
-            render_slice(vector_slice, field_name, step, z)
+            if not args.only_lines:
+              render_slice(vector_slice, field_name,time, step, z)
+            plot_line1d(vector_slice, field_name, time, step, z)
 
         # Write binary
         #if args.write_bin:
@@ -228,6 +369,9 @@ for vector_field, components in vector_fields.items():
         del vector_slice
            
 
+                    
+
+
 #Render remaining scalar fields
 for step, fields in steps.items():
     for field, slice_data in fields.items():
@@ -235,10 +379,23 @@ for step, fields in steps.items():
 
         # Render slice
         if args.write_png:
-            render_slice(**slice_data)
+            if not args.only_lines:
+                render_slice(**slice_data)
+            plot_line1d(**slice_data)
 
         # Write binary
         if args.write_bin:
             write_binary(**slice_data)
 
         del slice_data["full_slice"]
+
+if args.write_movie:
+    import imageio.v2 as imageio
+    import glob
+    first_step = next(iter(steps))
+    for field in steps[first_step].keys():
+        print(f"Generating movie of {GR}{field}{CLR}")
+        image_files = sorted(glob.glob(str(lines_render_dir/f"{field}.*.png")))
+        images = [imageio.imread(f) for f in image_files]
+        imageio.mimsave(line_movies_render_dir/f"{field}.gif",images,fps=30,loop=0)
+

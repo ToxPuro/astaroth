@@ -2,17 +2,42 @@
 # V3.9 required for first-class CUDA support
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
-cmake_minimum_required(VERSION 3.18)
+# V3.21 required for first-class HIP support
+# V3.24 required for native CUDA architecture support (Not used as of now)
+cmake_minimum_required(VERSION 3.23)
+
+## Project settings
+project(astaroth)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+
+## Standards
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_HIP_STANDARD 17)
+
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_HIP_STANDARD_REQUIRED ON)
+
+## Build type
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
 
 ## Options
 option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
+option(INCLUDE_3RD_PARTIES "Whether to include 3rd party dependencies"          OFF)
 option(BUILD_STANDALONE   "Build the standalone_mpi executable to run standard simulation." ON)
 option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
+option(BUILD_ADVECTION_EXAMPLE "Builds hello world example"            OFF)
+option(BUILD_TESTS        "Builds tests in test subdirectory."            OFF)
 option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(BUILD_MLLIB_SAMPLES "Builds samples that use cuDNN or MIOpen" OFF)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." OFF)
-option(USE_POSIX_IO       "Uses POSIX I/O less error prone, but increased overheads." OFF)
-option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
+option(BUILD_ACM          "Whether to build to the Astaroth Communication Module (ACM)." OFF)
+option(USE_POSIX_IO       "Uses POSIX I/O less error prone, but increased overheads." ON)
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
 option(VERBOSE            "Enables various status and warning messages"         OFF)
 option(BUILD_UTILS        "Builds the utility library"                          ON)
@@ -20,122 +45,170 @@ option(SINGLEPASS_INTEGRATION "Perform integration in a single pass. Improves pe
 option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of collective" ON)
 option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
 option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
-
+option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"          OFF)
+option(LAGRANGIAN_GRID "Use Lagrangian grid instead of Eulerian" OFF)
+option(2D  "Compile Astaroth for 2D simulation" OFF)
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
-
-if (USE_HIP)
-    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
-    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
-    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
-endif()
-
-
-
-## Project settings
-project(astaroth C CXX)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF)
+option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astaroth" OFF)
+option(PROFILING_ENABLED "Whether to enable profiling and link to the vendor profiling libraries" ON)
+option(FFT_ENABLED "Whether to enable FFT" OFF)
+option(CPU_BUILD "To build CPU-only build" OFF)
+option(SUPPORT_OLD_ARCHITECTURES "To support old CUDA architectures" ON)
 
 ## Project-wide compilation flags
-# -Werror TODO readd
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+# -Werror TODO read
+if(NOT SUPPRESS_COMPILER_WARNINGS)
+set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # For IDE highlighting (clangd)
-
-## Build type
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release") # Default
 endif()
-message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
+
+set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
+add_definitions(-DAC_BASE_PATH="${AC_BASE_PATH}")
+
+set(AC_BINARY_PATH "${CMAKE_BINARY_DIR}")
+add_definitions(-DAC_BINARY_PATH="${AC_BINARY_PATH}")
+
+if (RUNTIME_COMPILATION)
+	add_definitions(-DAC_RUNTIME_COMPILATION=1)
+else()
+	add_definitions(-DAC_RUNTIME_COMPILATION=0)
+endif()
+
+if (LAGRANGIAN_GRID)
+	add_definitions(-DAC_LAGRANGIAN_GRID=1)
+else()
+	add_definitions(-DAC_LAGRANGIAN_GRID=0)
+endif()
+if(PROFILING_ENABLED)
+	add_definitions(-DPROFILING_ENABLED=1)
+else()
+	add_definitions(-DPROFILING_ENABLED=0)
+endif()
+
+#TP: If CPU_BUILD is explicitly asked for it takes presedence over env variable.
+#    The command line argument should anyways always takes presedence but the CMake code
+#    for it seems unnecessary ugly/verbose so implemented the more important case for now
+    
+if (NOT CPU_BUILD AND DEFINED ENV{AC_CPU_BUILD})
+	set(CPU_BUILD $ENV{AC_CPU_BUILD})
+	message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
+endif()
+
+if (SUPPORT_OLD_ARCHITECTURES AND DEFINED ENV{AC_SUPPORT_OLD_ARCHITECTURES})
+	set(SUPPORT_OLD_ARCHITECTURES $ENV{AC_SUPPORT_OLD_ARCHITECTURES})
+	message("Set SUPPORT_OLD_ARCHITECTURES=${SUPPORT_OLD_ARCHITECTURES} from ENV value")
+endif()
 
 
-## CUDA/HIP
-if (USE_HIP)
-    add_definitions(-DAC_USE_HIP=1)
+if(NOT SUPPRESS_COMPILER_WARNINGS)
+add_compile_options(# C/CXX/CUDA/HIP
+                    # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wall>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wdouble-promotion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfloat-conversion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-parentheses-equality>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wshadow>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-result>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-parameter>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-function>
+                    # Workaround: MPI_CXX_SKIP_MPICXX not applied properly for some reason
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-DOMPI_SKIP_MPICXX>
+)
+endif()
 
-    set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=gfx908 --offload-arch=gfx90a")
 
-    # Workaround for finding HIP on Triton
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
-    # Workaround for finding HIP on Lumi
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3)
-    # Workaround for finding roctracer on Frontier
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/roctracer /opt/rocm-default)
-    include_directories(/opt/rocm-default/roctracer/include)
-    link_directories(/opt/rocm-default/roctracer/lib)
-
-
-    # Rocm
-    #include_directories(/opt/rocm/include)
-    #link_directories(/opt/rocm/lib)
-
-    # Roctracer
-    include_directories(/opt/rocm-5.2.3/roctracer/include)
-    link_directories(/opt/rocm-5.2.3/roctracer/lib)
-
-    # Rocrand
-    include_directories(/opt/rocm-5.2.3/hiprand/include)
-    include_directories(/opt/rocm-5.2.3/rocrand/include)
-    link_directories(/opt/rocm-5.2.3/hiprand/lib)
-    link_directories(/opt/rocm-5.2.3/rocrand/lib)
-
-    find_package(hip)
-else ()
+set(USE_CUDA OFF)
+## CUDA and HIP
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
+if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
+    set(USE_CUDA ON)
+    message(STATUS "CUDA found")
     enable_language(CUDA)
-
-    # Commented out CUDA host compiler flags: seem to be ignored anyways
-    #string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
-    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -forward-unknown-to-host-compiler -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
-
-    # To inspect ptx, run
-    # cmake .. && make -j && nvcc -DAC_DOUBLE_PRECISION=1 --generate-code=arch=compute_60,code=[compute_60,sm_60] -c ../src/core/kernels/kernels.cu -I acc-runtime/api/ -I ../include/ -I ../acc-runtime/api/ -I ../acc-runtime -ptx -Xptxas=-Werror,--warn-on-double-precision-use
-    # less kernels.ptx
-    # Additional compilation info: --resource-usage
-
-    # Not supported with older CUDA
-    # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --Werror all-warnings")
-    if (NOT DOUBLE_PRECISION)
-      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=--warn-on-double-precision-use") # -Werror,
-    endif()
-    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -dlcm=ca") # Cache global loads in L1
-    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -dlcm=cg") # Cache global loads in L2 (default on >= NVIDIA Fermi)
-
-    # Set device code architecture
-    if (NOT CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES 60 61 70 80) # Default
-    else ()
-        set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
+    add_compile_options(-DDEVICE_ENABLED)
+    add_compile_options(-DCUDA_ENABLED)
+    include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
+    ##TP: do not set GPU architectures to speedup debug compilations
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    else()
+       if(SUPPORT_OLD_ARCHITECTURES)
+         set(CMAKE_CUDA_ARCHITECTURES "61;70;80")
+       else()
+       	 set(CMAKE_CUDA_ARCHITECTURES "80")
+       endif()
+       #set(CMAKE_CUDA_ARCHITECTURES native)
     endif()
 
-    # CUB and Thrust
-    include_directories(${CUB_PATH})
-    include_directories(${THRUST_PATH})
+    message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
+elseif (NOT CPU_BUILD AND (USE_HIP OR HIP_FOUND))
+    set(USE_HIP ON)
+    message(STATUS "HIP found")
+    enable_language(HIP)
+    add_compile_options(-DDEVICE_ENABLED)
+    add_compile_options(-DHIP_ENABLED)
+    include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
+
+    ##TP: do not set GPU architectures to speedup debug compilations
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    else()
+    	set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    endif()
+    message(STATUS "Enabled HIP architectures (Astaroth): " ${CMAKE_HIP_ARCHITECTURES})
+    set(HIP_BUILD ON)
+else()
+    set(CPU_BUILD ON)
+    message(WARNING "Did not find CUDA or HIP; Reverting to CPU-only build")
+endif()
+
+if(CPU_BUILD)
+	add_definitions(-DAC_CPU_BUILD=1)
+else()
+	add_definitions(-DAC_CPU_BUILD=0)
 endif()
 
 include(FetchContent)
 
 ## Global flags
+if (USE_HIP)
+    add_definitions(-DAC_USE_HIP=1)
+endif()
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
-endif ()
+else()
+    add_definitions(-DAC_DOUBLE_PRECISION=0)
+endif()
 if (VERBOSE)
     add_definitions(-DAC_VERBOSE=1)
 endif ()
 if (MPI_ENABLED)
-    find_package(MPI REQUIRED COMPONENTS C)
-    include_directories(${MPI_C_INCLUDE_DIRS})
     add_definitions(-DAC_MPI_ENABLED=1)
+else()
+    add_definitions(-DAC_MPI_ENABLED=0)
 endif ()
+
+function(ac_link_mpi target)
+  if(CMAKE_CXX_COMPILER MATCHES "mpic\\+\\+$")
+  elseif (MPI_ENABLED)
+      set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
+      find_package(MPI REQUIRED COMPONENTS C)
+      target_link_libraries(${target} PUBLIC MPI::MPI_C)
+      target_include_directories(${target} PUBLIC ${MPI_INCLUDE_PATH})
+  endif()
+endfunction()
+
+if (FFT_ENABLED)
+	add_definitions(-DAC_FFT_ENABLED=1)
+else()
+	add_definitions(-DAC_FFT_ENABLED=0)
+endif()
 if (USE_POSIX_IO)
     add_definitions(-DUSE_POSIX_IO=1)
-endif()
-if (USE_CUDA_AWARE_MPI)
-    add_definitions(-DUSE_CUDA_AWARE_MPI=1)
 endif()
 if (MULTIGPU_ENABLED)
   add_definitions(-DAC_MULTIGPU_ENABLED=1)
@@ -154,13 +227,118 @@ if (DEBUG_SYNC)
     add_definitions(-DDEBUG_SYNC)
 endif()
 
+if (2D)
+     add_definitions(-DTWO_D=1)
+else () 
+     add_definitions(-DTWO_D=0)
+endif ()
+
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
-## Includes
-include_directories(include)                                   # Library headers
-include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
+## Subdirectories
 
-# Additional program modules
+# 3rd party
+if (INCLUDE_3RD_PARTIES)
+	add_subdirectory(3rdparty/inih)
+endif()
+
+# Astaroth modules
+add_subdirectory(src/core/helpers)
+add_subdirectory(src/core/decomposition)
+add_subdirectory(src/core/update_params)
+add_subdirectory(src/core/cuda_wrappers)
+add_subdirectory(acc-runtime)
+add_subdirectory(src/core/kernels)
+add_subdirectory(src/core)
+
+if (BUILD_TESTS)
+	add_subdirectory(test)
+	add_definitions(-DINCLUDE_MODEL_SOLVER=0)
+else()
+	add_definitions(-DINCLUDE_MODEL_SOLVER=1)
+endif()
+
+if (BUILD_UTILS)
+    add_subdirectory(src/utils)
+endif()
+
+if (RUNTIME_COMPILATION)
+	add_subdirectory(runtime_compilation)
+endif()
+
+## Have this as a separate option when no other "samples" aree needed.
+## Useful e.g. when compilation time is long e.g. with shock viscosity. 
+if (BUILD_STANDALONE AND NOT BUILD_TESTS)
+    add_subdirectory(samples/standalone_mpi)
+endif()
+
+if(BUILD_ADVECTION_EXAMPLE)
+    add_subdirectory(samples/advection-example)
+endif()
+if (BUILD_SAMPLES AND NOT BUILD_TESTS)
+    add_subdirectory(samples/ctest)
+    add_subdirectory(samples/cpptest)
+    #TP: we should make a wrapper functions for the CUDA calls
+    add_subdirectory(samples/benchmark-device)
+    if  (NOT RUNTIME_COMPILATION)
+    add_subdirectory(samples/benchmark)
+    add_subdirectory(samples/benchmark-node)
+    endif()
+    add_subdirectory(samples/mpi-io)
+    add_subdirectory(samples/mpi-io-multithreaded)
+    add_subdirectory(samples/pc-varfile-import)
+    if (NOT CPU_BUILD)
+    	add_subdirectory(samples/microbenchmark)
+    endif()
+    #add_subdirectory(samples/stress)
+
+    
+    # add_subdirectory(samples/standalone)
+    #add_subdirectory(samples/standalone_mpi)
+    #add_subdirectory(samples/ctest)
+    #add_subdirectory(samples/cpptest)
+    #add_subdirectory(samples/mpitest)
+    #add_subdirectory(samples/taskgraph_example)
+    #add_subdirectory(samples/taskgraph_print)
+    #add_subdirectory(samples/taskgraph_trace)
+    #add_subdirectory(samples/taskgraph_test)
+    #add_subdirectory(samples/mpi_fullgriderror_test)
+    #add_subdirectory(samples/benchmark)
+    #add_subdirectory(samples/benchmark-device)
+    #add_subdirectory(samples/boundcond_test)
+    
+    #add_subdirectory(samples/mpi-io)
+    #add_subdirectory(samples/genbenchmarkscripts)
+    #add_subdirectory(samples/mpi_reduce_bench)
+    #add_subdirectory(samples/fortrantest)
+    
+    #if (MPI_ENABLED)
+    #  add_subdirectory(samples/bwtest)
+    #endif()
+endif()
+
+if (BUILD_SAMPLES AND BUILD_MLLIB_SAMPLES)
+# Workaround for finding miopen on Triton
+link_directories(/opt/rocm/miopen/lib/)
+    add_subdirectory(samples/microbenchmark-nn)
+endif ()
+
+if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
+    # add_subdirectory(samples/standalone)
+    # add_subdirectory(samples/standalone_mpi)
+    add_subdirectory(samples/mpitest)
+    add_subdirectory(samples/devicetest)
+    #add_subdirectory(samples/stencil-loader)
+endif()
+
+if (MPI_ENABLED AND BUILD_ACM)
+    if (CPU_BUILD)
+      set(HOST_ONLY_MODE ON)
+    endif()
+    add_subdirectory(acc-comm)
+endif()
+
+# User-specified program modules
 if (PROGRAM_MODULE_DIR)
     get_filename_component(resolved_program_dir "${PROGRAM_MODULE_DIR}" ABSOLUTE
                            BASE_DIR ${CMAKE_SOURCE_DIR})
@@ -168,70 +346,6 @@ if (PROGRAM_MODULE_DIR)
     message("Resolved program module dir: " ${resolved_program_dir})
 endif()
 
-## Subdirectories
-add_subdirectory(acc-runtime)
-add_subdirectory(src/core/kernels)
-add_subdirectory(src/core)
-if (NOT BUILD_SHARED_LIBS)
-    add_subdirectory(samples/ac-interpreter)
-endif()
-
-if (BUILD_UTILS)
-    add_subdirectory(src/utils)
-endif()
-
-## Have this as a separate option when no other "samples" aree needed.
-## Useful e.g. when compilation time is long e.g. with shock viscosity.
-if (BUILD_STANDALONE)
-    add_subdirectory(samples/standalone_mpi)
-endif()
-
-if (BUILD_SAMPLES)
-    add_subdirectory(samples/ctest)
-    add_subdirectory(samples/cpptest)
-    add_subdirectory(samples/benchmark)
-    add_subdirectory(samples/benchmark-device)
-    add_subdirectory(samples/benchmark-node)
-    add_subdirectory(samples/mpi-io)
-    add_subdirectory(samples/mpi-io-multithreaded)
-    add_subdirectory(samples/pc-varfile-import)
-    add_subdirectory(samples/bwtest)
-    add_subdirectory(samples/microbenchmark)
-
-    if (BUILD_MLLIB_SAMPLES)
-	# Workaround for finding miopen on Triton
-	link_directories(/opt/rocm/miopen/lib/)
-        add_subdirectory(samples/microbenchmark-nn)
-    endif ()
-
-    if (BUILD_MHD_SAMPLES)
-        # add_subdirectory(samples/standalone)
-        # add_subdirectory(samples/standalone_mpi)
-        add_subdirectory(samples/mpitest)
-        add_subdirectory(samples/devicetest)
-        add_subdirectory(samples/stencil-loader)
-    endif()
-
-  # add_subdirectory(samples/standalone)
-  #add_subdirectory(samples/standalone_mpi)
-  #add_subdirectory(samples/ctest)
-  #add_subdirectory(samples/cpptest)
-  #add_subdirectory(samples/mpitest)
-  #add_subdirectory(samples/taskgraph_example)
-  #add_subdirectory(samples/taskgraph_print)
-  #add_subdirectory(samples/taskgraph_trace)
-  #add_subdirectory(samples/taskgraph_test)
-  #add_subdirectory(samples/mpi_fullgriderror_test)
-  #add_subdirectory(samples/benchmark)
-  #add_subdirectory(samples/benchmark-device)
-  #add_subdirectory(samples/boundcond_test)
-
-  #add_subdirectory(samples/mpi-io)
-  #add_subdirectory(samples/genbenchmarkscripts)
-  #add_subdirectory(samples/mpi_reduce_bench)
-  #add_subdirectory(samples/fortrantest)
-
-  #if (MPI_ENABLED)
-  #  add_subdirectory(samples/bwtest)
-  #endif()
+if(EXTRA_SOURCES_DIR)
+	add_subdirectory(${EXTRA_SOURCES_DIR} ${EXTRA_SOURCES_DIR}/cmake)
 endif()

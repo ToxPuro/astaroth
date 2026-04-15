@@ -25,17 +25,16 @@
  *
  */
 #pragma once
+#include <stddef.h>
+#include "host_datatypes.h"
 #include <stdbool.h>
 #include <stdint.h> // SIZE_MAX
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
-#if AC_USE_HIP
-#include "hip.h"
-#include <hip/hip_runtime_api.h>
-#else
-#include <cuda_runtime_api.h> // cuda_assert
+#include "device_headers.h"
+#ifdef __cplusplus
+#include "astaroth_cuda_wrappers.h"
 #endif
 
 /*
@@ -46,21 +45,20 @@
 // clang-format off
 #define ERROR(str)                                                             \
   {                                                                            \
-    time_t terr;                                                               \
+    time_t terr = 0;                                                           \
     time(&terr);                                                               \
-    fprintf(stderr, "\n\n\n\n┌──────────────────────── ERROR ───────────────────────────┐\n\n"); \
+    fprintf(stderr, "\n\n\n\n                          ERROR                             \n\n"); \
     fprintf(stderr, "%s", ctime(&terr));                                       \
     fprintf(stderr, "Error in file %s line %d: %s\n", __FILE__, __LINE__, str); \
-    fprintf(stderr, "\n└──────────────────────── ERROR ───────────────────────────┘\n\n\n\n"); \
+    fprintf(stderr, "\n                          ERROR                             \n\n\n\n"); \
     fflush(stderr);                                                            \
-    exit(EXIT_FAILURE);                                                        \
     abort();                                                                   \
   }
 // clang-format on
 
 #define WARNING(str)                                                           \
   {                                                                            \
-    time_t terr;                                                               \
+    time_t terr = 0;                                                           \
     time(&terr);                                                               \
     fprintf(stderr, "%s", ctime(&terr));                                       \
     fprintf(stderr, "\tWarning in file %s line %d: %s\n", __FILE__, __LINE__,  \
@@ -90,14 +88,31 @@
       ERROR(#retval " was false");                                             \
   }
 
+#define as_size_t(i) AS_SIZE_T(i, __FILE__, __LINE__)
+
 /*
  * =============================================================================
  * CUDA-specific error checking
  * =============================================================================
  */
 // #if defined(__CUDA_RUNTIME_API_H__)
+#if AC_CPU_BUILD
 static inline void
-cuda_assert(cudaError_t code, const char* file, int line, bool abort)
+cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
+{
+  if (code != cudaSuccess) {
+    time_t terr;
+    time(&terr);
+    fprintf(stderr, "%s", ctime(&terr));
+    fprintf(stderr, "\tCUDA error in file %s line %d\n", file, line);
+    fflush(stderr);
+    if (should_abort)
+      abort();
+  }
+}
+#else
+static inline void
+cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 {
   if (code != cudaSuccess) {
     time_t terr;
@@ -107,17 +122,18 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
             cudaGetErrorString(code));
     fflush(stderr);
 
-    if (abort)
-      exit(code);
+    if (should_abort)
+      abort();
   }
 }
+#endif
 
 #ifdef NDEBUG
 #undef ERRCHK
 #undef WARNCHK
 #define ERRCHK(params)
 #define WARNCHK(params)
-#define ERRCHK_CUDA(params) params
+#define ERRCHK_CUDA(params) (void)params
 #define WARNCHK_CUDA(params) params
 #define ERRCHK_CUDA_KERNEL()                                                   \
   {                                                                            \
@@ -134,8 +150,9 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
 
 #define ERRCHK_CUDA_KERNEL()                                                   \
   {                                                                            \
-    ERRCHK_CUDA(cudaPeekAtLastError());                                        \
-    ERRCHK_CUDA(cudaDeviceSynchronize());                                      \
+    ERRCHK_CUDA(acPeekAtLastError());                                        \
+    ERRCHK_CUDA(acDeviceSynchronize());                                      \
+    ERRCHK_CUDA(acPeekAtLastError());                                        \
   }
 #endif
 
@@ -146,8 +163,8 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
 
 #define ERRCHK_CUDA_KERNEL_ALWAYS()                                            \
   {                                                                            \
-    ERRCHK_CUDA_ALWAYS(cudaPeekAtLastError());                                 \
-    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());                               \
+    ERRCHK_CUDA_ALWAYS(acPeekAtLastError());                                 \
+    ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());                               \
   }
 
 #define WARNCHK_CUDA_ALWAYS(params)                                            \
@@ -157,16 +174,29 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
 // #endif // __CUDA_RUNTIME_API_H__
 
 #ifdef __cplusplus
+
 template <typename T>
-static inline size_t
-as_size_t(const T i)
+static inline int64_t
+as_int64_t(const T i)
 {
-  ERRCHK_ALWAYS(i >= 0);
+  ERRCHK_ALWAYS(static_cast<long double>(i) >
+                static_cast<long double>(INT64_MIN));
   ERRCHK_ALWAYS(static_cast<long double>(i) <
-                static_cast<long double>(SIZE_MAX));
-  return static_cast<size_t>(i);
+                static_cast<long double>(INT64_MAX));
+  return static_cast<int64_t>(i);
 }
-#else
+
+template <typename T>
+static inline int
+as_int(const T i)
+{
+  ERRCHK_ALWAYS(static_cast<long double>(i) >
+                static_cast<long double>(INT_MIN));
+  ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(INT_MAX));
+  return static_cast<int>(i);
+}
+#endif
 // TODO: cleanup and integrate with the errors above someday
 #define INDIRECT_ERROR(str, file, line)                                        \
   {                                                                            \
@@ -179,7 +209,6 @@ as_size_t(const T i)
     fprintf(stderr, "\n└──────────────────────── ERROR "                       \
                     "───────────────────────────┘\n\n\n\n");                   \
     fflush(stderr);                                                            \
-    exit(EXIT_FAILURE);                                                        \
     abort();                                                                   \
   }
 #define INDIRECT_ERRCHK_ALWAYS(retval, file, line)                             \
@@ -187,6 +216,7 @@ as_size_t(const T i)
     if (!(retval))                                                             \
       INDIRECT_ERROR(#retval " was false", file, line);                        \
   }
+
 
 static inline size_t
 AS_SIZE_T(const int i, const char* file, const int line)
@@ -197,5 +227,42 @@ AS_SIZE_T(const int i, const char* file, const int line)
 
   return (size_t)(i);
 }
-#define as_size_t(i) AS_SIZE_T(i, __FILE__, __LINE__)
+
+#ifdef __cplusplus
+template <typename T>
+static inline size_t
+AS_SIZE_T(const T i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(i >= 0,file,line);
+  INDIRECT_ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX),file,line);
+  return static_cast<size_t>(i);
+}
+//overloaded with unsigned int to remove compiler warnings about unneeded checks
+static inline size_t
+AS_SIZE_T(unsigned int i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX),file,line);
+  return static_cast<size_t>(i);
+}
+
+//overloaded with size_t to remove compiler warnings about unneeded checks
+static inline size_t
+AS_SIZE_T(size_t i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX),file,line);
+  return static_cast<size_t>(i);
+}
+
+static inline size3_t
+AS_SIZE_T(const int3 i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(i.x >= 0, file, line);
+  INDIRECT_ERRCHK_ALWAYS(i.y >= 0, file, line);
+  INDIRECT_ERRCHK_ALWAYS(i.z >= 0, file, line);
+
+  return (size3_t){(size_t)i.x,(size_t)i.y,(size_t)i.z};
+}
 #endif

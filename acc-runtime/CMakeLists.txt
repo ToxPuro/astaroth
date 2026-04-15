@@ -1,36 +1,71 @@
 ## CMake settings
-cmake_minimum_required(VERSION 3.19)
-
-## Project options
-option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
-if (USE_HIP)
-    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
-    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
-    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
-
-    # Rocm
-    #include_directories(/opt/rocm/include)
-    #link_directories(/opt/rocm/lib)
-    
-    # Roctracer
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
-
-    # Rocrand
-    include_directories(/opt/rocm/hiprand/include)
-    include_directories(/opt/rocm/rocrand/include)
-    link_directories(/opt/rocm/hiprand/lib)
-    link_directories(/opt/rocm/rocrand/lib)
-endif()
+cmake_minimum_required(VERSION 3.21)
 
 ## Project settings
 project(acc-runtime)
 
-## Project-wide compilation flags
-set(COMMON_FLAGS "-Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow")
+## Standards
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_HIP_STANDARD 17)
+set(CMAKE_HIP_STANDARD_REQUIRED ON)
 
-## Include directories
-include_directories(.)
+## Build type
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+## Project options
+option(USE_HIP "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
+
+#TP: enables building of acc-runtime lib without rest of the lib
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+	add_definitions(-DBUILD_ACC_RUNTIME_LIBRARY=1)
+        add_definitions(-DTWO_D=0)
+        add_definitions(-DAC_DOUBLE_PRECISION=1)
+	add_definitions(-DAC_LAGRANGIAN_GRID=0)
+	add_definitions(-DAC_BINARY_PATH="${CMAKE_BINARY_DIR}")
+	add_definitions(-DAC_MPI_ENABLED=0)
+	set(AC_BINARY_PATH "${CMAKE_BINARY_DIR}")
+	add_definitions(-DAC_BASE_PATH="${CMAKE_SOURCE_DIR}/..")
+	set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}/..")
+endif()
+
+## CUDA and HIP
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
+if (NOT CPU_BUILD AND DEFINED ENV{AC_CPU_BUILD})
+	set(CPU_BUILD $ENV{AC_CPU_BUILD})
+	message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
+endif()
+if(CPU_BUILD)
+elseif(NOT USE_HIP AND CUDAToolkit_FOUND)
+    message(STATUS "CUDA found")
+    enable_language(CUDA)
+    add_compile_definitions(DEVICE_ENABLED)
+    add_compile_definitions(CUDA_ENABLED)
+    include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
+
+    set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
+    message(STATUS "Enabled CUDA architectures (ACC): " ${CMAKE_CUDA_ARCHITECTURES})
+elseif(USE_HIP OR HIP_FOUND)
+    set(USE_HIP ON)
+    message(STATUS "HIP found")
+    enable_language(HIP)
+    add_compile_definitions(DEVICE_ENABLED)
+    add_compile_definitions(HIP_ENABLED)
+    include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
+
+    find_library(ROCTRACER NAMES roctracer64 PATHS ${ROCM_PATH}/lib REQUIRED)
+    find_library(HIPRAND NAMES hiprand PATHS ${ROCM_PATH}/lib REQUIRED)
+
+    set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    message(STATUS "Enabled HIP architectures (ACC): " ${CMAKE_HIP_ARCHITECTURES})
+else()
+    message(ERROR "Did not find CUDA or HIP")
+endif()
 
 ## Compile options
 if (NOT DEFINED IMPLEMENTATION)
@@ -39,16 +74,19 @@ endif()
 if (NOT DEFINED MAX_THREADS_PER_BLOCK)
     set(MAX_THREADS_PER_BLOCK 0)
 endif()
+
 add_compile_options(-DIMPLEMENTATION=${IMPLEMENTATION})
 add_compile_options(-DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
+
 if (USE_HIP)
-add_compile_options(-DAC_USE_HIP=1)
-add_compile_definitions(GPU_API_INCLUDES="/opt/rocm/include -I /opt/rocm/roctracer/include ")
+    add_compile_options(-DAC_USE_HIP=1)
+    add_compile_definitions(GPU_API_INCLUDES="${ROCM_PATH}/include -I ${ROCM_PATH}/roctracer/include ")
 else()
-add_compile_definitions(GPU_API_INCLUDES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+    add_compile_definitions(GPU_API_INCLUDES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 endif()
 
 ## Subdirectories
 add_subdirectory(acc)
 add_subdirectory(api)
+#add_subdirectory(transpilers)
 

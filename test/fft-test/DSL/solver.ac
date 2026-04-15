@@ -1,0 +1,103 @@
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math/fft.h"
+Field HEAT_INIT
+Field HEAT_SOLUTION
+Field HEAT_PLANAR_SOLUTION
+Field HEAT_FORWARD_AND_BACK
+Field HEAT_FREQUENCY_MAGNITUDE
+Field HEAT_PLANAR_FREQUENCY_MAGNITUDE
+
+Field HEAT_PLANAR_REAL
+Field HEAT_PLANAR_IMAG
+
+run_const AcPrecision AC_DYNAMIC_PRECISION = AC_SINGLE_PRECISION
+
+precision(AC_DYNAMIC_PRECISION)  Field HEAT_INIT_SINGLE
+precision(AC_DYNAMIC_PRECISION)  Field HEAT_PLANAR_REAL_SINGLE
+precision(AC_DYNAMIC_PRECISION)  Field HEAT_PLANAR_IMAG_SINGLE
+
+Field HEAT_PLANAR_REAL_SINGLE_OUTPUT
+Field HEAT_PLANAR_IMAG_SINGLE_OUTPUT
+
+
+ComplexField HEAT_COMPLEX_SOLUTION
+ComplexField HEAT_COMPLEX_PLANAR_SOLUTION
+ComplexField HEAT_COMPLEX
+real AC_k = 1.0
+Kernel init_kernel()
+{
+	pos = grid_position()
+	write(HEAT_INIT,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z))
+	write(HEAT_FORWARD_AND_BACK,0.0)
+}
+Kernel fft_solve_kernel()
+{
+	poisson_fft_solve(HEAT_COMPLEX_SOLUTION,HEAT_COMPLEX)
+	heat_complex = value(HEAT_COMPLEX)
+	write(HEAT_FREQUENCY_MAGNITUDE, sqrt(heat_complex.x*heat_complex.x + heat_complex.y*heat_complex.y))
+}
+
+Kernel fft_planar_solve_kernel()
+{
+	const real3 k = get_wavevector()
+	const real k2 = dot(k,k)
+	heat_complex = complex(value(HEAT_PLANAR_REAL), value(HEAT_PLANAR_IMAG))
+	write(HEAT_PLANAR_FREQUENCY_MAGNITUDE, sqrt(heat_complex.x*heat_complex.x + heat_complex.y*heat_complex.y))
+	write(HEAT_COMPLEX_PLANAR_SOLUTION,(k2  == 0.0) ? complex(0.0,0.0) : -(heat_complex/k2))
+}
+
+BoundConds boundconds{
+  periodic(BOUNDARY_X)
+  periodic(BOUNDARY_Y)
+  periodic(BOUNDARY_Z)
+}
+
+ComputeSteps
+initcond(boundconds)
+{
+	init_kernel()
+}
+
+ComputeSteps
+fft_solve(boundconds)
+{
+	fft_solve_kernel()
+}
+
+ComputeSteps
+fft_planar_solve(boundconds)
+{
+	fft_planar_solve_kernel()
+}
+Kernel
+three_dimensional_test_setup_kernel()
+{
+   pos = grid_position()
+   const real3 k = get_wavevector(int3(8,8,8))
+   write(HEAT_INIT,sin(k.x*pos.x)+sin(k.y*pos.y)+sin(k.z*pos.z))
+   write(HEAT_PLANAR_REAL,0.0)
+   write(HEAT_PLANAR_IMAG,0.0)
+
+   write(HEAT_INIT_SINGLE,sin(k.x*pos.x)+sin(k.y*pos.y)+sin(k.z*pos.z))
+   write(HEAT_PLANAR_REAL_SINGLE,0.0)
+   write(HEAT_PLANAR_IMAG_SINGLE,0.0)
+}
+
+ComputeSteps
+three_dimensional_test_setup(boundconds)
+{
+	three_dimensional_test_setup_kernel()
+}
+
+Kernel
+copy_single_to_output_kernel()
+{
+	write(HEAT_PLANAR_REAL_SINGLE_OUTPUT,HEAT_PLANAR_REAL_SINGLE)
+	write(HEAT_PLANAR_IMAG_SINGLE_OUTPUT,HEAT_PLANAR_IMAG_SINGLE)
+}
+
+ComputeSteps
+copy_single_to_output(boundconds)
+{
+  copy_single_to_output_kernel()
+}

@@ -1,0 +1,158 @@
+hostdefine STENCIL_ORDER (6)
+Field FIELD
+output real AC_min_val
+
+#define DER1_3 (1. / 60.)
+#define DER1_2 (-3. / 20.)
+#define DER1_1 (3. / 4.)
+#include "../../../acc-runtime/stdlib/general_derivs.h"
+
+
+//Profile<Z> PROF_Z_DER
+struct ALL_PROFILES
+{
+	Profile<X> X
+	Profile<Y> Y
+	Profile<Z> Z
+	Profile<XY> XY
+	Profile<XZ> XZ
+	Profile<YX> YX
+	Profile<YZ> YZ
+	Profile<ZX> ZX
+	Profile<ZY> ZY
+}
+
+ALL_PROFILES PROF
+
+Profile<XY> DX_PROF_XY
+
+Profile<X> PROF_X_DER
+Profile<Y> PROF_Y_DER
+Profile<Z> PROF_Z_DER
+
+ALL_PROFILES PROF_SCALED
+
+
+
+Field FIELD_2
+Field FIELD_3
+
+
+output real AC_max_val
+output real AC_sum_val
+output float AC_float_sum_val
+output int  AC_int_sum_val
+
+//TP: there was a bug where reductions worked only if you had a single kernel.
+//This is a regression test against it
+Kernel empty()
+{}
+VecZProfile VEC_Z_PROFILE
+
+Kernel test_reduce()
+{
+    reduce_min(FIELD, AC_min_val)
+    reduce_sum((int)value(FIELD),AC_int_sum_val)
+    reduce_sum((float)value(FIELD),AC_float_sum_val)
+
+    reduce_sum(FIELD,PROF_XZ)
+    reduce_sum(FIELD,PROF_XY)
+
+    reduce_sum(FIELD,PROF_YX)
+    reduce_sum(FIELD,PROF_YZ)
+
+    reduce_sum(FIELD,PROF_ZX)
+    reduce_sum(FIELD,PROF_ZY)
+
+    reduce_sum(derx(FIELD),DX_PROF_XY)
+
+    vec = real3(1.0,2.0,3.0)
+    reduce_sum(vec,VEC_Z_PROFILE)
+}
+Kernel only_scalar_reduction()
+{
+    reduce_max(FIELD, AC_max_val)
+    reduce_sum(FIELD, AC_sum_val)
+}
+Kernel reduce_z()
+{
+    reduce_sum(FIELD,PROF_Z)
+}
+
+Kernel reduce_y()
+{
+    reduce_sum(FIELD,PROF_Y)
+}
+
+Kernel reduce_x()
+{
+    reduce_sum(FIELD,PROF_X)
+}
+
+Kernel der_x()
+{
+	write(PROF_X_DER,derx(PROF_X))
+}
+
+Kernel der_y()
+{
+	write(PROF_Y_DER,dery(PROF_Y))
+}
+Kernel der_z()
+{
+	write(PROF_Z_DER,derz(PROF_Z))
+}
+
+Kernel remove_means()
+{
+	res = value(FIELD)
+	res -= PROF_X[vertexIdx.x]
+	res -= PROF_Y
+	res -= PROF_Z
+	res -= PROF_XY[vertexIdx.x][vertexIdx.y]
+	res -= PROF_XZ
+	res -= PROF_YX
+	res -= PROF_YZ
+	res -= PROF_ZX
+	res -= PROF_ZY
+	write(FIELD, res)
+	const scaling_factor = 2.0
+
+	write(PROF_SCALED_X,PROF_X*scaling_factor)
+	write(PROF_SCALED_Y,PROF_Y*scaling_factor)
+	write(PROF_SCALED_Z,PROF_Z*scaling_factor)
+
+	write(PROF_SCALED_YX,PROF_YX*scaling_factor)
+	write(PROF_SCALED_ZX,PROF_ZX*scaling_factor)
+
+	write(PROF_SCALED_XY,PROF_XY*scaling_factor)
+	write(PROF_SCALED_ZY,PROF_ZY*scaling_factor)
+
+	write(PROF_SCALED_XZ,PROF_XZ*scaling_factor)
+	write(PROF_SCALED_YZ,PROF_YZ*scaling_factor)
+
+
+	write(FIELD_2,VEC_Z_PROFILE.x[vertexIdx.z] + VEC_Z_PROFILE.y + VEC_Z_PROFILE.z)
+}
+Kernel derx_kernel()
+{
+	write(FIELD,derx(FIELD))
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps rhs(bcs)
+{
+	only_scalar_reduction()
+	test_reduce()
+	reduce_x()
+	reduce_y()
+	reduce_z()
+	der_x()
+	der_y()
+	der_z()
+	remove_means()
+}
+

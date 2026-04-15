@@ -19,16 +19,18 @@
 /**
     Running: benchmark -np <num processes> <executable>
 */
+// #include "acc_runtime.h"
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "astaroth_cuda_wrappers.h"
+
+#include "../../stdlib/reduction.h"
 
 #include "errchk.h"
 #include "timer_hires.h"
 
 #include <string>
 #include <unistd.h> // getopt
-
-static const bool verify = false;
 
 #if !AC_MPI_ENABLED
 int
@@ -62,43 +64,6 @@ typedef enum {
 } TestType;
 
 #include <stdint.h>
-
-typedef struct {
-    uint64_t x, y, z;
-} uint3_64;
-
-static uint3_64
-operator+(const uint3_64& a, const uint3_64& b)
-{
-    return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
-}
-
-static uint3_64
-morton3D(const uint64_t pid)
-{
-    uint64_t i, j, k;
-    i = j = k = 0;
-
-    for (int bit = 0; bit <= 21; ++bit) {
-        const uint64_t mask = 0x1l << 3 * bit;
-        k |= ((pid & (mask << 0)) >> 2 * bit) >> 0;
-        j |= ((pid & (mask << 1)) >> 2 * bit) >> 1;
-        i |= ((pid & (mask << 2)) >> 2 * bit) >> 2;
-    }
-
-    return (uint3_64){i, j, k};
-}
-
-static uint3_64
-decompose(const uint64_t target)
-{
-    // This is just so beautifully elegant. Complex and efficient decomposition
-    // in just one line of code.
-    uint3_64 p = morton3D(target - 1) + (uint3_64){1, 1, 1};
-
-    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
-    return p;
-}
 
 #include "timer_hires.h"
 
@@ -139,14 +104,18 @@ timer_event_stop(const char* format, ...)
 int
 main(int argc, char** argv)
 {
+    int verify = 0;
     MPI_Init(NULL, NULL);
+    acProfilerStop();
+
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // CPU alloc
-    AcMeshInfo info;
+    AcMeshInfo info = acInitInfo();
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acHostUpdateParams(&info);
 
     TestType test = TEST_STRONG_SCALING;
 
@@ -176,32 +145,46 @@ main(int argc, char** argv)
     }
 
     if (argc - optind > 0) {
-        if (argc - optind == 3) {
-            const int nx           = atoi(argv[optind]);
-            const int ny           = atoi(argv[optind + 1]);
-            const int nz           = atoi(argv[optind + 2]);
-            info.int_params[AC_nx] = nx;
-            info.int_params[AC_ny] = ny;
-            info.int_params[AC_nz] = nz;
-            acHostUpdateBuiltinParams(&info);
+        if (argc - optind >= 3) {
+            const int nx = atoi(argv[optind]);
+            const int ny = atoi(argv[optind + 1]);
+            const int nz = atoi(argv[optind + 2]);
+
             printf("Benchmark mesh dimensions: (%d, %d, %d)\n", nx, ny, nz);
+
+            if (argc - optind >= 4) {
+                verify = atoi(argv[optind + 3]);
+            }
+
+            if (argc - optind > 4) {
+                fprintf(stderr,
+                        "WARNING: Unexpected amount of params. Continuing without parsing\n");
+            }
+
+            if (test == TEST_WEAK_SCALING) {
+                fprintf(stdout, "Running weak scaling benchmarks.\n");
+                fflush(stdout);
+                const auto decomp = acDecompose(nprocs, info);
+                acPushToConfig(info, AC_ngrid, (int3){decomp.x * nx, decomp.y * ny, decomp.z * nz});
+                acPushToConfig(info, AC_nlocal, (int3){nx, ny, nz});
+            }
+            else {
+                fprintf(stdout, "Running strong scaling benchmarks.\n");
+                fflush(stdout);
+                const auto decomp = acDecompose(nprocs, info);
+                acPushToConfig(info, AC_ngrid, (int3){nx, ny, nz});
+                acPushToConfig(info, AC_nlocal,
+                               (int3){nx / decomp.x, ny / decomp.y, nz / decomp.z});
+            }
+            acHostUpdateParams(&info);
         }
         else {
-            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz>.\n");
+            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz> <verify "
+                            "(optional, expects 0 or 1)>.\n");
             exit(EXIT_FAILURE);
         }
     }
 
-    if (test == TEST_WEAK_SCALING) {
-        fprintf(stdout, "Running weak scaling benchmarks.\n");
-        uint3_64 decomp = decompose(nprocs);
-        info.int_params[AC_nx] *= decomp.x;
-        info.int_params[AC_ny] *= decomp.y;
-        info.int_params[AC_nz] *= decomp.z;
-    }
-    else {
-        fprintf(stdout, "Running strong scaling benchmarks.\n");
-    }
 
     // Device init
     acGridInit(info);
@@ -211,19 +194,22 @@ main(int argc, char** argv)
     const AcReal dt = (AcReal)FLT_EPSILON;
 
     // Dryrun
+    acDeviceSetInput(acGridGetDevice(), AC_current_time, 0.0);
     acGridIntegrate(STREAM_DEFAULT, dt);
 
     if (verify) {
         // Host init
         AcMesh model, candidate;
         if (!pid) {
-            acHostMeshCreate(info, &model);
-            acHostMeshCreate(info, &candidate);
-            acHostMeshRandomize(&model);
-            acHostMeshRandomize(&candidate);
+            acHostGridMeshCreate(info, &model);
+            acHostGridMeshCreate(info, &candidate);
+            acHostGridMeshRandomize(&model);
+            acHostGridMeshRandomize(&candidate);
         }
         acGridLoadMesh(STREAM_DEFAULT, model);
+        acGridSynchronizeStream(STREAM_DEFAULT);
         acGridPeriodicBoundconds(STREAM_DEFAULT);
+        acGridSynchronizeStream(STREAM_DEFAULT);
 
         // Verification run
         const size_t nsteps = 10;
@@ -234,16 +220,17 @@ main(int argc, char** argv)
                 printf("Host integration step %lu\n", i);
                 fflush(stdout);
 
+                acHostMeshApplyPeriodicBounds(&model);
                 acHostIntegrateStep(model, dt);
             }
         }
-        acHostMeshApplyPeriodicBounds(&model);
         acGridPeriodicBoundconds(STREAM_DEFAULT);
         acGridStoreMesh(STREAM_DEFAULT, &candidate);
         acGridSynchronizeStream(STREAM_ALL);
 
         // Verify
         if (!pid) {
+            acHostMeshApplyPeriodicBounds(&model);
             printf("Verifying...\n");
             fflush(stdout);
 
@@ -260,8 +247,7 @@ main(int argc, char** argv)
     }
 
     // Percentiles
-    const size_t num_iters      = 100;
-    const double nth_percentile = 0.90;
+    const size_t num_iters = 100;
     std::vector<double> results; // ms
     results.reserve(num_iters);
 
@@ -284,10 +270,20 @@ main(int argc, char** argv)
     if (!pid) {
         std::sort(results.begin(), results.end(),
                   [](const double& a, const double& b) { return a < b; });
-        fprintf(stdout,
-                "Integration step time %g ms (%gth "
-                "percentile)--------------------------------------\n",
-                results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+        {
+            const double nth_percentile = 0.50;
+            fprintf(stdout,
+                    "Integration step time %g ms (%gth "
+                    "percentile)--------------------------------------\n",
+                    results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+        }
+        {
+            const double nth_percentile = 0.90;
+            fprintf(stdout,
+                    "Integration step time %g ms (%gth "
+                    "percentile)--------------------------------------\n",
+                    results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+        }
 
         // char path[4096] = "";
         // sprintf(path, "%s_%d.csv", test == TEST_STRONG_SCALING ? "strong" : "weak", nprocs);
@@ -306,9 +302,9 @@ main(int argc, char** argv)
         const bool use_distributed_io = false;
 #endif
         fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d,%d\n", nprocs, results[0],
-                results[(size_t)(0.5 * num_iters)], results[(size_t)(nth_percentile * num_iters)],
-                results[num_iters - 1], use_distributed_io, info.int_params[AC_nx],
-                info.int_params[AC_ny], info.int_params[AC_nz], test == TEST_STRONG_SCALING);
+                results[(size_t)(0.5 * num_iters)], results[(size_t)(0.9 * num_iters)],
+                results[num_iters - 1], use_distributed_io, info[AC_ngrid].x, info[AC_ngrid].y,
+                info[AC_ngrid].z, test == TEST_STRONG_SCALING);
         // fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0],
         //         results[(size_t)(0.5 * num_iters)],
         //         results[(size_t)(nth_percentile * num_iters)], results[num_iters - 1]);
@@ -321,22 +317,29 @@ main(int argc, char** argv)
     if (!pid)
         fprintf(stderr, "\nSanity performance check:\n");
 
+    // timer_event_launch();
+    // acGridPeriodicBoundconds(STREAM_DEFAULT);
+    // timer_event_stop("acGridPeriodicBoundconds: ");
+
+    const AcMeshDims dims = acGetMeshDims(info);
     timer_event_launch();
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acDevicePeriodicBoundconds(acGridGetDevice(), STREAM_DEFAULT, dims.m0, dims.m1);
     timer_event_stop("acGridPeriodicBoundconds: ");
 
+    acProfilerStart();
     timer_event_launch();
     acGridIntegrate(STREAM_DEFAULT, dt);
     timer_event_stop("acGridIntegrate: ");
+    acProfilerStop();
 
     timer_event_launch();
     AcReal candval;
-    acGridReduceScal(STREAM_DEFAULT, (ReductionType)0, (Field)0, &candval);
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (Field)0, &candval);
     timer_event_stop("acGridReduceScal");
 
     ERRCHK_ALWAYS(NUM_FIELDS >= 3);
     timer_event_launch();
-    acGridReduceVec(STREAM_DEFAULT, (ReductionType)0, (Field)0, (Field)1, (Field)2, &candval);
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_SUM, (Field)0, (Field)1, (Field)2, &candval);
     timer_event_stop("acGridReduceVec");
     // Sanity check end
 

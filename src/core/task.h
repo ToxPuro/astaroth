@@ -19,20 +19,32 @@
 #pragma once
 #include "astaroth.h"
 
+#include <array>
 #include <memory>
 #include <mpi.h>
 #include <string>
 #include <vector>
 
-#include "decomposition.h"   //getPid and friends
+#include "decomposition/decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
 #include "math_utils.h"      //max. Also included in decomposition.h
 #include "timer_hires.h"
 
-#define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
+
+//TP: TODO: move somewhere more appropriate
+typedef struct {
+    AcKernel kernel_enum;
+    cudaStream_t stream;
+    int step_number;
+    Volume start;
+    Volume end;
+    #if AC_MPI_ENABLED
+    LoadKernelParamsFunc* load_func;
+    #endif
+} KernelParameters;
 
 struct TraceFile;
 
@@ -61,16 +73,34 @@ struct TraceFile;
 
 enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input, None };
 
+typedef struct
+{
+	std::vector<Field> fields;
+	std::vector<Profile> profiles;
+	std::vector<KernelReduceOutput> reduce_outputs;
+} RegionMemory;
+
+typedef struct
+{
+	std::vector<Field> fields;
+	const Profile* profiles;
+	const size_t   num_profiles;
+	const KernelReduceOutput* reduce_outputs;
+	const size_t  num_reduce_outputs;
+} RegionMemoryInputParams;
+
 struct Region {
-    int3 position;
-    int3 dims;
+    Volume position;
+    Volume dims;
+    Volume comp_dims;
+    Volume halo;
     size_t volume;
 
     RegionFamily family;
     int3 id;
     int tag;
 
-    std::vector<Field> fields;
+    RegionMemory memory;
 
     // facet class 0 = inner core
     // facet class 1 = face
@@ -87,20 +117,24 @@ struct Region {
 
     static int id_to_tag(int3 id);
     static int3 tag_to_id(int tag);
+    static int tag_to_facet_class(int tag);
 
-    static AcBoundary boundary(uint3_64 decomp, int pid, int tag);
+    static AcBoundary boundary(uint3_64 decomp, int pid, int tag, AcProcMappingStrategy proc_mapping_strategy);
     static AcBoundary boundary(uint3_64 decomp, int3 pid3d, int3 id);
-    static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary);
+    static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy);
     static bool is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary);
 
-    Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields);
-    Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields);
-    Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_);
+    Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume position_, Volume dims_, const Volume ghosts, const RegionMemoryInputParams, const int max_comp_facet_class, const AcRedBlackState red_black_state);
+    Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, Volume halos_, const RegionMemoryInputParams);
+    Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_);
+    Region(Volume position_, Volume dims_, Volume comp_dims_, Volume halos_, int tag_, const RegionMemory mem_, RegionFamily family_);
 
     Region translate(int3 translation);
-    bool overlaps(const Region* other);
-    AcBoundary boundary(uint3_64 decomp, int pid);
-    bool is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary);
+    bool overlaps(const Region* other) const;
+    AcBool3 geometry_overlaps(const Region* other) const;
+    bool fields_overlap(const Region* other) const;
+    AcBoundary boundary(uint3_64 decomp, int pid, AcProcMappingStrategy proc_mapping_strategy);
+    bool is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy);
 };
 
 /**
@@ -117,7 +151,7 @@ typedef class Task {
     Device device;
     cudaStream_t stream;
     VertexBufferArray vba;
-    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset;
+    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset;
 
     int state;
 
@@ -140,19 +174,21 @@ typedef class Task {
     AcTaskType task_type;
     AcBoundary boundary; // non-zero if a boundary condition task, indicating which boundary
 
-    Region input_region;
+    std::vector<Region> input_regions;
     Region output_region;
+    Region launch_region;
 
     std::vector<AcRealParam> input_parameters;
 
     static const int wait_state = 0;
 
+
   protected:
     bool poll_stream();
 
   public:
-    Task(int order_, Region input_region_, Region output_region, AcTaskDefinition op,
-         Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    Task(int order_, std::vector<Region> input_regions_, Region output_region, AcTaskDefinition op,
+         Device device_, std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     virtual ~Task() {};
 
     virtual bool test()                               = 0;
@@ -163,16 +199,19 @@ typedef class Task {
     bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
-    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile* trace_file);
+    void update(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> vtxbuf_swaps, const TraceFile* trace_file);
     bool isFinished();
 
     void notifyDependents();
     void satisfyDependency(size_t iteration);
 
     void syncVBA();
-    void swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps);
+    void swapVBA(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> vtxbuf_swaps);
 
     void logStateChangedEvent(const char* from, const char* to);
+    virtual bool isComputeTask();
+    virtual bool isHaloExchangeTask();
+    bool swaps_overlap(const Task* other);
 } Task;
 
 // Compute tasks
@@ -184,59 +223,91 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
-                std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
+                std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const int max_facet_class
+		);
+    ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        	std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+		    );
+    ComputeTask(AcTaskDefinition op, int order_, std::vector<Region> input_regions, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        	std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+		    );
+
+    ~ComputeTask();
     ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
     void advance(const TraceFile* trace_file);
     bool test();
+    bool isComputeTask();
+    AcKernel getKernel();
+
+    static std::shared_ptr<ComputeTask>
+    RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,const int3 ray_direction, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries);
 } ComputeTask;
 
 // Communication
+enum class HaloMessageType { Send, Receive};
 typedef struct HaloMessage {
-    int length;
-    AcRealPacked* data;
-#if !(USE_CUDA_AWARE_MPI)
-    AcRealPacked* data_pinned;
+    HaloMessageType type;
+    int real_length;
+    int single_length;
+    int half_length;
+    AcRealPacked* real_data;
+    float* single_data;
+    __half* half_data;
+    char* all_data;
+    size_t real_bytes;
+    size_t single_bytes;
+    size_t half_bytes;
+    size_t all_bytes;
+    size_t all_bytes_per_process;
+    AcRealPacked* real_data_pinned;
+    float*        single_data_pinned;
+    __half*       half_data_pinned;
+    char*         all_data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
-#endif
-    MPI_Request request;
+    std::vector<MPI_Request> requests;
+    int tag;
+    int non_namespaced_tag;
+    std::vector<int> counterpart_ranks;
 
-    HaloMessage(int3 dims, size_t num_vars);
+    HaloMessage(size_t size, size_t single_length_, size_t half_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();
-#if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
     void unpin(const Device device, const cudaStream_t stream);
-#endif
 } HaloMessage;
+
 
 typedef struct HaloMessageSwapChain {
     int buf_idx;
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(int3 dims, size_t num_vars);
+    HaloMessageSwapChain(size_t size,size_t single_length_, size_t half_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    HaloMessageSwapChain(Volume dims, size_t nvars, size_t  single_nvars, size_t half_nvars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    void update_counterpart_ranks(const std::vector<int> counterpart_ranks);
 
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
 } HaloMessageSwapChain;
 
-enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, Unpacking };
+enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, Unpacking, Moving };
 
 typedef class HaloExchangeTask : public Task {
   private:
-    int counterpart_rank;
-    int send_tag;
-    int recv_tag;
-
+    bool sending;
+    bool receiving;
+    bool shear_periodic;
+    AcRedBlackState red_black;
     HaloMessageSwapChain recv_buffers;
     HaloMessageSwapChain send_buffers;
-
   public:
-    HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, int3 nn,
-                     uint3_64 decomp, Device device_,
-                     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    HaloExchangeTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int halo_region_tag, AcGridInfo grid_info,
+                     Device device_,
+                     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other)            = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
@@ -248,6 +319,8 @@ typedef class HaloExchangeTask : public Task {
     void pack();
     void unpack();
 
+    void move();
+
     void send();
     void receive();
     void exchange();
@@ -255,64 +328,113 @@ typedef class HaloExchangeTask : public Task {
     void sendDevice();
     void receiveDevice();
     void exchangeDevice();
+    bool sendingToItself();
 
-#if !(USE_CUDA_AWARE_MPI)
     void sendHost();
     void receiveHost();
     void exchangeHost();
-#endif
 
     void advance(const TraceFile* trace_file);
     bool test();
+    bool isHaloExchangeTask();
 } HaloExchangeTask;
 
-enum class BoundaryConditionState { Waiting = Task::wait_state, Running };
+enum class MPIScanTaskState { Waiting = Task::wait_state, Packing, Communicating, Unpacking };
 
+typedef class MPIScanTask : public Task {
+  private:
+    HaloMessageSwapChain reduce_buffers;
+    MPI_Comm scan_comm;
+  public:
+    MPIScanTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
+                                   AcGridInfo grid_info, Device device_,
+                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+    ~MPIScanTask();
+    MPIScanTask(const MPIScanTask& other)            = delete;
+    MPIScanTask& operator=(const MPIScanTask& other) = delete;
+
+    void pack();
+    void unpack();
+    void communicate();
+    void advance(const TraceFile* trace_file);
+    bool test();
+} MPIScanTask;
+
+enum class PeriodicRayTaskState { Waiting = Task::wait_state, Packing, Communicating, Unpacking, Computing };
+
+typedef class PeriodicRayTask : public Task {
+  private:
+    HaloMessageSwapChain buffers;
+    MPI_Comm gather_comm;
+    int nprocs;
+    int3 ray_direction;
+    AcKernel kernel;
+  public:
+    PeriodicRayTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
+                                   AcGridInfo grid_info, Device device_,
+                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+    ~PeriodicRayTask();
+    PeriodicRayTask(const PeriodicRayTask& other)            = delete;
+    PeriodicRayTask& operator=(const PeriodicRayTask& other) = delete;
+
+    void pack();
+    void unpack();
+    void communicate();
+    void compute();
+    void advance(const TraceFile* trace_file);
+    bool test();
+} PeriodicRayTask;
+
+
+
+enum class BoundaryConditionState { Waiting = Task::wait_state, Running };
 typedef class BoundaryConditionTask : public Task {
   private:
-    AcBoundcond boundcond;
+    KernelParameters params;
     int3 boundary_normal;
-    int3 boundary_dims;
+    Volume boundary_dims;
+    bool fieldwise;
 
   public:
-    BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag,
-                          int3 nn, Device device_,
-                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
+                                    int region_tag, const Volume start, const Volume nn, Device device_,
+                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     void populate_boundary_region();
     void advance(const TraceFile* trace_file);
     bool test();
 } BoundaryConditionTask;
 
-typedef class SyncTask : public Task {
-  public:
-    SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
-             std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
-    void advance(const TraceFile* trace_file);
-    bool test();
-} SyncTask;
-
-#ifdef AC_INTEGRATION_ENABLED
-// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD
-// implementation). They launch specially written CUDA kernels that implement the specific boundary
-// condition procedure They are a stop-gap temporary solution. The sensible solution is to replace
-// them with a task type that runs a boundary condition procedure written in the Astaroth DSL.
-enum class SpecialMHDBoundaryConditionState { Waiting = Task::wait_state, Running };
-
-typedef class SpecialMHDBoundaryConditionTask : public Task {
+enum class ReduceState { Waiting = Task::wait_state, Reducing, Transferring, Communicating, Loading };
+typedef class ReduceTask : public Task {
   private:
-    AcSpecialMHDBoundcond boundcond;
-    int3 boundary_normal;
-    int3 boundary_dims;
-
+    bool on_halos();
+    int get_id();
+    AcReal* profile_comm_buffers[NUM_PROFILES+1]{};
+    AcReal local_res_real[NUM_OUTPUTS]{};
+    int    local_res_int[NUM_OUTPUTS]{};
+#if AC_DOUBLE_PRECISION
+    float  local_res_float[NUM_OUTPUTS]{};
+#endif
+    MPI_Request requests[NUM_OUTPUTS+NUM_PROFILES]{};
+    AcSubCommunicators sub_comms[3]{};
+    AcProfileType reduces_only_prof{};
+    bool nothing_to_communicate{};
+    bool reduces_profiles{};
+    bool cuda_aware_mpi_for_profiles{};
   public:
-    SpecialMHDBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
-                                    int region_tag, int3 nn, Device device_,
-                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
-    void populate_boundary_region();
+    ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
+                std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+    void reduce();
+    void communicate();
+    void load_outputs();
     void advance(const TraceFile* trace_file);
     bool test();
-} SpecialMHDBoundaryConditionTask;
-#endif
+    void transfer_to_host();
+    void transfer_to_device();
+} ReduceTask;
+
+
+
 
 // A TaskGraph is a graph structure of tasks that will be executed
 // The tasks have dependencies, which are defined both within an iteration and between iterations
@@ -327,7 +449,7 @@ struct TraceFile {
 };
 
 struct AcTaskGraph {
-    std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps;
+    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
@@ -339,3 +461,5 @@ struct AcTaskGraph {
 
 AcBoundary boundary_from_normal(int3 normal);
 int3 normal_from_boundary(AcBoundary boundary);
+AcTaskDefinition convert_iter_to_normal_compute(AcTaskDefinition op, int step_num);
+typedef struct LoadKernelParamsFunc{std::function<void(ParamLoadingInfo)> loader;} LoadKernelParamsFunc;

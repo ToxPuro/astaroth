@@ -48,7 +48,7 @@ main(void)
 {
     AcMeshInfo info;
     info.int_params[AC_nx] = info.int_params[AC_ny] = info.int_params[AC_nz] = nn;
-    acHostUpdateBuiltinParams(&info);
+    acHostUpdateParams(&info);
 
     Device device;
     acDeviceCreate(0, info, &device);

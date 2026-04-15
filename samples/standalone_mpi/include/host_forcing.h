@@ -59,4 +59,6 @@ void loadForcingParamsToGrid(const ForcingParams& forcing_params);
 
 void loadForcingParamsToHost(const ForcingParams& forcing_params, AcMesh* mesh);
 
+void loadForcingParamsToMeshInfo(const ForcingParams& forcing_params, AcMeshInfo* info);
+
 ForcingParams generateForcingParams(const AcMeshInfo& mesh_info);

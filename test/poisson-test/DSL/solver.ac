@@ -1,0 +1,473 @@
+hostdefine STENCIL_ORDER (6)
+#include "$AC_HOME/acc-runtime/stdlib/general_grid"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
+#include "$AC_HOME/acc-runtime/stdlib/spherical_harmonics.h"
+#include "$AC_HOME/acc-runtime/stdlib/bicgstab.h"
+Field POTENTIAL
+Field SPH_UPPER_POTENTIAL
+Field SPH_LOWER_POTENTIAL
+Field DENSITY
+Field ANALYTICAL
+Field RESIDUAL
+
+int AC_n_solving_steps = 1000
+int AC_charge_radius_points = 10
+real AC_density_charge = 0.0
+
+//output real AC_MLM[AC_n_spherical_harmonics][AC_n_spherical_harmonics][2]
+output real AC_TEST
+Field Y_11
+Field Y_10
+Field Y_20
+Field Y_11_ANALYTICAL
+Field Y_00
+Field Y_00_ANALYTICAL
+
+Kernel calculate_mlm_kernel()
+{
+	calculate_mlm(DENSITY)
+}
+
+Kernel calculate_potential_with_mlm()
+{
+	calculate_expansion_with_mlm(SPH_LOWER_POTENTIAL,SPH_UPPER_POTENTIAL)	
+}
+
+fixed_boundary Kernel jacobi_step_kernel()
+{
+	write(POTENTIAL,poisson_jacobi_update(DENSITY,POTENTIAL))
+}
+
+fixed_boundary Kernel sor_red(real omega)
+{
+	poisson_sor_red_black(SOR_RED,DENSITY,POTENTIAL,omega)
+}
+
+fixed_boundary Kernel sor_black(real omega)
+{
+	poisson_sor_red_black(SOR_BLACK,DENSITY,POTENTIAL,omega)
+}
+
+output real AC_residual2
+Kernel residual_kernel()
+{
+	r = laplace(POTENTIAL)-DENSITY
+	reduce_sum(r*r,AC_residual2)
+}
+
+Kernel write_residual()
+{
+	r = laplace(POTENTIAL)-DENSITY
+	write(RESIDUAL,r)
+	//Laplace
+	/** 
+	R_max = grid_position((int3){36,NGHOST,NGHOST}).x
+	R_min = grid_position((int3){NGHOST-1,NGHOST,NGHOST}).x
+	R = grid_position().x
+	B = 1.0/((1.0/R_min) - (1.0/R_max))
+	write(ANALYTICAL, -(B/R_max) + (B/R))
+	**/
+	R = AC_r[AC_charge_radius_points] + 0.5*AC_ds.x
+	r_min = AC_r[NGHOST] - 0.5*AC_ds.x
+	M_inner = (4.0/3.0)*AC_REAL_PI*AC_density_charge*r_min*r_min*r_min
+	potential_missing_from_inner = M_inner*(r*r-3*r_min*r_min)/(2*r_min*r_min*r_min)
+	r = AC_r[vertexIdx.x]
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
+	if(vertexIdx.x <= AC_charge_radius_points)
+	{
+		write(ANALYTICAL,(M*(r*r-3*R*R)/(2*R*R*R)) - potential_missing_from_inner)
+	}
+	else
+	{
+		write(ANALYTICAL,(-M/r) + potential_missing_from_inner)
+	}
+}
+
+real AC_k = 2.0
+Kernel init()
+{
+	pos = grid_position()
+	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
+	{
+		write(DENSITY,sin(AC_k*AC_REAL_PI*pos.x)*sin(AC_k*AC_REAL_PI*pos.y))
+	}
+        //Diract delta on the first shell
+	/**
+	else
+	{
+	  if(globalVertexIdx.x == NGHOST)
+	  {
+	  	write(DENSITY,AC_density_charge/(4.0*AC_REAL_PI*pos.x*pos.x*AC_ds.x))
+	  }
+	  else
+	  {
+	  	write(DENSITY,0.0)
+	  }
+	}
+	**/
+	//Constant density on the sphere of radius R where R = AC_r[AC_charge_radius_points]
+	if(globalVertexIdx.x <= AC_charge_radius_points)
+	{
+		write(DENSITY,4*AC_REAL_PI*AC_density_charge)
+	}
+	else
+	{
+		write(DENSITY,0.0)
+	}
+	write(POTENTIAL,0.0)
+}
+
+Kernel init_bicgstab_kernel()
+{
+	r = DENSITY - laplace(POTENTIAL)
+	write(BICGSTAB_R,r)
+	write(BICGSTAB_R0,r)
+	write(BICGSTAB_P,r)
+}
+
+ComputeSteps reinitialize_bicgstab(jacobi_bcs)
+{
+	init_bicgstab_kernel()
+}
+
+Kernel bicgstab_step0()
+{
+	bicgstab_compute_rho_prev()
+}
+Kernel bicgstab_step1()
+{
+	v = laplace(BICGSTAB_P)
+	bicgstab_compute_v_and_r0Tv(v)
+}
+
+Kernel bicgstab_step2()
+{
+	bicgstab_compute_h_and_s(POTENTIAL)
+}
+
+Kernel bicgstab_step3()
+{
+	t = laplace(BICGSTAB_S)
+	bicgstab_compute_t(t)
+}
+Kernel bicgstab_step4()
+{
+	bicgstab_compute_next_solution(POTENTIAL)
+}
+
+Kernel bicgstab_step5()
+{
+	bicgstab_compute_rho_next() 
+}
+
+Kernel bicgstab_step6()
+{
+	bicgstab_update_p() 
+}
+
+BoundConds jacobi_bcs
+{
+	analytic_potential_inside(BOUNDARY_X_BOT,POTENTIAL)
+	analytic_potential_outside(BOUNDARY_X_TOP,POTENTIAL)
+	ac_bc_sym(BOUNDARY_Y,POTENTIAL,1)
+	periodic(BOUNDARY_Z)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_P,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_S,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_Y,0.0)
+	ac_const_bc(BOUNDARY_X,BICGSTAB_Z,0.0)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_P,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_S,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_Y,1)
+	ac_bc_sym(BOUNDARY_Y,BICGSTAB_Z,1)
+	//Cartesian 
+	//periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps initcond(jacobi_bcs)
+{
+	init()
+	init_bicgstab_kernel()
+}
+
+analytic_potential_inside(AcBoundary boundary_region, Field f)
+{
+        const int3 normal = get_normal(boundary_region)
+        const int3 boundary = get_boundary(normal)
+        int3 domain = boundary
+        int3 ghost  = boundary
+	R = AC_r[AC_charge_radius_points]
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
+        for i in 0:NGHOST
+        {
+                domain = domain - normal
+                ghost  = ghost  + normal
+		r = grid_position(ghost).x
+		//Laplace
+                //f[ghost.x][ghost.y][ghost.z] = 1.0;
+		//Shell
+                //f[ghost.x][ghost.y][ghost.z] = 1.0/AC_first_gridpoint.x;
+		//Sphere
+		f[ghost.x][ghost.y][ghost.z] = M*(r*r-3*R*R)/(2*R*R*R)
+        }
+}
+
+analytic_potential_outside(AcBoundary boundary_region, Field f)
+{
+        const int3 normal = get_normal(boundary_region)
+        const int3 boundary = get_boundary(normal)
+        int3 domain = boundary
+        int3 ghost  = boundary
+	R = AC_r[AC_charge_radius_points]
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
+        for i in 0:NGHOST
+        {
+                domain = domain - normal
+                ghost  = ghost  + normal
+		r = grid_position(ghost).x
+		//Laplace
+                //f[ghost.x][ghost.y][ghost.z] = 0.0;
+		//Shell
+                //f[ghost.x][ghost.y][ghost.z] = 1.0/grid_position().x
+		//Sphere
+		f[ghost.x][ghost.y][ghost.z] = -M/r
+        }
+}
+
+ComputeSteps jacobi_step(jacobi_bcs)
+{
+	jacobi_step_kernel()
+}
+
+ComputeSteps sor_red_black_step(jacobi_bcs)
+{
+	sor_red(AC_SOR_omega)
+	sor_black(AC_SOR_omega)
+}
+
+output real DIAGNOS_BICGSTAB_S
+output real DIAGNOS_BICGSTAB_H
+output real DIAGNOS_BICGSTAB_R
+output real DIAGNOS_BICGSTAB_R0
+output real DIAGNOS_BICGSTAB_T
+output real DIAGNOS_BICGSTAB_P
+output real DIAGNOS_BICGSTAB_V
+Kernel compute_diagnos()
+{
+	reduce_sum(BICGSTAB_S*BICGSTAB_S,DIAGNOS_BICGSTAB_S)
+	reduce_sum(BICGSTAB_H*BICGSTAB_H,DIAGNOS_BICGSTAB_H)
+	reduce_sum(BICGSTAB_R*BICGSTAB_R,DIAGNOS_BICGSTAB_R)
+	reduce_sum(BICGSTAB_R0*BICGSTAB_R0,DIAGNOS_BICGSTAB_R0)
+	reduce_sum(BICGSTAB_T*BICGSTAB_T,DIAGNOS_BICGSTAB_T)
+	reduce_sum(BICGSTAB_P*BICGSTAB_P,DIAGNOS_BICGSTAB_P)
+	reduce_sum(BICGSTAB_V*BICGSTAB_V,DIAGNOS_BICGSTAB_V)
+}
+
+Kernel bicgstab_compute_true_residual()
+{
+	write(BICGSTAB_R,DENSITY-laplace(POTENTIAL))	
+}
+
+ComputeSteps bicgstab_step(jacobi_bcs)
+{
+	bicgstab_step0()
+	bicgstab_step1()
+	bicgstab_step2()
+	bicgstab_step3()
+	bicgstab_step4()
+	bicgstab_compute_true_residual()
+	bicgstab_step5()
+	bicgstab_step6()
+	compute_diagnos()
+}
+
+Kernel bicgstab_step0_preconditioned()
+{
+	bicgstab_compute_rho_prev()
+}
+
+Kernel bicgstab_compute_y_red()
+{
+	p = value(BICGSTAB_P)
+	if(is_of_color(AC_COLOR_RED,AC_laplacian_colors))
+	{
+		write(BICGSTAB_Y,p/laplace_central_coeff())
+	}	
+	else
+	{
+		//initializing to zero allows easy application of multiple colours later
+		write(BICGSTAB_Y,0.0)
+	}
+}
+
+Kernel bicgstab_compute_y_black()
+{
+	p = value(BICGSTAB_P)
+	Ly = laplace_neighbours(BICGSTAB_Y)
+	if(is_of_color(AC_COLOR_BLACK,AC_laplacian_colors))
+	{
+		write(BICGSTAB_Y,(p-Ly)/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Y,BICGSTAB_Y)
+	}
+}
+Kernel bicgstab_compute_y_green()
+{
+	p = value(BICGSTAB_P)
+	Ly = laplace_neighbours(BICGSTAB_Y)
+	if(is_of_color(AC_COLOR_GREEN,AC_laplacian_colors))
+	{
+		write(BICGSTAB_Y,(p-Ly)/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Y,BICGSTAB_Y)
+	}
+}
+Kernel bicgstab_compute_y_yellow()
+{
+	p = value(BICGSTAB_P)
+	Ly = laplace_neighbours(BICGSTAB_Y)
+	if(is_of_color(AC_COLOR_YELLOW,AC_laplacian_colors))
+	{
+		write(BICGSTAB_Y,(p-Ly)/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Y,BICGSTAB_Y)
+	}
+}
+
+Kernel bicgstab_step1_preconditioned()
+{
+	v = laplace(BICGSTAB_Y)
+	bicgstab_compute_v_and_r0Tv(v)
+}
+
+Kernel bicgstab_step2_preconditioned()
+{
+	bicgstab_compute_h_and_s_preconditioned(POTENTIAL)
+}
+
+Kernel bicgstab_compute_z_red()
+{
+	s = value(BICGSTAB_S)
+	if(is_of_color(AC_COLOR_RED,AC_laplacian_colors))
+	{
+		write(BICGSTAB_Z,s/laplace_central_coeff())
+	}	
+	else
+	{
+		//initializing to zero allows easy application of multiple colours later
+		write(BICGSTAB_Z,0.0)
+	}
+}
+Kernel bicgstab_compute_z_black()
+{
+	s = value(BICGSTAB_S)
+	Lz = laplace_neighbours(BICGSTAB_Z)
+	if(is_of_color(AC_COLOR_BLACK,AC_laplacian_colors))
+	{
+		write(BICGSTAB_Z,(s-Lz)/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Z,BICGSTAB_Z)
+	}
+}
+
+Kernel bicgstab_compute_z_green()
+{
+	s = value(BICGSTAB_S)
+	Lz = laplace_neighbours(BICGSTAB_Z)
+	if(is_of_color(AC_COLOR_GREEN,AC_laplacian_colors))
+	{
+		write(BICGSTAB_Z,(s-Lz)/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Z,BICGSTAB_Z)
+	}
+}
+
+Kernel bicgstab_compute_z_yellow()
+{
+	s = value(BICGSTAB_S)
+	Lz = laplace_neighbours(BICGSTAB_Z)
+	if(is_of_color(AC_COLOR_YELLOW,AC_laplacian_colors))
+	{
+		write(BICGSTAB_Z,(s-Lz)/laplace_central_coeff())
+	}	
+	else
+	{
+		write(BICGSTAB_Z,BICGSTAB_Z)
+	}
+}
+
+Kernel bicgstab_step3_preconditioned()
+{
+	t = laplace(BICGSTAB_Z)
+	write(BICGSTAB_T,t)
+}
+
+Kernel bicgstab_preconditioned_calculate_omega()
+{
+	t = BICGSTAB_T
+	s = BICGSTAB_S
+	reduce_sum(t*s,BICGSTAB_tTs)
+	reduce_sum(t*t,BICGSTAB_tTt)
+}
+
+Kernel bicgstab_step4_preconditioned()
+{
+	bicgstab_compute_next_solution_preconditioned(POTENTIAL)
+}
+
+ComputeSteps bicgstab_preconditioned_step(jacobi_bcs)
+{
+	bicgstab_step0_preconditioned()
+	bicgstab_compute_y_red()
+	bicgstab_compute_y_black()
+#if STENCIL_ORDER == 6
+	bicgstab_compute_y_green()
+	bicgstab_compute_y_yellow()
+#endif
+	bicgstab_step1_preconditioned()
+	bicgstab_step2_preconditioned()
+	bicgstab_compute_z_red()
+	bicgstab_compute_z_black()
+#if STENCIL_ORDER == 6
+	bicgstab_compute_z_green()
+	bicgstab_compute_z_yellow()
+#endif
+	bicgstab_step3_preconditioned()
+	bicgstab_preconditioned_calculate_omega()
+	bicgstab_step4_preconditioned()
+	bicgstab_compute_true_residual()
+	bicgstab_step5()
+	bicgstab_step6()
+}
+
+ComputeSteps sor_red_step(jacobi_bcs)
+{
+	sor_red(AC_SOR_omega)
+}
+ComputeSteps sor_black_step(jacobi_bcs)
+{
+	sor_black(AC_SOR_omega)
+}
+ComputeSteps get_residual(jacobi_bcs)
+{
+	residual_kernel()
+	write_residual()
+}
+ComputeSteps get_potential_with_sph(jacobi_bcs)
+{
+	calculate_mlm_kernel()
+	calculate_potential_with_mlm()
+}

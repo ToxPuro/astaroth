@@ -17,6 +17,8 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth.h"
+#include "kernels.h"
+#include "astaroth_cuda_wrappers.h"
 
 #include <string.h> // strcmp
 
@@ -41,11 +43,22 @@ acQuit(void)
     return acNodeDestroy(nodes[0]);
 }
 
+
 AcResult
 acCheckDeviceAvailability(void)
 {
+    int runtime_version, max_runtime_version_supported_by_driver;
+    ERRCHK_CUDA_ALWAYS(acDriverGetVersion(&max_runtime_version_supported_by_driver));
+    ERRCHK_CUDA_ALWAYS(acRuntimeGetVersion(&runtime_version));
+    if(runtime_version > max_runtime_version_supported_by_driver)
+    {
+            fprintf(stderr,"AC error!: Reported maximum supported runtime by the driver was %d but used runtime is %d!!\n",max_runtime_version_supported_by_driver,runtime_version);
+            fprintf(stderr,"AC error!: Reported maximum supported runtime by the driver was %d but used runtime is %d!!\n",max_runtime_version_supported_by_driver,runtime_version);
+            fprintf(stderr,"AC error!: Reported maximum supported runtime by the driver was %d but used runtime is %d!!\n",max_runtime_version_supported_by_driver,runtime_version);
+            ERRCHK_ALWAYS(runtime_version <= max_runtime_version_supported_by_driver);
+    }
     int device_count; // Separate from num_devices to avoid side effects
-    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&device_count));
+    ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&device_count));
     if (device_count > 0)
         return AC_SUCCESS;
     else
@@ -108,6 +121,7 @@ acIntegrateGBC(const AcMeshInfo config, const AcReal dt)
     return acNodeIntegrateGBC(nodes[0], config, dt);
 }
 
+
 AcResult
 acIntegrateStep(const int isubstep, const AcReal dt)
 {
@@ -115,13 +129,13 @@ acIntegrateStep(const int isubstep, const AcReal dt)
     DeviceConfiguration config;
     acNodeQueryDeviceConfiguration(nodes[0], &config);
 
-    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
-    const int3 end   = start + config.grid.n;
+    const Volume start = (Volume){NGHOST, NGHOST, NGHOST};
+    const Volume end   = start + config.grid.n;
     return acNodeIntegrateSubstep(nodes[0], STREAM_DEFAULT, isubstep, start, end, dt);
 }
 
 AcResult
-acIntegrateStepWithOffset(const int isubstep, const AcReal dt, const int3 start, const int3 end)
+acIntegrateStepWithOffset(const int isubstep, const AcReal dt, const Volume start, const Volume end)
 {
     ERRCHK_ALWAYS(num_nodes);
     return acNodeIntegrateSubstep(nodes[0], STREAM_DEFAULT, isubstep, start, end, dt);
@@ -142,34 +156,34 @@ acBoundcondStepGBC(const AcMeshInfo config)
 }
 
 AcReal
-acReduceScal(const ReductionType rtype, const VertexBufferHandle vtxbuf_handle)
+acReduceScal(const AcReduction reduction, const VertexBufferHandle vtxbuf_handle)
 {
     ERRCHK_ALWAYS(num_nodes);
 
     AcReal result;
-    acNodeReduceScal(nodes[0], STREAM_DEFAULT, rtype, vtxbuf_handle, &result);
+    acNodeReduceScal(nodes[0], STREAM_DEFAULT, reduction, vtxbuf_handle, &result);
     return result;
 }
 
 AcReal
-acReduceVec(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
+acReduceVec(const AcReduction reduction, const VertexBufferHandle a, const VertexBufferHandle b,
             const VertexBufferHandle c)
 {
     ERRCHK_ALWAYS(num_nodes);
 
     AcReal result;
-    acNodeReduceVec(nodes[0], STREAM_DEFAULT, rtype, a, b, c, &result);
+    acNodeReduceVec(nodes[0], STREAM_DEFAULT, reduction, a, b, c, &result);
     return result;
 }
 
 AcReal
-acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
+acReduceVecScal(const AcReduction reduction, const VertexBufferHandle a, const VertexBufferHandle b,
                 const VertexBufferHandle c, const VertexBufferHandle d)
 {
     ERRCHK_ALWAYS(num_nodes);
 
     AcReal result;
-    acNodeReduceVecScal(nodes[0], STREAM_DEFAULT, rtype, a, b, c, d, &result);
+    acNodeReduceVecScal(nodes[0], STREAM_DEFAULT, reduction, a, b, c, d, &result);
     return result;
 }
 
@@ -198,7 +212,7 @@ int
 acGetNumDevicesPerNode(void)
 {
     int num_devices;
-    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&num_devices));
+    ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&num_devices));
     return num_devices;
 }
 
@@ -206,6 +220,12 @@ size_t
 acGetNumFields(void)
 {
     return NUM_VTXBUF_HANDLES;
+}
+
+const char*
+acGetFieldName(const Field field)
+{
+	return field_names[field];
 }
 
 AcResult
@@ -229,78 +249,131 @@ acGetNode(void)
     return nodes[0];
 }
 
-AcResult
-acHostUpdateBuiltinParams(AcMeshInfo* config)
+static
+AcReal*
+acCallocHostReal(const size_t n_cells)
 {
-    ERRCHK_ALWAYS(config->int_params[AC_nx] > 0);
-    ERRCHK_ALWAYS(config->int_params[AC_ny] > 0);
-    ERRCHK_ALWAYS(config->int_params[AC_nz] > 0);
+    AcReal* res;
+    const size_t bytes = sizeof(AcReal)*n_cells;
+    ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&res, bytes));
+    ERRCHK_ALWAYS(res);
+    memset(res,0,bytes);
+    return res;
+}
 
-    config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
-    ///////////// PAD TEST
-    // config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER + PAD_SIZE;
-    ///////////// PAD TEST
-    config->int_params[AC_my] = config->int_params[AC_ny] + STENCIL_ORDER;
-    config->int_params[AC_mz] = config->int_params[AC_nz] + STENCIL_ORDER;
+AcReal*
+acHostCreateVertexBufferVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const size_t n_cells = acVertexBufferSize(info,vtxbuf);
+    return acCallocHostReal(n_cells);
+}
 
-    // Bounds for the computational domain, i.e. nx_min <= i < nx_max
-    config->int_params[AC_nx_min] = STENCIL_ORDER / 2;
-    config->int_params[AC_ny_min] = STENCIL_ORDER / 2;
-    config->int_params[AC_nz_min] = STENCIL_ORDER / 2;
-
-    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
-    config->int_params[AC_ny_max] = config->int_params[AC_ny_min] + config->int_params[AC_ny];
-    config->int_params[AC_nz_max] = config->int_params[AC_nz_min] + config->int_params[AC_nz];
-
-    /*
-    #ifdef AC_dsx
-        printf("HELLO!\n");
-        ERRCHK_ALWAYS(config->real_params[AC_dsx] > 0);
-        config->real_params[AC_inv_dsx] = (AcReal)(1.) / config->real_params[AC_dsx];
-        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsx]));
-    #endif
-    #ifdef AC_dsy
-        ERRCHK_ALWAYS(config->real_params[AC_dsy] > 0);
-        config->real_params[AC_inv_dsy] = (AcReal)(1.) / config->real_params[AC_dsy];
-        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsy]));
-    #endif
-    #ifdef AC_dsz
-        ERRCHK_ALWAYS(config->real_params[AC_dsz] > 0);
-        config->real_params[AC_inv_dsz] = (AcReal)(1.) / config->real_params[AC_dsz];
-        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsz]));
-    #endif
-    */
-
-    /* Additional helper params */
-    // Int helpers
-    config->int_params[AC_mxy]  = config->int_params[AC_mx] * config->int_params[AC_my];
-    config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
-    config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
-
-    return AC_SUCCESS;
+AcReal*
+acHostCreateVertexBuffer(const AcMeshInfo info)
+{
+    const size_t n_cells = acVertexBufferSize(info);
+    return acCallocHostReal(n_cells);
 }
 
 AcResult
-acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
+acHostMeshCreateProfiles(AcMesh* mesh)
 {
-    info->int_params[AC_nx] = nx;
-    info->int_params[AC_ny] = ny;
-    info->int_params[AC_nz] = nz;
-    return acHostUpdateBuiltinParams(info);
+    const auto mm = acGetLocalMM(mesh->info);
+    const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
+    for(int p = 0; p < NUM_PROFILES; ++p)
+    {
+	    mesh->profile[p] = acCallocHostReal(prof_size(Profile(p),counts));
+            ERRCHK_ALWAYS(mesh->profile[p]);
+    }
+    return AC_SUCCESS;
 }
 
 AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
     mesh->info = info;
-
-    const size_t n_cells = acVertexBufferSize(mesh->info);
+    acHostUpdateParams(&mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) 
+	mesh->vertex_buffer[w] = acHostCreateVertexBuffer(mesh->info,VertexBufferHandle(w));
+    return acHostMeshCreateProfiles(mesh);
+}
+AcResult
+acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
+{
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
+        if(src.vertex_buffer[w] == NULL) continue;
+	if(dst.vertex_buffer[w] == NULL) continue;
+	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info,VertexBufferHandle(w)));
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostMeshCopy(const AcMesh src, AcMesh* dst)
+{
+    ERRCHK_ALWAYS(acHostMeshCreate(src.info,dst) == AC_SUCCESS);
+    ERRCHK_ALWAYS(acHostMeshCopyVertexBuffers(src,*dst) == AC_SUCCESS);
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+{
+    mesh->info = info;
+    const size_t n_cells = acGridVertexBufferSize(mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        mesh->vertex_buffer[w] = acCallocHostReal(n_cells);
         ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
     }
 
     return AC_SUCCESS;
+}
+AcResult
+acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const size_t comp_info, const int num_reals, 
+		      const int num_ints, const int num_bools, const int num_real_arrays,
+		      const int num_int_arrays, const int num_bool_arrays)
+{
+	AcResult res = AC_SUCCESS;
+	if(mesh_size != sizeof(AcMesh))
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in AcMesh size: %zu|%zu\n",mesh_size,sizeof(AcMesh));
+		res = AC_FAILURE;
+	}
+	if(mesh_info_size != sizeof(AcMeshInfo))
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in AcMeshInfo size: %zu|%zu\n",mesh_info_size,sizeof(AcMeshInfo));
+		res = AC_FAILURE;
+	}
+	if(comp_info != sizeof(AcCompInfo))
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in AcCompInfo size: %zu|%zu\n",comp_info,sizeof(AcCompInfo));
+		res = AC_FAILURE;
+	}
+	if(num_ints != NUM_INT_PARAMS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_PARAMS : %d|%d\n",num_ints,NUM_INT_PARAMS);
+	}
+	if(num_reals != NUM_REAL_PARAMS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_PARAMS : %d|%d\n",num_reals,NUM_REAL_PARAMS);
+	}
+	if(num_bools != NUM_BOOL_PARAMS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_BOOL_PARAMS: %d|%d\n",num_bools,NUM_BOOL_PARAMS);
+	}
+	if(num_int_arrays != NUM_INT_ARRAYS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_ARRAYS: %d|%d\n",num_int_arrays,NUM_INT_ARRAYS);
+	}
+	if(num_bool_arrays != NUM_BOOL_ARRAYS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_BOOL_ARRAYS: %d|%d\n",num_bool_arrays,NUM_BOOL_ARRAYS);
+	}
+	if(num_real_arrays != NUM_REAL_ARRAYS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_REAL_ARRAYS: %d|%d\n",num_real_arrays,NUM_REAL_ARRAYS);
+	}
+	return res;
 }
 
 static AcReal
@@ -313,7 +386,20 @@ randf(void)
 AcResult
 acHostMeshRandomize(AcMesh* mesh)
 {
-    const size_t n = acVertexBufferSize(mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+	if(mesh->vertex_buffer[w] == NULL) continue;
+        const size_t n = acVertexBufferSize(mesh->info,VertexBufferHandle(w));
+        for (size_t i = 0; i < n; ++i) {
+            mesh->vertex_buffer[w][i] = randf();
+        }
+    }
+
+    return AC_SUCCESS;
+}
+AcResult
+acHostGridMeshRandomize(AcMesh* mesh)
+{
+    const size_t n = acGridVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         for (size_t i = 0; i < n; ++i) {
             mesh->vertex_buffer[w][i] = randf();
@@ -322,12 +408,20 @@ acHostMeshRandomize(AcMesh* mesh)
 
     return AC_SUCCESS;
 }
+AcResult
+acHostMeshDestroyVertexBuffer(AcReal** vtxbuf)
+{
+	if(*vtxbuf == NULL) return AC_SUCCESS;
+	acFreeHost(*vtxbuf);
+	(*vtxbuf) = NULL;
+	return AC_SUCCESS;
+}
 
 AcResult
 acHostMeshDestroy(AcMesh* mesh)
 {
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        free(mesh->vertex_buffer[w]);
+	acHostMeshDestroyVertexBuffer(&mesh->vertex_buffer[w]);
 
     return AC_SUCCESS;
 }
@@ -337,15 +431,9 @@ acHostMeshDestroy(AcMesh* mesh)
 */
 
 size_t
-acGetKernelId(const Kernel kernel)
+acGetKernelId(const AcKernel kernel)
 {
-    for (size_t id = 0; id < NUM_KERNELS; ++id) {
-        if (kernel == kernels[id])
-            return id;
-    }
-    fprintf(stderr, "acGetKernelId failed: did not find kernel %p from the list of kernels\n",
-            kernel);
-    return (size_t)-1;
+	return (size_t) kernel;
 }
 
 size_t
@@ -359,3 +447,115 @@ acGetKernelIdByName(const char* name)
             name);
     return (size_t)-1;
 }
+
+Volume
+acGetLocalNN(const AcMeshInfo info)
+{
+    return to_volume(info[AC_nlocal]);
+}
+
+Volume
+acGetLocalMM(const AcMeshInfo info)
+{
+    return to_volume(info[AC_mlocal]);
+}
+
+Volume
+acGetGridNN(const AcMeshInfo info)
+{
+    return to_volume(info[AC_ngrid]);
+}
+
+Volume
+acGetGridMM(const AcMeshInfo info)
+{
+    return to_volume(info[AC_mgrid]);
+}
+
+Volume
+acGetMaxNN(const AcMeshInfo info)
+{
+    return to_volume(info[AC_nlocal_max]);
+}
+
+Volume
+acGetMinNN(const AcMeshInfo info)
+{
+    return to_volume(info[AC_nmin]);
+}
+
+Volume
+acGetGridMaxNN(const AcMeshInfo info)
+{
+    return to_volume(info[AC_ngrid_max]);
+}
+
+AcReal3
+acGetLengths(const AcMeshInfo info)
+{
+	return info[AC_len];
+}
+
+
+#include "get_vtxbufs_funcs.h"
+#include "stencil_accesses.h"
+#include "../config_helpers.h"
+void
+acStoreConfig(const AcMeshInfo info, const char* filename)
+{
+	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
+	AcScalarTypes::run<load_scalars>(info, fp, "", false);
+	AcArrayTypes::run<load_arrays>(info,fp, "", false);
+
+	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
+	AcArrayCompTypes::run<load_comp_arrays>(info,    fp, "", false);
+	if(filename != NULL) fclose(fp);
+}
+
+
+
+void
+acQueryIntparams(void)
+{
+    for (int i = 0; i < NUM_INT_PARAMS; ++i)
+        printf("%s (%d)\n", intparam_names[i], i);
+}
+
+void
+acQueryInt3params(void)
+{
+    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+        printf("%s (%d)\n", int3param_names[i], i);
+}
+
+void
+acQueryRealparams(void)
+{
+    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+        printf("%s (%d)\n", realparam_names[i], i);
+}
+
+void
+acQueryReal3params(void)
+{
+    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+        printf("%s (%d)\n", real3param_names[i], i);
+}
+
+
+void
+acQueryKernels(void)
+{
+    for (int i = 0; i < NUM_KERNELS; ++i)
+        printf("%s (%d)\n", kernel_names[i], i);
+}
+
+
+void
+acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
+{
+    acPrintIntParam(a, info);
+    acPrintIntParam(b, info);
+    acPrintIntParam(c, info);
+}
+

@@ -1,0 +1,21 @@
+hostdefine STENCIL_ORDER (6)
+#include "$AC_HOME/acc-runtime/stdlib/math"
+Field F_IN[5]
+Field F_OUT[5]
+
+input int AC_field_index
+
+Kernel gaussian_smooth_on_elem(int index)
+{
+	write(F_OUT[index],gaussian_smooth_inplace(F_IN[index]))
+}
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+ComputeSteps graph(bcs)
+{
+	gaussian_smooth_on_elem(AC_field_index)
+}
+

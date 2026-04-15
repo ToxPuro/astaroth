@@ -1,6 +1,6 @@
 # Astaroth - A Scalable Multi-GPU Library for Stencil Computations {#mainpage}
 
-[API specification](doc/Astaroth_API_specification_and_user_manual/API_specification_and_user_manual.md)| [Astaroth DSL](acc-runtime/README.md) | [Contributing](CONTRIBUTING.md) | [Licence](LICENCE.md) | [Repository](https://bitbucket.org/jpekkila/astaroth) | [Issue Tracker](https://bitbucket.org/jpekkila/astaroth/issues?status=new&status=open) | [Wiki](https://bitbucket.org/jpekkila/astaroth/wiki/Home)
+[Docs](https://toxpuro.github.io/astaroth) | [API specification](doc/Astaroth_API_specification_and_user_manual/API_specification_and_user_manual.md) | [Astaroth DSL](acc-runtime/README.md) | [Contributing](CONTRIBUTING.md) | [Licence](LICENCE.md) | [Repository](https://bitbucket.org/jpekkila/astaroth) | [Issue Tracker](https://bitbucket.org/jpekkila/astaroth/issues?status=new&status=open) | [Wiki](https://bitbucket.org/jpekkila/astaroth/wiki/Home)
 
 Astaroth is a multi-GPU library designed for high-order stencil computations with a special focus on the requirements of multiphysics applications on modern HPC systems. It provides a multi-GPU and single-GPU APIs, a domain-specific language for expressing stencil codes in a high-level syntax, and an optimizing compiler that translates DSL sources into CUDA/HIP subroutines that exhibit near handtuned performance.
 
@@ -8,7 +8,8 @@ Astaroth is licenced under the terms of the GNU General Public Licence, version 
 (see [LICENCE.txt](LICENCE.md)). For contributing guidelines,
 see [Contributing](CONTRIBUTING.md).
 
-
+## Getting started
+* For a hello world example for physical simulations see `samples/advection-example`
 ## System Requirements
 * An NVIDIA GPU with support for compute capability 3.0 or higher (Kepler architecture or newer)
 
@@ -48,13 +49,13 @@ In the base directory, run
 
 If you need a functioning and documented example of how to run Astaroth in standalone more out of the box,
 
-[please see this shock turbulence run example](config/samples/shockturb/README.md) in the directory `config/samples/shockturb/`. 
+[please see this shock turbulence run example](config/samples/shockturb/README.md) in the directory `config/samples/shockturb/`.
 
 ## Running on clusters (Slurm)
 
 1. Load the modules required for building: `module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda`
 1. Build with MPI support: `cmake -DMPI_ENABLED=ON ..` (see 'Building' above)
-1. Run the code interactively or with a batch job, f.ex. `srun --account=<project number> --gres=gpu:v100:4 --mem=24000 -t 00:14:59 -p gputest --ntasks-per-socket=2 -n 4 -N 1 <executable here, f.ex ./mpitest or ./benchmark 256 256 256 or ./ac_run -t>`
+1. Run the code interactively or with a batch job, f.ex. `srun --account=<project number> --gres=gpu:v100:4 --mem=24000 -t 00:14:59 -p gputest --ntasks-per-socket=2 -n 4 -N 1 <executable here, f.ex ./mpitest or ./benchmark 256 256 256 or ./ac_mpi_run --run-init-kernel randomize>`
 
 > **Note:** Assign one task per GPU when using MPI.
 
@@ -116,7 +117,7 @@ mkdir build && cd build                     # Create a build directory
 
 module load gcc bison flex cmake openmpi
 srun -p gpu-amd -t 00:05:00 --pty /bin/bash # Currently need to build on the gpu-amd partition, otherwise hipcc is not available
-cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Triton if BUILD_SHARED_LIBS=OFF due linker failure
+cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Triton if BUILD_SHARED_LIBS=OFF due linker failure (note: BUILD_SHARED_LIBS deprecated on 2025-01-07)
 ./devicetest                                # Check that everything works
 ```
 
@@ -130,9 +131,9 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | DOUBLE_PRECISION | Generates double precision code. | ON |
 | BUILD_SAMPLES | Builds projects in samples subdirectory. | ON |
 | MPI_ENABLED | Enables acGrid functions for carrying out computations with MPI. | OFF |
-| USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON |
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
 | DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc-runtime/samples/mhd_modular` |
+| DSL_MODULE_FILE | Optionally can specify which file in DSL_MODULE_DIR to compile | empty |
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
 | VERBOSE | Enables various non-critical warning and status messages. | OFF |
 | BUILD_UTILS | "Builds the utility library. | ON |
@@ -141,6 +142,12 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | ON |
 | OPTIMIZE_MEM_ACCESSES | "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time" | OFF |
 | BUILD_SHARED_LIBS | "Builds Astaroth as a collection of shared libraries instead of statically built modules" | OFF |
+| RUNTIME_COMPILATION | "Compile version of Astaroth compiled at runtime" | OFF |
+| BUILD_TESTS | "Builds Astaroth test samples" | OFF |
+| 2D | "Specifies that Astaroth is being compiled for a two-dimensional setup (XY). When possible prefer to give this information via AC_dimension_inactive parameter" | OFF |
+| CPU_BUILD | "To build CPU-only build" | OFF |
+| FFT_ENABLED | "Whether to enable FFT API functions" | OFF |
+
 
 
 ## Standalone Module
@@ -156,14 +163,26 @@ Usage: ./ac_run [options]
 	   --config | -c: Uses the config file given after this flag instead of the default.
 ```
 
+```Bash
+Usage: ./ac_run_mpi [options]
+	     --help | -h: Prints the input parameters
+```
+
 See `analysis/python/` directory of existing data visualization and analysis scripts.
+
+### Restarting from distributed snapshots
+
+```bash
+cmake ~/astaroth -DOPTIMIZE_MEM_ACCESSES=ON -DMPI_ENABLED=ON && cmake --build . --parallel && $SRUN4 ./ac_run_mpi --from-snapshot <snapshot directory>
+```
+
+See also config parameter `AC_num_snapshots` for more control over how many snapshots are written out.
 
 ## Interface
 
 * `astaroth/include/astaroth.h`: Astaroth main header. Contains the interface for accessing single- and multi-GPU layers.
 * `astaroth/include/astaroth_utils.h`: Utility library header. Provides functions for performing common tasks on host, such as allocating and verifying meshes.
 * `acc-runtime/api/acc_runtime.h`: Low-level single-GPU library for running kernels generated from user-defined DSL files.
-* ~~`<build directory>/astaroth.f90`: Fortran interface to Astaroth. Generated when building the library.~~ (not available at the moment)
 
 ## FAQ
 
@@ -177,7 +196,7 @@ How do I compile with MPI support?
 
 I have issues with MPI
 
-> If your MPI has been setup incorrectly or does not support CUDA-aware communication, you can try building Astaroth without RDMA support with `cmake -DUSE_CUDA_AWARE_MPI=OFF ..`. Note that without CUDA-aware support, communication is routed through CPU memory which gives notably worse performance than communicating directly between GPUs.
+> If your MPI has been setup incorrectly or does not support CUDA-aware communication, you can try running Astaroth without RDMA support with `AC_use_cuda_aware_mpi=F` in your config file. Note that without CUDA-aware support, communication is routed through CPU memory which gives notably worse performance than communicating directly between GPUs.
 
 I have issues with IBM Power PCs
 

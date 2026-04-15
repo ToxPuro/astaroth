@@ -1,0 +1,3 @@
+[submodule "acc-comm"]
+	path = acc-comm
+	url = https://bitbucket.org/jpekkila/astaroth-communication-module.git

@@ -1,5 +1,7 @@
 Field IMAGE0
 
+#include "../../stdlib/map.h"
+
 #define COEFF (1. / 7.)
 
 Stencil blur {
