@@ -98,9 +98,24 @@ An important design choice with respect to this its global configuration structu
 as a platform to study optimization techniques. Recently the acceleration of `Pencil Code` via `Astaroth` is expected to 
 increase the number of people relying on `Astaroth` as the core execution engine.
 
+
+List of papers: (if something is missing please add)
+
+Stencil computations on amd and nvidia graphics processors: Performance and tuning strategies
+Interaction of large-and small-scale dynamos in isotropic turbulent flows from GPU-accelerated simulations
+Scalable communication for high-order stencil computations using CUDA-aware MPI
+Exploring the formation of resistive pseudodisks with the GPU code astaroth
+Methods for compressible fluid simulation on GPUs using high-order finite differences
+Observability, monitoring, and in situ analytics in exascale applications (used Astaroth standalone)
+Asymptotic behaviour of galactic small-scale dynamos at modest magnetic Prandtl number
+SOMA: Observability, monitoring, and in situ analytics for exascale applications
+GPU acceleration of average gradient method for solving partial differential equations
+
+
+
 # Acknowledgements
 
 We acknowledge the contributions of every committer to Astaroth and the early users of it who have been instrumental 
-in its evolution. (Jörn Warnecke, Frederick Gent, who else)?
+in its evolution. (Jörn Warnecke, Frederick Gent, Indrani Das, who else)?
 
 # References
