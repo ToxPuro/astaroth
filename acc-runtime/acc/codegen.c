@@ -580,9 +580,12 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
 	  no_comm_and_aux_qualifiers &= (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != COMMUNICATED_STR) && (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != AUXILIARY_STR);
 
 
-  if(!has_optimization_info() && no_comm_and_aux_qualifiers)
+  if(!has_optimization_info())
   {
-  	push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, intern("Communicated"));
+	if(no_comm_and_aux_qualifiers)
+	{
+  	  push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, intern("Communicated"));
+	}
   	return num_symbols[current_nest]-1;
   } 
 
