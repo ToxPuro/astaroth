@@ -1481,13 +1481,13 @@ HaloMessage::~HaloMessage()
 {
     MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
     real_length = -1;
-    acFree(real_data);
+    acFree(all_data);
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
-    	acFreeHost(real_data_pinned);
-	real_data_pinned = NULL;
+    	acFreeHost(all_data_pinned);
+	all_data_pinned = NULL;
     }
-    real_data = NULL;
+    all_data = NULL;
 }
 
 void
