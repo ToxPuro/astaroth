@@ -8,7 +8,6 @@ hostdefine STENCIL_ORDER (2)
 #include "../../standalone_params.h"
 #include "../../stdlib/units.h"
 #include "../../stdlib/map.h"
-#include "../../stdlib/bicgstab.h"
 #include "../../stdlib/utils/kernels.h"
 const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
@@ -103,6 +102,7 @@ hostdefine R_PI (AC_REAL_PI)
 #endif
 #
 #if LSELFGRAVITY
+#include "../../stdlib/bicgstab.h"
 #include "../../stdlib/poisson.h"
 #include "../../stdlib/spherical_harmonics.h"
 #include "../../stdlib/grid_extension.h"
@@ -905,7 +905,9 @@ ComputeSteps AC_rhs(boundconds)
 }
 Kernel calc_timestep_kernel() {calc_timestep()}
 
+#if LSELFGRAVITY
 dims(AC_extended_mlocal) Field OMEGA
+#endif
 Kernel init()
 {
 #if LSELFGRAVITY
