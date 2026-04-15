@@ -714,6 +714,11 @@ populate_global_strings()
 int
 main(int argc, char** argv)
 {
+    if(argc == 1)
+    {
+        puts("Usage: ./acc [source file]");
+        return EXIT_FAILURE;
+    }
     atexit(&cleanup);
     char* file = NULL;
     ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-1]);
