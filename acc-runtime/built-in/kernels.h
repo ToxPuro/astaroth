@@ -97,7 +97,7 @@ utility Kernel AC_VOLUME_COPY_REAL_TO_COMPLEX_FLOAT_BATCHED(const real[] src,Vol
     {
 	const size_t idx_out = indexes.out_index + i*out_size;
 	const size_t idx_in  = indexes.in_index + i*in_size;
-    	out[idx_out].x = src[idx_in];
+    	out[idx_out].x = float(src[idx_in]);
     	out[idx_out].y = 0.0;
     }
 }
