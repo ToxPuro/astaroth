@@ -1485,9 +1485,15 @@ HaloMessage::~HaloMessage()
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
     	acFreeHost(all_data_pinned);
-	all_data_pinned = NULL;
+	all_data_pinned    = NULL;
+	real_data_pinned   = NULL;
+	single_data_pinned = NULL;
+	half_data_pinned   = NULL;
     }
-    all_data = NULL;
+    all_data     = NULL;
+    real_data    = NULL;
+    single_data  = NULL;
+    half_data    = NULL;
 }
 
 void
