@@ -27,6 +27,7 @@
 int
 main(void)
 {
+#ifdef AC_SINGLEPASS_INTEGRATION
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
@@ -61,4 +62,8 @@ main(void)
 
     puts("cpptest complete.");
     return EXIT_SUCCESS;
+#else
+    puts("cpptest requires SINGLEPASS INTEGRAITON.");
+    return EXIT_FAILURE;
+#endif
 }

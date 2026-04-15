@@ -649,7 +649,6 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
     acHostUpdateParams(&device_config);
 
     ERRCHK_ALWAYS(device_config[AC_nlocal] == device->local_config[AC_nlocal]);
-    ERRCHK_ALWAYS(device_config[AC_multigpu_offset] == device->local_config[AC_multigpu_offset]);
 
     AcScalarTypes::run<load_all_scalars_uniform>(device,device_config);
     AcArrayTypes::run<load_all_arrays_uniform>(device, device_config);

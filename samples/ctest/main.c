@@ -27,6 +27,7 @@
 int
 main(void)
 {
+#ifdef AC_SINGLEPASS_INTEGRATION
     ERRCHK_ALWAYS(acCheckDeviceAvailability() == AC_SUCCESS);
 
     AcMeshInfo info;
@@ -64,4 +65,8 @@ main(void)
 
     puts("ctest complete.");
     return EXIT_SUCCESS;
+#else
+    puts("cpptest requires SINGLEPASS INTEGRAITON.");
+    return EXIT_FAILURE;
+#endif
 }

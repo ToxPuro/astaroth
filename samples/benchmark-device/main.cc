@@ -47,7 +47,7 @@ main(int argc, char** argv)
     fflush(stdout);
 
     // Mesh configuration
-    AcMeshInfo info;
+    AcMeshInfo info = acInitInfo();
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     acSetLocalMeshDims(nx, ny, nz, &info);
     acPrintMeshInfo(info);
