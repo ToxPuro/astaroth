@@ -214,7 +214,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "SOR_TEST complete: %s\n",
+        fprintf(stderr, "CG_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;
