@@ -763,7 +763,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
         device->local_config[AC_multigpu_offset].x < 0 ||
         device->local_config[AC_multigpu_offset].y < 0 ||
         device->local_config[AC_multigpu_offset].z < 0) {
-	WARNING("Invalid AC_multigpu_offset passed in device_config to acDeviceCreate. Replacting with AC_multigpu_offset = (int3){0,0,0}.");
+	WARNING("Invalid AC_multigpu_offset passed in device_config to acDeviceCreate. Replacing with AC_multigpu_offset = (int3){0,0,0}.");
         device->local_config[AC_multigpu_offset] = (int3){0, 0, 0};
     }
     if(
