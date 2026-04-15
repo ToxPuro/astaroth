@@ -572,20 +572,19 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
 
 
   ++num_symbols[current_nest];
-  bool is_field_without_comm_and_aux_qualifiers = tspecifier && tspecifier == FIELD_STR && current_nest == 0;
+  const bool is_global_field = tspecifier && tspecifier == FIELD_STR && current_nest == 0;
+  if(!is_global_field) return num_symbols[current_nest]-1;
 
+  bool no_comm_and_aux_qualifiers = true;
   for(size_t i = 0; i < symbol_table[num_symbols[current_nest]-1].tqualifiers.size; ++i)
-	  is_field_without_comm_and_aux_qualifiers &= (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != COMMUNICATED_STR) && (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != AUXILIARY_STR);
+	  no_comm_and_aux_qualifiers &= (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != COMMUNICATED_STR) && (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != AUXILIARY_STR);
 
-  if(!is_field_without_comm_and_aux_qualifiers)
-  	return num_symbols[current_nest]-1;
-	  
-  if(!has_optimization_info())
+
+  if(!has_optimization_info() && no_comm_and_aux_qualifiers)
   {
   	push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, intern("Communicated"));
   	return num_symbols[current_nest]-1;
   } 
-
 
 
    const int field_index = int_vec_get_index(user_remappings,get_symbol_index(NODE_VARIABLE_ID, id, FIELD_STR));
@@ -607,11 +606,11 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
 	   is_dead      &= !should_be_alive;
 
    }
-   if(is_communicated)
+   if(is_communicated && no_comm_and_aux_qualifiers)
    {
    	push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, COMMUNICATED_STR);
    }
-   if(is_auxiliary)
+   if(is_auxiliary && no_comm_and_aux_qualifiers)
 	push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, AUXILIARY_STR);
    if(is_dead && ALLOW_DEAD_VARIABLES)
    {
@@ -6549,7 +6548,7 @@ gen_field_info(FILE* fp)
   for (size_t i = 0; i < names.size; ++i)
   {
     const Symbol* sym = (Symbol*)get_symbol(NODE_VARIABLE_ID,names.data[i],NULL);
-    const bool is_dead = str_vec_contains(sym->tqualifiers,DEAD_STR);
+    const bool is_dead = has_optimization_info() && str_vec_contains(sym->tqualifiers,DEAD_STR);
     if(is_dead) continue;
     push(&field_names,sym->identifier);
     const bool is_aux  = str_vec_contains(sym->tqualifiers,AUXILIARY_STR);
@@ -6571,10 +6570,11 @@ gen_field_info(FILE* fp)
     field_is_device_only[num_of_fields] = is_device_only;
     ++num_of_fields;
   }
+
   for (size_t i = 0; i < names.size; ++i)
   {
     const Symbol* sym = (Symbol*)get_symbol(NODE_VARIABLE_ID,names.data[i],NULL);
-    const bool is_dead = str_vec_contains(sym->tqualifiers,DEAD_STR);
+    const bool is_dead = has_optimization_info() && str_vec_contains(sym->tqualifiers,DEAD_STR);
     if(!is_dead) continue;
     push(&field_names,sym->identifier);
     const bool is_aux  = str_vec_contains(sym->tqualifiers,AUXILIARY_STR);
@@ -6596,6 +6596,7 @@ gen_field_info(FILE* fp)
     field_is_device_only[num_of_fields] = is_device_only;
     ++num_of_fields;
   }
+
   if(!has_optimization_info()) num_of_alive_fields = num_of_fields;
   string_vec complex_field_names = VEC_INITIALIZER;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
