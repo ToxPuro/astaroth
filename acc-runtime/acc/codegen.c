@@ -9827,6 +9827,14 @@ remove_dead_writes_base(ASTNode* node)
 	if(!statements_node) return res;
 	node_vec statements = get_nodes_in_list(statements_node);
 	string_vec vars_used = VEC_INITIALIZER;
+
+        //Adds the input parameters as used vars.
+        //This is to avoid writes to ptrs getting incorrectely eliminated
+        if(node->rhs->lhs)
+        {
+          add_all_identifiers(node->rhs->lhs,&vars_used);
+        }
+
 	for(int i = (int)statements.size-1; i >= 0; --i)
 	{
 		get_used_vars(statements.data[i],&vars_used);
