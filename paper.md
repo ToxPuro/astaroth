@@ -73,6 +73,10 @@ Compared to the state of the field Astaroth excels in the robustness of the inte
 
 # Software design
 
+TODO: Based on Oskar's comments larger emphasis should be made here about the integration of Astaroth to existing codes.
+At the same time the granularity of the multi-layer approach could be cut down.
+
+
 `Astaroth`'s core design flows from the DSL and stencil computations and is multi-layered.
 A core design principle is that the whole library, including its runtime, is compiled based on the DSL written by the user.
 This allows `Astaroth` to make the usage experience as smooth as possible and at the same time optimize itself for the specific use case at hand. This principle is taken to the logical conclusion in the feature of runtime-compilation where the whole library is compiled from scratch at the runtime of the application after all possible information about the application are known. This is particularly important for large multi-physics PDE solvers which contain many control variables describing the simulation setup at hand.
