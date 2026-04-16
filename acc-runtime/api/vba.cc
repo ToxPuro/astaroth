@@ -328,6 +328,34 @@ acVBACreate(const AcMeshInfo config)
   ERRCHK_ALWAYS(vba_in_buff == NULL);
   ERRCHK_ALWAYS(vba_out_buff == NULL);
 
+#if AC_CPU_BUILD
+#else
+  {
+    size_t free_mem=0;
+    size_t total_mem=0;
+    acMemGetInfo(&free_mem, &total_mem);
+    const size_t total_bytes = real_in_bytes  + single_in_bytes  + half_in_bytes
+                             +real_out_bytes + single_out_bytes + half_out_bytes;
+    if(total_bytes > free_mem)
+    {
+       size_t count = vba.computational_dims.m1.x*vba.computational_dims.m1.y*vba.computational_dims.m1.z;
+       const size_t bytes_per_vertex = total_bytes/count;
+       const size_t largest_possible_number_of_vertices = free_mem/bytes_per_vertex;
+       const int largest_possible_cube_len = (int)pow((AcReal)largest_possible_number_of_vertices,1.0/3.0);
+       fprintf(stderr,"AC ERROR: Ran out of memory trying to allocate a %zux%zux%zu grid.\n"
+                      "An estimate for the largest grid that could possibly fit is: %dx%dx%d!\n"
+                      ,vba.computational_dims.m1.x
+                      ,vba.computational_dims.m1.y
+                      ,vba.computational_dims.m1.z
+                      ,largest_possible_cube_len
+                      ,largest_possible_cube_len
+                      ,largest_possible_cube_len
+              );
+    }
+  }
+#endif
+
+
   acDeviceMalloc((void**)&vba_in_buff,real_in_bytes + single_in_bytes + half_in_bytes);
   acDeviceMalloc((void**)&vba_out_buff,real_out_bytes + single_out_bytes + half_out_bytes);
   if(vba_in_buff == NULL || vba_out_buff == NULL)
