@@ -112,7 +112,7 @@ const Stream STREAM_DEFAULT = STREAM_0;
 
 
 // For plate buffers.
-enum {AC_H2D, AC_D2H};    // pack/unpack direction
+enum AcPlateDirection {AC_H2D, AC_D2H};    // pack/unpack direction
 typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateType;
 
 
