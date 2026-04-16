@@ -116,6 +116,6 @@ GPU acceleration of average gradient method for solving partial differential equ
 # Acknowledgements
 
 We acknowledge the contributions of every committer to Astaroth and the early users of it who have been instrumental 
-in its evolution. (Jörn Warnecke, Frederick Gent, Indrani Das, who else)?
+in its evolution. (Jörn Warnecke, Frederick Gent, Indrani Das, Ruben Krasnopolsky, Hsien Shang, who else)?
 
 # References
