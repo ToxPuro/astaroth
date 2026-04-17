@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2020, Oskar Lappi
+    Copyright (C) 2020-2026, Oskar Lappi, Touko Puro
 
     This file is part of Astaroth.
 

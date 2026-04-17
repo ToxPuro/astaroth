@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2020-2021, Johannes Pekkilä, Miikka Väisälä, Oskar Lappi
+    Copyright (C) 2020-2026, Johannes Pekkilä, Miikka Väisälä, Oskar Lappi, Touko Puro
 
     This file is part of Astaroth.
 

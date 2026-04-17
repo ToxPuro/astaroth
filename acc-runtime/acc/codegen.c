@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2021, Johannes Pekkila.
+    Copyright (C) 2026, Johannes Pekkila, Touko Puro.
     This file is part of Astaroth.
 
     Astaroth is free software: you can redistribute it and/or modify
