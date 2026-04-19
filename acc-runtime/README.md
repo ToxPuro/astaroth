@@ -343,7 +343,7 @@ elemental abs(real x)
 }
 
 ```
-> Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to allocate temporary storage for intermediate values when performing more complex calculations.
+> Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to introduce temporary variables for intermediate values when performing more complex calculations.
 
 The `elemental` type qualifier on a function means that it is a pure function that returns a value,
 for which the function's semantics is composable on structures and arrays containing the type of the return value.
