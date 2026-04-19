@@ -205,12 +205,19 @@ For an example using multiple sizes at the same time see the test `test/variable
 > Note: one can combine these to have communicated auxiliary `Fields`, without `communicated`, `auxiliary` `Fields` are not communicated.
 
 * `dead`
-Tells the variable is not used and thus should not be allocated. Works for arrays and `Fields`. Passing a dead `Field` to API functions is a no-op with an appropriate error code. Intented for memory optimization where the compiler infers which `Fields` or arrays do not need to be allocated based on the computation.
+Tells the variable is not used and thus should not be allocated. Works for arrays and `Fields`. Passing a dead `Field` to API functions is a no-op with an appropriate error code. Intented for memory optimization where the compiler infers which `Fields` or arrays do not need to be allocated based on the computation. Or in other words, the compiler is intended to infer these qualifiers and not primarily intended to be supplied by the user.
 
 
 The DSL compiler can also infer these qualifiers if OPTIMIZE_FIELDS=ON from `write`, `value` and `Stencil` calls.
 Additionally the DSL compiler can infer which `Fields` can be `dead` if you also have ALLOW_DEAD_FIELDS=ON
 **Important** requires that all conditionals are known at compile-time (or when loading Astaroth if using runtime compilation).
+
+* `single_precision`
+Tells that `Fields` are supposed to be stored in single precision, independent of the default real precision.
+* `half_precision`
+Tells that `Fields` are supposed to be stored in half precision, independent of the default real precision.
+* `precision`
+More dynamic qualifier that combines the previous two. Takes as an input argument `run_const` `AcPrecision` enum telling which precision to use, thus enabling to choose the wanted precision at runtime.
 
 * `input`
 Designed for variables that are input parameters to Kernels, but should not be allocated/loaded to the GPU. Or for control variables that should only live on the host. (Renaming the qualifier to `host` is under consideration.) 
