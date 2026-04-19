@@ -115,6 +115,7 @@ ac_pid()
 }
 
 
+
 static AcProcMappingStrategy
 ac_proc_mapping_strategy()
 {
@@ -147,12 +148,18 @@ ac_decomp_strategy()
 	return (AcDecomposeStrategy)grid.submesh.info[AC_decompose_strategy];
 }
 
+static int
+get_comm_size(const MPI_Comm comm)
+{
+	int res;
+	ERRCHK_ALWAYS(MPI_Comm_size(comm, &res) == MPI_SUCCESS);
+	return res;
+}
+
 static int 
 ac_nprocs()
 {
-    int nprocs;
-    MPI_Comm_size(astaroth_comm, &nprocs);
-    return nprocs;
+    return get_comm_size(astaroth_comm);
 }
 
 
@@ -538,13 +545,6 @@ get_reversed_comm(const MPI_Comm comm)
 	return res;
 }
 
-static int
-get_comm_size(const MPI_Comm comm)
-{
-	int res;
-	ERRCHK_ALWAYS(MPI_Comm_size(comm, &res) == MPI_SUCCESS);
-	return res;
-}
 static void
 create_astaroth_sub_communicators()
 {
@@ -1990,10 +1990,12 @@ static int
 id_to_arr_index(const int3 vec) 
 {return id_to_arr_index(vec.x,vec.y,vec.z);}
 
-AcTaskGraph*
-acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size_t n_ops, const Volume start_in, const Volume end_in, const bool globally_imposed_bcs)
-{ 
-
+std::vector<AcTaskDefinition>
+apply_launch_bounds_and_include_missing_reduction_tasks(const AcTaskDefinition ops_in_array[], const size_t n_ops, 
+		                                         const Volume start_in, const Volume end_in,
+			                                 const std::vector<KernelAnalysisInfo> kernel_analysis_info
+							 )
+{
     std::vector<AcTaskDefinition> ops_in{};
     for(size_t i = 0; i < n_ops; ++i)
     {
@@ -2009,7 +2011,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
     std::vector<AcTaskDefinition> ops{};
     //TP: insert reduce tasks in between of tasks
     //If kernel A outputs P(profile or scalar to be reduced) then a reduce task reducing P should be inserted
-    const std::vector<KernelAnalysisInfo> kernel_analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
     for(size_t i = 0; i < n_ops; ++i)
     {
 	    auto op = ops_in[i];
@@ -2035,6 +2036,12 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 			ops.push_back(reduce_op);
 	    }
     }
+    return ops;
+}
+void
+infer_do_ops_compute_on_halos_and_check_op_rules(std::vector<AcTaskDefinition>& ops, 
+			                          const std::vector<KernelAnalysisInfo> kernel_analysis_info)
+{
     std::vector<AcKernel> kernels{};
     for(size_t i = 0; i < ops.size(); ++i) kernels.push_back(AC_NULL_KERNEL);
     for(size_t i = 0; i < ops.size(); ++i)
@@ -2068,36 +2075,36 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	    if(calls_stencil && op.computes_on_halos != BOUNDARY_NONE)
 		    fatal("Kernel %s should be computed on halos but also uses Stencils!!\n",kernel_names[kernel]);
     }
-
-    int rank;
-    MPI_Comm_rank(astaroth_comm, &rank);
-    int comm_size;
-    MPI_Comm_size(astaroth_comm, &comm_size);
-
-    check_ops(ops);
-    acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Allocating task graph\n");
-
+}
+std::vector<AcTaskDefinition>
+preprocess_ops(const AcTaskDefinition ops_in_array[], const size_t n_ops, 
+	       const Volume start_in, const Volume end_in
+	       )
+{
+    const std::vector<KernelAnalysisInfo> kernel_analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
+    std::vector<AcTaskDefinition> ops = apply_launch_bounds_and_include_missing_reduction_tasks(ops_in_array,n_ops,start_in,end_in,kernel_analysis_info);
+    infer_do_ops_compute_on_halos_and_check_op_rules(ops,kernel_analysis_info);
+    return ops;
+}
+AcTaskGraph*
+get_new_taskgraph(const size_t n_ops)
+{
+    acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Allocating task graph\n");
     AcTaskGraph* graph = new AcTaskGraph();
-
     graph->periodic_boundaries = BOUNDARY_NONE;
 
-    graph->halo_tasks.reserve(ops.size() * Region::n_halo_regions);
-    graph->all_tasks.reserve(ops.size() * max(Region::n_halo_regions, Region::n_comp_regions));
+    graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
+    graph->all_tasks.reserve(n_ops * max(Region::n_halo_regions, Region::n_comp_regions));
+    return graph;
+}
+		
 
-    // Create tasks for each operation & store indices to ranges of tasks belonging to operations
-    std::vector<size_t> op_indices;
-    op_indices.reserve(ops.size());
-
-    const AcGridInfo grid_info = {grid.nn, get_global_nn()*get_spacings()};
-
-
-
-    uint3_64 decomp = grid.decomposition;
-    int3 pid3d      = getPid3D(rank);
-    Device device   = grid.device;
-
-    auto boundary_normal = [&decomp, &pid3d](int tag, const AcBoundary boundary) -> int3 {
-        int3 neighbor = pid3d + Region::tag_to_id(tag);
+int3
+boundary_normal(const int tag, const AcBoundary boundary)
+{
+	const uint3_64 decomp = grid.decomposition;
+        const int3 pid3d      = getPid3D(ac_pid());
+        const int3 neighbor = pid3d + Region::tag_to_id(tag);
         if (neighbor.z == -1 && (boundary & BOUNDARY_Z_BOT) != 0) {
             return int3{0, 0, -1};
         }
@@ -2116,27 +2123,20 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
         else if (neighbor.x == (int)decomp.x && (boundary & BOUNDARY_X_TOP) != 0) {
             return int3{1, 0, 0};
         }
-        else {
-            // Something went wrong, this tag does not identify a boundary region.
-            return int3{0, 0, 0};
-        }
-    };
-    
+        // Something went wrong, this tag does not identify a boundary region.
+	ERRCHK_ALWAYS(false);
+        return int3{0, 0, 0};
+}
 
-    // The tasks start at different offsets from the beginning of the iteration
-    // this array of bools keep track of that state
-    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset{};
-    //int num_comp_tasks = 0;
-    std::array<int,NUM_FIELDS> fields_already_depend_on_boundaries{};
-    const auto compute_task_poststep = [&](const auto& op, const auto& task)
-    {
+void
+compute_task_poststep(const AcTaskDefinition op, const std::shared_ptr<ComputeTask> task, std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
+{
         //done here since we want to write only to out not to in what launching the taskgraph would do
         //always remember to call the loader since otherwise might not be safe to execute taskgraph
         op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
 
 	const int3 old_tpb = acGetOptimTPB(op.kernel_enum,task->output_region.position,task->output_region.position+task->output_region.dims);
         acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
-        //acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
         fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), fields_already_depend_on_boundaries,op.analysis_info);
     	//make sure after autotuning that out is 0
 	if(old_tpb == (int3){-1,-1,-1})
@@ -2152,17 +2152,27 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
     			acDeviceLaunchKernel(acGridGetDevice(),STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
 		}
 	}
-
-    };
-
-
+}
+std::vector<size_t>
+task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition>& ops, const bool globally_imposed_bcs)
+{
+    // Create tasks for each operation & store indices to ranges of tasks belonging to operations
+    std::vector<size_t> op_indices;
     std::array<int,27> previous_tag_counts;
-    acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", ops.size());
+
+
+    acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Creating tasks: %lu ops\n", ops.size());
+    op_indices.reserve(ops.size());
+
+    const AcGridInfo grid_info = {grid.nn, get_global_nn()*get_spacings()};
+    // The tasks start at different offsets from the beginning of the iteration
+    // this array of bools keep track of that state
+    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset{};
+    std::array<int,NUM_FIELDS> fields_already_depend_on_boundaries{};
     for (size_t i = 0; i < ops.size(); i++) {
-        acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
+        acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
         auto op = ops[i];
 
-	ERRCHK_ALWAYS(to_int3(end_in) >= to_int3(start_in));
 	ERRCHK_ALWAYS(to_int3(op.end) >= to_int3(op.start));
 	const Volume dims  = op.end-op.start;
 	const Volume start = op.start;
@@ -2179,7 +2189,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 
 
         case TASKTYPE_RAY_UPDATE: {
-            acVerboseLogFromRootProc(rank, "Creating ray updates\n");
+            acVerboseLogFromRootProc(ac_pid(), "Creating ray updates\n");
 	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
 	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
 	    if(
@@ -2188,9 +2198,9 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	      )
 	    {
 		    int3 boundary = (int3){op.ray_direction.x,0,0};
-		    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,device,swap_offset,fields_already_depend_on_boundaries);
+		    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,grid.device,swap_offset,fields_already_depend_on_boundaries);
               	    graph->all_tasks.push_back(task);
-	      	    compute_task_poststep(op,task);
+	      	    compute_task_poststep(op,task,fields_already_depend_on_boundaries);
 	    }
 	    if(
 		  (op.ray_direction.y == -1 && ((op.boundary & BOUNDARY_Y_BOT) != 0))
@@ -2198,9 +2208,9 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	      )
 	    {
 		    int3 boundary = (int3){0,op.ray_direction.y,0};
-	      	    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,device,swap_offset,fields_already_depend_on_boundaries);
+	      	    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,grid.device,swap_offset,fields_already_depend_on_boundaries);
               	    graph->all_tasks.push_back(task);
-	      	    compute_task_poststep(op,task);
+	      	    compute_task_poststep(op,task,fields_already_depend_on_boundaries);
 	    }
 	    if(
 		  (op.ray_direction.z == -1 && ((op.boundary & BOUNDARY_Z_BOT) != 0))
@@ -2208,11 +2218,11 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	      )
 	    {
 		    int3 boundary = (int3){0,0,op.ray_direction.z};
-	      	    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,device,swap_offset,fields_already_depend_on_boundaries);
+	      	    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,grid.device,swap_offset,fields_already_depend_on_boundaries);
               	    graph->all_tasks.push_back(task);
-	      	    compute_task_poststep(op,task);
+	      	    compute_task_poststep(op,task,fields_already_depend_on_boundaries);
 	    }
-            acVerboseLogFromRootProc(rank, "Ray updates created\n");
+            acVerboseLogFromRootProc(ac_pid(), "Ray updates created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
 		if(kernel_writes_to_output(op.fields_out[buf],op.analysis_info))
 		{
@@ -2226,7 +2236,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
         }
 	
         case TASKTYPE_COMPUTE: {
-            acVerboseLogFromRootProc(rank, "Creating compute tasks\n");
+            acVerboseLogFromRootProc(ac_pid(), "Creating compute tasks\n");
 	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
 	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
 
@@ -2241,7 +2251,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	    const bool oned_launch = kernel_only_writes_profile(PROFILE_X,op.analysis_info) 
 		                  || kernel_only_writes_profile(PROFILE_Y,op.analysis_info)
 				  || kernel_only_writes_profile(PROFILE_Z,op.analysis_info);
-	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
+	    const bool single_gpu_optim = ((ac_nprocs() == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
 	    //TP: if the subdomain we compute on is too small to form the 'mantle' around the 'core' we compute the subdomain as one big block
 	    const bool too_small_dims  =
 		    	(int)dims.x < 2*grid.submesh.info[AC_nmin].x ||
@@ -2276,7 +2286,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
     	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2 || max_comp_facet_class == 0);
     	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2 || max_comp_facet_class == 0);
 		    if(Region::tag_to_facet_class(tag) > max_comp_facet_class) continue;
-            	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries,max_comp_facet_class);
+            	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, grid.device, swap_offset,fields_already_depend_on_boundaries,max_comp_facet_class);
             	    graph->all_tasks.push_back(task);
 		    //TP: if we are writing to input try to be nice and swap buffers temporarily to try to write out output buffers instead
             	    for (size_t buf = 0; buf < op.num_fields_out; buf++) {
@@ -2285,7 +2295,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
                 		acDeviceSwapBuffer(grid.device, op.fields_out[buf]);
 	    	        }
             	    }
-		    compute_task_poststep(op,task);
+		    compute_task_poststep(op,task,fields_already_depend_on_boundaries);
             	    for (size_t buf = 0; buf < op.num_fields_out; buf++) {
 	    	        if(kernel_writes_to_input(op.fields_out[buf],op.analysis_info))
 	    	        {
@@ -2294,7 +2304,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
             	    }
             	}
 	    }
-            acVerboseLogFromRootProc(rank, "Compute tasks created\n");
+            acVerboseLogFromRootProc(ac_pid(), "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
 		if(kernel_writes_to_output(op.fields_out[buf],op.analysis_info))
 		{
@@ -2341,7 +2351,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	        fflush(stderr);
 	    	ERRCHK_ALWAYS(op.halo_sizes.z <= start.z);
 	    }
-            acVerboseLogFromRootProc(rank, "Creating halo exchange tasks\n");
+            acVerboseLogFromRootProc(ac_pid(), "Creating halo exchange tasks\n");
 
             int tag0 = op.ray_direction == (int3){0,0,0} || op.receiving ? grid.mpi_tag_space_count * Region::max_halo_tag
 	    								 : previous_tag_counts[id_to_arr_index(op.ray_direction)] * Region::max_halo_tag;
@@ -2366,41 +2376,40 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		if(ray_facet_class == 1 && op.sending   && Region::tag_to_id(tag) !=  op.ray_direction) continue;
 		if(ray_facet_class == 1 && op.receiving && Region::tag_to_id(tag) != -op.ray_direction) continue;
 
-                if (op.include_boundaries || !Region::is_on_boundary(decomp, rank, tag, boundary, ac_proc_mapping_strategy())) {
+                if (op.include_boundaries || !Region::is_on_boundary(grid.decomposition, ac_pid(), tag, boundary, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info,
-                                                                   device, swap_offset,false);
+                                                                   grid.device, swap_offset,false);
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
                 }
             }
-            acVerboseLogFromRootProc(rank, "Halo exchange tasks created\n");
+            acVerboseLogFromRootProc(ac_pid(), "Halo exchange tasks created\n");
             if(op.ray_direction == (int3){0,0,0} || op.receiving) grid.mpi_tag_space_count++;
             break;
         }
 
         case TASKTYPE_PERIODIC_RAY: {
-            acVerboseLogFromRootProc(rank, "Creating periodic ray task\n");
+            acVerboseLogFromRootProc(ac_pid(), "Creating periodic ray task\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             auto task = std::make_shared<PeriodicRayTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
-                                                           device, swap_offset);
+                                                           grid.device, swap_offset);
             graph->all_tasks.push_back(task);
 
-            acVerboseLogFromRootProc(rank, "Periodic ray task created\n");
+            acVerboseLogFromRootProc(ac_pid(), "Periodic ray task created\n");
             grid.mpi_tag_space_count++;
             break;
         }
         case TASKTYPE_SCAN: {
-            acVerboseLogFromRootProc(rank, "Creating scan tasks\n");
+            acVerboseLogFromRootProc(ac_pid(), "Creating scan tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             auto task = std::make_shared<MPIScanTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
-                                                           device, swap_offset);
+                                                           grid.device, swap_offset);
             graph->all_tasks.push_back(task);
 
-            acVerboseLogFromRootProc(rank, "Scan tasks created\n");
+            acVerboseLogFromRootProc(ac_pid(), "Scan tasks created\n");
             grid.mpi_tag_space_count++;
             break;
         }
-
 
         case TASKTYPE_BOUNDCOND: {
 	    int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
@@ -2449,14 +2458,14 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && id.y != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && id.z != 0) continue;
 
-                acVerboseLogFromRootProc(rank,
+                acVerboseLogFromRootProc(ac_pid(),
                                          "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ",
-                                         tag, decomp.x, decomp.y, decomp.z, rank, op.boundary);
-                acVerboseLogFromRootProc(rank,
+                                         tag, grid.decomposition.x, grid.decomposition.y, grid.decomposition.z, ac_pid(), op.boundary);
+                acVerboseLogFromRootProc(ac_pid(),
                                          "acGridBuildTaskGraph: Region::is_on_boundary(decomp, "
                                          "rank, tag, op.boundary) = %i \n",
-                                         Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy()));
-		const bool is_on_boundary = Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy());
+                                         Region::is_on_boundary(grid.decomposition, ac_pid(), tag, op.boundary, ac_proc_mapping_strategy()));
+		const bool is_on_boundary = Region::is_on_boundary(grid.decomposition, ac_pid(), tag, op.boundary, ac_proc_mapping_strategy());
                 if (op.kernel_enum == BOUNDCOND_PERIODIC) {
 		    if(!is_on_boundary && !globally_imposed_bcs) continue;
 		    if(NGHOST == 0) continue;
@@ -2464,15 +2473,15 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		    {
 		    	fatal("%s","Can not use periodic bcs and globally imposed bcs at the same time!\n");
 		    }
-                    acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
+                    acVerboseLogFromRootProc(ac_pid(), "Creating periodic bc task with tag%d\n",
                                              tag);
 		    const bool shear_periodic = !acGridGetLocalMeshInfo()[AC_dimension_inactive].y && acGridGetLocalMeshInfo()[AC_shear] && (
 		    				   (id.x == -1 && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == 0)
-		    				|| (id.x == 1  && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == int(decomp.x-1))
+		    				|| (id.x == 1  && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == int(grid.decomposition.x-1))
 		    				);
 		    //TP: because of the need to interpolate from multiple processes the whole stretch from 0 to AC_mlocal.y is done in a single task
 		    if(shear_periodic && id.y != 0) continue;
-                    auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, device, swap_offset,shear_periodic);
+                    auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, grid.device, swap_offset,shear_periodic);
 		    if(task->active)
 		    {
 
@@ -2503,7 +2512,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		    }
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
-                    acVerboseLogFromRootProc(rank,
+                    acVerboseLogFromRootProc(ac_pid(),
                                              "Done creating periodic bc task with tag%d\n",
                                              tag);
 
@@ -2513,7 +2522,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
                 	auto task = std::make_shared<BoundaryConditionTask>(op,
                 	                                                       boundary_normal(tag,op.boundary),
                 	                                                       i, tag, start, dims,
-                	                                                       device,
+                	                                                       grid.device,
                 	                                                       swap_offset);
 			//TP: This is sort of abusing this func to be able to autotune iff there is no autotune entry.
 			//    I make sure the autotuning is done in this way to not get nasty problems about the parallelized autotuning where only a portion of the
@@ -2524,7 +2533,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		}
             }
             grid.mpi_tag_space_count += (op.kernel_enum  == BOUNDCOND_PERIODIC);
-            acVerboseLogFromRootProc(rank, "Boundcond tasks created\n");
+            acVerboseLogFromRootProc(ac_pid(), "Boundcond tasks created\n");
             break;
         }
 	case TASKTYPE_REDUCE:  {
@@ -2535,7 +2544,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({id,0,0}), reduce_start,reduce_dims, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({id,0,0}), reduce_start,reduce_dims, grid.device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
@@ -2543,7 +2552,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,id,0}), reduce_start,reduce_dims, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,id,0}), reduce_start,reduce_dims, grid.device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
@@ -2551,30 +2560,72 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,0,id}), reduce_start,reduce_dims, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,0,id}), reduce_start,reduce_dims, grid.device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
 	  else
 	  {
-	  	auto task = std::make_shared<ReduceTask>(op, i, 0, reduce_start,reduce_dims, device, swap_offset);
+	  	auto task = std::make_shared<ReduceTask>(op, i, 0, reduce_start,reduce_dims, grid.device, swap_offset);
 	  	graph->all_tasks.push_back(task);
 	  }
 	  break;
 	}
         }
     }
-    acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done creating tasks\n");
 
     op_indices.push_back(graph->all_tasks.size());
     graph->device_swaps = swap_offset;
 
     graph->halo_tasks.shrink_to_fit();
     graph->all_tasks.shrink_to_fit();
+    acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Done creating tasks\n");
+    return op_indices;
+}
+void
+sort_tasks(AcTaskGraph* graph)
+{
+    auto sort_lambda = [](std::shared_ptr<Task> t1, std::shared_ptr<Task> t2) {
+        auto comp1 = t1->task_type == TASKTYPE_COMPUTE;
+        auto comp2 = t2->task_type == TASKTYPE_COMPUTE;
 
-    // In order to reduce redundant dependencies, we keep track of which tasks are connected
-    acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Calculating dependencies\n");
+        auto vol1 = t1->output_region.volume;
+        auto vol2 = t2->output_region.volume;
 
+        auto dim1 = t1->output_region.dims;
+        auto dim2 = t2->output_region.dims;
+
+        auto key1 = std::make_tuple(
+            -vol1,                // larger volumes first
+            comp1,                 // comm first (false < true)
+            dim1.x, dim1.y, dim1.z,
+            t1->order,
+            t1->output_region.tag
+        );
+
+        auto key2 = std::make_tuple(
+            -vol2,
+            comp2,
+            dim2.x, dim2.y, dim2.z,
+            t2->order,
+            t2->output_region.tag
+        );
+
+        return key1 < key2; // lexicographic comparison
+
+    };
+    acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Sorting tasks by priority\n");
+
+    std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
+    std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
+    acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Done sorting tasks by priority\n");
+}
+void
+calculate_dependencies(AcTaskGraph* graph, const std::vector<AcTaskDefinition> ops, const std::vector<size_t> op_indices)
+{
+    acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Calculating dependencies\n");
+
+    const std::vector<KernelAnalysisInfo> kernel_analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
     const size_t n_tasks               = graph->all_tasks.size();
     std::vector<std::vector<size_t>> neighbours(n_tasks,std::vector<size_t>{});
 
@@ -2605,7 +2656,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
         return false;
     };
 
-    const auto profile_overlap_in_regions = [&](const auto gem_overlaps, const auto profiles_1, const auto profiles_2)
+    const auto profile_overlap_in_regions = [&](const auto geometry_overlaps, const auto profiles_1, const auto profiles_2)
     {
 	if constexpr (NUM_PROFILES == 0) return false;
 	bool profiles_overlap = false;
@@ -2615,13 +2666,13 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		{
 			if(profile_1 == profile_2)
 			{
-				profiles_overlap |= (prof_types[profile_1] == PROFILE_X && gem_overlaps.x);
-				profiles_overlap |= (prof_types[profile_1] == PROFILE_Y && gem_overlaps.y);
-				profiles_overlap |= (prof_types[profile_1] == PROFILE_Z && gem_overlaps.z);
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_X && geometry_overlaps.x);
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_Y && geometry_overlaps.y);
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_Z && geometry_overlaps.z);
 
-				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XY || prof_types[profile_1] == PROFILE_YX) && (gem_overlaps.x || gem_overlaps.y));
-				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XZ || prof_types[profile_1] == PROFILE_ZX) && (gem_overlaps.x || gem_overlaps.z));
-				profiles_overlap |= ((prof_types[profile_1] == PROFILE_YZ || prof_types[profile_1] == PROFILE_ZY) && (gem_overlaps.y || gem_overlaps.z));
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XY || prof_types[profile_1] == PROFILE_YX) && (geometry_overlaps.x || geometry_overlaps.y));
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XZ || prof_types[profile_1] == PROFILE_ZX) && (geometry_overlaps.x || geometry_overlaps.z));
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_YZ || prof_types[profile_1] == PROFILE_ZY) && (geometry_overlaps.y || geometry_overlaps.z));
 			}
 		}
 	}
@@ -2632,7 +2683,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
     //whenever possible.
     //I.e. if kernel A writes profile P and B reads it B should not use the stencil dependency geometry but the pointwise (with profile corrections) dependencies
     //
-    //TP: In theory doing the vertex buffer dependencies in this manner would be also more precise but there is not really a an actual use case where it would help
+    //In theory doing the vertex buffer dependencies in this manner would be also more precise but there is not really a an actual use case where it would help
     //so postponed until it would actually help
     const auto profile_overlap = [&kernel_analysis_info,&profile_overlap_in_regions](const auto preq_task, const auto dept_task)
     {
@@ -2661,8 +2712,8 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
 		}
 
 	}
-	const AcBool3 gem_overlaps = preq_task->output_region.geometry_overlaps(&dept_task->output_region);
-	return profile_overlap_in_regions(gem_overlaps,preq_task->output_region.memory.profiles,dept_task->input_regions[0].memory.profiles);
+	const AcBool3 geometry_overlaps = preq_task->output_region.geometry_overlaps(&dept_task->output_region);
+	return profile_overlap_in_regions(geometry_overlaps,preq_task->output_region.memory.profiles,dept_task->input_regions[0].memory.profiles);
     };
 
     // We walk through all tasks, and compare tasks from pairs of operations at
@@ -2706,44 +2757,31 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
             }
         }
     }
-    acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done calculating dependencies\n");
+    acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Done calculating dependencies\n");
+}
+
+/**
+ * This is the main function responsible for constructing taskgraphs.
+ */
+AcTaskGraph*
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size_t n_ops, const Volume start_in, const Volume end_in, const bool globally_imposed_bcs)
+{ 
+
+    ERRCHK_ALWAYS(to_int3(end_in) >= to_int3(start_in));
+
+    //Preprocess task definitions by e.g. adding reduction tasks after compute tasks performing reductions
+    const std::vector<AcTaskDefinition> ops = preprocess_ops(ops_in_array,n_ops,start_in,end_in);
+    check_ops(ops);
+
+    //Construct tasks out of the task definitions
+    AcTaskGraph* graph = get_new_taskgraph(ops.size());  
+    const std::vector<size_t> op_indices = task_definitions_to_tasks(graph,ops,globally_imposed_bcs);
+
+    // In order to reduce redundant dependencies, we keep track of which tasks are connected
+    calculate_dependencies(graph,ops,op_indices);
 
     // Finally sort according to a priority. Larger volumes first and comm before comp
-    auto sort_lambda = [](std::shared_ptr<Task> t1, std::shared_ptr<Task> t2) {
-        auto comp1 = t1->task_type == TASKTYPE_COMPUTE;
-        auto comp2 = t2->task_type == TASKTYPE_COMPUTE;
-
-        auto vol1 = t1->output_region.volume;
-        auto vol2 = t2->output_region.volume;
-
-        auto dim1 = t1->output_region.dims;
-        auto dim2 = t2->output_region.dims;
-
-        auto key1 = std::make_tuple(
-            -vol1,                // larger volumes first
-            comp1,                 // comm first (false < true)
-            dim1.x, dim1.y, dim1.z,
-            t1->order,
-            t1->output_region.tag
-        );
-
-        auto key2 = std::make_tuple(
-            -vol2,
-            comp2,
-            dim2.x, dim2.y, dim2.z,
-            t2->order,
-            t2->output_region.tag
-        );
-
-        return key1 < key2; // lexicographic compariso
-
-    };
-    acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Sorting tasks by priority\n");
-
-    std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
-    std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
-    acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done sorting tasks by priority\n");
-
+    sort_tasks(graph);
     return graph;
 }
 
