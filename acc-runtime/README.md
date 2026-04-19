@@ -346,23 +346,16 @@ elemental abs(real x)
 > Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to introduce temporary variables for intermediate values when performing more complex calculations.
 
 The `elemental` type qualifier on a function means that it is a pure function that returns a value,
-for which the function's semantics is composable on structures and arrays containing the type of the return value.
+for which the function's semantics are composable on structures and arrays containing the type of the return value.
 
-In the previous example functions we had some duplicate code since `func3` basically applies `func2` to all of its members. 
+In the previous example functions we had some duplicate code since `func3` for `real3` does nothing but applies the scalar overload to all of its members. 
 Since the `abs` function that takes in a `real` value has been declared `elemental` it can also be called with a `real3` and will produce the same effect as if `abs` was called on all of the members of the parameter.
 
-* A `elemental` function taking a `real` parameter can be called with:
-	* `real`
-	* `real3`
-    * `real[]`
-    * `real3[]`
-    
+A `elemental` function taking a `real` parameter can be called with any structure that recursively only consist of types of `real`.
+By this we mean that one can call the functions with `real3` variables, but also with structures like e.g. `multiple_real3` that consist of `real3`s or even of structures that consist of `multiple_real3` or any other structure that recursively only consists of types of `real`.
+The same applies for arrays of these structures like `real[]` and `real3[]`.
 
-* A `elemental` function taking a`Field` parameter can be called with:
-	* `Field`
-    * `Field3`
-    * `Field[]`
-    * `Field3[]`
+A `elemental` function taking a `Field` parameter has exactly the same rules, but now `real` interchanged for `Field`.
 
 ### Printing
 ```
@@ -471,8 +464,7 @@ gradient(field) {
 
 > Note: Stencil coefficients supplied in the DSL source must either be compile-time constants or dconst. The coefficients can also be loaded at runtime with API calls, see [instructions below](#loading-and-storing-stencil-coefficients-at-runtime).
 
-> Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by declaring `#DEFINE STENCIL\_ORDER (YOUR VALUE)` in DSL. Modifying the stencil order with the DSL is currently not supported.
-
+> Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by declaring `hostdefine STENCIL\_ORDER (YOUR VALUE)` in DSL.
 
 
 ## Built-in variables, functions and constants
@@ -537,7 +529,7 @@ To get the correct indexes, use API functions acGet< Field name >.
 
 
 The input arrays can also be accessed without declaring a `Stencil` as follows.
-**Important!!** Do not use this if you do not know what you are doing.
+**Important!!** Do not use this if you do not know what you are doing, since it has slightly different semantics and thus lead to subtle bugs and performance degradation. However, a use case where this is basically always safe, and almost required, are boundary conditions as showcased later.
 ``` 
 Field field0
 Field field1
@@ -591,7 +583,7 @@ const Field3 field_vecs_2 = {field_vecs_2_X,field_vecs_2_Y,field_vecs_2_Z}
 const Field3 field_vecs = {field_vecs_0,field_vecs_1,fields_vecs_2}
 ```
 
-> Note: Here it helps to understand that `Fields` and `Profiles` are handles to memory, not memory themselves, and thus it is clear that the const assignments do not imply memory allocations but simple grouping of handles.
+> Note: Here it helps to understand that `Fields` and `Profiles` are handles to memory, not memory themselves, and thus the const assignments do not imply memory allocations, but are a simple grouping of handles.
 
 
 ### Reductions
@@ -693,7 +685,7 @@ To pass input values from the host side call `acDeviceSetInput`.
 With the example above to pass `2.0` to the first parameter of `kernel_call_1` one should call `acDeviceSetInput(device,ac_input_val,2.0)`
 
 ### Rays
-Some computations of interest are not as embarrassingly parallel as applying stencils or reductions.
+Some computations of interest are not as parallel as applying stencils or reductions.
 For example integration of rays along integer directions have sequential dependencies along two-dimensional wavefronts.
 Take for example rays moving in the positive x-directions, to compute the update because of the moving ray at `(x,y,z)`
 the incoming value at `(x-1,y,z)` has to be computed and in more general for a ray moving in direction `(i,j,k)` one has to
@@ -756,8 +748,8 @@ are less performant due to x being the fastest growing index.
 For a more expansive test case using rays see `test/ray-test`.
 
 ### 1D and 2D setups.
-Dimensions can be set as inactive using the `bool3` variable `AC_dimension_inactive`.
-The operators and derivative stencils in `stdlib/general_operators.h` and `stdlib/general_derivs.h` take the inactive dimensions correctly into account (namely derivatives across inactive dimensions are always unity). Additionally the ghost layers in the direction of inactive dimensions will not be allocated, which produces a memory saving of a times 7 in 2d.
+Dimensions can be set as inactive using the `bool3` variable `AC_dimension_inactive` or by setting the grid dimensions in the corresponding dimension to unity.
+The operators and derivative stencils in `stdlib/general_operators.h` and `stdlib/general_derivs.h` take the inactive dimensions correctly into account (namely derivatives across inactive dimensions are always zero). Additionally the ghost layers in the direction of inactive dimensions will not be allocated, which produces a memory saving of times 7 in 2d and and 49 in 1d for stencil of radius three.
 
 
 # Interaction with the Astaroth Core and Utils libraries
