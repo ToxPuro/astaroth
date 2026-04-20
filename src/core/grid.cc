@@ -2123,8 +2123,7 @@ boundary_normal(const int tag, const AcBoundary boundary)
         else if (neighbor.x == (int)decomp.x && (boundary & BOUNDARY_X_TOP) != 0) {
             return int3{1, 0, 0};
         }
-        // Something went wrong, this tag does not identify a boundary region.
-	ERRCHK_ALWAYS(false);
+        //This corresponds to a bc task to be skipped
         return int3{0, 0, 0};
 }
 
