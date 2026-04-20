@@ -47,10 +47,6 @@ struct device_s {
 
     // Memory
     VertexBufferArray vba;
-#if PACKED_DATA_TRANSFERS
-    // Declare memory for buffers in device memory needed for packed data transfers.
-    AcReal *plate_buffers[NUM_PLATE_BUFFERS];
-#endif
     AcDeviceKernelOutput output;
 };
 
@@ -718,6 +714,26 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 	}
 	return acDeviceLoadStencils(device, stream, stencils);
 }
+
+//Deprecated: this should be replaced to use Profiles
+#if defined(AC_TFM_ENABLED)
+static void
+tfm_device_setup(Device device)
+{
+  AcMeshDims dims = acGetMeshDims(device->local_config);
+  
+  // Intermediate buffer
+  const size_t num_compute_profiles = 5 * 3;
+  const AcShape buffer_shape        = {
+             .x = as_size_t(dims.nn.x),
+             .y = as_size_t(dims.nn.y),
+             .z = as_size_t(dims.m1.z),
+             .w = num_compute_profiles,
+  };
+  const size_t buffer_size = acShapeSize(buffer_shape);
+  device->xy_reduce_buffer = acBufferCreate(buffer_size, true);
+}
+#endif
 	
 
 
@@ -729,23 +745,23 @@ acCopyFromInfo(const AcMeshInfo src, AcMeshInfo dst, AcInt3Param param)
 void
 acCopyFromInfo(const AcMeshInfo, AcMeshInfo, const int3){}
 
+/*
+ * This is the function responsible for setting up the Device structure.
+ * The most important think is that the allocation of VertexBufferArray happens here
+ * and acDeviceLoadMeshInfo is called to init the config
+ */
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
     acCheckDeviceAvailability();
-    // Check
     int count;
     acGetDeviceCount(&count);
     ERRCHK_ALWAYS(id < count);
 
     acSetDevice(id);
-// cudaDeviceReset(); // Would be good for safety, but messes stuff up if we want to emulate
-// multiple devices with a single GPU
 #if AC_DOUBLE_PRECISION
     acDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 #endif
-    // cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
-    // cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
     // Create Device
     struct device_s* device = (struct device_s*)malloc(sizeof(*device));
@@ -801,30 +817,15 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acVerboseLogFromRootProc(ac_pid(),  "memusage after create streams= %f MBytes\n", acMemUsage()/1024.0);
 
     if(!acRuntimeIsInitialized()) acRuntimeInit(device_config);
-    // Memory
-    // VBA in/out
+    //Creates and allocates the VertexBufferArray
     device->vba = acVBACreate(device_config);
     acDeviceSynchronizeStream(device,STREAM_ALL);
-    // Device constants
-    // acDeviceLoadDefaultUniforms(device); // TODO recheck
+    //Loads the config to the device
     acDeviceLoadMeshInfo(device, device->local_config);
 
-// XY averages
+//Deprecated: this should be replaced to use Profiles
 #if defined(AC_TFM_ENABLED)
-    {
-        AcMeshDims dims = acGetMeshDims(device->local_config);
-
-        // Intermediate buffer
-        const size_t num_compute_profiles = 5 * 3;
-        const AcShape buffer_shape        = {
-                   .x = as_size_t(dims.nn.x),
-                   .y = as_size_t(dims.nn.y),
-                   .z = as_size_t(dims.m1.z),
-                   .w = num_compute_profiles,
-        };
-        const size_t buffer_size = acShapeSize(buffer_shape);
-        device->xy_reduce_buffer = acBufferCreate(buffer_size, true);
-    }
+    tfm_device_setup(device);
 #endif
 
 #if AC_VERBOSE
