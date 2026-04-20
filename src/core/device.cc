@@ -197,284 +197,6 @@ acDeviceStoreVectorUniform(const Device device, const Stream stream, const AcRea
     return acStoreReal3Uniform(device->streams[stream], param, value);
 }
 
-AcResult
-acDeviceFFTR2C(const Device device, const Field src, const ComplexField dst)
-{
-	return acFFTForwardTransformR2C(
-				device->vba.on_device.in[src],
-				acGetLocalMM(device->local_config),	
-				acGetLocalNN(device->local_config),	
-				acGetMinNN(device->local_config),	
-				device->vba.on_device.complex_in[dst]
-			);
-}
-
-AcResult
-acDeviceFFTR2CXY(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers)
-{
-
-	for(size_t z_offset = 0; z_offset < n_layers;  ++z_offset)
-	{
-		const Volume starting_point = 
-		{
-			acGetMinNN(device->local_config).x,
-			acGetMinNN(device->local_config).y,
-			z_starting_point + z_offset
-		};
-
-		const Volume subdomain_size =
-		{
-			acGetLocalNN(device->local_config).x,
-			acGetLocalNN(device->local_config).y,
-			1
-		};
-		acFFTForwardTransformR2C(
-				device->vba.on_device.in[src],
-				acGetLocalMM(device->local_config),	
-				subdomain_size,
-				starting_point,
-				device->vba.on_device.complex_in[dst]
-			);
-	}
-	return AC_SUCCESS;
-}
-
-AcResult
-acDeviceFFTC2RXY(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers)
-{
-
-	for(size_t z_offset = 0; z_offset < n_layers;  ++z_offset)
-	{
-		const Volume starting_point = 
-		{
-			acGetMinNN(device->local_config).x,
-			acGetMinNN(device->local_config).y,
-			z_starting_point + z_offset
-		};
-
-		const Volume subdomain_size =
-		{
-			acGetLocalNN(device->local_config).x,
-			acGetLocalNN(device->local_config).y,
-			1
-		};
-		acFFTBackwardTransformC2R(
-				device->vba.on_device.complex_in[src],
-				acGetLocalMM(device->local_config),	
-				subdomain_size,
-				starting_point,
-				device->vba.on_device.in[dst]
-			);
-
-	}
-	return AC_SUCCESS;
-}
-
-AcResult
-acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst, const Field imag_dst)
-{
-  	const auto input_real_dims  = acGetMeshDims(device->local_config,real_src);
-  	const auto input_imag_dims  = acGetMeshDims(device->local_config,imag_src);
-  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
-  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
-	ERRCHK_ALWAYS(input_real_dims == input_imag_dims);
-	ERRCHK_ALWAYS(input_real_dims == output_real_dims);
-	ERRCHK_ALWAYS(input_real_dims == output_imag_dims);
-	return acFFTForwardTransformPlanar(
-				device->vba.on_device.in[real_src],
-				device->vba.on_device.in[imag_src],
-				input_real_dims.m1,
-				input_real_dims.nn,
-				input_real_dims.n0,
-				device->vba.on_device.in[real_dst],
-				device->vba.on_device.in[imag_dst]
-			);
-}
-
-AcResult
-acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Field real_dst_start, const Field imag_dst_start, const int batch_size)
-{
-  	const auto input_dims  = acGetMeshDims(device->local_config,src_start);
-  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst_start);
-  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst_start);
-	ERRCHK_ALWAYS(input_dims == output_real_dims);
-	ERRCHK_ALWAYS(input_dims == output_imag_dims);
-	ERRCHK_ALWAYS(vtxbuf_precision[real_dst_start] == vtxbuf_precision[imag_dst_start]);
-
-    	if(vtxbuf_precision[src_start] == AC_SINGLE_PRECISION && vtxbuf_precision[imag_dst_start] == AC_SINGLE_PRECISION) 
-	{
-		return acFFTForwardTransformR2PlanarBatched(
-					device->vba.on_device.single_in[src_start],
-					input_dims.m1,	
-					input_dims.nn,	
-					input_dims.n0,
-					device->vba.on_device.single_in[real_dst_start],
-					device->vba.on_device.single_in[imag_dst_start],
-					batch_size,
-					AC_SINGLE_PRECISION,
-					AC_SINGLE_PRECISION
-				);
-	}
-	else if(vtxbuf_precision[src_start] == AC_REAL_PRECISION && vtxbuf_precision[imag_dst_start] == AC_SINGLE_PRECISION) 
-	{
-		return acFFTForwardTransformR2PlanarBatched(
-					device->vba.on_device.in[src_start],
-					input_dims.m1,	
-					input_dims.nn,	
-					input_dims.n0,
-					device->vba.on_device.single_in[real_dst_start],
-					device->vba.on_device.single_in[imag_dst_start],
-					batch_size,
-					AC_REAL_PRECISION,
-					AC_SINGLE_PRECISION
-				);
-	}
-	return acFFTForwardTransformR2PlanarBatched(
-				device->vba.on_device.in[src_start],
-				input_dims.m1,	
-				input_dims.nn,	
-				input_dims.n0,
-				device->vba.on_device.in[real_dst_start],
-				device->vba.on_device.in[imag_dst_start],
-				batch_size,
-				AC_REAL_PRECISION,
-				AC_REAL_PRECISION
-			);
-
-}
-
-AcResult
-acDeviceFFTR2HermitianPlanarBatched(const Device device, const Field src_start, const Field real_dst_start, const Field imag_dst_start, const int batch_size, Stream stream)
-{
-  	const auto input_dims  = acGetMeshDims(device->local_config,src_start);
-  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst_start);
-  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst_start);
-	ERRCHK_ALWAYS(input_dims == output_real_dims);
-	ERRCHK_ALWAYS(input_dims == output_imag_dims);
-	return acFFTForwardTransformR2HermitianPlanarBatched(
-				device->vba.on_device.in[src_start],
-				input_dims.m1,	
-				input_dims.nn,	
-				input_dims.n0,
-				device->vba.on_device.in[real_dst_start],
-				device->vba.on_device.in[imag_dst_start],
-				batch_size,
-				device->streams[stream]
-			);
-}
-
-AcResult
-acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, const Field imag_dst)
-{
-        
-  	const auto input_dims  = acGetMeshDims(device->local_config,src);
-  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
-  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
-	ERRCHK_ALWAYS(input_dims == output_real_dims);
-	ERRCHK_ALWAYS(input_dims == output_imag_dims);
-	return acFFTForwardTransformR2Planar(
-				device->vba.on_device.in[src],
-				input_dims.m1,	
-				input_dims.nn,	
-				input_dims.n0,
-				device->vba.on_device.in[real_dst],
-				device->vba.on_device.in[imag_dst]
-			);
-}
-
-AcResult
-acDeviceFFTR2PlanarXY(const Device device, const Field src, const Field real_dst, const Field imag_dst, const size_t z_offset)
-{
-        
-  	const auto input_dims  = acGetMeshDims(device->local_config,src);
-  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
-  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
-	ERRCHK_ALWAYS(input_dims == output_real_dims);
-	ERRCHK_ALWAYS(input_dims == output_imag_dims);
-        const auto nn = (Volume){input_dims.nn.x,input_dims.nn.y,1};
-        const auto starting_point  = (Volume){input_dims.n0.x,input_dims.n0.y,z_offset};
-	return acFFTForwardTransformR2Planar(
-				device->vba.on_device.in[src],
-				input_dims.m1,	
-				nn,
-				starting_point,
-				device->vba.on_device.in[real_dst],
-				device->vba.on_device.in[imag_dst]
-			);
-}
-
-AcResult
-acDeviceFFTBackwardTransformPlanar2R(const Device device, const Field real_src, const Field imag_src, const Field dst)
-{
-        
-  	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
-  	const auto imag_input_dims  = acGetMeshDims(device->local_config,imag_src);
-  	const auto output_dims = acGetMeshDims(device->local_config,dst);
-	ERRCHK_ALWAYS(real_input_dims == output_dims);
-	ERRCHK_ALWAYS(imag_input_dims == output_dims);
-	return acFFTBackwardTransformPlanar2R(
-				device->vba.on_device.in[real_src],
-				device->vba.on_device.in[imag_src],
-				real_input_dims.m1,	
-				real_input_dims.nn,	
-				real_input_dims.n0, 
-				device->vba.on_device.in[dst]
-			);
-}
-
-AcResult
-acDeviceFFTBackwardTransformPlanar2RXY(const Device device, const Field real_src, const Field imag_src, const Field dst, const size_t z_offset)
-{
-        
-  	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
-  	const auto imag_input_dims  = acGetMeshDims(device->local_config,imag_src);
-  	const auto output_dims = acGetMeshDims(device->local_config,dst);
-	ERRCHK_ALWAYS(real_input_dims == output_dims);
-	ERRCHK_ALWAYS(imag_input_dims == output_dims);
-        const auto nn = (Volume){output_dims.nn.x,output_dims.nn.y,1};
-        const auto starting_point  = (Volume){output_dims.n0.x,output_dims.n0.y,z_offset};
-	return acFFTBackwardTransformPlanar2R(
-				device->vba.on_device.in[real_src],
-				device->vba.on_device.in[imag_src],
-				real_input_dims.m1,	
-				nn,
-				starting_point,
-				device->vba.on_device.in[dst]
-			);
-}
-
-AcResult
-acDeviceFFTBackwardTransformPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst,const Field imag_dst)
-{
-        
-  	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
-  	const auto imag_input_dims  = acGetMeshDims(device->local_config,imag_src);
-  	const auto real_output_dims = acGetMeshDims(device->local_config,real_dst);
-  	const auto imag_output_dims = acGetMeshDims(device->local_config,imag_dst);
-	ERRCHK_ALWAYS(real_input_dims == real_output_dims);
-	ERRCHK_ALWAYS(imag_input_dims == imag_output_dims);
-	return acFFTBackwardTransformPlanar(
-				device->vba.on_device.in[real_src],
-				device->vba.on_device.in[imag_src],
-				real_input_dims.m1,	
-				real_input_dims.nn,	
-				real_input_dims.n0,
-				device->vba.on_device.in[real_dst],
-				device->vba.on_device.in[real_dst]
-			);
-}
-
-AcResult
-acDeviceFFTC2R(const Device device, const ComplexField src, const Field dst)
-{
-	return acFFTBackwardTransformC2R(
-				device->vba.on_device.complex_in[src],
-				acGetLocalMM(device->local_config),	
-				acGetLocalNN(device->local_config),	
-				acGetMinNN(device->local_config),	
-				device->vba.on_device.in[dst]
-			);
-}
 
 // Recursive function to generate indices
 void generateIndicesHelper(const std::vector<size_t>& dimensions, std::vector<int>& currentIndex,
@@ -1284,163 +1006,10 @@ acDeviceGeneralBoundconds(const Device device, const Stream stream, const Volume
     return AC_SUCCESS;
 }
 
-//static int3
-//constructInt3Param(const Device device, const AcIntParam a, const AcIntParam b, const AcIntParam c)
-//{
-//    return (int3){
-//        device->local_config.int_params[a],
-//        device->local_config.int_params[b],
-//        device->local_config.int_params[c],
-//    };
-//}
 
-AcResult
-acDeviceReduceScalNoPostProcessing(const Device device, const Stream stream, const AcReduction reduction,
-                              const VertexBufferHandle vtxbuf_handle, AcReal* result)
-{
-    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
-
-    const Volume start = acGetMinNN(device->local_config);
-    const Volume end   = acGetMaxNN(device->local_config);
-
-    *result = acKernelReduceScal(device->streams[stream], reduction, vtxbuf_handle,
-                                 start, end, AC_default_real_output, device->vba);
-    return AC_SUCCESS;
-}
-static AcReal
-acApplyPostProcessingOp(const AcMeshInfo info, const AcReductionPostProcessingOp op, const AcReal result)
-{
-    switch (op) {
-    	case AC_RMS: {
-    	    const Volume nn = acGetLocalNN(info);
-    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
-    	    return sqrt(inv_n * result);
-    	}
-        case AC_RADIAL_WINDOW_RMS: {
-	   ERROR("AC_RMS_RADIAL_WINDOW not implemented for acDeviceReduceVecScal\n");
-	   break;
-	}
-    	default: /* Do nothing */
-		     return result;
-    };
-    return result;
-}
-
-
-AcResult
-acDeviceReduceScal(const Device device, const Stream stream, const AcReduction reduction,
-                   const VertexBufferHandle vtxbuf_handle, AcReal* result)
-{
-    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
-    acDeviceReduceScalNoPostProcessing(device, stream, reduction, vtxbuf_handle, result);
-    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
-    return AC_SUCCESS;
-}
-
-AcResult
-acDeviceReduceVecNoPostProcessing(const Device device, const Stream stream, const AcReduction reduction,
-                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                             const VertexBufferHandle vtxbuf2, AcReal* result)
-{
-    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
-
-    const Volume start = acGetMinNN(device->local_config);
-    const Volume end   = acGetMaxNN(device->local_config);
-
-    *result = acKernelReduceVec(device->streams[stream], reduction, start, end, {vtxbuf0,vtxbuf1,vtxbuf2},device->vba,
-                                AC_default_real_output);
-    return AC_SUCCESS;
-}
-
-AcResult
-acDeviceReduceVec(const Device device, const Stream stream, const AcReduction reduction,
-                  const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                  const VertexBufferHandle vtxbuf2, AcReal* result)
-{
-    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
-    acDeviceReduceVecNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, result);
-    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
-    return AC_SUCCESS;
-}
-
-#include "device_finalize_reduce.h"
-AcResult
-acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
-                                 const AcReduction reduction, const VertexBufferHandle vtxbuf0,
-                                 const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
-                                 const VertexBufferHandle vtxbuf3, AcReal* result)
-{
-    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
-
-    const Volume start = acGetMinNN(device->local_config);
-    const Volume end   = acGetMaxNN(device->local_config);
-
-    *result = acKernelReduceVecScal(device->streams[stream], reduction, start, end,
-		    		    {vtxbuf0,vtxbuf1,vtxbuf2,vtxbuf3},
-				    device->vba,
-                                    AC_default_real_output);
-    return AC_SUCCESS;
-}
-
-AcResult
-acDeviceReduceVecScal(const Device device, const Stream stream, const AcReduction reduction,
-                      const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                      const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
-                      AcReal* result)
-{
-    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
-    if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
-    acDeviceReduceVecScalNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                     result);
-    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
-    return AC_SUCCESS;
-}
-
-/** XY averages */
-AcResult
-acDeviceReduceXY(const Device device, const Stream stream, const Field field,
-                        const Profile profile, const AcReduction reduction)
-{
-    if (profile >= 0 && profile < NUM_PROFILES) {
-        acSetDevice(device->id);
-        acDeviceSynchronizeStream(device, stream);
-
-        const AcMeshDims dims = acGetMeshDims(device->local_config);
-        for (size_t k = 0; k < dims.m1.z; ++k) {
-            const Volume start    = (Volume){dims.n0.x, dims.n0.y, k};
-            const Volume end      = (Volume){dims.n1.x, dims.n1.y, k + 1};
-            const size_t nxy    = (end.x - start.x) * (end.y - start.y);
-            const AcReal result = AcReal(1. / nxy) * acKernelReduceScal(device->streams[stream],
-                                                                  reduction, field,
-                                                                  start, end,
-								  AC_default_real_output,
-                                                                  device->vba);
-
-            // printf("%zu Profile: %g\n", k, result);
-            // Could be optimized by performing the reduction completely in
-            // device memory without the redundant device-host-device transfer
-            acMemcpy(&device->vba.on_device.profiles.in[profile][k], &result, sizeof(result),
-                       cudaMemcpyHostToDevice);
-        }
-        return AC_SUCCESS;
-    }
-    else {
-        return AC_FAILURE;
-    }
-}
-
+/*
+ *  Profiles
+ */
 AcResult
 acDeviceSwapProfileBuffer(const Device device, const Profile handle)
 {
@@ -1761,6 +1330,155 @@ acDeviceTest(const Device device)
 }
 #endif
 
+/*
+ * Reductions
+ */
+
+AcResult
+acDeviceReduceScalNoPostProcessing(const Device device, const Stream stream, const AcReduction reduction,
+                              const VertexBufferHandle vtxbuf_handle, AcReal* result)
+{
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
+    acSetDevice(device->id);
+
+    const Volume start = acGetMinNN(device->local_config);
+    const Volume end   = acGetMaxNN(device->local_config);
+
+    *result = acKernelReduceScal(device->streams[stream], reduction, vtxbuf_handle,
+                                 start, end, AC_default_real_output, device->vba);
+    return AC_SUCCESS;
+}
+static AcReal
+acApplyPostProcessingOp(const AcMeshInfo info, const AcReductionPostProcessingOp op, const AcReal result)
+{
+    switch (op) {
+    	case AC_RMS: {
+    	    const Volume nn = acGetLocalNN(info);
+    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+    	    return sqrt(inv_n * result);
+    	}
+        case AC_RADIAL_WINDOW_RMS: {
+	   ERROR("AC_RMS_RADIAL_WINDOW not implemented for acDeviceReduceVecScal\n");
+	   break;
+	}
+    	default: /* Do nothing */
+		     return result;
+    };
+    return result;
+}
+
+
+AcResult
+acDeviceReduceScal(const Device device, const Stream stream, const AcReduction reduction,
+                   const VertexBufferHandle vtxbuf_handle, AcReal* result)
+{
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
+    acDeviceReduceScalNoPostProcessing(device, stream, reduction, vtxbuf_handle, result);
+    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVecNoPostProcessing(const Device device, const Stream stream, const AcReduction reduction,
+                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                             const VertexBufferHandle vtxbuf2, AcReal* result)
+{
+    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
+    acSetDevice(device->id);
+
+    const Volume start = acGetMinNN(device->local_config);
+    const Volume end   = acGetMaxNN(device->local_config);
+
+    *result = acKernelReduceVec(device->streams[stream], reduction, start, end, {vtxbuf0,vtxbuf1,vtxbuf2},device->vba,
+                                AC_default_real_output);
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVec(const Device device, const Stream stream, const AcReduction reduction,
+                  const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                  const VertexBufferHandle vtxbuf2, AcReal* result)
+{
+    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
+    acDeviceReduceVecNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, result);
+    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
+    return AC_SUCCESS;
+}
+
+#include "device_finalize_reduce.h"
+AcResult
+acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
+                                 const AcReduction reduction, const VertexBufferHandle vtxbuf0,
+                                 const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
+                                 const VertexBufferHandle vtxbuf3, AcReal* result)
+{
+    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
+    acSetDevice(device->id);
+
+    const Volume start = acGetMinNN(device->local_config);
+    const Volume end   = acGetMaxNN(device->local_config);
+
+    *result = acKernelReduceVecScal(device->streams[stream], reduction, start, end,
+		    		    {vtxbuf0,vtxbuf1,vtxbuf2,vtxbuf3},
+				    device->vba,
+                                    AC_default_real_output);
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVecScal(const Device device, const Stream stream, const AcReduction reduction,
+                      const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                      const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                      AcReal* result)
+{
+    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
+    acDeviceReduceVecScalNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                     result);
+    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
+    return AC_SUCCESS;
+}
+AcResult
+acDeviceReduceXY(const Device device, const Stream stream, const Field field,
+                        const Profile profile, const AcReduction reduction)
+{
+    if (profile >= 0 && profile < NUM_PROFILES) {
+        acSetDevice(device->id);
+        acDeviceSynchronizeStream(device, stream);
+
+        const AcMeshDims dims = acGetMeshDims(device->local_config);
+        for (size_t k = 0; k < dims.m1.z; ++k) {
+            const Volume start    = (Volume){dims.n0.x, dims.n0.y, k};
+            const Volume end      = (Volume){dims.n1.x, dims.n1.y, k + 1};
+            const size_t nxy    = (end.x - start.x) * (end.y - start.y);
+            const AcReal result = AcReal(1. / nxy) * acKernelReduceScal(device->streams[stream],
+                                                                  reduction, field,
+                                                                  start, end,
+								  AC_default_real_output,
+                                                                  device->vba);
+
+            // printf("%zu Profile: %g\n", k, result);
+            // Could be optimized by performing the reduction completely in
+            // device memory without the redundant device-host-device transfer
+            acMemcpy(&device->vba.on_device.profiles.in[profile][k], &result, sizeof(result),
+                       cudaMemcpyHostToDevice);
+        }
+        return AC_SUCCESS;
+    }
+    else {
+        return AC_FAILURE;
+    }
+}
+
 #ifdef AC_TFM_ENABLED
 AcResult
 acDeviceReduceXYAverages(const Device device, const Stream stream)
@@ -1863,6 +1581,21 @@ acDeviceReduceXYAverages(const Device , const Stream)
 }
 
 #endif
+
+AcResult
+acDeviceReduceAverages(const Device device, const Stream stream, const Profile prof)
+{
+    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
+    return acReduceProfile(prof,
+			   device->vba.profile_reduce_buffers[prof],
+			   device->vba.on_device.profiles.in[prof],
+			   device->streams[stream]
+		    );
+}
+
+/*
+ * Transposes
+ */
 AcBuffer
 acDeviceTransposeVertexBuffer(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
 {
@@ -1875,16 +1608,6 @@ acDeviceTransposeBase(const Device device, const Stream stream, const AcMeshOrde
     AcBuffer res = acBufferCreate(acGetTransposeBufferShape(order,dims.m1),true);
     acTranspose(order,src,res.data, dims.m1, device->streams[stream]);
     return res;
-}
-AcResult
-acDeviceReduceAverages(const Device device, const Stream stream, const Profile prof)
-{
-    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
-    return acReduceProfile(prof,
-			   device->vba.profile_reduce_buffers[prof],
-			   device->vba.on_device.profiles.in[prof],
-			   device->streams[stream]
-		    );
 }
 
 /** Note: very inefficient. Should only be used for testing. */
@@ -1924,9 +1647,295 @@ acDeviceMemGetInfo(const Device device, size_t* free_mem, size_t* total_mem)
 	return acMemGetInfo(free_mem,total_mem) == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
-//TP: these are internal not user-facing device-layer functions
-//These exists since other modules should not modify the device structure directly but do it through API functions
-//Because they are internal it is okay for them not to return an error code: any errors are fatal!!
+
+
+#include "device_set_output.h"
+
+/*
+ * Fourier transforms
+ */
+AcResult
+acDeviceFFTR2C(const Device device, const Field src, const ComplexField dst)
+{
+	return acFFTForwardTransformR2C(
+				device->vba.on_device.in[src],
+				acGetLocalMM(device->local_config),	
+				acGetLocalNN(device->local_config),	
+				acGetMinNN(device->local_config),	
+				device->vba.on_device.complex_in[dst]
+			);
+}
+
+AcResult
+acDeviceFFTR2CXY(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers)
+{
+
+	for(size_t z_offset = 0; z_offset < n_layers;  ++z_offset)
+	{
+		const Volume starting_point = 
+		{
+			acGetMinNN(device->local_config).x,
+			acGetMinNN(device->local_config).y,
+			z_starting_point + z_offset
+		};
+
+		const Volume subdomain_size =
+		{
+			acGetLocalNN(device->local_config).x,
+			acGetLocalNN(device->local_config).y,
+			1
+		};
+		acFFTForwardTransformR2C(
+				device->vba.on_device.in[src],
+				acGetLocalMM(device->local_config),	
+				subdomain_size,
+				starting_point,
+				device->vba.on_device.complex_in[dst]
+			);
+	}
+	return AC_SUCCESS;
+}
+
+AcResult
+acDeviceFFTC2RXY(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers)
+{
+
+	for(size_t z_offset = 0; z_offset < n_layers;  ++z_offset)
+	{
+		const Volume starting_point = 
+		{
+			acGetMinNN(device->local_config).x,
+			acGetMinNN(device->local_config).y,
+			z_starting_point + z_offset
+		};
+
+		const Volume subdomain_size =
+		{
+			acGetLocalNN(device->local_config).x,
+			acGetLocalNN(device->local_config).y,
+			1
+		};
+		acFFTBackwardTransformC2R(
+				device->vba.on_device.complex_in[src],
+				acGetLocalMM(device->local_config),	
+				subdomain_size,
+				starting_point,
+				device->vba.on_device.in[dst]
+			);
+
+	}
+	return AC_SUCCESS;
+}
+
+AcResult
+acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst, const Field imag_dst)
+{
+  	const auto input_real_dims  = acGetMeshDims(device->local_config,real_src);
+  	const auto input_imag_dims  = acGetMeshDims(device->local_config,imag_src);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(input_real_dims == input_imag_dims);
+	ERRCHK_ALWAYS(input_real_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_real_dims == output_imag_dims);
+	return acFFTForwardTransformPlanar(
+				device->vba.on_device.in[real_src],
+				device->vba.on_device.in[imag_src],
+				input_real_dims.m1,
+				input_real_dims.nn,
+				input_real_dims.n0,
+				device->vba.on_device.in[real_dst],
+				device->vba.on_device.in[imag_dst]
+			);
+}
+
+AcResult
+acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Field real_dst_start, const Field imag_dst_start, const int batch_size)
+{
+  	const auto input_dims  = acGetMeshDims(device->local_config,src_start);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst_start);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst_start);
+	ERRCHK_ALWAYS(input_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_dims == output_imag_dims);
+	ERRCHK_ALWAYS(vtxbuf_precision[real_dst_start] == vtxbuf_precision[imag_dst_start]);
+
+    	if(vtxbuf_precision[src_start] == AC_SINGLE_PRECISION && vtxbuf_precision[imag_dst_start] == AC_SINGLE_PRECISION) 
+	{
+		return acFFTForwardTransformR2PlanarBatched(
+					device->vba.on_device.single_in[src_start],
+					input_dims.m1,	
+					input_dims.nn,	
+					input_dims.n0,
+					device->vba.on_device.single_in[real_dst_start],
+					device->vba.on_device.single_in[imag_dst_start],
+					batch_size,
+					AC_SINGLE_PRECISION,
+					AC_SINGLE_PRECISION
+				);
+	}
+	else if(vtxbuf_precision[src_start] == AC_REAL_PRECISION && vtxbuf_precision[imag_dst_start] == AC_SINGLE_PRECISION) 
+	{
+		return acFFTForwardTransformR2PlanarBatched(
+					device->vba.on_device.in[src_start],
+					input_dims.m1,	
+					input_dims.nn,	
+					input_dims.n0,
+					device->vba.on_device.single_in[real_dst_start],
+					device->vba.on_device.single_in[imag_dst_start],
+					batch_size,
+					AC_REAL_PRECISION,
+					AC_SINGLE_PRECISION
+				);
+	}
+	return acFFTForwardTransformR2PlanarBatched(
+				device->vba.on_device.in[src_start],
+				input_dims.m1,	
+				input_dims.nn,	
+				input_dims.n0,
+				device->vba.on_device.in[real_dst_start],
+				device->vba.on_device.in[imag_dst_start],
+				batch_size,
+				AC_REAL_PRECISION,
+				AC_REAL_PRECISION
+			);
+
+}
+
+AcResult
+acDeviceFFTR2HermitianPlanarBatched(const Device device, const Field src_start, const Field real_dst_start, const Field imag_dst_start, const int batch_size, Stream stream)
+{
+  	const auto input_dims  = acGetMeshDims(device->local_config,src_start);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst_start);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst_start);
+	ERRCHK_ALWAYS(input_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_dims == output_imag_dims);
+	return acFFTForwardTransformR2HermitianPlanarBatched(
+				device->vba.on_device.in[src_start],
+				input_dims.m1,	
+				input_dims.nn,	
+				input_dims.n0,
+				device->vba.on_device.in[real_dst_start],
+				device->vba.on_device.in[imag_dst_start],
+				batch_size,
+				device->streams[stream]
+			);
+}
+
+AcResult
+acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, const Field imag_dst)
+{
+        
+  	const auto input_dims  = acGetMeshDims(device->local_config,src);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(input_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_dims == output_imag_dims);
+	return acFFTForwardTransformR2Planar(
+				device->vba.on_device.in[src],
+				input_dims.m1,	
+				input_dims.nn,	
+				input_dims.n0,
+				device->vba.on_device.in[real_dst],
+				device->vba.on_device.in[imag_dst]
+			);
+}
+
+AcResult
+acDeviceFFTR2PlanarXY(const Device device, const Field src, const Field real_dst, const Field imag_dst, const size_t z_offset)
+{
+        
+  	const auto input_dims  = acGetMeshDims(device->local_config,src);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(input_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_dims == output_imag_dims);
+        const auto nn = (Volume){input_dims.nn.x,input_dims.nn.y,1};
+        const auto starting_point  = (Volume){input_dims.n0.x,input_dims.n0.y,z_offset};
+	return acFFTForwardTransformR2Planar(
+				device->vba.on_device.in[src],
+				input_dims.m1,	
+				nn,
+				starting_point,
+				device->vba.on_device.in[real_dst],
+				device->vba.on_device.in[imag_dst]
+			);
+}
+
+AcResult
+acDeviceFFTBackwardTransformPlanar2R(const Device device, const Field real_src, const Field imag_src, const Field dst)
+{
+        
+  	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
+  	const auto imag_input_dims  = acGetMeshDims(device->local_config,imag_src);
+  	const auto output_dims = acGetMeshDims(device->local_config,dst);
+	ERRCHK_ALWAYS(real_input_dims == output_dims);
+	ERRCHK_ALWAYS(imag_input_dims == output_dims);
+	return acFFTBackwardTransformPlanar2R(
+				device->vba.on_device.in[real_src],
+				device->vba.on_device.in[imag_src],
+				real_input_dims.m1,	
+				real_input_dims.nn,	
+				real_input_dims.n0, 
+				device->vba.on_device.in[dst]
+			);
+}
+
+AcResult
+acDeviceFFTBackwardTransformPlanar2RXY(const Device device, const Field real_src, const Field imag_src, const Field dst, const size_t z_offset)
+{
+        
+  	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
+  	const auto imag_input_dims  = acGetMeshDims(device->local_config,imag_src);
+  	const auto output_dims = acGetMeshDims(device->local_config,dst);
+	ERRCHK_ALWAYS(real_input_dims == output_dims);
+	ERRCHK_ALWAYS(imag_input_dims == output_dims);
+        const auto nn = (Volume){output_dims.nn.x,output_dims.nn.y,1};
+        const auto starting_point  = (Volume){output_dims.n0.x,output_dims.n0.y,z_offset};
+	return acFFTBackwardTransformPlanar2R(
+				device->vba.on_device.in[real_src],
+				device->vba.on_device.in[imag_src],
+				real_input_dims.m1,	
+				nn,
+				starting_point,
+				device->vba.on_device.in[dst]
+			);
+}
+
+AcResult
+acDeviceFFTBackwardTransformPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst,const Field imag_dst)
+{
+        
+  	const auto real_input_dims  = acGetMeshDims(device->local_config,real_src);
+  	const auto imag_input_dims  = acGetMeshDims(device->local_config,imag_src);
+  	const auto real_output_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto imag_output_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(real_input_dims == real_output_dims);
+	ERRCHK_ALWAYS(imag_input_dims == imag_output_dims);
+	return acFFTBackwardTransformPlanar(
+				device->vba.on_device.in[real_src],
+				device->vba.on_device.in[imag_src],
+				real_input_dims.m1,	
+				real_input_dims.nn,	
+				real_input_dims.n0,
+				device->vba.on_device.in[real_dst],
+				device->vba.on_device.in[real_dst]
+			);
+}
+
+AcResult
+acDeviceFFTC2R(const Device device, const ComplexField src, const Field dst)
+{
+	return acFFTBackwardTransformC2R(
+				device->vba.on_device.complex_in[src],
+				acGetLocalMM(device->local_config),	
+				acGetLocalNN(device->local_config),	
+				acGetMinNN(device->local_config),	
+				device->vba.on_device.in[dst]
+			);
+}
+/*
+ * These are internal not user-facing device-layer functions.
+ * These exists since other modules should not modify the device structure directly but do it through API functions.
+ */
 VertexBufferArray
 acDeviceGetVBA(const Device device)
 {
@@ -1965,9 +1974,3 @@ acDeviceGetStartOfProfiles(const Device device)
 {
 	return device->vba.on_device.profiles.in;
 }
-
-
-#include "device_set_output.h"
-
-
-
