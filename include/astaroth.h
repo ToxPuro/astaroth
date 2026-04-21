@@ -381,7 +381,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
 AC_END_C_DECLARATIONS
 
-static AcCompInfo UNUSED
+static UNUSED AcCompInfo
 acInitCompInfo()
 {
       AcCompInfo res;
@@ -391,7 +391,7 @@ acInitCompInfo()
       return res;
 }
 
-static AcMeshInfo UNUSED
+static UNUSED AcMeshInfo
 acInitInfo()
 {
       AcMeshInfo res;
@@ -418,7 +418,7 @@ acInitInfo()
       return res;
 }
 
-static AcMesh UNUSED
+static UNUSED AcMesh
 acInitMesh()
 {
       AcMesh res;
