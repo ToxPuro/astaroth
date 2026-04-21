@@ -1002,7 +1002,7 @@ acUpdateDecompositionParams(AcMeshInfo* dst)
 
 #endif
 
-  static AcCompInfo UNUSED acInitCompInfo()
+  static UNUSED AcCompInfo acInitCompInfo()
   {
 	  AcCompInfo res;
 	  //TP: initially nothing is loaded and if they are not loaded their values 
@@ -1010,7 +1010,7 @@ acUpdateDecompositionParams(AcMeshInfo* dst)
 	  memset(&res,0,sizeof(res));
 	  return res;
   }
-  static AcMeshInfo UNUSED acInitInfo()
+  static UNUSED AcMeshInfo acInitInfo()
   {
 	  AcMeshInfo res;
 	  //TP: this is useful for the following reasons:
@@ -1035,7 +1035,7 @@ acUpdateDecompositionParams(AcMeshInfo* dst)
 	  res.run_consts = acInitCompInfo();
 	  return res;
   }
-  static AcMesh UNUSED acInitMesh()
+  static UNUSED AcMesh acInitMesh()
   {
 	  AcMesh res;
 	  for(size_t j = 0; j < NUM_VTXBUF_HANDLES; ++j)
