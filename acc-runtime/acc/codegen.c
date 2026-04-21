@@ -1637,7 +1637,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	}
 
-	fprintf_filename("dconst_decl.h","%s static UNUSED DEVICE_INLINE  DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
+	fprintf_filename("dconst_decl.h","static UNUSED DEVICE_INLINE %s DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 
 	//TP: TODO: compare the performance of having this one level of indirection vs. simply loading the value to dconst and using it from there
@@ -1797,17 +1797,17 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			);
 
 	fprintf_filename("is_output_param.h",
-		"constexpr static bool UNUSED IsOutputParam(const %s&)               {return false;}\n"       
-		"constexpr static bool UNUSED IsOutputParam(const %sParam&)          {return false;}\n"  
-		"constexpr static bool UNUSED IsOutputParam(const %sOutputParam&)     {return true;}\n"
+		"constexpr static UNUSED bool IsOutputParam(const %s&)               {return false;}\n"
+		"constexpr static UNUSED bool IsOutputParam(const %sParam&)          {return false;}\n"
+		"constexpr static UNUSED bool IsOutputParam(const %sOutputParam&)     {return true;}\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name
 		);
 
 	fprintf_filename("is_comptime_param.h",
-		"template <> constexpr bool IsCompParam<%s>()               {return false;}\n"       
-		"template <> constexpr bool IsCompParam<%sParam>()          {return false;}\n"  
+		"template <> constexpr bool IsCompParam<%s>()               {return false;}\n"
+		"template <> constexpr bool IsCompParam<%sParam>()          {return false;}\n"
 		"template <> constexpr bool IsCompParam<%sArrayParam>()     {return false;}\n"
 		"template <> constexpr bool IsCompParam<%sCompArrayParam>() {return true;}\n"
 		"template <> constexpr bool IsCompParam<%sCompParam>()      {return true;}\n"
@@ -1819,8 +1819,8 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		);
 
 	fprintf_filename("is_comptime_param.h",
-		"template <> constexpr bool IsParam<%s>()               {return false;}\n"       
-		"template <> constexpr bool IsParam<%sParam>()          {return true;}\n"  
+		"template <> constexpr bool IsParam<%s>()               {return false;}\n"
+		"template <> constexpr bool IsParam<%sParam>()          {return true;}\n"
 		"template <> constexpr bool IsParam<%sArrayParam>()     {return true;}\n"
 		"template <> constexpr bool IsParam<%sCompArrayParam>() {return true;}\n"
 		"template <> constexpr bool IsParam<%sCompParam>()      {return true;}\n"
@@ -1833,11 +1833,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 
 	fprintf_filename("is_array_param.h",
-		"constexpr static bool UNUSED IsArrayParam(const %s&)               {return false;}\n"       
-		"constexpr static bool UNUSED IsArrayParam(const %sParam&)          {return false;}\n"  
-		"constexpr static bool UNUSED IsArrayParam(const %sArrayParam&)     {return true;}\n"
-		"constexpr static bool UNUSED IsArrayParam(const %sCompArrayParam&) {return true;}\n"
-		"constexpr static bool UNUSED IsArrayParam(const %sCompParam&)      {return false;}\n"
+		"constexpr static UNUSED bool IsArrayParam(const %s&)               {return false;}\n"
+		"constexpr static UNUSED bool IsArrayParam(const %sParam&)          {return false;}\n"
+		"constexpr static UNUSED bool IsArrayParam(const %sArrayParam&)     {return true;}\n"
+		"constexpr static UNUSED bool IsArrayParam(const %sCompArrayParam&) {return true;}\n"
+		"constexpr static UNUSED bool IsArrayParam(const %sCompParam&)      {return false;}\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name
