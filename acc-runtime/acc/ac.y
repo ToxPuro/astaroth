@@ -1123,14 +1123,7 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
 						if(err)
 					        {	
 							
-							fprintf(stderr,"\n");
 							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
-								combine_all_new_with_whitespace($3));
-							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
-								combine_all_new_with_whitespace($3));
-							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
-								combine_all_new_with_whitespace($3));
-							fprintf(stderr,"\n");
 							res = -1;
 						}
 						set_buffers_empty($3);
