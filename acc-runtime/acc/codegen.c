@@ -4737,7 +4737,7 @@ output_qualifiers(FILE* stream, const ASTNode* node, const char** tqualifiers, c
         if (n_tqualifiers)
 	  for(size_t i=0; i<n_tqualifiers;++i)
 	  {
-		if(tqualifiers[i] != BOUNDCOND_STR && tqualifiers[i] != FIXED_BOUNDARY_STR && tqualifiers[i] != ELEMENTAL_STR && tqualifiers[i] != UTILITY_STR)
+		if(tqualifiers[i] != NO_SWAP_STR && tqualifiers[i] != BOUNDCOND_STR && tqualifiers[i] != FIXED_BOUNDARY_STR && tqualifiers[i] != ELEMENTAL_STR && tqualifiers[i] != UTILITY_STR)
           		fprintf(stream, "%s ", tqualifiers[i]);
 	  }
 }
