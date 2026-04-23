@@ -1093,7 +1093,21 @@ compute_next_level_set(std::array<bool,NUM_KERNELS>& dst, const std::vector<AcKe
 			profile_consumed[j] |= (info[i].reduced_profiles[j] || info[i].written_profiles[j]);
 		  }
 		  for(size_t j = 0; j < NUM_FIELDS; ++j)
-		  	field_written_to[j] |= (can_compute && info[i].written_fields[j]);
+		  {
+			//TP: this is quite hacky and dangerous but I rely on the fact that written fields are only used to infer whether halos are in sync so for no_swap kernels it is safe say that non-auxiliary fields are not written out from the last level set.
+			//But given how specialized no_swap kernels are, this hacky behaviour is maybe OK.
+			if(no_swap_after_kernel[kernel_calls[i]])
+			{
+			  if(vtxbuf_is_auxiliary[j])
+			  {
+		  	    field_written_to[j] |= (can_compute && info[i].written_fields[j]);
+			  }
+			}
+			else
+			{
+		  	  field_written_to[j] |= (can_compute && info[i].written_fields[j]);
+			}
+		  }
 
 		  for(size_t j = 0; j < info[i].n_reduce_inputs; ++j)
 		  {
