@@ -414,50 +414,157 @@ make_dir(const char* dirname)
 void
 reset_diff_files()
 {
-		const char* files[] = {"memcpy_from_gmem_arrays_header.h","memcpy_to_gmem_arrays_header.h","memcpy_from_gmem_arrays.h","memcpy_to_gmem_arrays.h","gmem_arrays_decl.h","array_info.h","taskgraph_enums.h"};
-          	for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
-          	  FILE* fp = fopen(files[i], "w");
-          	  fclose(fp);
-          	}
+  const char* files[] = {
+    "array_info.h",
+    "gmem_arrays_decl.h",
+    "memcpy_from_gmem_arrays.h",
+    "memcpy_from_gmem_arrays_header.h",
+    "memcpy_to_gmem_arrays.h",
+    "memcpy_to_gmem_arrays_header.h",
+    "taskgraph_enums.h",
+  };
+  for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
+    FILE* fp = fopen(files[i], "w");
+    fclose(fp);
+  }
 }
 void
 reset_extra_files()
 {
-          const char* files[] = { ACC_GEN_PATH"/extra_dfuncs.h",ACC_GEN_PATH"/boundcond_kernels.h"};
-          for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
-	    if(!file_exists(files[i])) continue;
-            FILE* fp = fopen(files[i], "w");
-	    check_file(fp,"was not able to create file",files[i]);
-            fclose(fp);
-          }
+  const char* files[] = {
+    ACC_GEN_PATH "/boundcond_kernels.h",
+    ACC_GEN_PATH "/extra_dfuncs.h",
+  };
+  for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
+    if (!file_exists(files[i]))
+      continue;
+    FILE* fp = fopen(files[i], "w");
+    check_file(fp, "was not able to create file", files[i]);
+    fclose(fp);
+  }
 }
 void
 reset_all_files()
 {
-          const char* files[] = {"user_constants.h","user_built-in_constants","kernel_reduce_outputs.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
-		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","output_decl.h","input_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h",
-		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h",
-		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","arrays_accessed_decl.h","arrays_output_accesses.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
-		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","comp_info_access_operators.h","loaded_info_access_operators.h","scalar_info_access_operators.h","array_info_access_operators.h","param_info_access_operators.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
-		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_taskgraphs.h","user_loaders.h","user_loader_impls.h","call_all_user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
-		  "fields_info.h","profiles_info.h","is_comptime_param.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
-		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h","device_set_output.h","device_set_output_overloads.h","device_set_output_decl.h",
-		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","get_empty_pointer.h",
-			"kernel_region_write_info.h","kernel_region_read_info.h","taskgraph_bc_handles.h","user_declarations.h","taskgraph_kernels.h","taskgraph_kernel_bcs.h",
-			"info_access_operators.h","device_load_uniform.h","device_load_uniform_decl.h","device_load_uniform_overloads.h","device_load_uniform_loads.h",
-			"reduce_dst_integers.h","fused_kernels.h","device_store_uniform.h","device_store_uniform_decl.h","device_store_overloads.h","device_finalize_reduce.h","scalar_reduce_buffer_defs.h","scalar_reduce_buffers_in_vba.h","reduce_helpers.h",
-			"builtin_enums.h","safe_vtxbuf_input_params.h","load_ac_kernel_params.h","load_ac_kernel_params_def.h"
-			,"kernel_input_param_str.h","is_array_param.h","is_output_param.h","output_decl.h","output_value_decl.h"
-			,"info_loaded_decl.h","info_loaded_operator_decl.h"
-			//,"user_kernels_ifs.h"
-			};
-          for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
-	    //if(!file_exists(files[i])) continue;
-            FILE* fp = fopen(files[i], "w");
-	    check_file(fp,"was not able to create file",files[i]);
-            fclose(fp);
-          }
-	reset_diff_files();
+  const char* files[] = {
+    "array_comp_types.h",
+    "array_decl.h",
+    "array_info_access_operators.h",
+    "arrays_accessed_decl.h",
+    "arrays_output_accesses.h",
+    "array_types.h",
+    "builtin_enums.h",
+    "call_all_user_loaders.h",
+    "comp_decl.h",
+    "comp_info_access_operators.h",
+    "comp_loaded_decl.h",
+    "dconst_arrays_decl.h",
+    "dconst_decl.h",
+    "device_finalize_reduce.h",
+    "device_get_input_decls.h",
+    "device_get_input.h",
+    "device_get_input_loads.h",
+    "device_get_input_overloads.h",
+    "device_get_output_decls.h",
+    "device_get_output.h",
+    "device_get_output_loads.h",
+    "device_get_output_overloads.h",
+    "device_load_uniform_decl.h",
+    "device_load_uniform.h",
+    "device_load_uniform_loads.h",
+    "device_load_uniform_overloads.h",
+    "device_mesh_info_decl.h",
+    "device_set_input_decls.h",
+    "device_set_input.h",
+    "device_set_input_loads.h",
+    "device_set_input_overloads.h",
+    "device_set_output_decl.h",
+    "device_set_output.h",
+    "device_set_output_overloads.h",
+    "device_store_overloads.h",
+    "device_store_uniform_decl.h",
+    "device_store_uniform.h",
+    "fields_info.h",
+    "fused_kernels.h",
+    "get_address.h",
+    "get_array_info.h",
+    "get_arrays.h",
+    "get_config_arrays.h",
+    "get_default_value.h",
+    "get_device_array.h",
+    "get_empty_pointer.h",
+    "get_gmem_arrays.h",
+    "get_num_params.h",
+    "get_param_name.h",
+    "get_vtxbufs_declares.h",
+    "get_vtxbufs_funcs.h",
+    "get_vtxbufs_loads.h",
+    "gmem_arrays_decl.h",
+    "info_access_operators.h",
+    "info_loaded_decl.h",
+    "info_loaded_operator_decl.h",
+    "input_decl.h",
+    "is_array_param.h",
+    "is_comptime_param.h",
+    "is_output_param.h",
+    "kernel_input_param_str.h",
+    "kernel_reduce_outputs.h",
+    "kernel_region_read_info.h",
+    "kernel_region_write_info.h",
+    "load_ac_kernel_params_def.h",
+    "load_ac_kernel_params.h",
+    "load_and_store_uniform_funcs.h",
+    "load_and_store_uniform_header.h",
+    "load_and_store_uniform_overloads.h",
+    "load_comp_info.h",
+    "load_comp_info_overloads.h",
+    "load_dconst_arrays.h",
+    "loaded_info_access_operators.h",
+    "output_decl.h",
+    "output_value_decl.h",
+    "param_info_access_operators.h",
+    "profiles_info.h",
+    "rconst_decl.h",
+    "reduce_dst_integers.h",
+    "reduce_helpers.h",
+    "safe_vtxbuf_input_params.h",
+    "scalar_comp_types.h",
+    "scalar_info_access_operators.h",
+    "scalar_reduce_buffer_defs.h",
+    "scalar_reduce_buffers_in_vba.h",
+    "scalar_types.h",
+    "store_dconst_arrays.h",
+    "taskgraph_bc_handles.h",
+    "taskgraph_kernel_bcs.h",
+    "taskgraph_kernels.h",
+    "to_str_funcs.h",
+    "user_built-in_constants",
+    "user_constants.h",
+    "user_declarations.h",
+    "user_defines.h",
+    "user_dfuncs.h",
+    "user_field_has_stencil_op.bin",
+    "user_input_typedefs.h",
+    "user_kernel_declarations.h",
+    "user_kernel_ifs.h",
+    "user_kernels.h",
+    "user_kernels.h.raw",
+    //,"user_kernels_ifs.h",
+    "user_loader_impls.h",
+    "user_loaders.h",
+    "user_read_fields.bin",
+    "user_taskgraphs.h",
+    "user_typedefs.h",
+    "user_written_fields.bin",
+    "vtxbuf_is_communicated_func.h",
+  };
+  for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
+    // if(!file_exists(files[i])) continue;
+    FILE* fp = fopen(files[i], "w");
+    check_file(fp, "was not able to create file", files[i]);
+    fclose(fp);
+  }
+  reset_diff_files();
 }
 
 
