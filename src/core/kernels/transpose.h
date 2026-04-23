@@ -2,7 +2,7 @@
 #include "func_define.h"
 #include "device_headers.h"
 #include "acreal.h"
-#include "host_datatypes.h"
+#include "datatypes.h"
 
 AC_BEGIN_C_DECLARATIONS
 

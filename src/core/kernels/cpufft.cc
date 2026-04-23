@@ -1,4 +1,4 @@
-#include "host_datatypes.h"
+#include "datatypes.h"
 #include "ac_fft.h"
 #include <stdio.h>
 #include <cstdlib>

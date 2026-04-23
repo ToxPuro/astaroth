@@ -10,5 +10,6 @@ if(RUNTIME_COMPILATION)
 endif()
 
 target_link_libraries(ac_cuda_wrappers PRIVATE)
+target_link_libraries(ac_cuda_wrappers PUBLIC acc-runtime-headers)
 target_include_directories(ac_cuda_wrappers PRIVATE ${AC_BASE_PATH}/include)
 target_include_directories(ac_cuda_wrappers PRIVATE ${AC_BASE_PATH}/acc-runtime/api)

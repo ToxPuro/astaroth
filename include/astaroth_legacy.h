@@ -1,8 +1,3 @@
-/*
- * =============================================================================
- * Legacy interface
- * =============================================================================
- */
 /** Allocates all memory and initializes the devices visible to the caller. Should be
  * called before any other function in this interface. */
 FUNC_DEFINE(AcResult, acInit,(const AcMeshInfo mesh_info));
@@ -15,7 +10,6 @@ FUNC_DEFINE(AcResult, acQuit,(void));
  * parameter*/
 FUNC_DEFINE(AcResult, acSynchronizeStream,(const Stream stream));
 
-/** */
 FUNC_DEFINE(AcResult, acSynchronizeMesh,(void));
 
 /** Loads a constant to the memories of the devices visible to the caller */

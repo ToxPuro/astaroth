@@ -42,19 +42,14 @@ typedef struct {
     int z;
 } Error;
 
-/** */
 FUNC_DEFINE(AcResult, acHostVertexBufferSet,(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh));
 
-/** */
 FUNC_DEFINE(AcResult, acHostMeshSet,(const AcReal value, AcMesh* mesh));
 
-/** */
 FUNC_DEFINE(AcResult, acHostMeshApplyPeriodicBounds,(AcMesh* mesh));
 
-/** */
 FUNC_DEFINE(AcResult, acHostMeshApplyConstantBounds,(const AcReal value, AcMesh* mesh));
 
-/** */
 FUNC_DEFINE(AcResult, acHostMeshClear,(AcMesh* mesh));
 
 /** Applies a full integration step on host mesh using the compact 2N RK3 scheme. The boundaries are
@@ -62,12 +57,9 @@ FUNC_DEFINE(AcResult, acHostMeshClear,(AcMesh* mesh));
  * is not desired. NOTE: applies boundary conditions on the mesh before the initial substep. */
 FUNC_DEFINE(AcResult, acHostIntegrateStep,(AcMesh mesh, const AcReal dt));
 
-/** */
 FUNC_DEFINE(AcReal, acHostReduceScal,(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a));
 
-/** */
 FUNC_DEFINE(AcReal, acHostReduceVec,(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c));
-/** */
 FUNC_DEFINE(AcReal, acHostReduceVecScal,(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c, const VertexBufferHandle d));
 
 FUNC_DEFINE(bool, acEvalError,(const char* label, const Error error));

@@ -1,4 +1,7 @@
 #pragma once
+
+#include "func_define.h"
+
 #ifndef UNUSED
 #define UNUSED __attribute__((unused)) // Does not give a warning if unused
 #endif
@@ -58,6 +61,8 @@ Devices in the grid are configured based on the contents of AcMesh.
  */
 
 FUNC_DEFINE(AcResult, acGridInitBase, (const AcMesh mesh));
+
+
 static AcResult UNUSED 
 acGridInit(const AcMeshInfo info)
 {
@@ -78,34 +83,25 @@ FUNC_DEFINE(Device, acGridGetDevice,(void));
 /** Randomizes the local mesh */
 FUNC_DEFINE(AcResult, acGridRandomize,(void));
 
-/** */
 FUNC_DEFINE(AcResult, acGridSynchronizeStream,(const Stream stream));
 
-/** */
 FUNC_DEFINE(AcResult, acGridLoadScalarUniform,(const Stream stream, const AcRealParam param, const AcReal value));
 
-/** */
 FUNC_DEFINE(AcResult, acGridLoadVectorUniform,(const Stream stream, const AcReal3Param param,
                                  const AcReal3 value));
 
-/** */
 FUNC_DEFINE(AcResult, acGridLoadIntUniform,(const Stream stream, const AcIntParam param, const int value));
 
-/** */
 FUNC_DEFINE(AcResult, acGridLoadInt3Uniform,(const Stream stream, const AcInt3Param param, const int3 value));
 
-/** */
 FUNC_DEFINE(AcResult, acGridLoadMesh,(const Stream stream, const AcMesh host_mesh));
 
-/** */
 FUNC_DEFINE(AcResult, acGridStoreMesh,(const Stream stream, AcMesh* host_mesh));
 
-/** */
 FUNC_DEFINE(AcResult, acGridIntegrate,(const Stream stream, const AcReal dt));
 
 FUNC_DEFINE(AcResult, acGridSwapBuffers,(void));
 
-/** */
 /*   MV: Commented out for a while, but save for the future when standalone_MPI
          works with periodic boundary conditions.
 AcResult
@@ -114,29 +110,23 @@ acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
 AcResult acGridIntegrateNonperiodic(const Stream stream, const AcReal dt);
 */
 
-/** */
 FUNC_DEFINE(AcResult, acGridHaloExchange,());
 
-/** */
 FUNC_DEFINE(AcResult, acGridPeriodicBoundconds,(const Stream stream));
 
 
-/** */
 FUNC_DEFINE(AcResult, acGridReduceScal,(const Stream stream, const AcReduction reduction,
                           const VertexBufferHandle vtxbuf_handle, AcReal* result));
 
-/** */
 FUNC_DEFINE(AcResult, acGridReduceVec,(const Stream stream, const AcReduction reduction,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result));
 
-/** */
 FUNC_DEFINE(AcResult, acGridReduceVecScal,(const Stream stream, const AcReduction reduction,
                              const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result));
 
-/** */
 AcResult acGridReduceXY(const Stream stream, const Field field, const Profile profile, const AcReduction reduction);
 
 typedef enum {
@@ -181,13 +171,6 @@ FUNC_DEFINE(AcResult, acGridAccessMeshOnDiskSynchronousCollective,(const VertexB
 // Bugged
 // AcResult acGridStoreFieldToFile(const char* path, const VertexBufferHandle field);
 
-/*
- * =============================================================================
- * Task interface (part of the grid interface)
- * =============================================================================
- */
-
-/** */
 typedef enum AcTaskType {
     TASKTYPE_NO_OP,
     TASKTYPE_COMPUTE,
@@ -339,12 +322,12 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel ker
 			   KernelReduceOutput reduce_outputs_in[], size_t num_outputs_in, KernelReduceOutput reduce_outputs_out[], size_t num_outputs_out, const Volume start, const Volume end, const int onion_level,
 			   KernelParamsLoader loader));
 #else
-/** */
+
 FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
                            Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, const Volume start, const Volume dims, const int onion_level, void (*load_func)(ParamLoadingInfo step_info)));
 #endif
 
-/** */
+
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
                            Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out));
 
@@ -367,7 +350,7 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,(const AcKernel kernel, con
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,(const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction, Field fields_in[], const size_t num_fields_in,
                            Field fields_out[], const size_t num_fields_out, void (*load_func)(ParamLoadingInfo step_info)));
 #endif
-/** */
+
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
 FUNC_DEFINE(AcTaskDefinition, acHaloExchangeBoundary,(Field fields[], const size_t num_fields, const AcBoundary boundary));
 
@@ -379,23 +362,17 @@ FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const siz
 
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
 
-/** */
 FUNC_DEFINE(bool, acGridTaskGraphIsEmpty,(AcTaskGraph* graph));
 
-/** */
 FUNC_DEFINE(bool, acGridTaskGraphHasPeriodicBoundcondsX,(AcTaskGraph* graph));
 
-/** */
 FUNC_DEFINE(bool, acGridTaskGraphHasPeriodicBoundcondsY,(AcTaskGraph* graph));
 
-/** */
 FUNC_DEFINE(bool, acGridTaskGraphHasPeriodicBoundcondsZ,(AcTaskGraph* graph));
 
-/** */
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraph,(const AcTaskDefinition ops[], const size_t n_ops));
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraphWithBounds,(const AcTaskDefinition ops[], const size_t n_ops, const Volume start, const Volume end, const bool globally_imposed_bcs));
 
-/** */
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,(const AcDSLTaskGraph));
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end));
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
@@ -404,39 +381,31 @@ FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraphWithBounds,(const AcDSLTaskG
 FUNC_DEFINE(AcDSLTaskGraph, acGetComputeStepsBCs,(const AcDSLTaskGraph graph));
 
 
-/** */
 FUNC_DEFINE(AcResult, acGridDestroyTaskGraph,(AcTaskGraph* graph));
 
-/** */
 FUNC_DEFINE(AcResult, acGridClearTaskGraphCache,());
 
-/** */
 FUNC_DEFINE(AcResult, acGridExecuteTaskGraph,(AcTaskGraph* graph, const size_t n_iterations));
-/** */
+
 FUNC_DEFINE(AcResult, acGridExecuteTaskGraphBase,(AcTaskGraph* graph, const size_t n_iterations, const bool include_all));
-/** */
+
 FUNC_DEFINE(AcResult, acGridFinalizeReduceLocal,(AcTaskGraph* graph));
-/** */
+
 FUNC_DEFINE(AcResult, acGridFinalizeReduce,(AcTaskGraph* graph));
 
-/** */
 FUNC_DEFINE(AcResult, acGridLaunchKernel,(const Stream stream, const AcKernel kernel, const Volume start,
                             const Volume end));
 
 
-/** */
 FUNC_DEFINE(AcResult, acGridLoadStencil,(const Stream stream, const Stencil stencil,
                            const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
-/** */
 FUNC_DEFINE(AcResult, acGridStoreStencil,(const Stream stream, const Stencil stencil,
                             AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
-/** */
 FUNC_DEFINE(AcResult, acGridLoadStencils,(const Stream stream,
                    const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
-/** */
 FUNC_DEFINE(AcResult, acGridStoreStencils,(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 static UNUSED bool

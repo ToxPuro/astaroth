@@ -63,20 +63,20 @@ acDeviceResize(void** dst,const size_t old_bytes,const size_t new_bytes);
 Volume
 get_bpg(Volume dims, const Volume tpb);
 
-AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
-AcBuffer acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order);
-AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cudaStream_t stream);
+// AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
+// AcBuffer acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order);
+// AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cudaStream_t stream);
+//
+// AcShape  acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims);
+// AcShape  acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
 
-AcShape  acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims);
-AcShape  acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
+// AcBuffer
+// acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaStream_t stream);
 
-AcBuffer
-acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaStream_t stream);
+// void acBufferDestroy(AcBuffer* buffer);
 
-void acBufferDestroy(AcBuffer* buffer);
-
-AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
-AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
+// AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
+// AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
 
 AC_END_C_DECLARATIONS
 
