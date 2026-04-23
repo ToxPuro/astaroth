@@ -9787,20 +9787,28 @@ get_used_vars(const ASTNode* node, string_vec* dst)
 bool
 remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 {
-	TRAVERSE_PREAMBLE_PARAMS(remove_dead_assignments,vars_used);
-	if(!(node->type & NODE_ASSIGNMENT)) return false;
+	bool res = false;
+	if(node->lhs)
+	{
+		res |= remove_dead_assignments(node->lhs,vars_used);
+	}
+	if(node->rhs)
+	{
+		res |= remove_dead_assignments(node->rhs,vars_used);
+	}
+	if(!(node->type & NODE_ASSIGNMENT)) return res;
 	const char* expr_type = get_expr_type(node);
-	if(!expr_type) return false;
-	if(expr_type == FIELD_STR) return false;
-	if(expr_type == FIELD3_STR) return false;
+	if(!expr_type) return res;
+	if(expr_type == FIELD_STR) return res;
+	if(expr_type == FIELD3_STR) return res;
 	const char* var = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	if(check_symbol(NODE_ANY,var,0,DYNAMIC_STR)) return false;
-	if(check_symbol(NODE_ANY,var,0,GLOBAL_MEM_STR)) return false;
-	if(check_symbol(NODE_ANY,var,FIELD_STR,0)) return false;
-	if(check_symbol(NODE_ANY,var,FIELD3_STR,0)) return false;
+	if(check_symbol(NODE_ANY,var,0,DYNAMIC_STR)) return res;
+	if(check_symbol(NODE_ANY,var,0,GLOBAL_MEM_STR)) return res;
+	if(check_symbol(NODE_ANY,var,FIELD_STR,0)) return res;
+	if(check_symbol(NODE_ANY,var,FIELD3_STR,0)) return res;
 	//if(strstr(expr_type,"*")) return;
-	if(strstr(var,"AC_INTERNAL_gmem_")) return false;
-	if(calls_non_pure_returning_func(node->rhs)) return false;
+	if(strstr(var,"AC_INTERNAL_gmem_")) return res;
+	if(calls_non_pure_returning_func(node->rhs)) return res;
 	if(!str_vec_contains(vars_used,var))
 	{
 		node->lhs = NULL;
@@ -9809,14 +9817,22 @@ remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 		node->type = NODE_UNKNOWN;
 		return true;
 	}
-	return false;
+	return res;
 }
 bool
 remove_dead_declarations(ASTNode* node, const string_vec vars_used)
 {
-	TRAVERSE_PREAMBLE_PARAMS(remove_dead_declarations,vars_used);
-	if(!(node->type & NODE_DECLARATION)) return false;
-	if(node->parent->token != VARIABLE_DECLARATION) return false;
+	bool res = false;
+	if(node->lhs)
+	{
+		res |= remove_dead_declarations(node->lhs,vars_used);
+	}
+	if(node->rhs)
+	{
+		res |= remove_dead_declarations(node->rhs,vars_used);
+	}
+	if(!(node->type & NODE_DECLARATION)) return res;
+	if(node->parent->token != VARIABLE_DECLARATION) return res;
 	const char* var = get_node_by_token(IDENTIFIER,node)->buffer;
 	if(!str_vec_contains(vars_used,var))
 	{
@@ -9826,7 +9842,7 @@ remove_dead_declarations(ASTNode* node, const string_vec vars_used)
 		node->type = NODE_UNKNOWN;
 		return true;
 	}
-	return false;
+	return res;
 }
 bool
 remove_dead_writes_base(ASTNode* node)
