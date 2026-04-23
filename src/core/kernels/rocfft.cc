@@ -1,4 +1,4 @@
-#include "host_datatypes.h"
+#include "datatypes.h"
 #include "ac_fft.h"
 #include "astaroth_cuda_wrappers.h"
 #include "errchk.h"

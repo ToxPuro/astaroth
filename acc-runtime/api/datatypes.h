@@ -47,8 +47,8 @@
 
 #include "acreal.h"
 
-#if AC_CPU_BUILD
-#ifndef INT3_DEFINED
+//#if AC_CPU_BUILD
+// #ifndef INT3_DEFINED
 typedef struct
 {
 	int x,y,z;
@@ -57,9 +57,9 @@ typedef struct
 {
         int x,y,z,w;
 } int4;
-#define INT3_DEFINED
-#endif
-#endif
+// #define INT3_DEFINED
+// #endif
+//#endif
 
 
 #include "builtin_enums.h"

@@ -270,7 +270,7 @@ acGetFieldHalos(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 	return info.int3_params[vtxbuf_run_time_halos[vtxbuf]];
 }
 
-#include "common_kernels.h"
+// #include "common_kernels.h"
 
 typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
 
@@ -797,28 +797,28 @@ prof_size(const Profile prof, const size3_t counts)
     return prof_count(prof,counts)*sizeof(AcReal);
 }
 
-AcReal**
-ac_allocate_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
-int**
-ac_allocate_scratchpad_int(const size_t i, const size_t new_bytes, const AcReduceOp state);
-float**
-ac_allocate_scratchpad_float(const size_t i, const size_t new_bytes, const AcReduceOp state);
+// AcReal**
+// ac_allocate_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
+// int**
+// ac_allocate_scratchpad_int(const size_t i, const size_t new_bytes, const AcReduceOp state);
+// float**
+// ac_allocate_scratchpad_float(const size_t i, const size_t new_bytes, const AcReduceOp state);
 
-void
-ac_free_scratchpad_real(const size_t i);
-void
-ac_free_scratchpad_int(const size_t i);
-void
-ac_free_scratchpad_float(const size_t i);
+// void
+// ac_free_scratchpad_real(const size_t i);
+// void
+// ac_free_scratchpad_int(const size_t i);
+// void
+// ac_free_scratchpad_float(const size_t i);
 
-const size_t*
-ac_get_scratchpad_size_real(const size_t i);
-const size_t*
-ac_get_scratchpad_size_int(const size_t i);
-const size_t*
-ac_get_scratchpad_size_float(const size_t i);
+// const size_t*
+// ac_get_scratchpad_size_real(const size_t i);
+// const size_t*
+// ac_get_scratchpad_size_int(const size_t i);
+// const size_t*
+// ac_get_scratchpad_size_float(const size_t i);
 
-void
-ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
+// void
+// ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
 
 AC_END_C_DECLARATIONS

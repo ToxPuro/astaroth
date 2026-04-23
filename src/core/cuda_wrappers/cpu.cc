@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <limits>
 #include <stdlib.h>
-#include "host_datatypes.h"
+#include "datatypes.h"
 #include "astaroth_cuda_wrappers.h"
 
 cudaError_t

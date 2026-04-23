@@ -2,26 +2,25 @@
 
 #include "acreal.h"
 #include <stddef.h>
-#ifndef VOLUME_DEFINED
 
+#ifndef VOLUME_DEFINED
 typedef struct
-{ 
+{
 	size_t x,y,z;
 } Volume;
-
-enum AcPrecision
-{
-	AC_REAL_PRECISION,
-	AC_SINGLE_PRECISION,
-	AC_HALF_PRECISION
-};
 #define VOLUME_DEFINED
 #endif
 
-#ifndef COMPLEX_DEFINED
+// enum AcPrecision
+// {
+// 	AC_REAL_PRECISION,
+// 	AC_SINGLE_PRECISION,
+// 	AC_HALF_PRECISION
+// };
 
+#ifndef COMPLEX_DEFINED
 typedef struct
-{ 
+{
 	AcReal x,y;
 } AcComplex;
 
@@ -33,9 +32,8 @@ typedef struct
 #endif
 
 #ifndef REAL3_DEFINED
-
 typedef struct
-{ 
+{
 	AcReal x,y,z;
 } AcReal3;
 #define REAL3_DEFINED
@@ -98,17 +96,17 @@ typedef struct {
     size3_t reduction_tile;
 } AcMeshDims;
 
-#if AC_CPU_BUILD
+// #if AC_CPU_BUILD
 
 #ifndef INT3_DEFINED
-typedef struct
-{
-	int x,y,z;
-} int3;
-typedef struct
-{
-        int x,y,z,w;
-} int4;
+// typedef struct
+// {
+// 	int x,y,z;
+// } int3;
+// typedef struct
+// {
+//         int x,y,z,w;
+// } int4;
 #define INT3_DEFINED
 #endif
 
@@ -121,4 +119,4 @@ typedef struct
 {
     unsigned int x, y, z;
 } uint3;
-#endif
+// #endif

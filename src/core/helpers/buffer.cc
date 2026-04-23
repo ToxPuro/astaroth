@@ -1,4 +1,4 @@
-#include "host_datatypes.h"
+#include "datatypes.h"
 #include "transpose.h"
 #include "reindex.h"
 #include "ac_helpers.h"
