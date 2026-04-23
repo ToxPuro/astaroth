@@ -41,7 +41,7 @@ matmul_transpose(Matrix a, real3 b)
 sign(real val, real set_sign)
 {
 
-	return abs(val)*(set_sign < 0.0 ? -1.0 : 1.0);
+	return abs(val)*(1.0-2.0*(set_sign < 0.0));
 }
 
 modulo(real a, real p)

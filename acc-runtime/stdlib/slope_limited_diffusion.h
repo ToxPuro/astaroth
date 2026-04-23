@@ -78,6 +78,229 @@ get_slope_limited_all(Field f, Field characteristic_speed, real fdiff_limit, rea
 	return res
 }
 #else
+/**
+sld_read(Field f, int x_offset, int y_offset, int z_offset)
+{
+	return f[vertexIdx.x+x_offset][vertexIdx.y+y_offset][vertexIdx.z+z_offset]
+}
+
+sld_diff_left_left(Field f)
+{
+	return sld_read(f,-1,0,0)-sld_read(f,-2,0,0)
+}
+sld_diff_left(Field f)
+{
+	return sld_read(f,+0,0,0)-sld_read(f,-1,0,0)
+}
+sld_add_left(Field f)
+{
+	return sld_read(f,+0,0,0)+sld_read(f,-1,0,0)
+}
+sld_diff_right(Field f)
+{
+	return sld_read(f,+1,0,0)-sld_read(f,-0,0,0)
+}
+sld_diff_right_right(Field f)
+{
+	return sld_read(f,+2,0,0)-sld_read(f,+1,0,0)
+}
+sld_add_right(Field f)
+{
+	return sld_read(f,+1,0,0)+sld_read(f,-0,0,0)
+}
+
+//exp_skip(real x) {return exp(x)}
+
+sld_diff_left_left_exp(Field f)
+{
+	return exp(sld_read(f,-1,0,0))-exp(sld_read(f,-2,0,0))
+}
+sld_diff_left_exp(Field f)
+{
+	return exp(sld_read(f,+0,0,0))-exp(sld_read(f,-1,0,0))
+}
+sld_add_left_exp(Field f)
+{
+	return exp(sld_read(f,+0,0,0))+exp(sld_read(f,-1,0,0))
+}
+sld_diff_right_exp(Field f)
+{
+	return exp(sld_read(f,+1,0,0))-exp(sld_read(f,-0,0,0))
+}
+sld_add_right_exp(Field f)
+{
+	return exp(sld_read(f,+1,0,0))+exp(sld_read(f,-0,0,0))
+}
+sld_diff_right_right_exp(Field f)
+{
+	return exp(sld_read(f,+2,0,0))-exp(sld_read(f,+1,0,0))
+}
+
+sld_diff_down_down(Field f)
+{
+	return sld_read(f,0,-1,0)-sld_read(f,0,-2,0)
+}
+sld_diff_down(Field f)
+{
+	return sld_read(f,0,+0,0)-sld_read(f,0,-1,0)
+}
+sld_add_down(Field f)
+{
+	return sld_read(f,0,+0,0)+sld_read(f,0,-1,0)
+}
+sld_diff_up(Field f)
+{
+	return sld_read(f,0,+1,0)-sld_read(f,0,-0,0)
+}
+sld_diff_up_up(Field f)
+{
+	return sld_read(f,0,+2,0)-sld_read(f,0,+1,0)
+}
+sld_add_up(Field f)
+{
+	return sld_read(f,0,+1,0)+sld_read(f,0,-0,0)
+}
+
+sld_diff_down_down_exp(Field f)
+{
+	return exp(sld_read(f,0,-1,0))-exp(sld_read(f,0,-2,0))
+}
+sld_diff_down_exp(Field f)
+{
+	return exp(sld_read(f,0,+0,0))-exp(sld_read(f,0,-1,0))
+}
+sld_add_down_exp(Field f)
+{
+	return exp(sld_read(f,0,+0,0))+exp(sld_read(f,0,-1,0))
+}
+sld_diff_up_exp(Field f)
+{
+	return exp(sld_read(f,0,+1,0))-exp(sld_read(f,0,-0,0))
+}
+sld_diff_up_up_exp(Field f)
+{
+	return exp(sld_read(f,0,+2,0))-exp(sld_read(f,0,+1,0))
+}
+sld_add_up_exp(Field f)
+{
+	return exp(sld_read(f,0,+1,0))+exp(sld_read(f,0,-0,0))
+}
+
+sld_diff_back_back(Field f)
+{
+	return sld_read(f,0,0,-1)-sld_read(f,0,0,-2)
+}
+sld_diff_back(Field f)
+{
+	return sld_read(f,0,0,+0)-sld_read(f,0,0,-1)
+}
+sld_add_back(Field f)
+{
+	return sld_read(f,0,0,+0)+sld_read(f,0,0,-1)
+}
+sld_diff_front(Field f)
+{
+	return sld_read(f,0,0,+1)-sld_read(f,0,0,-0)
+}
+sld_diff_front_front(Field f)
+{
+	return sld_read(f,0,0,+2)-sld_read(f,0,0,+1)
+}
+sld_add_front(Field f)
+{
+	return sld_read(f,0,0,+1)+sld_read(f,0,0,-0)
+}
+
+sld_diff_back_back_exp(Field f)
+{
+	return exp(sld_read(f,0,0,-1))-exp(sld_read(f,0,0,-2))
+}
+sld_diff_back_exp(Field f)
+{
+	return exp(sld_read(f,0,0,+0))-exp(sld_read(f,0,0,-1))
+}
+sld_add_back_exp(Field f)
+{
+	return exp(sld_read(f,0,0,+0))+exp(sld_read(f,0,0,-1))
+}
+sld_diff_front_exp(Field f)
+{
+	return exp(sld_read(f,0,0,+1))-exp(sld_read(f,0,0,-0))
+}
+sld_diff_front_front_exp(Field f)
+{
+	return exp(sld_read(f,0,0,+2))-exp(sld_read(f,0,0,+1))
+}
+sld_add_front_exp(Field f)
+{
+	return exp(sld_read(f,0,0,+1))+exp(sld_read(f,0,0,-0))
+}
+
+sld_get_left(Field f)
+{
+	return sld_read(f,-1,0,0)
+}
+
+sld_get_right(Field f)
+{
+	return sld_read(f,+1,0,0)
+}
+
+
+sld_get_left_exp(Field f)
+{
+	return exp(sld_read(f,-1,0,0))
+}
+
+sld_get_right_exp(Field f)
+{
+	return exp(sld_read(f,+1,0,0))
+}
+
+sld_get_down(Field f)
+{
+	return sld_read(f,0,-1,0)
+}
+
+sld_get_up(Field f)
+{
+	return sld_read(f,0,+1,0)
+}
+
+
+sld_get_down_exp(Field f)
+{
+	return exp(sld_read(f,0,-1,0))
+}
+
+sld_get_up_exp(Field f)
+{
+	return exp(sld_read(f,0,+1,0))
+}
+
+sld_get_back(Field f)
+{
+	return sld_read(f,0,0,-1)
+}
+
+sld_get_front(Field f)
+{
+	return sld_read(f,0,0,+1)
+}
+
+
+sld_get_back_exp(Field f)
+{
+	return exp(sld_read(f,0,0,-1))
+}
+
+sld_get_front_exp(Field f)
+{
+	return exp(sld_read(f,0,0,+1))
+}
+**/
+
+
 Stencil sld_diff_left_left
 {
 	[0][0][-2] = -1,
@@ -320,22 +543,28 @@ ExpSum Stencil sld_get_front_exp
 get_x_interpolated_characteristic_speeds(Field characteristic_speed)
 {
 	return sld_flux(
-				interpolate_middle_left(characteristic_speed),
-				interpolate_middle_right(characteristic_speed)
+			0.5*(characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z]
+			+characteristic_speed[vertexIdx.x-1][vertexIdx.y][vertexIdx.z]),
+			0.5*(characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z]
+			+characteristic_speed[vertexIdx.x+1][vertexIdx.y][vertexIdx.z])
 		    )
 }
 get_y_interpolated_characteristic_speeds(Field characteristic_speed)
 {
 	return sld_flux(
-				interpolate_middle_down(characteristic_speed),
-				interpolate_middle_up(characteristic_speed)
+			0.5*(characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z]
+			+characteristic_speed[vertexIdx.x][vertexIdx.y-1][vertexIdx.z]),
+			0.5*(characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z]
+			+characteristic_speed[vertexIdx.x][vertexIdx.y+1][vertexIdx.z])
 		    )
 }
 get_z_interpolated_characteristic_speeds(Field characteristic_speed)
 {
 	return sld_flux(
-				interpolate_middle_back(characteristic_speed),
-				interpolate_middle_front(characteristic_speed)
+			0.5*(characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z]
+			+characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z-1]),
+			0.5*(characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z]
+			+characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z+1])
 		    )
 }
 get_left_slope(Field f, bool ln_field)
@@ -389,6 +618,7 @@ get_x_interface_values(Field f, bool ln_field)
 	slope       = get_x_slope(f,ln_field)
 	right_slope = get_right_slope(f,ln_field)
 	return sld_interface_values(
+
 			ln_field ? sld_get_left_exp(f)+left_slope : sld_get_left(f) + left_slope,
 			ln_field ? exp(f)-slope : f-slope,
 			ln_field ? exp(f)+slope : f+slope,
@@ -401,6 +631,7 @@ get_y_interface_values(Field f, bool ln_field)
 	slope       = get_y_slope(f,ln_field)
 	up_slope    = get_up_slope(f,ln_field)
 	return sld_interface_values(
+
 			ln_field ? sld_get_down_exp(f)+down_slope : sld_get_down(f)+down_slope,
 			ln_field ? exp(f)-slope : f-slope,
 			ln_field ? exp(f)+slope : f+slope,
@@ -426,25 +657,26 @@ get_x_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 
 	left_diff = ln_field ? sld_diff_left_exp(f) : sld_diff_left(f)
 	left_add  = ln_field ? sld_add_left_exp(f)      : sld_add_left(f)
-	left_slope_ratio = 0.0
 	left_interface_diff = interface_values.left - interface_values.left_left
-	if ((left_interface_diff)*left_diff > 0.0)
-	{
-	    if (abs(left_add/left_diff) > fdiff_limit) left_diff = sign(left_add,left_diff)/fdiff_limit
-	    left_slope_ratio = (left_interface_diff)/left_diff
-	}
+
+	int tmp = (((left_interface_diff)*left_diff) > 0.0)
+	left_slope_ratio = tmp*(left_interface_diff)/left_diff
+	tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
+	left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
+	
 	left_Q = pow(min(1.0,h_slope_limited*left_slope_ratio),nlf)
 	left_flux = 0.5*cs.left*left_Q*(left_interface_diff)
 
+
 	right_diff =  ln_field ? sld_diff_right_exp(f) : sld_diff_right(f)
 	right_add  =  ln_field ? sld_add_right_exp(f)  : sld_add_right(f)
-	right_slope_ratio = 0.0
 	right_interface_diff = interface_values.right_right - interface_values.right
-	if ((right_interface_diff)*right_diff > 0.0)
-	{
-	    if (abs(right_add/right_diff) > fdiff_limit) right_diff = sign(right_add,right_diff)/fdiff_limit
-	    right_slope_ratio = (right_interface_diff)/right_diff
-	}
+
+	tmp = (((right_interface_diff)*right_diff) > 0.0)
+	right_slope_ratio = tmp*(right_interface_diff)/right_diff
+	tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
+	right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
+
 	right_Q = pow(min(1.0,h_slope_limited*right_slope_ratio),nlf)
 	right_flux = 0.5*cs.right*right_Q*(right_interface_diff)
 	return sld_flux(left_flux,right_flux)
@@ -456,25 +688,25 @@ get_y_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 
 	left_diff = ln_field ? sld_diff_down_exp(f) : sld_diff_down(f)
 	left_add  = ln_field ? sld_add_down_exp(f) : sld_add_down(f)
-	left_slope_ratio = 0.0
 	left_interface_diff = interface_values.left - interface_values.left_left
-	if ((left_interface_diff)*left_diff > 0.0)
-	{
-	    if (abs(left_add/left_diff) > fdiff_limit) left_diff = sign(left_add,left_diff)/fdiff_limit
-	    left_slope_ratio = (left_interface_diff)/left_diff
-	}
+
+	int tmp = (((left_interface_diff)*left_diff) > 0.0)
+	left_slope_ratio = tmp*(left_interface_diff)/left_diff
+	tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
+	left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
+
 	left_Q = pow(min(1.0,h_slope_limited*left_slope_ratio),nlf)
 	left_flux = 0.5*cs.left*left_Q*(left_interface_diff)
 
 	right_diff =  ln_field ? sld_diff_up_exp(f) : sld_diff_up(f)
 	right_add  =  ln_field ? sld_add_up_exp(f) : sld_add_up(f)
-	right_slope_ratio = 0.0
 	right_interface_diff = interface_values.right_right - interface_values.right
-	if ((right_interface_diff)*right_diff > 0.0)
-	{
-	    if (abs(right_add/right_diff) > fdiff_limit) right_diff = sign(right_add,right_diff)/fdiff_limit
-	    right_slope_ratio = (right_interface_diff)/right_diff
-	}
+
+	tmp = (((right_interface_diff)*right_diff) > 0.0)
+	right_slope_ratio = tmp*(right_interface_diff)/right_diff
+	tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
+	right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
+
 	right_Q = pow(min(1.0,h_slope_limited*right_slope_ratio),nlf)
 	right_flux = 0.5*cs.right*right_Q*(right_interface_diff)
 	return sld_flux(left_flux,right_flux)
@@ -486,25 +718,25 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 
 	left_diff = ln_field ? sld_diff_back_exp(f) : sld_diff_back(f)
 	left_add  = ln_field ? sld_add_back_exp(f)  : sld_add_back(f)
-	left_slope_ratio = 0.0
 	left_interface_diff = interface_values.left - interface_values.left_left
-	if ((left_interface_diff)*left_diff > 0.0)
-	{
-	    if (abs(left_add/left_diff) > fdiff_limit) left_diff = sign(left_add,left_diff)/fdiff_limit
-	    left_slope_ratio = (left_interface_diff)/left_diff
-	}
+
+	int tmp = (((left_interface_diff)*left_diff) > 0.0)
+	left_slope_ratio = tmp*(left_interface_diff)/left_diff
+	tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
+	left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
+
 	left_Q = pow(min(1.0,h_slope_limited*left_slope_ratio),nlf)
 	left_flux = 0.5*cs.left*left_Q*(left_interface_diff)
 
 	right_diff =  ln_field ? sld_diff_front_exp(f) : sld_diff_front(f)
 	right_add  =  ln_field ? sld_add_front_exp(f)  : sld_add_front(f)
-	right_slope_ratio = 0.0
 	right_interface_diff = interface_values.right_right - interface_values.right
-	if ((right_interface_diff)*right_diff > 0.0)
-	{
-	    if (abs(right_add/right_diff) > fdiff_limit) right_diff = sign(right_add,right_diff)/fdiff_limit
-	    right_slope_ratio = (right_interface_diff)/right_diff
-	}
+
+	tmp = (((right_interface_diff)*right_diff) > 0.0)
+	right_slope_ratio = tmp*(right_interface_diff)/right_diff
+	tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
+	right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
+
 	right_Q = pow(min(1.0,h_slope_limited*right_slope_ratio),nlf)
 	right_flux = 0.5*cs.right*right_Q*(right_interface_diff)
 	return sld_flux(left_flux,right_flux)
@@ -544,7 +776,6 @@ get_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_li
 get_slope_limited_divergence(sld_fluxes fluxes)
 {
 	real divx
-	dx12 = AC_x12[vertexIdx.x] - AC_x12[vertexIdx.x-1]
 	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
 		divx = (AC_x12[vertexIdx.x]*AC_x12[vertexIdx.x]*fluxes.x.right - AC_x12[vertexIdx.x-1]*AC_x12[vertexIdx.x-1]*fluxes.x.left)*AC_INV_R*AC_INV_R
@@ -557,10 +788,18 @@ get_slope_limited_divergence(sld_fluxes fluxes)
 	{
 		divx = fluxes.x.right - fluxes.x.left
 	}
-	divx /= dx12
+
+        if(!AC_nonequidistant_grid.x)
+	{
+          divx *= AC_inv_ds.x
+	}
+	else
+	{
+	  dx12 = AC_x12[vertexIdx.x] - AC_x12[vertexIdx.x-1]
+	  divx /= dx12
+	}
 
 	real divy
-	dy12 = AC_y12[vertexIdx.y] - AC_y12[vertexIdx.y-1]
 	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
 		divy = (AC_sinth12[vertexIdx.y]*fluxes.y.right - AC_sinth12[vertexIdx.y-1]*fluxes.y.left)
@@ -573,12 +812,28 @@ get_slope_limited_divergence(sld_fluxes fluxes)
 	{
 		divy *= AC_INV_R
 	}
-	divy /= dy12
+        if(!AC_nonequidistant_grid.y)
+	{
+          divy *= AC_inv_ds.y
+	}
+	else
+	{
+	  dy12 = AC_y12[vertexIdx.y] - AC_y12[vertexIdx.y-1]
+	  divy /= dy12
+	}
 
-	dz12 = AC_z12[vertexIdx.z] - AC_z12[vertexIdx.z-1]
 	divz = (fluxes.z.right - fluxes.z.left)    // z contribution
 	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES) divz *= AC_INV_R*AC_INV_SIN_THETA
-	divz /= dz12
+
+        if(!AC_nonequidistant_grid.z)
+	{
+          divz *= AC_inv_ds.z
+	}
+	else
+	{
+	  dz12 = AC_z12[vertexIdx.z] - AC_z12[vertexIdx.z-1]
+	  divz /= dz12
+	}
 
 	return divx + divy + divz
 }
