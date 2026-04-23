@@ -9731,9 +9731,16 @@ canonalize_if_assignments(ASTNode* node)
 
 }
 void
-add_all_identifiers(const ASTNode* node, string_vec* dst)
+add_all_variables(const ASTNode* node, string_vec* dst)
 {
-	TRAVERSE_PREAMBLE_PARAMS(add_all_identifiers,dst);
+	if(node->lhs && !(node->type & NODE_FUNCTION_CALL))
+	{
+		add_all_variables(node->lhs,dst);
+	}
+	if(node->rhs)
+	{
+		add_all_variables(node->rhs,dst);
+	}
 	if(node->token == IDENTIFIER) push(dst,node->buffer);
 }
 void
@@ -9756,7 +9763,7 @@ get_used_vars_base(const ASTNode* node, string_vec* dst, bool skip, const char* 
         }
 	if(node->type & NODE_IF)
 	{
-		add_all_identifiers(node->lhs,dst);
+		add_all_variables(node->lhs,dst);
 	}
         if(node->lhs)
         {
@@ -9844,7 +9851,7 @@ remove_dead_writes_base(ASTNode* node)
         //This is to avoid writes to ptrs getting incorrectely eliminated
         if(node->rhs->lhs)
         {
-          add_all_identifiers(node->rhs->lhs,&vars_used);
+          add_all_variables(node->rhs->lhs,&vars_used);
         }
 
 	for(int i = (int)statements.size-1; i >= 0; --i)
