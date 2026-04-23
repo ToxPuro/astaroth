@@ -78,6 +78,7 @@ const char* UTILITY_STR = NULL;
 const char* ELEMENTAL_STR = NULL;
 const char* BOUNDCOND_STR = NULL;
 const char* FIXED_BOUNDARY_STR = NULL;
+const char* NO_SWAP_STR = NULL;
 const char* RAYTRACE_STR = NULL;
 const char* RUN_CONST_STR = NULL;
 const char* CONST_DIMS_STR = NULL;
@@ -673,6 +674,7 @@ populate_global_strings()
 	INLINE_STR = intern("inline");
 	UTILITY_STR = intern("utility");
 	BOUNDCOND_STR = intern("boundary_condition");
+	NO_SWAP_STR  = intern("no_swap");
 	FIXED_BOUNDARY_STR = intern("fixed_boundary");
 	RAYTRACE_STR = intern("Raytrace");
 	ELEMENTAL_STR = intern("elemental");
@@ -775,7 +777,7 @@ main(int argc, char** argv)
 %token  ASSIGNOP QUESTION UNARY_OP
 %token  SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
 %token  BOOL INTRINSIC LONG_LONG LONG 
-%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED HALF_PRECISION PRECISION SINGLE_PRECISION AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION NO_SWAP UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED HALF_PRECISION PRECISION SINGLE_PRECISION AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token  FIXED_BOUNDARY
 %token  PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
 %token  HOSTDEFINE
@@ -992,6 +994,7 @@ intrinsic: INTRINSIC{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set
 inline: INLINE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("inline", $$); $$->token = 255 + yytoken; };
 elemental: ELEMENTAL { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("elemental", $$); $$->token = 255 + yytoken; };
 boundary_condition: BOUNDARY_CONDITION { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("boundary_condition", $$); $$->token = 255 + yytoken;};
+no_swap: NO_SWAP { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("no_swap", $$); $$->token = 255 + yytoken;};
 raytrace: RAYTRACE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken;};
 fixed_boundary    : FIXED_BOUNDARY     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("fixed_boundary", $$); $$->token = 255 + yytoken;};
 utility: UTILITY { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("utility", $$); $$->token = 255 + yytoken;};
@@ -1124,6 +1127,7 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
 					        {	
 							
 							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
+							combine_all_new_with_whitespace($3));
 							res = -1;
 						}
 						set_buffers_empty($3);
@@ -1150,6 +1154,7 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | inline       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | elemental    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | boundary_condition     { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
+              | no_swap                { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
               | fixed_boundary         { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
               | utility                { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
               ;

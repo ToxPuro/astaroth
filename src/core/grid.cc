@@ -2222,15 +2222,18 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
 	      	    compute_task_poststep(op,task,fields_already_depend_on_boundaries);
 	    }
             acVerboseLogFromRootProc(ac_pid(), "Ray updates created\n");
-            for (size_t buf = 0; buf < op.num_fields_out; buf++) {
-		if(kernel_writes_to_output(op.fields_out[buf],op.analysis_info))
-		{
-                	swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
-		}
-            }
-            for (size_t buf = 0; buf < op.num_profiles_write_out; buf++) {
-                swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES] = !swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES];
-            }
+	    if(!no_swap_after_kernel[op.kernel_enum])
+	    {
+              for (size_t buf = 0; buf < op.num_fields_out; buf++) {
+	          if(kernel_writes_to_output(op.fields_out[buf],op.analysis_info))
+	          {
+                  	swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
+	          }
+              }
+              for (size_t buf = 0; buf < op.num_profiles_write_out; buf++) {
+                  swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES] = !swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES];
+              }
+	    }
             break;
         }
 	
@@ -2304,15 +2307,18 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
             	}
 	    }
             acVerboseLogFromRootProc(ac_pid(), "Compute tasks created\n");
-            for (size_t buf = 0; buf < op.num_fields_out; buf++) {
-		if(kernel_writes_to_output(op.fields_out[buf],op.analysis_info))
-		{
-                	swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
-		}
-            }
-            for (size_t buf = 0; buf < op.num_profiles_write_out; buf++) {
-                swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES] = !swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES];
-            }
+	    if(!no_swap_after_kernel[op.kernel_enum])
+	    {
+              for (size_t buf = 0; buf < op.num_fields_out; buf++) {
+	          if(kernel_writes_to_output(op.fields_out[buf],op.analysis_info))
+	          {
+                  	swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
+	          }
+              }
+              for (size_t buf = 0; buf < op.num_profiles_write_out; buf++) {
+                  swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES] = !swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES];
+              }
+	    }
 	    //++num_comp_tasks;
             break;
         }

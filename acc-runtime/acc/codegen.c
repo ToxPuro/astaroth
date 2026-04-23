@@ -123,6 +123,7 @@ extern const char* INLINE_STR;
 extern const char* UTILITY_STR;
 extern const char* ELEMENTAL_STR;
 extern const char* BOUNDCOND_STR;
+extern const char* NO_SWAP_STR;
 extern const char* FIXED_BOUNDARY_STR;
 extern const char* RAYTRACE_STR;
 extern const char* RUN_CONST_STR;
@@ -6893,6 +6894,17 @@ gen_user_defines(const ASTNode* root_in, const char* out)
     if (symbol_table[i].tspecifier == KERNEL_STR)
     {
       if (str_vec_contains(symbol_table[i].tqualifiers,BOUNDCOND_STR))
+              fprintf(fp,"true,");
+      else
+              fprintf(fp,"false,");
+    }
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const bool no_swap_after_kernel[NUM_KERNELS] = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].tspecifier == KERNEL_STR)
+    {
+      if (str_vec_contains(symbol_table[i].tqualifiers,NO_SWAP_STR))
               fprintf(fp,"true,");
       else
               fprintf(fp,"false,");

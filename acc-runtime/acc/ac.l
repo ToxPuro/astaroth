@@ -92,6 +92,7 @@ void strip_whitespace(char *str) {
 "inline"                { return INLINE; } /* Type qualifiers */
 "elemental"             { return ELEMENTAL; } /* Type qualifiers */
 "boundary_condition"    { return BOUNDARY_CONDITION; } /* Type qualifiers */
+"no_swap"               { return NO_SWAP; } /* Type qualifiers */
 "Raytrace"              { return RAYTRACE; } /* Type qualifiers */
 "fixed_boundary"        { return FIXED_BOUNDARY; } /* Type qualifiers */
 "utility"               { return UTILITY; } /* Type qualifiers */
