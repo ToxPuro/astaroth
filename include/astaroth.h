@@ -110,15 +110,10 @@ acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info);
 int
 acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
-
-#include "device_set_input_decls.h"
-#include "device_get_output_decls.h"
-#include "device_get_input_decls.h"
-#include "get_vtxbufs_declares.h"
-
 #if AC_RUNTIME_COMPILATION
+
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
-			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
+  if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
 
   static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream, const AcMeshInfo info)
   {
@@ -381,28 +376,58 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
   static AcResult __attribute__((unused)) acCloseLibrary() {return AC_FAILURE;}
 #endif
 
-/** Inits the profile to cosine wave */
-AcResult acHostInitProfileToCosineWave(const AcReal spacing, const AcReal initial_pos,
-                                       const AcReal amplitude, const AcReal wavenumber,
-                                       const size_t mz, AcReal* profile);
-
-/** Inits the profile to sine wave */
-AcResult acHostInitProfileToSineWave(const AcReal spacing, const AcReal initial_pos,
-                                     const AcReal amplitude, const AcReal wavenumber,
-                                     const size_t mz, AcReal* profile);
-
-/** Initialize a profile to a constant value */
-AcResult acHostInitProfileToValue(const long double value, const size_t profile_count,
-                                  AcReal* profile);
-
-/** Writes the host profile to a file */
-AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
-                                  const size_t profile_count);
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
+static AcCompInfo UNUSED
+acInitCompInfo()
+{
+      AcCompInfo res;
+      //TP: initially nothing is loaded and if they are not loaded their values 
+      //might as well be zero since then a default value is used for them
+      memset(&res,0,sizeof(res));
+      return res;
+}
+
+static AcMeshInfo UNUSED
+acInitInfo()
+{
+      AcMeshInfo res;
+      //TP: this is useful for the following reasons:
+      //All enums are initialized by default to the first enum value
+      //All array ptrs are initialized to nulls
+      //All booleans are initialized to false
+      //All booleans about whether values are loaded are false
+      memset(&res,0,sizeof(res));
+      // memset reads the second parameter as a byte even though it says int in
+      // the function declaration
+      //TP: for backwards compatibility set original datatypes to all ones as before
+      memset(&res.int_params,     (uint8_t)0xFF, sizeof(res.int_params));
+      memset(&res.real_params,    (uint8_t)0xFF, sizeof(res.real_params));
+      memset(&res.int3_params,    (uint8_t)0xFF, sizeof(res.int3_params));
+      memset(&res.real3_params,   (uint8_t)0xFF, sizeof(res.real3_params));
+      memset(&res.complex_params, (uint8_t)0xFF, sizeof(res.complex_params));
+
+#if AC_MPI_ENABLED
+      res.comm = (AcCommunicator*)malloc(sizeof(AcCommunicator));
+      res.comm->handle = MPI_COMM_NULL;
+#endif
+      res.run_consts = acInitCompInfo();
+      return res;
+}
+
+static AcMesh UNUSED
+acInitMesh()
+{
+      AcMesh res;
+      for(size_t j = 0; j < NUM_VTXBUF_HANDLES; ++j)
+      {
+	      res.vertex_buffer[j] = NULL;
+      }
+      res.info = acInitInfo();
+      return res;
+}
 
 #ifdef __cplusplus
 
@@ -1028,6 +1053,52 @@ acUpdateDecompositionParams(AcMeshInfo* dst)
 }
 
 #endif
+
+  static AcCompInfo UNUSED acInitCompInfo()
+  {
+	  AcCompInfo res;
+	  //TP: initially nothing is loaded and if they are not loaded their values 
+	  //might as well be zero since then a default value is used for them
+	  memset(&res,0,sizeof(res));
+	  return res;
+  }
+  static AcMeshInfo UNUSED acInitInfo()
+  {
+	  AcMeshInfo res;
+	  //TP: this is useful for the following reasons:
+	  //All enums are initialized by default to the first enum value
+	  //All array ptrs are initialized to nulls
+	  //All booleans are initialized to false
+	  //All booleans about whether values are loaded are false
+	  memset(&res,0,sizeof(res));
+    	  // memset reads the second parameter as a byte even though it says int in
+          // the function declaration
+	  //TP: for backwards compatibility set original datatypes to all ones as before
+    	  memset(&res.int_params,     (uint8_t)0xFF, sizeof(res.int_params));
+    	  memset(&res.real_params,    (uint8_t)0xFF, sizeof(res.real_params));
+    	  memset(&res.int3_params,    (uint8_t)0xFF, sizeof(res.int3_params));
+    	  memset(&res.real3_params,   (uint8_t)0xFF, sizeof(res.real3_params));
+    	  memset(&res.complex_params, (uint8_t)0xFF, sizeof(res.complex_params));
+
+#if AC_MPI_ENABLED
+	  res.comm = (AcCommunicator*)malloc(sizeof(AcCommunicator));
+	  res.comm->handle = MPI_COMM_NULL;
+#endif
+	  res.run_consts = acInitCompInfo();
+	  return res;
+  }
+  static AcMesh UNUSED acInitMesh()
+  {
+	  AcMesh res;
+	  for(size_t j = 0; j < NUM_VTXBUF_HANDLES; ++j)
+	  {
+		  res.vertex_buffer[j] = NULL;
+	  }
+	  res.info = acInitInfo();
+	  return res;
+  }
+||||||| parent of 6dc912792 (include: Cleanup astaroth.h to be easier to follow)
+#include <string.h>
 
   static AcCompInfo UNUSED acInitCompInfo()
   {

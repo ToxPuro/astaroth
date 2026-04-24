@@ -226,6 +226,13 @@ acVertexBufferIdxVariable(const int i, const int j, const int k, const AcMeshInf
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 
+static inline size_t
+acVertexBufferIdxVariable(const int i, const int j, const int k, const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const int3 mm = info.int3_params[vtxbuf_dims[vtxbuf]];
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
+}
+
 static inline int3
 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
 {
