@@ -187,6 +187,20 @@ FUNC_DEFINE(AcResult, acAnalysisCheckForDSLErrors,(const AcMeshInfo info));
 
 FUNC_DEFINE(AcMeshInfo, acGridDecomposeMeshInfo,(const AcMeshInfo global_config));
 
+||||||| parent of 6dc912792 (include: Cleanup astaroth.h to be easier to follow)
+FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
+
+
+FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
+	
+
+
+
+FUNC_DEFINE(size_t, acGetKernelIdByName,(const char* name));
+
+
+FUNC_DEFINE(AcMeshInfo, acGridDecomposeMeshInfo,(const AcMeshInfo global_config));
+
 #if AC_RUNTIME_COMPILATION == 0
 FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
 #endif
@@ -216,6 +230,13 @@ acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 #else
     const Volume mm = acGetLocalMM(info);
 #endif
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
+}
+
+static inline size_t
+acVertexBufferIdxVariable(const int i, const int j, const int k, const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const int3 mm = info.int3_params[vtxbuf_dims[vtxbuf]];
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 

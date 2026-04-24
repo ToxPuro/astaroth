@@ -84,6 +84,89 @@ FUNC_DEFINE(Node, acGetNode,(void));
 
 /*
  * =============================================================================
+ * Grid interface
+ * =============================================================================
+ */
+#include "astaroth_grid.h"
+/*
+ * =============================================================================
+ * Node interface
+ * =============================================================================
+ */
+
+#include "astaroth_node.h"
+
+/*
+ * =============================================================================
+ * Device interface
+ * =============================================================================
+ */
+
+#include "astaroth_device.h"
+
+/*
+ * =============================================================================
+ * Legacy interface
+ * =============================================================================
+ */
+#include "astaroth_legacy.h"
+/*
+ * =============================================================================
+ * Helper functions
+ * =============================================================================
+ */
+AcResult 
+acHostUpdateParams(AcMeshInfo* config);
+
+AcResult 
+acHostUpdateCompParams(AcMeshInfo* config);
+
+
+
+OVERLOADED_FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
+FUNC_DEFINE(AcReal*, acHostCreateVertexBufferVariable,(const AcMeshInfo info, const VertexBufferHandle vtxbuf));
+FUNC_DEFINE(AcResult, acHostMeshCreateProfiles,(AcMesh* mesh));
+FUNC_DEFINE(AcResult, acHostMeshDestroyVertexBuffer,(AcReal** vtxbuf));
+/** Creates a mesh stored in host memory */
+FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+/** Copies the VertexBuffers from src to dst*/
+FUNC_DEFINE(AcResult, acHostMeshCopyVertexBuffers,(const AcMesh src, AcMesh dst));
+/** Copies a host mesh to a new host mesh */
+FUNC_DEFINE(AcResult, acHostMeshCopy,(const AcMesh src, AcMesh* dst));
+/** Creates a mesh stored in host memory (size of the whole grid) */
+FUNC_DEFINE(AcResult, acHostGridMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+
+/** Checks that the loaded dynamic Astaroth is binary compatible with the loader */
+FUNC_DEFINE(AcResult, acVerifyCompatibility, (const size_t mesh_size, const size_t mesh_info_size, const size_t comp_info_size, const int num_reals, const int num_ints, const int num_bools, const int num_real_arrays, const int num_int_arrays, const int num_bool_arrays));
+
+/** Randomizes a host mesh */
+FUNC_DEFINE(AcResult, acHostMeshRandomize,(AcMesh* mesh));
+/** Randomizes a host mesh (uses n[xyz]grid params)*/
+FUNC_DEFINE(AcResult, acHostGridMeshRandomize,(AcMesh* mesh));
+
+/** Destroys a mesh stored in host memory */
+FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
+
+FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
+
+/** Prints all parameters inside AcMeshInfo */
+static inline void
+acPrintMeshInfo(const AcMeshInfo config)
+{
+    acStoreConfig(config,NULL);
+}
+
+/** Sets the dimensions of the computational grid to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
+AcResult acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+
+/** Sets the dimensions of the computational subdomain to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
+
+AcResult acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+
+/*
+ * =============================================================================
  * Logging functions
  * =============================================================================
  */
@@ -97,15 +180,11 @@ acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info);
 int
 acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
-
-#include "device_set_input_decls.h"
-#include "device_get_output_decls.h"
-#include "device_get_input_decls.h"
-#include "get_vtxbufs_declares.h"
-
 #if AC_RUNTIME_COMPILATION
+#include "astaroth_lib.h"
+
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
-			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
+  if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
 
   static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream, const AcMeshInfo info)
   {
