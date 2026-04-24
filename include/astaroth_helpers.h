@@ -1,3 +1,5 @@
+#pragma once
+
 int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
                           const AcMeshInfo info);
 
@@ -27,6 +29,8 @@ FUNC_DEFINE(Volume, acGetMaxNN, (const AcMeshInfo info));
 FUNC_DEFINE(Volume, acGetGridMaxNN, (const AcMeshInfo info));
 FUNC_DEFINE(AcReal3, acGetLengths, (const AcMeshInfo info));
 
+FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
+
 
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info)
@@ -34,6 +38,20 @@ acVertexBufferSize(const AcMeshInfo info)
     const Volume mm = acGetLocalMM(info);
     return mm.x*mm.y*mm.z;
 }
+
+static inline size_t
+acVertexBufferVariableSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const Volume mm =
+	    (Volume)
+	    {
+	    	(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x,
+	    	(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].y,
+	    	(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].z
+	    };
+    return mm.x*mm.y*mm.z;
+}
+
 static inline size_t
 acGridVertexBufferSize(const AcMeshInfo info)
 {
@@ -47,12 +65,29 @@ acVertexBufferDims(const AcMeshInfo info)
     return acGetLocalMM(info);
 }
 
+static inline Volume 
+acVertexBufferDimsVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return 
+		(Volume)
+		{
+			(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x,
+			(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x,
+			(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].z
+		};
+}
+
 static inline size_t
 acVertexBufferSizeBytes(const AcMeshInfo info)
 {
     return sizeof(AcReal) * acVertexBufferSize(info);
 }
 
+static inline size_t
+acVertexBufferSizeBytesVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return sizeof(AcReal) * acVertexBufferVariableSize(info,vtxbuf);
+}
 
 static inline size_t
 acVertexBufferCompdomainSize(const AcMeshInfo info)
@@ -62,9 +97,29 @@ acVertexBufferCompdomainSize(const AcMeshInfo info)
 }
 
 static inline size_t
+acVertexBufferCompdomainSizeVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const Volume nmin = acGetMinNN(info);
+    const Volume nn = 
+	    (Volume)
+	    {
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x -2*nmin.x,
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].y -2*nmin.y,
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].z -2*nmin.z
+	    };
+    return nn.x*nn.y*nn.z;
+}
+
+static inline size_t
 acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
 {
     return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
+}
+
+static inline size_t
+acVertexBufferCompdomainSizeBytesVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return sizeof(AcReal) * acVertexBufferCompdomainSizeVariable(info,vtxbuf);
 }
 
 static inline AcMeshDims
@@ -117,24 +172,19 @@ acGetGridMeshDims(const AcMeshInfo info)
    };
 }
 
-FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
+FUNC_DEFINE(AcResult,           acAnalysisCheckForDSLErrors,(const AcMeshInfo info));
+FUNC_DEFINE(AcResult,           acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
+FUNC_DEFINE(KernelAnalysisInfo, acAnalysisGetKernelInfoSingle,(const AcMeshInfo info, const AcKernel kernel));
+FUNC_DEFINE(KernelAnalysisInfo, acAnalysisGetKernelInfoSingleWithInputParams,(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params));
 
+FUNC_DEFINE(size_t,             acGetKernelId,(const AcKernel kernel));
+FUNC_DEFINE(size_t,             acGetKernelIdByName,(const char* name));
 
-FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
-	
-
-
-
-FUNC_DEFINE(size_t, acGetKernelIdByName,(const char* name));
-
-
-FUNC_DEFINE(AcMeshInfo, acGridDecomposeMeshInfo,(const AcMeshInfo global_config));
-
+FUNC_DEFINE(AcMeshInfo,         acGridGetLocalMeshInfo,(void));
+FUNC_DEFINE(AcMeshInfo,         acGridDecomposeMeshInfo,(const AcMeshInfo global_config));
 #if AC_RUNTIME_COMPILATION == 0
 FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
 #endif
-
-FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 
 #ifdef __cplusplus
 //TP: this is done for perf optim since if acVertexBufferIdx is called often
@@ -142,14 +192,12 @@ FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 static inline size_t
 acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    #include "user_builtin_non_scalar_constants.h"
     auto mm = info[AC_mgrid];
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    #include "user_builtin_non_scalar_constants.h"
     auto mm = info[AC_mlocal];
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
@@ -168,6 +216,13 @@ acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo in
 }
 #endif
 
+static inline size_t
+acVertexBufferIdxVariable(const int i, const int j, const int k, const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const int3 mm = info.int3_params[vtxbuf_dims[vtxbuf]];
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
+}
+
 static inline int3
 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
 {
@@ -184,25 +239,7 @@ acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
 static inline void
 acPrintMeshInfo(const AcMeshInfo config)
 {
-    for (int i = 0; i < NUM_INT_PARAMS; ++i)
-    {
-        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
-    }
-    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-    {
-        printf("[%s]: (%d, %d, %d)\n", int3param_names[i],config.int3_params[i].x, config.int3_params[i].y, config.int3_params[i].z);
-    }
-    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-    {
-        printf("[%s]: %g\n", realparam_names[i], (double)(config.real_params[i]));
-    }
-    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-    {
-        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
-							    (double)(config.real3_params[i].y),
-							    (double)(config.real3_params[i].z)
-	      );
-    }
+    acStoreConfig(config,NULL);
 }
 
 
