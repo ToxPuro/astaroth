@@ -23,7 +23,7 @@ struct allocate_arrays
 				fprintf(stderr,"Allocating %s|%zu\n",get_name(array),len);
 				fflush(stderr);
 #endif
-				if(is_accessed(array))
+				if(is_accessed(array) && len == 0)
 				{
 					fprintf(stderr,"Allocating %s as zero-sized array even though it is accessed!!!\n",
 							get_name(array)
@@ -37,8 +37,9 @@ struct allocate_arrays
 					}
 					fprintf(stderr,"\n");
 					fflush(stderr);
-					ERRCHK_ALWAYS(len > 0);
 				}
+
+				ERRCHK_ALWAYS(len > 0);
 				auto d_mem_ptr = get_empty_pointer(array);
 			        acDeviceMalloc(((void**)&d_mem_ptr), sizeof(config[array][0])*len);
 				acMemcpyToGmemArray(array,d_mem_ptr);
