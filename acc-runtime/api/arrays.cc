@@ -18,13 +18,29 @@ struct allocate_arrays
 			}
 			if (config[array] != nullptr && !is_dconst(array) && is_alive(array))
 			{
-
+				const size_t len = get_array_length(array,config);
 #if AC_VERBOSE
-				fprintf(stderr,"Allocating %s|%zu\n",get_name(array),get_array_length(array,config));
+				fprintf(stderr,"Allocating %s|%zu\n",get_name(array),len);
 				fflush(stderr);
 #endif
+				if(is_accessed(array))
+				{
+					fprintf(stderr,"Allocating %s as zero-sized array even though it is accessed!!!\n",
+							get_name(array)
+							);
+	  				auto sizes = get_array_dim_sizes(array,config);
+					const auto n = get_array_n_dims(array);
+					fprintf(stderr,"Dims are: ");
+					for(size_t i =0; i < n; ++i)
+					{
+						fprintf(stderr,"%zu,",sizes[i]);
+					}
+					fprintf(stderr,"\n");
+					fflush(stderr);
+					ERRCHK_ALWAYS(len > 0);
+				}
 				auto d_mem_ptr = get_empty_pointer(array);
-			        acDeviceMalloc(((void**)&d_mem_ptr), sizeof(config[array][0])*get_array_length(array,config));
+			        acDeviceMalloc(((void**)&d_mem_ptr), sizeof(config[array][0])*len);
 				acMemcpyToGmemArray(array,d_mem_ptr);
 			}
 		}
