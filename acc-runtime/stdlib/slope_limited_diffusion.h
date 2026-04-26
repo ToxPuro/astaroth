@@ -868,6 +868,28 @@ get_slope_limited_divergence(Field3 f, Field characteristic_speed, real fdiff_li
 		     )
 }
 
+
+get_slope_limited_average_fluxes(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
+{
+	fluxes = get_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
+	return 
+		real3(
+				0.5*(fluxes.x.left + fluxes.x.right),
+				0.5*(fluxes.y.left + fluxes.y.right),
+				0.5*(fluxes.z.left + fluxes.z.right)
+		     )
+
+}
+
+get_slope_limited_average_fluxes(Field3 f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
+{
+	return Matrix(
+			get_slope_limited_average_fluxes(f.x,characteristic_speed,fdiff_limit,h_slope_limited,nlf),
+			get_slope_limited_average_fluxes(f.y,characteristic_speed,fdiff_limit,h_slope_limited,nlf),
+			get_slope_limited_average_fluxes(f.z,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
+		     )
+}
+
 get_slope_limited_divergence_and_average_fluxes(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
 {
 	fluxes = get_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
