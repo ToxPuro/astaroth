@@ -31,7 +31,7 @@ struct allocate_arrays
 	  				auto sizes = get_array_dim_sizes(array,config);
 					const auto n = get_array_n_dims(array);
 					fprintf(stderr,"Dims are: ");
-					for(size_t i =0; i < n; ++i)
+					for(int i =0; i < n; ++i)
 					{
 						fprintf(stderr,"%zu,",sizes[i]);
 					}
