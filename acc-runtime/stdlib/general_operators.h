@@ -789,7 +789,7 @@ laplace(Field3 s) {
 }
 
 /**
- * Computes the rate-of-strain tensor,
+ * Computes the traceless rate-of-strain tensor,
  * where uij is the Jacobian of the the velocity
  * and divu is the divergence of it.
  * Works only in Cartesian.
@@ -811,6 +811,11 @@ traceless_strain(Matrix uij,divu)
   return sij
 }
 
+traceless_strain(Matrix uij)
+{
+  return traceless_strain(uij,uij[0][0] + uij[1][1] + uij[2][2])
+}
+
 /**
  * Computes 3x3 tensor of 5th order derivatives of v.
  */
@@ -820,7 +825,7 @@ gij5(v) {
 		  real3( der5x(v.z), der5y(v.z), der5z(v.z) ))
 }
 /**
- * Computes the rate-of-strain tensor,
+ * Computes the traceless rate-of-strain tensor,
  * where uu is the velocity, uij is the Jacobian of it,
  * divu is the divergence.
  */
