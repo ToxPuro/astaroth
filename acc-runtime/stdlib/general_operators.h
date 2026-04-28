@@ -111,17 +111,17 @@ gradient_tensor(Field3 v, Field s)
      grads = gradient(s)
      vij   = gradient_tensor(v)
      Matrix gij
-     gij[0][0] = vij[0][0]*s + u.x*grads.x
-     gij[0][1] = vij[0][1]*s + u.x*grads.y
-     gij[0][2] = vij[0][2]*s + u.x*grads.z
+     gij[0][0] = vij[0][0]*s + v.x*grads.x
+     gij[0][1] = vij[0][1]*s + v.x*grads.y
+     gij[0][2] = vij[0][2]*s + v.x*grads.z
 
-     gij[1][0] = vij[1][0]*s + u.y*grads.x
-     gij[1][1] = vij[1][1]*s + u.y*grads.y
-     gij[1][2] = vij[1][2]*s + u.y*grads.z
+     gij[1][0] = vij[1][0]*s + v.y*grads.x
+     gij[1][1] = vij[1][1]*s + v.y*grads.y
+     gij[1][2] = vij[1][2]*s + v.y*grads.z
 
-     gij[2][0] = vij[2][0]*s + u.z*grads.x
-     gij[2][1] = vij[2][1]*s + u.z*grads.y
-     gij[2][2] = vij[2][2]*s + u.z*grads.z
+     gij[2][0] = vij[2][0]*s + v.z*grads.x
+     gij[2][1] = vij[2][1]*s + v.z*grads.y
+     gij[2][2] = vij[2][2]*s + v.z*grads.z
 
      return gij
 }
