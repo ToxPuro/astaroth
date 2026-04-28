@@ -106,6 +106,25 @@ gradient_tensor(Field3 v) {
 			gradient(v.z)
 		     )
 }
+gradient_tensor(Field3 v, Field s)
+{
+     grads = gradient(RHO)
+     Matrix gij
+     gij[0][0] = mij[0][0]*s + u.x*grads.x
+     gij[0][1] = mij[0][1]*s + u.x*grads.y
+     gij[0][2] = mij[0][2]*s + u.x*grads.z
+
+     gij[1][0] = mij[1][0]*s + u.y*grads.x
+     gij[1][1] = mij[1][1]*s + u.y*grads.y
+     gij[1][2] = mij[1][2]*s + u.y*grads.z
+
+     gij[2][0] = mij[2][0]*s + u.z*grads.x
+     gij[2][1] = mij[2][1]*s + u.z*grads.y
+     gij[2][2] = mij[2][2]*s + u.z*grads.z
+
+     return gij
+}
+
 
 /**
  * Calculates c(∇^k)v, to achieve the effect of upwinding.
