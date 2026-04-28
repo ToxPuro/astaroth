@@ -108,7 +108,7 @@ gradient_tensor(Field3 v) {
 }
 gradient_tensor(Field3 v, Field s)
 {
-     grads = gradient(RHO)
+     grads = gradient(s)
      vij   = gradient_tensor(v)
      Matrix gij
      gij[0][0] = vij[0][0]*s + u.x*grads.x
