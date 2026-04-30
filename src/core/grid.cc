@@ -880,7 +880,11 @@ acGridInitBase(const AcMesh user_mesh)
 
     acDeviceUpdate(device,acDeviceGetLocalConfig(device));
 
-    initialize_random_number_generation(submesh_info);
+    //If we know rand_uniform is never called no need to allocate buffers for it
+    if(ac_random_called_statically)
+    {
+      initialize_random_number_generation(submesh_info);
+    }
 
     create_astaroth_sub_communicators();
     grid.initialized   = true;

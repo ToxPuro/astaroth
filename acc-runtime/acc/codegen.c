@@ -6165,6 +6165,28 @@ write_calling_info(FILE* fp, const char* func, const char* arr_name)
     }
 }
 
+static bool
+func_called_statically(const char* func)
+{
+    for(size_t index = 0; index < num_dfuncs; ++index)
+    {
+	    const Symbol* dfunc_symbol = get_symbol_by_index(NODE_DFUNCTION_ID,index,0);
+	    if(!dfunc_symbol) continue;
+	    const char* dfunc_name = dfunc_symbol->identifier;
+	    if(dfunc_name == func)
+	    {
+		    for(size_t kernel = 0; kernel < num_kernels; ++kernel)
+		    {
+			    	const char* name = get_symbol_by_index(NODE_FUNCTION_ID,kernel,KERNEL_STR)->identifier;
+    				const int_vec called_dfuncs = calling_info.called_funcs[str_vec_get_index(calling_info.names,name)];
+	    			const int call_index = str_vec_get_index(calling_info.names,dfunc_name);
+				if(int_vec_contains(called_dfuncs,call_index)) return true;
+		    }
+	    }
+    }
+    return false;
+}
+
 
 static void
 write_calling_info_for_stencilgen(const string_vec* stencils_called)
@@ -11570,6 +11592,13 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	{
   	  string_vec* stencils_called = gen_stencil_calling_info(root);
   	  write_calling_info_for_stencilgen(stencils_called);
+	  bool random_called_statically = func_called_statically("rand_uniform");
+	  if(!gen_mem_accesses)
+	  {
+	    FILE* fp_defs= fopen("user_defines.h","a");
+	    fprintf(fp_defs,"const bool ac_random_called_statically = %d;\n",random_called_statically);
+	    fclose(fp_defs);
+	  }
   	}
         //TP: do this at the very end to not mess with other passes
         resolve_profile_stencils(root);
