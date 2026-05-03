@@ -7599,7 +7599,7 @@ transform_arrays_to_std_arrays_in_func(ASTNode* node)
 	{
 	  for(size_t dim = 0; dim < dims.size; ++dim)
 	  {
-		  astnode_sprintf(tspec->lhs,"%s,%s",tspec->lhs->buffer,combine_all_new(dims.data[i]));
+		  astnode_sprintf(tspec->lhs,"%s,%s",tspec->lhs->buffer,combine_all_new(dims.data[dim]));
 	  }
 	  astnode_sprintf(tspec->lhs,"%s>");
 	}
