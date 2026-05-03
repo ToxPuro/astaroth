@@ -147,6 +147,29 @@ get_profile_reduce_scratchpad_size(const int profile, const VertexBufferArray vb
 	return dims.x*dims.y*dims.z*sizeof(AcReal);
 }
 
+size_t
+get_free_mem()
+{
+    size_t free_mem=0;
+    size_t total_mem=0;
+    acMemGetInfo(&free_mem, &total_mem);
+    return free_mem;
+}
+
+void
+check_if_free_memory_for_profile_reductions(const size_t bytes)
+{
+	if(AC_CPU_BUILD) return;
+    	if(bytes > get_free_mem())
+	{
+       	        fprintf(stderr,"AC ERROR: Ran out of memory trying to allocate scratchpad memory for profile reductions.\n"
+                               "Consider setting AC_thread_block_loop_factors.y,AC_thread_block_loop_factors.z > 1\n"
+	    		   "to require less memory for profile reductions\n"
+	    	   );
+	        ERRCHK_ALWAYS(false);
+	}
+}
+
 void
 init_scratchpads(VertexBufferArray* vba)
 {
@@ -159,6 +182,7 @@ init_scratchpads(VertexBufferArray* vba)
 	    const size_t bytes =  
 		    		  (i >= NUM_REAL_OUTPUTS) ? get_profile_reduce_scratchpad_size(i-NUM_REAL_OUTPUTS,*vba) :
 				  0;
+	    check_if_free_memory_for_profile_reductions(bytes);
 	    AcReal** tmp = ac_allocate_scratchpad_real(i,bytes,vba->scratchpad_states->reals[i]);
 	    if(i < NUM_REAL_OUTPUTS)
 	    {
@@ -182,6 +206,7 @@ init_scratchpads(VertexBufferArray* vba)
 			    true,
 			    (AcShape) { dims.x,dims.y,dims.z,1}
 		    };
+	    	    check_if_free_memory_for_profile_reductions(dims.x*dims.y*dims.z*sizeof(AcReal));
 		    vba->profile_reduce_buffers[prof].transposed = acBufferCreateTransposed(
 				vba->profile_reduce_buffers[prof].src, 
 				acGetMeshOrderForProfile(prof_types[prof])
@@ -328,14 +353,11 @@ acVBACreate(const AcMeshInfo config)
   ERRCHK_ALWAYS(vba_in_buff == NULL);
   ERRCHK_ALWAYS(vba_out_buff == NULL);
 
-#if AC_CPU_BUILD
-#else
+  if(!AC_CPU_BUILD)
   {
-    size_t free_mem=0;
-    size_t total_mem=0;
-    acMemGetInfo(&free_mem, &total_mem);
     const size_t total_bytes = real_in_bytes  + single_in_bytes  + half_in_bytes
                              +real_out_bytes + single_out_bytes + half_out_bytes;
+    const size_t free_mem = get_free_mem();
     if(total_bytes > free_mem)
     {
        size_t count = vba.computational_dims.m1.x*vba.computational_dims.m1.y*vba.computational_dims.m1.z;
@@ -353,8 +375,6 @@ acVBACreate(const AcMeshInfo config)
               );
     }
   }
-#endif
-
 
   acDeviceMalloc((void**)&vba_in_buff,real_in_bytes + single_in_bytes + half_in_bytes);
   acDeviceMalloc((void**)&vba_out_buff,real_out_bytes + single_out_bytes + half_out_bytes);
