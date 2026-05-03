@@ -224,6 +224,22 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 	const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
 	const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
 	char logging_to_message[100000];
+	if(mesh_info.runtime_compilation_skip_autotuning)
+	{
+		char autotune_csv_filename[10000];
+		sprintf(autotune_csv_filename, "%s/acc-runtime/api/autotune.csv",runtime_astaroth_build_path().c_str());
+		if(file_exists(autotune_csv_filename))
+		{
+			sprintf(cmd,"mv %s .",autotune_csv_filename);
+			int retval = system(cmd);
+			if(previous_build_exists && retval)
+			{
+				fflush(stdout);
+				fflush(stderr);
+				fprintf(stderr,"Was not able to copy previous autotuning results.\nWill autotune again.\n");
+			}
+		}
+	}
 	if(log_dst) sprintf(logging_to_message," logging to %s",log_dst);
 	else        sprintf(logging_to_message,"%s","");
 	if(!previous_build_exists)
@@ -300,6 +316,21 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 		fflush(stdout);
 		fflush(stderr);
 		return AC_FAILURE;
+	}
+	if(mesh_info.runtime_compilation_skip_autotuning)
+	{
+		char autotune_csv_filename[100000];
+		sprintf(autotune_csv_filename, "autotune.csv");
+		if(file_exists(autotune_csv_filename))
+		{
+			sprintf(cmd,"mv autotune.csv %s/acc-runtime/api",runtime_astaroth_build_path().c_str());
+			if(system(cmd) && previous_build_exists)
+			{
+				fflush(stdout);
+				fflush(stderr);
+				fprintf(stderr,"Was not able to copy stored autotuning results.\nWill autotune again.\n");
+			}
+		}
 	}
 	return AC_SUCCESS;
 }
