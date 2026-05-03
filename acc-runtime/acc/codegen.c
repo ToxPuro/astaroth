@@ -7590,22 +7590,19 @@ transform_arrays_to_std_arrays_in_func(ASTNode* node)
         node_vec dims = get_array_accesses(access_start);
 	const ASTNode* num = dims.size == 1 ? get_node_by_token(NUMBER,dims.data[0]) : NULL;
         //TP: at least some CUDA compilers do not allow zero-sized objects in device code so have to pad the array length
+        astnode_sprintf(tspec->lhs,"AcArray<%s",tspec->lhs->buffer);
         if(dims.size == 1 && num && num->buffer == ZERO_STR)
         {
-                astnode_sprintf(tspec->lhs,"AcArray<%s,(1)>",tspec->lhs->buffer);
+                astnode_sprintf(tspec->lhs,"%s,(1)>",tspec->lhs->buffer);
         }
-        else if(dims.size == 1)
-        {
-                astnode_sprintf(tspec->lhs,"AcArray<%s,%s>",tspec->lhs->buffer,combine_all_new(dims.data[0]));
-        }
-        else if(dims.size == 2)
-        {
-                astnode_sprintf(tspec->lhs,"AcArray<%s,%s,%s>",tspec->lhs->buffer,strdup(combine_all_new(dims.data[0])),strdup(combine_all_new(dims.data[1])));
-        }
-        else if(dims.size == 3)
-        {
-                astnode_sprintf(tspec->lhs,"AcArray<%s,%s,%s,%s,%s>",tspec->lhs->buffer,strdup(combine_all_new(dims.data[0])),strdup(combine_all_new(dims.data[1])),strdup(combine_all_new(dims.data[2])));
-        }
+	else
+	{
+	  for(size_t dim = 0; dim < dims.size; ++dim)
+	  {
+		  astnode_sprintf(tspec->lhs,"%s,%s",tspec->lhs->buffer,combine_all_new(dims.data[i]));
+	  }
+	  astnode_sprintf(tspec->lhs,"%s>");
+	}
         free_node_vec(&dims);
         node->rhs->lhs->infix = NULL;
         node->rhs->lhs->postfix= NULL;
