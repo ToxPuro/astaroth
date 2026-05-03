@@ -7601,7 +7601,7 @@ transform_arrays_to_std_arrays_in_func(ASTNode* node)
 	  {
 		  astnode_sprintf(tspec->lhs,"%s,%s",tspec->lhs->buffer,combine_all_new(dims.data[dim]));
 	  }
-	  astnode_sprintf(tspec->lhs,"%s>");
+	  astnode_sprintf(tspec->lhs,"%s>",tspec->lhs->buffer);
 	}
         free_node_vec(&dims);
         node->rhs->lhs->infix = NULL;
