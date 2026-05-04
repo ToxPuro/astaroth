@@ -605,8 +605,9 @@ Kernel reduce_kernel()
                                    //Said in a simpler manner: calculates the maximum across the subdomain
 	reduce_max(derx(ux),max_derux) //scalar reduction; will produce a unique maximum across the whole grid that each process sees.
                                    //Said in a simpler manner: calculates the maximum across the whole grid.
-    reduce_sum(ux,X_PROFILE) //Reduction along y and z resulting in array that is x-dependent.
-    reduce_sum(ux,XY_PROFILE) //Reduction along z resulting in array that is xy-dependent.
+    reduce_sum(ux,X_PROFILE)  //Reduction along y and z resulting in array that is x-dependent.
+    reduce_sum(ux,XY_PROFILE) //Reduction along z resulting in array that is xy-dependent. 
+                              //Both of these profile reductions are global across the whole grid.
 }
 
 Kernel read_output()
