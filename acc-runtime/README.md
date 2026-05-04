@@ -193,6 +193,7 @@ Variables that are constant during the execution context of Astaroth (e.g. durin
 By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effectively const in the compiled kernels.
 
 
+
 ### Advanced
 * `communicated`
 The implicit qualifier for `Fields` if no qualifiers are defined, their halos are updated. 
@@ -223,8 +224,12 @@ More dynamic qualifier that combines the previous two. Takes as an input argumen
 Designed for variables that are input parameters to Kernels, but should not be allocated/loaded to the GPU. Or for control variables that should only live on the host. (Renaming the qualifier to `host` is under consideration.) 
 > Note: At the moment, can be used only via `ComputeSteps`. See the section describing `ComputeSteps` for example usage.
 * `output`
-At the moment, restricted to `real` and `int` scalar quantities resulting from reductions across the whole subdomain.
+Used to specify that a variable is supposed to to be the output result of a reduction across the whole subdomain.
+At the moment, restricted to `real`,`float` and `int` scalar quantities.
 > Note: implicitly allocates memory on the GPU to perform reductions.
+
+* `global`
+Used to specify that the reductions of the corresponding `output` variable is supposed to be done globally i.e. across the whole grid or in other words across all subdomains.
 
 * `utility`
 Tells the compiler that the `Kernel` should be skiped when inferring which `Fields` are dead.
@@ -590,12 +595,16 @@ const Field3 field_vecs = {field_vecs_0,field_vecs_1,fields_vecs_2}
 For reductions the kernel has to be invoked at each vertex point of the domain.
 ```
 output real max_derux
+output global real global_max_derux
 Field ux,f
 Profile<X>  X_PROFILE
 Profile<XY> XY_PROFILE
 Kernel reduce_kernel()
 {
-	reduce_max(derx(ux),max_derux) //scalar reduction
+	reduce_max(derx(ux),max_derux) //scalar reduction; will output a different value at each process corresponding to its subdomain.
+                                   //Said in a simpler manner: calculates the maximum across the subdomain
+	reduce_max(derx(ux),max_derux) //scalar reduction; will produce a unique maximum across the whole grid that each process sees.
+                                   //Said in a simpler manner: calculates the maximum across the whole grid.
     reduce_sum(ux,X_PROFILE) //Reduction along y and z resulting in array that is x-dependent.
     reduce_sum(ux,XY_PROFILE) //Reduction along z resulting in array that is xy-dependent.
 }
