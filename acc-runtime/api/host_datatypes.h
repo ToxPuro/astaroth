@@ -105,6 +105,10 @@ typedef struct
 {
 	int x,y,z;
 } int3;
+typedef struct
+{
+        int x,y,z,w;
+} int4;
 #define INT3_DEFINED
 #endif
 

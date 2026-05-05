@@ -597,8 +597,10 @@ const Field3 field_vecs = {field_vecs_0,field_vecs_1,fields_vecs_2}
 
 ### Reductions
 For reductions the kernel has to be invoked at each vertex point of the domain.
+The three types of binary operations currently supported are min,max and sum.
 ```
 output real max_derux
+output real min_derux
 output global real global_max_derux
 output real sum_derux
 Field ux,f
@@ -608,7 +610,8 @@ Kernel reduce_kernel()
 {
 	reduce_max(derx(ux),max_derux) //scalar reduction; will output a different value at each process corresponding to its subdomain.
                                    //Said in a simpler manner: calculates the maximum across the subdomain
-	reduce_max(derx(ux),max_derux) //scalar reduction; will produce a unique maximum across the whole grid that each process sees.
+	reduce_min(derx(ux),min_derux) //Same as above but calculates the minimum value.
+	reduce_max(derx(ux),global_max_derux) //scalar reduction; will produce a unique maximum across the whole grid that each process sees.
                                    //Said in a simpler manner: calculates the maximum across the whole grid.
     reduce_sum(derx(ux),sum_derux) //Will write the sum of derx(ux) to sum_derux
     reduce_sum_add(derx(ux),sum_derux) //Will write the sum of derx(ux) + value(sum_derux) to sum_derux (works only if launched on the normal subdomain size)
