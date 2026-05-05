@@ -267,6 +267,10 @@ Kernel kernel() {
     unary_expr  = -ux         // is equivalent to -value(ux)
     binary_expr = -ux*2.0*uz  // is equivalent to -value(ux)*2.0*value(uz)
     exp_val     = exp(uz)     // is equivalent to exp(value(uz))
+    arr[vertexIdx.x-NGHOST] = 1.0 //You can directly write to gmem arrays using assignment syntax.
+                                  //If there are writes from multiple threads to the same index (as in the example above)
+                                  //if the writes have the same values the array will end up with the correct value otherwise
+                                  //the resulting value can be arbitrarily one of the unique values written.
 }
 ```
 
@@ -596,6 +600,7 @@ For reductions the kernel has to be invoked at each vertex point of the domain.
 ```
 output real max_derux
 output global real global_max_derux
+output real sum_derux
 Field ux,f
 Profile<X>  X_PROFILE
 Profile<XY> XY_PROFILE
@@ -605,6 +610,8 @@ Kernel reduce_kernel()
                                    //Said in a simpler manner: calculates the maximum across the subdomain
 	reduce_max(derx(ux),max_derux) //scalar reduction; will produce a unique maximum across the whole grid that each process sees.
                                    //Said in a simpler manner: calculates the maximum across the whole grid.
+    reduce_sum(derx(ux),sum_derux) //Will write the sum of derx(ux) to sum_derux
+    reduce_sum_add(derx(ux),sum_derux) //Will write the sum of derx(ux) + value(sum_derux) to sum_derux (works only if launched on the normal subdomain size)
     reduce_sum(ux,X_PROFILE)  //Reduction along y and z resulting in array that is x-dependent.
     reduce_sum(ux,XY_PROFILE) //Reduction along z resulting in array that is xy-dependent. 
                               //Both of these profile reductions are global across the whole grid.
