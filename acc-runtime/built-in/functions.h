@@ -174,6 +174,17 @@ reduce_sum(real val, param)
 {
 	reduce_sum_real(val,param)
 }
+/*
+ * An additive version of reduce_sum,
+ * where the result will be value(param) + sum(val) instead of sum(val).
+ * Works only for launches of size AC_nlocal.x*AC_nlocal.y*AC_nlocal.z
+ */
+reduce_sum_add(real val, param)
+{
+	previous_value = output_value(param)
+	new_value = val + previous_value*AC_nlocal_products_inv
+	reduce_sum_real(new_value,param)
+}
 reduce_rms(real val, param)
 {
 	reduce_sum(val*val*AC_ds.x*AC_ds.y*AC_ds.z,param)
