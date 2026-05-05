@@ -182,7 +182,7 @@ reduce_sum(real val, param)
 reduce_sum_add(real val, param)
 {
 	previous_value = output_value(param)
-	new_value = val + previous_value*AC_nlocal_products_inv.xyz
+	real new_value = val + previous_value*AC_nlocal_products_inv.xyz
 	reduce_sum(new_value,param)
 }
 reduce_rms(real val, param)
