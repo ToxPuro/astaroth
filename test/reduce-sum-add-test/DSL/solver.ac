@@ -1,0 +1,33 @@
+auxiliary Field FIELD
+hostdefine STENCIL_ORDER (0)
+output real AC_F_sum
+global output real AC_F_global_sum
+
+Kernel add_kernel()
+{
+	reduce_sum_add(FIELD,AC_F_sum)
+	reduce_sum_add(FIELD,AC_F_global_sum)
+}
+
+Kernel init_kernel()
+{
+	write(FIELD,1.0)
+}
+BoundConds
+bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps
+init(bcs)
+{
+	init_kernel()
+}
+
+ComputeSteps
+add_step(bcs)
+{
+	add_kernel()
+}
+

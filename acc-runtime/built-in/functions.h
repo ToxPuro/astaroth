@@ -183,7 +183,7 @@ reduce_sum_add(real val, param)
 {
 	previous_value = output_value(param)
 	divisor = ac_is_global(param) ? AC_ngrid_products_inv.xyz : AC_nlocal_products_inv.xyz;
-	real new_value = val*divisor
+	real new_value = val + divisor*previous_value
 	reduce_sum(new_value,param)
 }
 reduce_rms(real val, param)
