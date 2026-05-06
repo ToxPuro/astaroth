@@ -516,6 +516,7 @@ ac_field_has_default_dims(const Field& field)
 	return vtxbuf_device_dims[field] == AC_mlocal;
 }
 
+static __device__ UNUSED 
 bool
 ac_is_global(const AcRealOutputParam& param)
 {
