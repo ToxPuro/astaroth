@@ -858,15 +858,6 @@ get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_lim
 	return get_slope_limited_divergence(fluxes)
 }
 
-get_slope_limited_divergence(Field3 f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
-{
-	return
-		real3(
-			get_slope_limited_divergence(f.x,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field),
-			get_slope_limited_divergence(f.y,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field),
-			get_slope_limited_divergence(f.z,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field)
-		     )
-}
 
 
 get_slope_limited_average_fluxes(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
@@ -1000,3 +991,13 @@ get_slope_limited_divergence(Field3 f, Field characteristic_speed, real fdiff_li
 	return get_slope_limited_divergence(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf,false)
 }
 
+
+get_slope_limited_divergence(Field3 f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
+{
+	return
+		real3(
+			get_slope_limited_divergence(f.x,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field),
+			get_slope_limited_divergence(f.y,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field),
+			get_slope_limited_divergence(f.z,characteristic_speed,fdiff_limit,h_slope_limited,nlf,ln_field)
+		     )
+}
