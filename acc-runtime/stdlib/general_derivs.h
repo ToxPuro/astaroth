@@ -3,6 +3,7 @@ hostdefine AC_GENERAL_DERIVS_ENABLED (1)
 
 #include "$AC_HOME/acc-runtime/stdlib/general_grid/vars.h"
 
+
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
@@ -49,6 +50,80 @@ hostdefine AC_GENERAL_DERIVS_ENABLED (1)
 
 #define DER1_2nd_1 (0.5)
 
+#if STENCIL_ORDER == 0
+derx_2nd_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+dery_2nd_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derz_2nd_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derxx_2nd_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+deryy_2nd_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derzz_2nd_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derxx_2nd_neighbours_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+deryy_2nd_neighbours_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derzz_2nd_neighbours_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der2x2y_2nd_stencil (Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der2x2z_2nd_stencil (Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der2y2z_2nd_stencil (Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+#else
 Stencil derx_2nd_stencil {
     [0][0][-1] = -DER1_2nd_1,
     [0][0][1 ]  = DER1_2nd_1,
@@ -134,6 +209,7 @@ Stencil derzz_2nd_stencil {
     [0 ][0][0]  = DER2_2nd_0,
     [1 ][0][0]  = DER2_2nd_1
 }
+#endif
 
 deryy_central_coeff_helper(real inv_spacing2, real coef)
 {
@@ -228,6 +304,257 @@ derzz_2nd_central_coeff(real inv_spacing_2)
 }
 
 #define UPWIND_FACTOR (1.0/60.0)
+
+#if STENCIL_ORDER == 0
+#define derx_stencil  derx_2nd_stencil
+#define dery_stencil  dery_2nd_stencil
+#define derz_stencil  derz_2nd_stencil
+#define derxx_stencil derxx_2nd_stencil
+#define deryy_stencil deryy_2nd_stencil
+#define derzz_stencil derzz_2nd_stencil
+
+#define derxx_neighbours_stencil derxx_2nd_neighbours_stencil
+#define deryy_neighbours_stencil deryy_2nd_neighbours_stencil
+#define derzz_neighbours_stencil derzz_2nd_neighbours_stencil
+#define der2x2y_stencil der2x2y_2nd_stencil
+#define der2x2z_stencil der2x2z_2nd_stencil
+#define der2y2z_stencil der2y2z_2nd_stencil
+derxy_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derxz_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+deryz_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derxy_non_diagonal_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derxz_non_diagonal_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+deryz_non_diagonal_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der3x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der3y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der3z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4x2y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4x2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4y2x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4y2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4z2x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der4z2y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5x1y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5x1z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5y1x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5y1z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5z1y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der5z1x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der6x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der6x_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der6y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der6y_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der6z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+der6z_exp_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derx_upwind_left(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derx_upwind_right(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+dery_upwind_down(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+dery_upwind_up(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derz_upwind_back(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+derz_upwind_front(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"Cannot use stencils if STENCIL_ORDER==0!\n");
+	return 0.0
+}
+
+#else
 
 #if STENCIL_ORDER == 2
 
@@ -2633,6 +2960,7 @@ Stencil derz_upwind_front
     [ 0][0][0] = +DER_UPWD_0 
 }
 
+#endif
 #endif
 #endif
 #endif
