@@ -30,7 +30,7 @@ struct sld_fluxes
 	sld_flux y;
 	sld_flux z;
 } 
-#if STENCIL_ORDER == 2
+#if STENCIL_ORDER < 4
 get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
 {
 	suppress_unused_warning(f)
