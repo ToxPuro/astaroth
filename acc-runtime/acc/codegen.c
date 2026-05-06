@@ -7017,6 +7017,17 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 	  		fprintf(fp,"%s,\n",str_vec_contains(symbol_table[symbol].tqualifiers,GLOBAL_STR) ? "true" : "false");
 	  }
 	  fprintf(fp,"false};");
+	  {
+            FILE* fp_device = fopen("device_output_info.h","a");
+	    fprintf(fp_device,"static const __device__ bool %s_output_is_global_device [NUM_%s_OUTPUTS+1] __attribute__((unused)) = {",convert_to_define_name(datatype), strupr(convert_to_define_name(datatype)));
+	    for(size_t symbol  = 0; symbol < num_symbols[0]; ++symbol)
+	    {
+	    	if(symbol_table[symbol].tspecifier == datatype && str_vec_contains(symbol_table[symbol].tqualifiers,OUTPUT_STR))
+	    		fprintf(fp_device,"%s,\n",str_vec_contains(symbol_table[symbol].tqualifiers,GLOBAL_STR) ? "true" : "false");
+	    }
+            fprintf(fp_device,"false};");
+	    fclose(fp_device);
+	  }
   }
 
   const size_t num_real_outputs = count_variables(REAL_STR,OUTPUT_STR);

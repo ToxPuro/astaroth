@@ -201,6 +201,12 @@ AcKernel current_kernel{};
 std::vector<KernelReduceOutput> reduce_inputs{};
 std::vector<KernelReduceOutput> reduce_outputs{};
 
+bool
+ac_is_global(const AcRealOutputParam& param)
+{
+	return real_output_is_global[param];
+}
+
 AcReal
 output_value(const AcRealOutputParam& param)
 {

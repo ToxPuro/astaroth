@@ -163,6 +163,7 @@ acGetKernelReduceScratchPadMinSize()
 	return res;
 }
 
+
 #include "stencil_accesses.h"
 #include "../acc/mem_access_helper_funcs.h"
 
@@ -495,6 +496,7 @@ safe_access(const AcReal* arr, const int dims, const int index, const AcRealArra
 }
 
 #include "device_fields_info.h"
+#include "device_output_info.h"
 
 static __device__ UNUSED
 int3
@@ -512,6 +514,12 @@ bool
 ac_field_has_default_dims(const Field& field)
 {
 	return vtxbuf_device_dims[field] == AC_mlocal;
+}
+
+bool
+ac_is_global(const AcRealOutputParam& param)
+{
+	return real_output_is_global_device[param];
 }
 
 #define postprocess_reduce_result(DST,OP)

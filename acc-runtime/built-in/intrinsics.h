@@ -109,5 +109,6 @@ intrinsic copy_arr
 intrinsic postprocess_reduce_result
 intrinsic ac_dummy_write
 intrinsic safe_access
+bool intrinsic ac_is_global
 
 intrinsic AC_abs
