@@ -165,6 +165,14 @@ elemental gradient5(Field s) {
     return real3(der5x(s), der5y(s), der5z(s))
 }
 
+elemental gradient6(Field s) {
+    return real3(der6x(s), der6y(s), der6z(s))
+}
+
+elemental gradient6_ignore_spacing(Field s) {
+    return real3(der6x_ignore_spacing(s), der6y_ignore_spacing(s), der6z_ignore_spacing(s))
+}
+
 
 /**
  * Calculates g,
