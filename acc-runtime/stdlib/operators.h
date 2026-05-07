@@ -130,6 +130,18 @@ gij5(v) {
 		  real3( der5x(v.z), der5y(v.z), der5z(v.z) ))
 }
 
+gij6(v) {
+    return Matrix(real3( der6x(v.x), der6y(v.x), der6z(v.x) ), 
+		  real3( der6x(v.y), der6y(v.y), der6z(v.y) ), 
+		  real3( der6x(v.z), der6y(v.z), der6z(v.z) ))
+}
+
+gij6_ignore_spacing(v) {
+    return Matrix(real3( der6x_ignore_spacing(v.x), der6y_ignore_spacing(v.x), der6z_ignore_spacing(v.x) ), 
+		  real3( der6x_ignore_spacing(v.y), der6y_ignore_spacing(v.y), der6z_ignore_spacing(v.y) ), 
+		  real3( der6x_ignore_spacing(v.z), der6y_ignore_spacing(v.z), der6z_ignore_spacing(v.z) ))
+}
+
 traceless_rateof_strain(Field3 v) {
     Matrix S
 
