@@ -351,6 +351,8 @@
 #define SMOOTH_XP3_YP3_ZP3 ( 1.0 / 5832000.0 ) 
 
 
+#if STENCIL_ORDER == 0
+#else
 #if STENCIL_ORDER == 2
 Stencil
 smooth_xyz_stencil
@@ -1901,5 +1903,6 @@ elemental max5(Field f)
 	return max5(f,NGHOST)
 }
 
+#endif
 #endif
 
