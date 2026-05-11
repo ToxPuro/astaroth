@@ -1,3 +1,6 @@
+#ifndef AC_SMOOTH_MAX_H
+#define AC_SMOOTH_MAX_H
+
 
 /**
  * This file implements smoothing and maxima functionality used now primarily 
@@ -1905,4 +1908,4 @@ elemental max5(Field f)
 
 #endif
 #endif
-
+#endif
