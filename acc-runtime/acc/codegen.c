@@ -7585,18 +7585,15 @@ void
 transform_arrays_to_std_arrays_in_func(ASTNode* node)
 {
         TRAVERSE_PREAMBLE(transform_arrays_to_std_arrays_in_func)
-        if(!(node->type & NODE_DECLARATION))
-                return;
-        if(!node->rhs)
-                return;
-        if(!node->rhs->lhs)
-                return;
-        if(!node->rhs->lhs->rhs)
-                return;
+	if(!(node->type & NODE_DECLARATION)) return;
+        if(!node->rhs) return;
+        if(!node->rhs->lhs) return;
+        if(!node->rhs->lhs->rhs) return;
         const ASTNode* tspec = get_node(NODE_TSPEC,node->lhs);
-        if(!tspec)
-                return;
+        if(!tspec) return;
         const ASTNode* access_start = get_node(NODE_ARRAY_ACCESS,node);
+	if(!access_start) return;
+
         node_vec dims = get_array_accesses(access_start);
 	const ASTNode* num = dims.size == 1 ? get_node_by_token(NUMBER,dims.data[0]) : NULL;
         //TP: at least some CUDA compilers do not allow zero-sized objects in device code so have to pad the array length
