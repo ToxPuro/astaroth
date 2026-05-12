@@ -554,6 +554,13 @@ derz_upwind_front(Field f)
 	return 0.0
 }
 
+#define DER2_0 der2_0_warning()
+der2_0_warning()
+{
+	fatal_error_message(true,"No derivative coefficients for STENCIL_ORDER==0!\n");
+	return 0.0
+}
+
 #else
 
 #if STENCIL_ORDER == 2
