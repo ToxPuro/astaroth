@@ -2922,7 +2922,7 @@ main(int argc, char** argv)
   }
   // Generate memory accesses for the DSL kernels
   else if (argc == 2 && !strcmp(argv[1], "-mem-accesses")) {
-    gen_stencil_accesses(true);
+    gen_stencil_accesses();
   }
   else if (argc == 3) {
     const int curr_kernel = atoi(argv[2]);
