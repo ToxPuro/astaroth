@@ -152,7 +152,7 @@ get_free_mem()
 {
     size_t free_mem=0;
     size_t total_mem=0;
-    acMemGetInfo(&free_mem, &total_mem);
+    ERRCHK_CUDA_ALWAYS(acMemGetInfo(&free_mem, &total_mem));
     return free_mem;
 }
 
