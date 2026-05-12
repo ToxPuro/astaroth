@@ -50,7 +50,7 @@ hostdefine AC_GENERAL_DERIVS_ENABLED (1)
 
 #define DER1_2nd_1 (0.5)
 
-#if STENCIL_ORDER == 0
+#if defined(STENCIL_ORDER) && STENCIL_ORDER == 0
 derx_2nd_stencil(Field f)
 {
 	suppress_unused_warning(f)
@@ -305,7 +305,7 @@ derzz_2nd_central_coeff(real inv_spacing_2)
 
 #define UPWIND_FACTOR (1.0/60.0)
 
-#if STENCIL_ORDER == 0
+#if defined(STENCIL_ORDER) && STENCIL_ORDER == 0
 #define derx_stencil  derx_2nd_stencil
 #define dery_stencil  dery_2nd_stencil
 #define derz_stencil  derz_2nd_stencil
