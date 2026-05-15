@@ -9,12 +9,13 @@ import argparse
 parser = argparse.ArgumentParser(description="Tool to find missing segments of snapshots")
 parser.add_argument("--field", type=str, required=True)
 parser.add_argument("--snapshot_dir", type=str, required=True)
+parser.add_argument("--snapshot_number", type=str, default="0")
 
 args = parser.parse_args()
 
 
 pattern = re.compile(
-    f"{args.field}-segment-(\d+)-(\d+)-(\d+)-(\d+)\.mesh"
+    f"{args.field}-segment-(\d+)-(\d+)-(\d+)-{args.snapshot_number}\.mesh"
 )
 
 found = set()
@@ -45,9 +46,8 @@ if not found:
 x_vals = sorted(set(c[0] for c in found))
 y_vals = sorted(set(c[1] for c in found))
 z_vals = sorted(set(c[2] for c in found))
-w_vals = sorted(set(c[3] for c in found))
 
-expected = set(product(x_vals, y_vals, z_vals, w_vals))
+expected = set(product(x_vals, y_vals, z_vals))
 missing = sorted(expected - found)
 
 print(f"\nTotal expected: {len(expected)}")
@@ -61,15 +61,13 @@ print(f"Missing:        {len(missing)}")
 missing_by_x = defaultdict(list)
 missing_by_y = defaultdict(list)
 missing_by_z = defaultdict(list)
-missing_by_w = defaultdict(list)
 
 for coords in missing:
-    x, y, z, w = coords
+    x, y, z = coords
 
     missing_by_x[x].append(coords)
     missing_by_y[y].append(coords)
     missing_by_z[z].append(coords)
-    missing_by_w[w].append(coords)
 
 # -------------------------------------------------
 # Layer statistics
@@ -77,7 +75,7 @@ for coords in missing:
 
 print("\n=== Missing by X layer ===")
 
-layer_size = len(y_vals) * len(z_vals) * len(w_vals)
+layer_size = len(y_vals) * len(z_vals)
 
 for x in x_vals:
     count = len(missing_by_x[x])
@@ -98,7 +96,7 @@ for x in x_vals:
 
 print("\n=== Missing by Y layer ===")
 
-layer_size = len(x_vals) * len(z_vals) * len(w_vals)
+layer_size = len(x_vals) * len(z_vals)
 
 for y in y_vals:
     count = len(missing_by_y[y])
@@ -119,7 +117,7 @@ for y in y_vals:
 
 print("\n=== Missing by Z layer ===")
 
-layer_size = len(x_vals) * len(y_vals) * len(w_vals)
+layer_size = len(x_vals) * len(y_vals)
 
 for z in z_vals:
     count = len(missing_by_z[z])
@@ -143,8 +141,8 @@ for z in z_vals:
 
 print("\n=== Missing files written to missing_segments.txt ===")
 with open("missing_segments.txt","w") as f:
-  for x, y, z, w in missing:
+  for x, y, z in missing:
       print(
           f"{args.field}-segment-"
-          f"{x}-{y}-{z}-{w}.mesh", file=f
+          f"{x}-{y}-{z}-{args.snapshot_number}.mesh", file=f
       )
