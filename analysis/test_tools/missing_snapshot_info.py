@@ -23,11 +23,16 @@ found = set()
 # Read files
 # -------------------------------------------------
 
+size_bytes = 0
 for filename in os.listdir(args.snapshot_dir):
     m = pattern.match(filename)
     if m:
         coords = tuple(map(int, m.groups()))
-        found.add(coords)
+        file_size = os.path.getsize(args.snapshot_dir +"/" + filename)
+        size_bytes = max(file_size,size_bytes)
+        #Files which have a corrupted size are not considered to exist
+        if(size_bytes == file_size):
+          found.add(coords)
 
 if not found:
     print("No matching files found.")
