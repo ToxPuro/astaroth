@@ -73,14 +73,14 @@ static AcReal UNUSED
 rand_uniform()
 {
 	rand_uniform_called = true;
-	return 0.5065983774206012; // Chosen by a fair dice roll
+	return AcReal(0.5065983774206012); // Chosen by a fair dice roll
 }
 
 static AcReal UNUSED
 rand_uniform(const int)
 {
 	rand_uniform_called = true;
-	return 0.5065983774206012; // Chosen by a fair dice roll
+	return AcReal(0.5065983774206012); // Chosen by a fair dice roll
 }
 #define __syncthreads() 
 
@@ -1018,11 +1018,11 @@ reset_info_arrays()
 	    reduced_reals[i] = 0;
     for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
 	    reduced_ints[i] = 0;
-    if(AC_DOUBLE_PRECISION)
-    {
-      for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
+#if AC_DOUBLE_PRECISION
+    for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
   	    reduced_floats[i] = 0;
-    }
+    
+#endif
     rand_uniform_called = false;
 }
 
