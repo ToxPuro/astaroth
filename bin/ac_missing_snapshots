@@ -1,0 +1,2 @@
+#!/bin/bash 
+$AC_HOME/analysis/test_tools/missing_snapshot_info.py "$@"
