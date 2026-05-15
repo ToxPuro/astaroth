@@ -846,14 +846,14 @@ acGridInitBase(const AcMesh user_mesh)
     		    submesh_info[AC_ngrid].x,submesh_info[AC_ngrid].y,submesh_info[AC_ngrid].z,
     		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
     		    );
-    acLogFromRootProc(pid, "acGridInit: Calling acDeviceCreate\n");
+    acLogFromRootProc(pid, "acGridInit: Creating device\n");
     acVerboseLogFromRootProc(pid,"memusage before acDeviceCreate = %f MBytes\n",acMemUsage()/1024.0);
 
     Device device;
     acDeviceCreate(pid % devices_per_node, submesh_info, &device);
 
     acVerboseLogFromRootProc(ac_pid(),"memusage after acDeviceCreate = %f MBytes\n", acMemUsage()/1024.0);
-    acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
+    acVerboseLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
 
     // Setup the global grid structure
     grid.device        = device;
@@ -880,11 +880,6 @@ acGridInitBase(const AcMesh user_mesh)
 
     acDeviceUpdate(device,acDeviceGetLocalConfig(device));
 
-    //If we know rand_uniform is never called no need to allocate buffers for it
-    if(ac_random_called_statically)
-    {
-      initialize_random_number_generation(submesh_info);
-    }
 
     create_astaroth_sub_communicators();
     grid.initialized   = true;
@@ -896,6 +891,14 @@ acGridInitBase(const AcMesh user_mesh)
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
     grid.kernel_analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
+
+    //If we know rand_uniform is never called no need to allocate buffers for it
+    bool rand_uniform_called = false;
+    for(int k = 0; k < NUM_KERNELS; ++k) rand_uniform_called |= grid.kernel_analysis_info[k].rand_uniform_called;
+    if(rand_uniform_called)
+    {
+      initialize_random_number_generation(submesh_info);
+    }
     if(ac_pid() == 0) acAnalysisCheckForDSLErrors(acGridGetLocalMeshInfo());	
     check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
 

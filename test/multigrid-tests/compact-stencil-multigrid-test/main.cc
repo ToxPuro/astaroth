@@ -371,11 +371,12 @@ main(int argc, char* argv[])
 	//const AcReal relative_threshold = 1e-14;
 	AcReal sum_time = 0.0;
 	const AcReal relative_threshold = 5.5e-2;
-    	while(residual > 1e-8)
+    	while((residual/init_residual) > 1e-8)
     	{
 	    const AcReal start_time = MPI_Wtime();
             gmg_v_cycle(n_levels,relative_threshold);
 	    const AcReal end_time = MPI_Wtime();
+	    fprintf(stderr,"Cycle took: %.14e\n",end_time-start_time);
 	    sum_time += end_time-start_time;
 	    //exit(EXIT_SUCCESS);
     	    acGridExecuteTaskGraph(residual_graph,1);

@@ -48,6 +48,7 @@ safe_array<int>    AC_INTERNAL_run_const_int_array_here{};
 safe_array<float>  AC_INTERNAL_run_const_float_array_here{};
 safe_array<AcComplex>    AC_INTERNAL_run_const_AcComplex_array_here{};
 safe_array<AcComplexFloat>    AC_INTERNAL_run_const_AcComplexFloat_array_here{};
+static bool rand_uniform_called = false;
 
 safe_array<AcReal>
 RCONST(AcRealCompArrayParam)
@@ -67,8 +68,20 @@ print(const char* , ...)
 {
 }
 #define len(arr) sizeof(arr) / sizeof(arr[0])
-#define rand_uniform()        (0.5065983774206012) // Chosen by a fair dice roll
-#define random_uniform(TID) (0.5065983774206012) // Chosen by a fair dice roll
+
+static AcReal UNUSED
+rand_uniform()
+{
+	rand_uniform_called = true;
+	return 0.5065983774206012; // Chosen by a fair dice roll
+}
+
+static AcReal UNUSED
+rand_uniform(const int)
+{
+	rand_uniform_called = true;
+	return 0.5065983774206012; // Chosen by a fair dice roll
+}
 #define __syncthreads() 
 
 #define vertexIdx ((int3){start.x, start.y, start.z})
@@ -1005,10 +1018,12 @@ reset_info_arrays()
 	    reduced_reals[i] = 0;
     for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
 	    reduced_ints[i] = 0;
-#if AC_DOUBLE_PRECISION
-    for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
-	    reduced_floats[i] = 0;
-#endif
+    if(AC_DOUBLE_PRECISION)
+    {
+      for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
+  	    reduced_floats[i] = 0;
+    }
+    rand_uniform_called = false;
 }
 
 void
@@ -1144,6 +1159,7 @@ acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel)
 	KernelAnalysisInfo res{};
 	{
     		execute_kernel(kernel);
+		res.rand_uniform_called = rand_uniform_called;
     		for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
     		{
     		  for (size_t i = 0; i < NUM_STENCILS; ++i)

@@ -14,6 +14,7 @@ typedef struct
       KernelReduceOutput reduce_outputs[NUM_OUTPUTS+1];
       size_t n_reduce_inputs;
       size_t n_reduce_outputs;
+      int rand_uniform_called;
 } KernelAnalysisInfo;
 
 typedef struct
