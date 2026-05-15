@@ -167,16 +167,18 @@ AcResult
 acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
                           const AcReal value)
 {
-	device->local_config[param] = value;
-	return acDeviceLoadUniform(device,stream,param,value);
+    acSetDevice(device->id);
+    device->local_config[param] = value;
+    return acDeviceLoadUniform(device,stream,param,value);
 }
 
 AcResult
 acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
                           const AcReal3 value)
 {
-	device->local_config[param] = value;
-	return acDeviceLoadUniform(device,stream,param,value);
+    acSetDevice(device->id);
+    device->local_config[param] = value;
+    return acDeviceLoadUniform(device,stream,param,value);
 }
 
 
