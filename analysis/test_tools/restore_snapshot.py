@@ -84,7 +84,8 @@ for i in range(len(x_coords)):
     y = y_coords[i]
     z = z_coords[i]
 
-    res_filename = f"{args.field}-segment-{x}-{y}-{z}-{args.snapshot_number}.mesh"
+    #res_filename = f"{args.field}-segment-{x}-{y}-{z}-{args.snapshot_number}.mesh"
+    res_filename = args.snapshot_dir + "/" + f"{args.field}-segment-{x}-{y}-{z}-{args.snapshot_number}.mesh"
     print(f"Restoring {res_filename}")
 
     upper_neighbour_filename = f"{args.field}-segment-{x+nx}-{y}-{z}-{args.snapshot_number}.mesh"
@@ -112,6 +113,5 @@ for i in range(len(x_coords)):
     
     reconstructed_data = lower_neighbour_flipped+upper_neighbour_flipped
     
-    #res_filename = args.snapshot_dir + "/" + f"{args.field}-segment-{args.x}-{args.y}-{args.z}-{args.snapshot_number}.mesh"
     reconstructed_data.tofile(res_filename)
 
