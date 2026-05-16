@@ -582,8 +582,11 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
        sprintf(file,"%s/snapshots_info.csv",dir);
        if(!file_exists(file))
        {
-           ERROR("Tried to load from the latest snapshot but snapshots_info.csv is malformatted "
-                 "or non-existing");
+	   if(pid ==0)
+	   {
+		   fprintf(stderr,"No such file %s\n",file);
+	   }
+           ERROR("Tried to load from the latest snapshot but snapshots_info.csv is non-existing ");
        }
        rapidcsv::Document doc(file);
        std::vector<int> step_numbers = doc.GetColumn<int>("step_number");

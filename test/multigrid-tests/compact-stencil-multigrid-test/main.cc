@@ -360,7 +360,8 @@ main(int argc, char* argv[])
 
 	//const AcReal relative_threshold = 1e-14;
 	AcReal sum_time = 0.0;
-	const AcReal relative_threshold = 5.5e-2;
+	const AcReal relative_threshold = info[AC_gmg_coarse_level_solve_accuracy];
+	fprintf(stderr,"nu_1 = %d\nnu_2 = %d\n",info[AC_gmg_pre_smooth_steps],info[AC_gmg_post_smooth_steps]);
     	while((residual/init_residual) > 1e-8)
     	{
 	    const AcReal start_time = MPI_Wtime();
@@ -378,7 +379,7 @@ main(int argc, char* argv[])
     	fprintf(stderr,"Final residual: %14e\n",residual);
     	fprintf(stderr,"Took %d steps\n",n_steps);
 	fprintf(stderr,"Asymptotic convergence factor: %.14e\n",pow(residual/init_residual,1.0/n_steps));
-	fprintf(stderr,"On average a single V cycle took: %.14e milliseconds\n",1000*(sum_time/n_steps));
+	fprintf(stderr,"On average a single V cycle took: %.14e milliseconds\n",sum_time/n_steps);
 
 	{
 		acDeviceSetInput(acGridGetDevice(),AC_GMG_LEVEL,(GMG_LEVEL)0);
