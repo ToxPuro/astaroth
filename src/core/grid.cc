@@ -4410,6 +4410,8 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
         fp = fopen(filepath, "rb");
 	if(!fp)
 	{
+		//Extra print since fatal prints only from root
+		fprintf(stderr,"Could not open file %s\n",filepath);
 		fatal("Could not open file %s\n",filepath);
 	}
     }
