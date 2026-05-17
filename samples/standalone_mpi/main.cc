@@ -872,28 +872,20 @@ GetSimulation(const int pid, PhysicsConfiguration simulation_physics)
         ERROR("Unhandled PhysicsConfiguration");
     }
 }
-int
-main(int argc, char** argv)
+typedef struct
 {
-    // Use multi-threaded MPI
-    {
+	const char* config_path;
+	InitialMeshProcedure initial_mesh_procedure;
+	PhysicsConfiguration  simulation_physics;
+	const char* initial_mesh_procedure_param;
+} CommandLineArguments;
 
-	int thread_support_level{};
-    	int result   = MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
-        if (thread_support_level < MPI_THREAD_MULTIPLE || result != MPI_SUCCESS)
-	{
-        	MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-        	return EXIT_FAILURE;
-	}
-    }
+AcResult
+read_command_line_arguments(int argc, char** argv, CommandLineArguments* res)
+{
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-
-    /////////////////////////////////
-    // Read command line arguments //
-    /////////////////////////////////
-
     // The input mesh files are hardcoded at the moment, but they could easily be passed by
     // parameter Just change no_argument below to required_argument or optional_argument and copy
     // the value of optarg to a filename variable in the switch
@@ -906,11 +898,11 @@ main(int argc, char** argv)
                                            {"from-snapshot", required_argument, 0, 's'},
                                            {"help", no_argument, 0, 'h'}};
 
-    const char* config_path = AC_DEFAULT_CONFIG;
+    res->config_path = AC_DEFAULT_CONFIG;
     // Default mesh procedure is kernel randomize
-    InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::InitKernel;
-    PhysicsConfiguration simulation_physics     = PhysicsConfiguration::Default;
-    const char* initial_mesh_procedure_param    = nullptr;
+    res->initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+    res->simulation_physics     = PhysicsConfiguration::Default;
+    res->initial_mesh_procedure_param    = nullptr;
 
     int opt{};
     while ((opt = getopt_long(argc, argv, "c:k:i:pdmh", long_options, nullptr)) != -1) {
@@ -919,70 +911,77 @@ main(int argc, char** argv)
             if (pid == 0) {
                 print_usage("ac_run_mpi");
             }
-            return EXIT_SUCCESS;
+            return AC_SUCCESS;
         case 'c':
-            config_path = optarg;
+            res->config_path= optarg;
             break;
         case 'k':
-            initial_mesh_procedure = InitialMeshProcedure::InitKernel;
-            initial_mesh_procedure_param = optarg;
+            res->initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+            res->initial_mesh_procedure_param = optarg;
             break;
         case 'i':
             if (strcmp(optarg, "Haatouken") == 0) {
                 acLogFromRootProc(pid, "Initial condition: Haatouken\n"); // This here just for the
                                                                           // sake of diagnosis.
-                initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
-                simulation_physics     = PhysicsConfiguration::ShockSinglepass;
+                res->initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
+                res->simulation_physics     = PhysicsConfiguration::ShockSinglepass;
             }
             else if (strcmp(optarg, "HeatDuct") == 0) {
                 acLogFromRootProc(pid, "Initial condition: Heatduct\n"); // This here just for the
                                                                          // sake of diagnosis.
-                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
-                simulation_physics     = PhysicsConfiguration::HydroHeatduct;
-                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
+                res->initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+                res->simulation_physics     = PhysicsConfiguration::HydroHeatduct;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", res->simulation_physics);
             }
             else if (strcmp(optarg, "ShockTurb") == 0) {
                 acLogFromRootProc(pid, "Initial condition: ShockTurb\n"); // This here just for the
                                                                           // sake of diagnosis.
-                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
-                simulation_physics     = PhysicsConfiguration::ShockSinglepass;
-                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
+                res->initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+                res->simulation_physics     = PhysicsConfiguration::ShockSinglepass;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", res->simulation_physics);
             }
             else if (strcmp(optarg, "BoundTest") == 0) {
                 acLogFromRootProc(pid, "Initial condition: BoundTest\n"); // This here just for the
                                                                           // sake of diagnosis.
-		if(initial_mesh_procedure != InitialMeshProcedure::LoadSnapshot)
-                	initial_mesh_procedure = InitialMeshProcedure::InitBoundTest;
-                simulation_physics     = PhysicsConfiguration::BoundTest;
-                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
+		if(res->initial_mesh_procedure != InitialMeshProcedure::LoadSnapshot)
+                	res->initial_mesh_procedure = InitialMeshProcedure::InitBoundTest;
+                res->simulation_physics     = PhysicsConfiguration::BoundTest;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", res->simulation_physics);
             }
             else {
                 exit(1);
             }
             break;
         case 'p':
-            initial_mesh_procedure       = InitialMeshProcedure::LoadPC_Varfile;
-            initial_mesh_procedure_param = optarg;
+            res->initial_mesh_procedure       = InitialMeshProcedure::LoadPC_Varfile;
+            res->initial_mesh_procedure_param = optarg;
             break;
         case 'd':
-            initial_mesh_procedure = InitialMeshProcedure::LoadDistributedSnapshot;
+            res->initial_mesh_procedure = InitialMeshProcedure::LoadDistributedSnapshot;
             break;
         case 'm':
-            initial_mesh_procedure = InitialMeshProcedure::LoadMonolithicSnapshot;
+            res->initial_mesh_procedure = InitialMeshProcedure::LoadMonolithicSnapshot;
             break;
         case 's':
-            initial_mesh_procedure       = InitialMeshProcedure::LoadSnapshot;
-            initial_mesh_procedure_param = optarg;
+            res->initial_mesh_procedure       = InitialMeshProcedure::LoadSnapshot;
+            res->initial_mesh_procedure_param = optarg;
             break;
         default:
             print_usage("ac_run_mpi");
-            return EXIT_FAILURE;
+            return AC_FAILURE;
         }
     }
-
+    return AC_SUCCESS;
+}
+AcMeshInfo
+load_config_file(const char* config_path)
+{
     //////////////////////
     // Load config file //
     //////////////////////
+
+    int pid;
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     AcMeshInfo info;
     acLogFromRootProc(pid,"Loading config file %s\n", config_path);
@@ -998,29 +997,30 @@ main(int argc, char** argv)
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
 
     info.comm->handle = MPI_COMM_WORLD;
+    info.runtime_compilation_log_dst = "ac_compilation_log";
+
     acLogFromRootProc(pid, "Done loading config file\n");
-#if AC_RUNTIME_COMPILATION
+    return info;
+}
+
+void
+ac_runtime_compile(const AcMeshInfo info)
+{
     const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF"
 	    		    ;
-    info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
     acLoadLibrary(stdout,info);
     acLoadUtils(stdout,info);
-#endif
-    // TODO: to reduce verbosity, only print uninitialized value warnings for rank == 0
-    // we could e.g. define a function acCheckConfig and call it:
-    // if (pid == 0){
-    //     acCheckConfig(&info);
-    // }
+}
+void
+output_config_info(AcMeshInfo* info)
+{
+        int pid;
+        MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
-    //////////////////////////////
-    // Output run configuration //
-    //////////////////////////////
-
-    if (pid == 0) {
         // Write purge.sh and meshinfo.list
         acLogFromRootProc(pid, "Creating purge.sh and meshinfo.list\n");
-        write_info(&info);
+        write_info(info);
 
         // Ensure output-slices and output-snapshots exist
         acLogFromRootProc(pid, "Creating directories output-slices and output-snapshots\n");
@@ -1028,7 +1028,7 @@ main(int argc, char** argv)
 
         // Print config to stdout
         acLogFromRootProc(pid, "Printing config to stdout\n");
-        acPrintMeshInfo(info);
+        acPrintMeshInfo(*info);
 
         acLogFromRootProc(pid, "Logging build configuration\n");
         const char* is_on  = "ON";
@@ -1060,6 +1060,220 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Forcing is: %s\n", forcing_flag);
         acLogFromRootProc(pid, "Sink is: %s\n", sink_flag);
         acLogFromRootProc(pid, "Shock is: %s\n", shock_flag);
+}
+Simulation
+choose_simulation_setup(const PhysicsConfiguration simulation_physics)
+{
+    int pid;
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+    Simulation sim{};
+    switch (simulation_physics) {
+      case PhysicsConfiguration::ShockSinglepass: {
+#if LSHOCK
+        sim = Simulation::Shock_Singlepass_Solve;
+        acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
+#endif
+          break;
+      }
+      case PhysicsConfiguration::BoundTest: {
+          sim = Simulation::Bound_Test_Solve;
+          acLogFromRootProc(pid, "PhysicsConfiguration BoundTest !\n");
+          break;
+      }
+      case PhysicsConfiguration::HydroHeatduct: {
+          sim = Simulation::Hydro_Heatduct_Solve;
+          acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
+          break;
+      }
+      default:
+          sim = Simulation::Default;
+          acLogFromRootProc(pid, "PhysicsConfiguration Default !\n");
+          break;
+    }
+    acLogFromRootProc(pid, "sim = %i \n", sim);
+    acLogFromRootProc(pid, "Simulation::Default = %i\n", Simulation::Default);
+    acLogFromRootProc(pid, "Simulation::Shock_Singlepass_Solve = %i\n",
+                      Simulation::Shock_Singlepass_Solve);
+    acLogFromRootProc(pid, "Simulation::Hydro_Heatduct_Solve = %i\n",
+                      Simulation::Hydro_Heatduct_Solve);
+    acLogFromRootProc(pid, "Simulation::Bound_Test_Solve = %i\n",
+                      Simulation::Bound_Test_Solve);
+    acLogFromRootProc(pid, "PhysicsConfiguration::Default = %i\n", PhysicsConfiguration::Default);
+    acLogFromRootProc(pid, "PhysicsConfiguration::ShockSinglepass = %i\n",
+                      PhysicsConfiguration::ShockSinglepass);
+    acLogFromRootProc(pid, "PhysicsConfiguration::HydroHeatduct = %i\n",
+                      PhysicsConfiguration::HydroHeatduct);
+    acLogFromRootProc(pid, "PhysicsConfiguration::BoundTest = %i\n",
+                      PhysicsConfiguration::BoundTest);
+    return sim;
+}
+
+AcResult
+initialize_mesh(const AcMeshInfo info, const CommandLineArguments cmdline_args, int* start_step, AcReal* simulation_time)
+{
+
+    int pid;
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+    acLogFromRootProc(pid, "Initializing mesh\n");
+    switch (cmdline_args.initial_mesh_procedure) {
+    case InitialMeshProcedure::InitKernel: {
+        // Randomize
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+	AcKernel standalone_initcond_kernel = AC_NULL_KERNEL;
+	if(cmdline_args.initial_mesh_procedure_param)
+	{
+		for(int kernel = 0; kernel < NUM_KERNELS; ++kernel)
+			if(!strcmp(cmdline_args.initial_mesh_procedure_param,kernel_names[kernel]))
+				standalone_initcond_kernel = AcKernel(kernel);
+	}
+	if(standalone_initcond_kernel == AC_NULL_KERNEL)
+	{
+		if(cmdline_args.initial_mesh_procedure_param == NULL)
+		{
+			acLogFromRootProc(pid,"No initial condition or a snapshot from which to continue given!\n");
+			acLogFromRootProc(pid,"You can give the initial condition with --run-init-kernel <kernel_name>\n. For example you can try --run-init-kernel randomize\n");
+			acLogFromRootProc(pid,"To get more options run ./ac_run_mpi -h\n");
+		}
+		else
+		{
+			acLogFromRootProc(pid,"Did find Kernel %s for initializing mesh!\n",cmdline_args.initial_mesh_procedure_param);
+		}
+		exit(EXIT_FAILURE);
+	}
+	if(standalone_initcond_kernel == randomize)
+        	acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
+	else
+        	acLogFromRootProc(pid, "Initializing mesh with kernel %s\n",kernel_names[standalone_initcond_kernel]);
+	if(*start_step == -1)
+	{
+		*start_step = 0;
+        	acLogFromRootProc(pid, "AC_start_step was == -1; switched to 0\n");
+	}
+        acGridLaunchKernel(STREAM_DEFAULT, standalone_initcond_kernel, dims.n0, dims.n1);
+	acGridSynchronizeStream(STREAM_ALL);
+        acGridSwapBuffers();
+#if LBFIELD
+	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_bfield),1);
+#endif
+	acGridSynchronizeStream(STREAM_ALL);
+        //acLogFromRootProc(pid, "Communicating halos\n");
+        // MV: What if the boundary conditions are not periodic?
+        break;
+    }
+    // Creeates a kinetic kick as a system initial condition. Creatd as a demo
+    // case for invoking an alternative initial conditions via a DSL kernel.
+    case InitialMeshProcedure::InitHaatouken: {
+        // add a push in terms of a velocity
+        // field into the code creating a cone-like shock. Essentially
+        // "punching the air" to create a kinetic explosion.
+        acLogFromRootProc(pid, "HAATOUKEN!\n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        // Randomize the other vertex buffers for variety's sake.
+        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        // Ad haatouken!
+#if !LMULTIFLUID
+        acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
+#endif
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
+        // MV: What if the boundary conditions are not periodic?
+        break;
+    }
+    case InitialMeshProcedure::InitBoundTest: {
+        acLogFromRootProc(pid, "Boundary test \n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
+        //acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
+#if !LMULTIFLUID
+        acGridLaunchKernel(STREAM_DEFAULT, radial_vec_initcond, dims.n0, dims.n1);
+#endif
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
+        break;
+    }
+    case InitialMeshProcedure::LoadPC_Varfile: {
+        acLogFromRootProc(pid, "Reading mesh state from Pencil Code var file %s\n",
+                          cmdline_args.initial_mesh_procedure_param);
+        if (cmdline_args.initial_mesh_procedure_param == nullptr) {
+            acLogFromRootProc(pid, "Error: no file path given");
+            return AC_FAILURE;
+        }
+        read_varfile_to_mesh_and_setup(info, cmdline_args.initial_mesh_procedure_param);
+        acLogFromRootProc(pid, "Done reading Pencil Code var file\n");
+        break;
+    }
+    case InitialMeshProcedure::LoadDistributedSnapshot: {
+        acLogFromRootProc(pid, "Reading mesh file\n");
+        read_file_to_mesh_and_setup(cmdline_args.initial_mesh_procedure_param, start_step, simulation_time, true);
+        acLogFromRootProc(pid, "Done reading mesh file\n");
+        break;
+    }
+    /*
+    case InitialMeshProcedure::LoadDistributedSnapshot: {
+        acLogFromRootProc(pid, "Reading mesh state from distributed snapshot\n");
+        read_distributed_to_mesh_and_setup();
+        acLogFromRootProc(pid, "Done reading distributed snapshot\n");
+        break;
+    }
+    case InitialMeshProcedure::LoadMonolithicSnapshot: {
+        acLogFromRootProc(pid, "Reading mesh state monolithic snapshot\n");
+        read_collective_to_mesh_and_setup();
+        acLogFromRootProc(pid, "Done reading monolithic snapshot\n");
+        break;
+    }
+    */
+    case InitialMeshProcedure::LoadSnapshot: {
+        acLogFromRootProc(pid, "Reading mesh file\n");
+        read_file_to_mesh_and_setup(cmdline_args.initial_mesh_procedure_param, start_step, simulation_time, false);
+        acLogFromRootProc(pid, "Done reading mesh file\n");
+        break;
+    }
+    default:
+        fprintf(stderr, "Invalid initial_mesh_procedure %d passed to ac_run_mpi\n",
+                (int)cmdline_args.initial_mesh_procedure);
+        ERROR("Invalid initial_mesh_procedure");
+    }
+
+    acLogFromRootProc(pid, "Mesh initialization done\n");
+    return AC_SUCCESS;
+}
+
+int
+main(int argc, char** argv)
+{
+    // Use multi-threaded MPI
+    {
+
+	int thread_support_level{};
+    	int result   = MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
+        if (thread_support_level < MPI_THREAD_MULTIPLE || result != MPI_SUCCESS)
+	{
+        	MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        	return EXIT_FAILURE;
+	}
+    }
+    int nprocs, pid;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    CommandLineArguments cmdline_args{};
+
+    ERRCHK_ALWAYS(read_command_line_arguments(argc,argv,&cmdline_args) == AC_SUCCESS);
+
+    AcMeshInfo info = load_config_file(cmdline_args.config_path);
+#if AC_RUNTIME_COMPILATION
+    ac_runtime_compile(info);
+#endif
+
+    //////////////////////////////
+    // Output run configuration //
+    //////////////////////////////
+
+    if (pid == 0) {
+	output_config_info(&info);
     }
     // MPI_Barrier(acGridMPIComm()); // Ensure output directories are created before continuing
 
@@ -1111,180 +1325,17 @@ main(int argc, char** argv)
     ////////////////////////////////////////////////////
 
     acLogFromRootProc(pid, "Setting simulation program\n");
-    Simulation sim = GetSimulation(pid,simulation_physics);
-    acLogFromRootProc(pid, "simulation_physics = %i \n", simulation_physics);
+    Simulation sim = GetSimulation(pid,cmdline_args.simulation_physics);
+    acLogFromRootProc(pid, "simulation_physics = %i \n", cmdline_args.simulation_physics);
 
-    switch (simulation_physics) {
-    case PhysicsConfiguration::ShockSinglepass: {
-#if LSHOCK
-        sim = Simulation::Shock_Singlepass_Solve;
-        acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
-#endif
-        break;
-    }
-    case PhysicsConfiguration::BoundTest: {
-        sim = Simulation::Bound_Test_Solve;
-        acLogFromRootProc(pid, "PhysicsConfiguration BoundTest !\n");
-        break;
-    }
-    case PhysicsConfiguration::HydroHeatduct: {
-        sim = Simulation::Hydro_Heatduct_Solve;
-        acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
-        break;
-    }
-    default:
-        sim = Simulation::Default;
-        acLogFromRootProc(pid, "PhysicsConfiguration Default !\n");
-        break;
-    }
-
-    acLogFromRootProc(pid, "sim = %i \n", sim);
-    acLogFromRootProc(pid, "Simulation::Default = %i\n", Simulation::Default);
-    acLogFromRootProc(pid, "Simulation::Shock_Singlepass_Solve = %i\n",
-                      Simulation::Shock_Singlepass_Solve);
-    acLogFromRootProc(pid, "Simulation::Hydro_Heatduct_Solve = %i\n",
-                      Simulation::Hydro_Heatduct_Solve);
-    acLogFromRootProc(pid, "Simulation::Bound_Test_Solve = %i\n",
-                      Simulation::Bound_Test_Solve);
-    acLogFromRootProc(pid, "PhysicsConfiguration::Default = %i\n", PhysicsConfiguration::Default);
-    acLogFromRootProc(pid, "PhysicsConfiguration::ShockSinglepass = %i\n",
-                      PhysicsConfiguration::ShockSinglepass);
-    acLogFromRootProc(pid, "PhysicsConfiguration::HydroHeatduct = %i\n",
-                      PhysicsConfiguration::HydroHeatduct);
-    acLogFromRootProc(pid, "PhysicsConfiguration::BoundTest = %i\n",
-                      PhysicsConfiguration::BoundTest);
-
+    sim = choose_simulation_setup(cmdline_args.simulation_physics);
     log_simulation_choice(pid, sim);
-
-    // Load input data
 
     /////////////////////////////////////////////
     // Mesh initialization from file or kernel //
     /////////////////////////////////////////////
 
-    acLogFromRootProc(pid, "Initializing mesh\n");
-    switch (initial_mesh_procedure) {
-    case InitialMeshProcedure::InitKernel: {
-        // Randomize
-        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-	AcKernel standalone_initcond_kernel = AC_NULL_KERNEL;
-	if(initial_mesh_procedure_param)
-	{
-		for(int kernel = 0; kernel < NUM_KERNELS; ++kernel)
-			if(!strcmp(initial_mesh_procedure_param,kernel_names[kernel]))
-				standalone_initcond_kernel = AcKernel(kernel);
-	}
-	if(standalone_initcond_kernel == AC_NULL_KERNEL)
-	{
-		if(initial_mesh_procedure_param == NULL)
-		{
-			acLogFromRootProc(pid,"No initial condition or a snapshot from which to continue given!\n");
-			acLogFromRootProc(pid,"You can give the initial condition with --run-init-kernel <kernel_name>\n. For example you can try --run-init-kernel randomize\n");
-			acLogFromRootProc(pid,"To get more options run ./ac_run_mpi -h\n");
-		}
-		else
-		{
-			acLogFromRootProc(pid,"Did find Kernel %s for initializing mesh!\n",initial_mesh_procedure_param);
-		}
-		exit(EXIT_FAILURE);
-	}
-	if(standalone_initcond_kernel == randomize)
-        	acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
-	else
-        	acLogFromRootProc(pid, "Initializing mesh with kernel %s\n",kernel_names[standalone_initcond_kernel]);
-	if(start_step == -1)
-	{
-		start_step = 0;
-        	acLogFromRootProc(pid, "AC_start_step was == -1; switched to 0\n");
-	}
-        acGridLaunchKernel(STREAM_DEFAULT, standalone_initcond_kernel, dims.n0, dims.n1);
-	acGridSynchronizeStream(STREAM_ALL);
-        acGridSwapBuffers();
-#if LBFIELD
-	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_bfield),1);
-#endif
-	acGridSynchronizeStream(STREAM_ALL);
-        //acLogFromRootProc(pid, "Communicating halos\n");
-        // MV: What if the boundary conditions are not periodic?
-        break;
-    }
-    // Creeates a kinetic kick as a system initial condition. Creatd as a demo
-    // case for invoking an alternative initial conditions via a DSL kernel.
-    case InitialMeshProcedure::InitHaatouken: {
-        // add a push in terms of a velocity
-        // field into the code creating a cone-like shock. Essentially
-        // "punching the air" to create a kinetic explosion.
-        acLogFromRootProc(pid, "HAATOUKEN!\n");
-        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-        // Randomize the other vertex buffers for variety's sake.
-        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-        // Ad haatouken!
-#if !LMULTIFLUID
-        acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
-#endif
-        acGridSwapBuffers();
-        acLogFromRootProc(pid, "Communicating halos\n");
-        if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
-        // MV: What if the boundary conditions are not periodic?
-        break;
-    }
-    case InitialMeshProcedure::InitBoundTest: {
-        acLogFromRootProc(pid, "Boundary test \n");
-        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-        acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
-        //acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
-#if !LMULTIFLUID
-        acGridLaunchKernel(STREAM_DEFAULT, radial_vec_initcond, dims.n0, dims.n1);
-#endif
-        acGridSwapBuffers();
-        acLogFromRootProc(pid, "Communicating halos\n");
-        if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
-        break;
-    }
-    case InitialMeshProcedure::LoadPC_Varfile: {
-        acLogFromRootProc(pid, "Reading mesh state from Pencil Code var file %s\n",
-                          initial_mesh_procedure_param);
-        if (initial_mesh_procedure_param == nullptr) {
-            acLogFromRootProc(pid, "Error: no file path given");
-            return EXIT_FAILURE;
-        }
-        read_varfile_to_mesh_and_setup(info, initial_mesh_procedure_param);
-        acLogFromRootProc(pid, "Done reading Pencil Code var file\n");
-        break;
-    }
-    case InitialMeshProcedure::LoadDistributedSnapshot: {
-        acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time, true);
-        acLogFromRootProc(pid, "Done reading mesh file\n");
-        break;
-    }
-    /*
-    case InitialMeshProcedure::LoadDistributedSnapshot: {
-        acLogFromRootProc(pid, "Reading mesh state from distributed snapshot\n");
-        read_distributed_to_mesh_and_setup();
-        acLogFromRootProc(pid, "Done reading distributed snapshot\n");
-        break;
-    }
-    case InitialMeshProcedure::LoadMonolithicSnapshot: {
-        acLogFromRootProc(pid, "Reading mesh state monolithic snapshot\n");
-        read_collective_to_mesh_and_setup();
-        acLogFromRootProc(pid, "Done reading monolithic snapshot\n");
-        break;
-    }
-    */
-    case InitialMeshProcedure::LoadSnapshot: {
-        acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time, false);
-        acLogFromRootProc(pid, "Done reading mesh file\n");
-        break;
-    }
-    default:
-        fprintf(stderr, "Invalid initial_mesh_procedure %d passed to ac_run_mpi\n",
-                (int)initial_mesh_procedure);
-        ERROR("Invalid initial_mesh_procedure");
-    }
-
-    acLogFromRootProc(pid, "Mesh initialization done\n");
+    ERRCHK_ALWAYS(initialize_mesh(info,cmdline_args,&start_step,&simulation_time) == AC_SUCCESS);
 
 
     ////////////////////////////////////////////////////////
@@ -1669,7 +1720,7 @@ main(int argc, char** argv)
                     log_from_root_proc_with_sim_progress(pid, "Synchronizing procs\n");
                     MPI_Barrier(acGridMPIComm());
                     log_from_root_proc_with_sim_progress(pid, "Reloading config file\n");
-                    acLoadConfig(config_path, &new_info);
+                    acLoadConfig(cmdline_args.config_path, &new_info);
 		    acHostUpdateParams(&new_info);
 
                     // TODO: refactor this big mess of runtime checks into a function that returns a
