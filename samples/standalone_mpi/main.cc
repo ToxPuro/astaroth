@@ -1264,9 +1264,7 @@ main(int argc, char** argv)
     ERRCHK_ALWAYS(read_command_line_arguments(argc,argv,&cmdline_args) == AC_SUCCESS);
 
     AcMeshInfo info = load_config_file(cmdline_args.config_path);
-#if AC_RUNTIME_COMPILATION
-    ac_runtime_compile(info);
-#endif
+    if(AC_RUNTIME_COMPILATION) ac_runtime_compile(info);
 
     //////////////////////////////
     // Output run configuration //

@@ -11,7 +11,12 @@ if (NOT DEFINED AC_STENCIL_ORDER)
   set(AC_STENCIL_ORDER -1)
 endif()
 
-add_library(acc_runtime_compiler OBJECT compiler.cpp)
+if(RUNTIME_COMPILATION)
+  add_library(acc_runtime_compiler OBJECT compiler.cpp)
+else()
+  add_library(acc_runtime_compiler OBJECT nocompiler.cpp)
+endif()
+
 target_compile_definitions(acc_runtime_compiler PRIVATE -DAC_STENCIL_ORDER=${AC_STENCIL_ORDER})
 target_link_libraries(acc_runtime_compiler PRIVATE acc-runtime-headers)
 target_include_directories(acc_runtime_compiler PUBLIC ${AC_BASE_PATH}/include)

@@ -268,11 +268,8 @@ if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
 
-if (RUNTIME_COMPILATION)
-	add_subdirectory(runtime_compilation)
-endif()
-
-## Have this as a separate option when no other "samples" aree needed.
+add_subdirectory(runtime_compilation)
+## Have this as a separate option when no other "samples" are needed.
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
 if (BUILD_STANDALONE AND NOT BUILD_TESTS)
     add_subdirectory(samples/standalone_mpi)

@@ -724,6 +724,9 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
 	return  (success_closing_ac_lib || success_closing_kernels_lib || success_closing_utils_lib) == 0 ? AC_SUCCESS : AC_FAILURE;
   }
+#else
+  static AcResult __attribute__((unused)) acLoadLibrary(FILE*, const AcMeshInfo) {return AC_FAILURE;}
+  static AcResult __attribute__((unused)) acCloseLibrary() {return AC_FAILURE;}
 #endif
 
 /** Inits the profile to cosine wave */
@@ -1340,9 +1343,7 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start
 #endif
 #endif
 
-#if AC_RUNTIME_COMPILATION
 #include "astaroth_runtime_compilation.h"
-#endif
 
 #ifdef __cplusplus
 #include <type_traits>

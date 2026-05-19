@@ -14,6 +14,6 @@
 //  typedef void* AcLibHandle;
 //#endif
 typedef void* AcLibHandle;
-static AcLibHandle astarothLibHandle=NULL, kernelsLibHandle=NULL, utilsLibHandle=NULL;
+static AcLibHandle UNUSED astarothLibHandle=NULL, kernelsLibHandle=NULL, utilsLibHandle=NULL;
 
 #endif
