@@ -354,13 +354,13 @@ run_const bool AC_shear = false;
 /**
  * Option to use GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory
  */
-run_const bool AC_use_cuda_aware_mpi = true;
+bool AC_use_cuda_aware_mpi = true;
 /**
  * Option to use GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory for profile reductions (all reduce).
  * Different flag from the normal one since MPI_Iallreduce seems to break at larger data sizes! That is also why it is false by default
  *
  */
-run_const bool AC_use_cuda_aware_mpi_for_profile_reductions  = false;
+bool AC_use_cuda_aware_mpi_for_profile_reductions  = false;
 /**
  * Background shear flow stored on the host.
  * Used in the shear-periodic boundary conditions in x.
