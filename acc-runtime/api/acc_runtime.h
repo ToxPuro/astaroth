@@ -71,6 +71,12 @@
 #define MAYBE_UNUSED
 #endif
 
+#include "user_defines.h"
+#include "profiles_info.h"
+#include "user_built-in_constants.h"
+//#include "user_builtin_non_scalar_constants.h"
+#include "func_attributes.h"
+
 static UNUSED void ac_library_not_yet_loaded()
 {
 	fprintf(stderr,"This function needs Astaroth to be loaded via acLoadLibrary before calling it!\n");
