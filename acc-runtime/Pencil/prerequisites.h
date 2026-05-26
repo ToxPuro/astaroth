@@ -13,6 +13,6 @@
 #include "../../../DSL/phys_consts.h"
 #include "PC_modulepardecs.h"
 #if LFORCING
-  #include "../../../DSL/forcing/pcstyleforcing.h"
+#include "../../../DSL/forcing/pcstyleforcing.h"
 #endif
 #include "equations.h"

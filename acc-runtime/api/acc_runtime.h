@@ -99,63 +99,62 @@ typedef struct
 	const char* name;
 } AcReduction;
 
-  #define NUM_REDUCE_SCRATCHPADS (2)
+#define NUM_REDUCE_SCRATCHPADS (2)
 
 
-  typedef struct {
-    Volume nn;
-    AcReal3 lengths;
-  } AcGridInfo;
+typedef struct {
+  Volume nn;
+  AcReal3 lengths;
+} AcGridInfo;
 
 
-  typedef struct {
+typedef struct {
 #include "output_decl.h"
-  } AcDeviceKernelOutput;
+} AcDeviceKernelOutput;
 
 
-  typedef struct AcCompInfoLoaded {
+typedef struct AcCompInfoLoaded {
 #include "comp_loaded_decl.h"
 #ifdef __cplusplus
 #include "loaded_info_access_operators.h"
 #endif
-  } AcCompInfoLoaded;
+} AcCompInfoLoaded;
 
-  typedef struct AcCompInfoHasDefaultValue {
+typedef struct AcCompInfoHasDefaultValue {
 #include "comp_loaded_decl.h"
 #ifdef __cplusplus
 #include "loaded_info_access_operators.h"
 #endif
-  } AcCompInfoHasDefaultValue;
+} AcCompInfoHasDefaultValue;
 
-  typedef struct AcCompInfoConfig{
+typedef struct AcCompInfoConfig{
 #include "comp_decl.h"
 #ifdef __cplusplus
 #include "comp_info_access_operators.h"
 #endif
-  } AcCompInfoConfig;
+} AcCompInfoConfig;
 
-  typedef struct {
+typedef struct {
 	  AcCompInfoConfig config;
 	  AcCompInfoLoaded is_loaded;
 	  AcCompInfoHasDefaultValue has_default_value;
-  } AcCompInfo;
+} AcCompInfo;
 
-  typedef struct AcMeshInfoLoaded {
+typedef struct AcMeshInfoLoaded {
 #include "info_loaded_decl.h"
 
 #ifdef __cplusplus
 #include "info_loaded_operator_decl.h"
 #endif
-  } AcMeshInfoLoadedInfo;
+} AcMeshInfoLoadedInfo;
 
 
-  typedef struct AcMeshInfoScalars
-  {
+typedef struct AcMeshInfoScalars {
 #include "device_mesh_info_decl.h"
-  } AcMeshInfoScalars;
+} AcMeshInfoScalars;
 
 
-  typedef struct AcMeshInfo{
+typedef struct AcMeshInfo {
 
 #include "device_mesh_info_decl.h"
 #include "array_decl.h"
@@ -173,22 +172,18 @@ typedef struct
 #ifdef __cplusplus
 #include "info_access_operators.h"
 #endif
-  } AcMeshInfo;
+} AcMeshInfo;
 
-
-
-  typedef struct {
+typedef struct {
 #include "input_decl.h"
-  } AcInputs;
+} AcInputs;
 
 typedef struct {
   AcReal* in[NUM_PROFILES+1];
   AcReal* out[NUM_PROFILES+1];
 } ProfileBufferArray;
 
-
-
-  typedef struct {
+typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
     float*  single_in[NUM_VTXBUF_HANDLES];
@@ -205,27 +200,25 @@ typedef struct {
     int reduce_offset;
     ProfileBufferArray profiles;
     int3 block_factor;
-  } DeviceVertexBufferArray;
+} DeviceVertexBufferArray;
 
-  typedef struct
-  {
+typedef struct {
   	AcReduceOp reals[NUM_REAL_SCRATCHPADS+1];	
   	AcReduceOp ints[NUM_INT_OUTPUTS+1];	
 #if AC_DOUBLE_PRECISION
   	AcReduceOp floats[NUM_FLOAT_OUTPUTS+1];	
 #endif
-  } AcScratchpadStates;
+} AcScratchpadStates;
 
-  typedef struct 
-  {
+typedef struct {
 	  AcBuffer src;
 	  AcBuffer transposed;
 	  AcMeshOrder mem_order;
 	  AcReal** cub_tmp;
 	  size_t* cub_tmp_size;
-  } AcReduceBuffer;
+} AcReduceBuffer;
 
-  typedef struct {
+typedef struct {
     //Auxiliary metadata
     size_t counts[NUM_ALL_FIELDS];
     size_t bytes[NUM_ALL_FIELDS];
@@ -242,10 +235,9 @@ typedef struct {
     AcScratchpadStates* scratchpad_states;
     AcReduceBuffer profile_reduce_buffers[NUM_PROFILES+1];
 
-  } VertexBufferArray;
+} VertexBufferArray;
 
-typedef struct
-{
+typedef struct {
         float time;
         dim3 tpb;
 } AcAutotuneMeasurement;
