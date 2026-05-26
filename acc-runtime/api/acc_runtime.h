@@ -42,11 +42,11 @@
 #define CONSTEXPR
 #define MAYBE_UNUSED
 #endif
-  #include "user_defines.h"
-  #include "profiles_info.h"
-  #include "user_built-in_constants.h"
-  //#include "user_builtin_non_scalar_constants.h"
-  #include "func_attributes.h"
+#include "user_defines.h"
+#include "profiles_info.h"
+#include "user_built-in_constants.h"
+//#include "user_builtin_non_scalar_constants.h"
+#include "func_attributes.h"
 
 static UNUSED void ac_library_not_yet_loaded()
 {
@@ -82,10 +82,10 @@ typedef struct
 	const char* name;
 } AcReduction;
 
-  #include "user_input_typedefs.h"
+#include "user_input_typedefs.h"
 
 #if AC_RUNTIME_COMPILATION
-  #include <dlfcn.h>
+#include <dlfcn.h>
 #endif
 
   #define NUM_REDUCE_SCRATCHPADS (2)

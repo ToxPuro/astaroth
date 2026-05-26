@@ -24,7 +24,7 @@
 #endif
 
 #if AC_RUNTIME_COMPILATION
-  #include <dlfcn.h>
+#include <dlfcn.h>
 #endif
 
 #include "acc_runtime.h"
