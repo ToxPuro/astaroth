@@ -77,6 +77,7 @@ print_warp_reduce_func(const char* datatype, const char* define_name, const Redu
 #define ONE_DIMENSIONAL_PROFILE (1 << 20)
 #define TWO_DIMENSIONAL_PROFILE (1 << 21)
 typedef enum {
+	PROFILE_NONE = 0,
 	PROFILE_X  = (1 << 0) | ONE_DIMENSIONAL_PROFILE,
 	PROFILE_Y  = (1 << 1) | ONE_DIMENSIONAL_PROFILE,
 	PROFILE_Z  = (1 << 2) | ONE_DIMENSIONAL_PROFILE,
