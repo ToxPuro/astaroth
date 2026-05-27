@@ -622,10 +622,10 @@ get_d_mesh_info()
 
 
 	{
-		#include "kernel_user_built-in_constants.h"
-		#include "kernel_user_builtin_non_scalar_constants.h"
-    		#include "kernel_user_constants.h"
-    		#include "user_config_loader.h"
+		#include "kernel_user_built-in_constants.inc"
+		#include "kernel_user_builtin_non_scalar_constants.inc"
+    		#include "kernel_user_constants.inc"
+    		#include "user_config_loader.inc"
 	}
 #endif
 }
@@ -1419,7 +1419,7 @@ main(int argc, char* argv[])
   fclose(fp);
 
 
-#include "arrays_output_accesses.h"
+#include "arrays_output_accesses.inc"
   fprintf(stderr,"Generated stencil accesses\n");
   return EXIT_SUCCESS;
 }

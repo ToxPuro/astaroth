@@ -44,9 +44,10 @@
 #endif
 #include "user_defines.h"
 #include "profiles_info.h"
-#include "user_built-in_constants.h"
-//#include "user_builtin_non_scalar_constants.h"
 #include "func_attributes.h"
+
+#include "user_built-in_constants.inc"
+//#include "user_builtin_non_scalar_constants.inc"
 
 static UNUSED void ac_library_not_yet_loaded()
 {
@@ -98,28 +99,28 @@ typedef struct
 
 
   typedef struct {
-#include "output_decl.h"
+#include "output_decl.inc"
   } AcDeviceKernelOutput;
 
 
   typedef struct AcCompInfoLoaded {
-#include "comp_loaded_decl.h"
+#include "comp_loaded_decl.inc"
 #ifdef __cplusplus
-#include "loaded_info_access_operators.h"
+#include "loaded_info_access_operators.inc"
 #endif
   } AcCompInfoLoaded;
 
   typedef struct AcCompInfoHasDefaultValue {
-#include "comp_loaded_decl.h"
+#include "comp_loaded_decl.inc"
 #ifdef __cplusplus
-#include "loaded_info_access_operators.h"
+#include "loaded_info_access_operators.inc"
 #endif
   } AcCompInfoHasDefaultValue;
 
   typedef struct AcCompInfoConfig{
-#include "comp_decl.h"
+#include "comp_decl.inc"
 #ifdef __cplusplus
-#include "comp_info_access_operators.h"
+#include "comp_info_access_operators.inc"
 #endif
   } AcCompInfoConfig;
 
@@ -136,24 +137,24 @@ typedef struct
 #endif
 
   typedef struct AcMeshInfoLoaded {
-#include "info_loaded_decl.h"
+#include "info_loaded_decl.inc"
 
 #ifdef __cplusplus
-#include "info_loaded_operator_decl.h"
+#include "info_loaded_operator_decl.inc"
 #endif
   } AcMeshInfoLoadedInfo;
 
 
   typedef struct AcMeshInfoScalars
   {
-#include "device_mesh_info_decl.h"
+#include "device_mesh_info_decl.inc"
   } AcMeshInfoScalars;
 
 
   typedef struct AcMeshInfo{
 
-#include "device_mesh_info_decl.h"
-#include "array_decl.h"
+#include "device_mesh_info_decl.inc"
+#include "array_decl.inc"
 
   AcMeshInfoLoadedInfo is_loaded;
   const char* runtime_compilation_log_dst;
@@ -164,7 +165,7 @@ typedef struct
   bool runtime_compilation_skip_autotuning;
   AcCommunicator* comm;
 #ifdef __cplusplus
-#include "info_access_operators.h"
+#include "info_access_operators.inc"
 #endif
 
     AcCompInfo run_consts;
@@ -173,7 +174,7 @@ typedef struct
 
 
   typedef struct {
-#include "input_decl.h"
+#include "input_decl.inc"
   } AcInputs;
 
 typedef struct {
@@ -237,7 +238,7 @@ typedef struct {
     DeviceVertexBufferArray on_device;
     size_t profile_count;
 
-#include "scalar_reduce_buffers_in_vba.h"
+#include "scalar_reduce_buffers_in_vba.inc"
 
     AcScratchpadStates* scratchpad_states;
     AcReduceBuffer profile_reduce_buffers[NUM_PROFILES+1];
@@ -470,7 +471,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   constexpr static array_info
   get_array_info(const P array)
   {
-#include "get_array_info.h"
+#include "get_array_info.inc"
 	  ERRCHK_ALWAYS(false); //did not find array info
 	  return (array_info){};
   }
@@ -520,7 +521,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   constexpr const char*
   get_param_name(const P param)
   {
-#include "get_param_name.h"
+#include "get_param_name.inc"
 	  //ERRCHK_ALWAYS(false); //did not find name
 	  return "NOT FOUND!";
   }
@@ -670,7 +671,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   get_num_params()
   {
 	  const int res=
-#include "get_num_params.h"
+#include "get_num_params.inc"
 		  -1;
 	  static_assert(res >= 0);
 	  return res;
@@ -719,7 +720,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   get_empty_pointer(const P param)
   {
    (void)param;
-#include "get_empty_pointer.h"
+#include "get_empty_pointer.inc"
   }	  
 
   
@@ -749,23 +750,23 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 
 
   using AcScalarTypes = ForEach<
-#include "scalar_types.h"
+#include "scalar_types.inc"
   AcIntParam
   >;
 
   using AcScalarCompTypes = ForEach<
-#include "scalar_comp_types.h"
+#include "scalar_comp_types.inc"
   AcIntCompParam
   >;
   
 
   using AcArrayTypes = ForEach<
-#include "array_types.h"
+#include "array_types.inc"
   AcIntArrayParam
   >;
 
   using AcArrayCompTypes = ForEach<
-#include "array_comp_types.h"
+#include "array_comp_types.inc"
   AcIntCompArrayParam
   >;
 

@@ -419,7 +419,7 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 	{
 		return device->local_config[param];
 	};
-	#include "coeffs.h"
+	#include "coeffs.inc"
 	for(int stencil=0;stencil<NUM_STENCILS;stencil++)
 	{
 	        for(int x = 0; x<STENCIL_WIDTH; ++x)

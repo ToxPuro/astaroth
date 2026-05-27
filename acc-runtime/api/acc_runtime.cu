@@ -529,8 +529,8 @@ ac_is_global(const AcRealOutputParam& param)
 #undef size
 #undef longlong
 
-#include "user_built-in_constants.h"
-#include "user_builtin_non_scalar_constants.h"
+#include "user_built-in_constants.inc"
+#include "user_builtin_non_scalar_constants.inc"
 
 bool
 acRuntimeIsInitialized() { return initialized; }

@@ -5,7 +5,7 @@ template <typename P>
 auto
 get_default_value()
 {
-#include"get_default_value.h"
+#include"get_default_value.inc"
 }
 
 template <typename V>

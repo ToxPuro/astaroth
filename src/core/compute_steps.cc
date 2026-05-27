@@ -298,7 +298,7 @@ get_loader(const int graph, const int call_index)
 void
 call_all_user_loaders(ParamLoadingInfo p)
 {
-	#include "call_all_user_loaders.h"
+	#include "call_all_user_loaders.inc"
 	AC_INTERNAL_empty_loader(p);
 }
 **/
