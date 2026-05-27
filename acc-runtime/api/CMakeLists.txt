@@ -82,7 +82,7 @@ if (NOT RUNTIME_COMPILATION)
 	                "user_taskgraphs.h"
 	                "user_loaders.h"
 	                "stencilgen.h"
-			"coeffs.h"
+	                "coeffs.inc"
 			)
 else()
 	set(DSL_HEADERS 

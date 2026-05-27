@@ -169,7 +169,7 @@ gen_stencil_definitions(void)
       printf("},");
     }
     printf("};");
-  FILE* stencil_coeffs_file= fopen("coeffs.h", "w");
+  FILE* stencil_coeffs_file= fopen("coeffs.inc", "w");
   fprintf(stencil_coeffs_file,
       "AcReal "
       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
@@ -437,7 +437,7 @@ gen_kernel_block_loops(const int curr_kernel)
 {
   printf(
 	"#include \"kernel_user_non_scalar_constants.h\"\n"
-	"#include \"kernel_user_builtin_non_scalar_constants.h\"\n"
+	"#include \"kernel_user_builtin_non_scalar_constants.inc\"\n"
 	 );
   if (AC_CPU_BUILD)
   {

@@ -25,12 +25,13 @@
  *
  */
 #include "astaroth.h"
-#include "user_builtin_non_scalar_constants.h"
 #include "astaroth_utils.h"
 
 #include <math.h>
 
 #include "errchk.h"
+
+#include "user_builtin_non_scalar_constants.inc"
 
 #if AC_DOUBLE_PRECISION == 0 // HACK TODO fix, make cleaner (purkkaratkaisu)
 #define fabs fabsf

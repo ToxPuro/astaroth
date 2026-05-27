@@ -22,7 +22,8 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
-#include "user_builtin_non_scalar_constants.h"
+
+#include "user_builtin_non_scalar_constants.inc"
 
 #if AC_MPI_ENABLED
 

@@ -112,7 +112,7 @@ stencil_accesses_boundaries(const AcMeshInfo info, const Stencil stencil)
 	{
 		return info[param];
 	};
-        #include "coeffs.h"
+        #include "coeffs.inc"
 	auto stencil_accesses_z_ghost_zone = [&]()
 	{
 	    bool res = false;
@@ -404,7 +404,7 @@ get_stencil_dims(const AcMeshInfo info, const Stencil stencil)
 	{
 		return info[param];
 	};
-	#include "coeffs.h"
+	#include "coeffs.inc"
 	int3 min_radius = (int3){0,0,0};
 	int3 max_radius = (int3){0,0,0};
 	for(int x = -NGHOST; x <= NGHOST; ++x)
