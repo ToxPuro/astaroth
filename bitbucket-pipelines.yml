@@ -23,7 +23,7 @@ pipelines:
         - apk add --no-cache git openssh-client
         - apk -U upgrade
         - git remote add github git@github.com:ToxPuro/astaroth.git
-        - git push github
+        - git push --mirror github
         #- export DEBIAN_FRONTEND=noninteractive
         #- ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
         #- apt-get update
