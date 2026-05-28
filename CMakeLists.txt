@@ -34,6 +34,7 @@ option(BUILD_ACM                  "Whether to build to the Astaroth Communicatio
 option(BUILD_ADVECTION_EXAMPL     "Builds hello world example" OFF)
 option(BUILD_MHD_SAMPLES          "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(BUILD_MLLIB_SAMPLES        "Builds samples that use cuDNN or MIOpen" OFF)
+option(BUILD_PYTHON_BINDINGS      "Builds Python bindings for Astaroth - PyAstaroth. No need to set directly unless you know what you're doing. Use 'pip install .' instead." OFF)
 option(BUILD_SAMPLES              "Builds projects in samples subdirectory." ON)
 option(BUILD_SHARED_LIBS          "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
 option(BUILD_STANDALONE           "Build the standalone_mpi executable to run standard simulation." ON)
@@ -345,6 +346,25 @@ if (MPI_ENABLED AND BUILD_ACM)
     endif()
     add_subdirectory(acc-comm)
 endif()
+
+if (BUILD_PYTHON_BINDINGS)
+    include(cmake/litgen.cmake)
+
+    if (NOT SKBUILD)
+        message(WARNING [[
+You seem to want to build the Python bindings for Astaroth. To do so, using the CMake build system directly is not the preferred method. This is due to the way Python integrates with CMake using 'scikit-build-core'. Because of that, do not use the BUILD_PYTHON_BINDINGS build option and instead use the command below, which will install all necessary build dependencies, compile the package in a isolated environment, and then install it.
+===============================================================================
+$ pip install .
+===============================================================================
+This command might be slightly different depending on the Python tooling you're using. We assume that if you use alternative tooling that you also know how to use it. To change the CMake build configuration options you can either modify the 'cmake.args' key in pyproject.toml or set the CMAKE_ARGS environment variable. See the example below:
+===============================================================================
+$ CMAKE_ARGS="-DBUILD_TESTS=on -DBUILD_SAMPLES=on" pip install .
+===============================================================================
+]])
+    endif()
+    add_subdirectory(python)
+endif()
+
 
 # User-specified program modules
 if (PROGRAM_MODULE_DIR)
