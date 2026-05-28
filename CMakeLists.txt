@@ -1,11 +1,24 @@
 ## CMake settings
 # V3.9 required for first-class CUDA support
+# V3.15 required for scikit-build-core (Python bindings)
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 # V3.21 required for first-class HIP support
 # V3.23 required for 'all-major' CUDA_ARCHITECTURES
 # V3.24 required for native CUDA architecture support
 cmake_minimum_required(VERSION 3.24)
+
+function(ac_link_mpi target)
+    if (MPI_ENABLED)
+        set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
+        find_package(MPI REQUIRED COMPONENTS C)
+        target_link_libraries(${target} PUBLIC MPI::MPI_C)
+        target_include_directories(${target} PUBLIC ${MPI_INCLUDE_PATH})
+    endif()
+endfunction()
+
+include(cmake/litgen.cmake)
+include(cmake/PyAstaroth.cmake)
 
 ## Project settings
 project(astaroth)
@@ -210,15 +223,6 @@ macro(update_compiler_definition_values)
         add_definitions(-DAC_CPU_BUILD=0)
     endif()
 endmacro()
-
-function(ac_link_mpi target)
-    if (MPI_ENABLED)
-        set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
-        find_package(MPI REQUIRED COMPONENTS C)
-        target_link_libraries(${target} PUBLIC MPI::MPI_C)
-        target_include_directories(${target} PUBLIC ${MPI_INCLUDE_PATH})
-    endif()
-endfunction()
 
 if (NOT BUILD_TEST STREQUAL ${BUILD_TEST_DISABLED} AND NOT BUILD_SAMPLE STREQUAL ${BUILD_SAMPLE_DISABLED})
     message(WARNING "VALUES ${BUILD_TEST} and ${BUILD_SAMPLE}")
