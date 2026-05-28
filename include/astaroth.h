@@ -31,10 +31,8 @@
 #include "astaroth_device.h"
 // The device headers are not needed for interfacing with Astaroth
 #include "astaroth_device_headers.h"
-#include "astaroth_grid.h"
 #include "astaroth_helpers.h"
 #include "astaroth_legacy.h"
-#include "astaroth_node.h"
 #include "astaroth_runtime_compilation.h"
 #include "builtin_enums.h"
 #include "errchk.h"
@@ -47,6 +45,14 @@
 
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
+#endif
+
+// The Python bindings unlike the C/C++ API separate the headers into separate modules for which the
+// bindings are generated using a generator. To help with the modularization the "modules" will only be included in the
+// main 'astaroth.h' header file when not building the Python bindings.
+#ifndef AC_BUILD_PYTHON_BINDINGS
+#include "astaroth_grid.h"
+#include "astaroth_node.h"
 #endif
 
 AC_BEGIN_C_DECLARATIONS

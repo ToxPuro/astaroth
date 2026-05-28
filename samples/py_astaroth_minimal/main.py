@@ -1,4 +1,6 @@
+import sys
 import numpy as np
+import pyastaroth as ac
 
 
 def main():
@@ -9,6 +11,8 @@ def main():
     # ------------------------------------------------------------------
     # 1. Load config
     # ------------------------------------------------------------------
+    info = ac.init_info()
+    res = ac.load_config("config/astaroth.conf", info)
 
     # ------------------------------------------------------------------
     # 2. Create device
