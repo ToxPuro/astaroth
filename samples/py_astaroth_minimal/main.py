@@ -12,7 +12,7 @@ def main():
     # 1. Load config
     # ------------------------------------------------------------------
     info = ac.init_info()
-    res = ac.load_config("config/astaroth.conf", info)
+    # res = ac.load_config("config/astaroth.conf", info)
 
     # ------------------------------------------------------------------
     # 2. Create device

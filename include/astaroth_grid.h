@@ -1,9 +1,14 @@
 #pragma once
+
+#include "func_define.h"
+
 #ifndef UNUSED
 #define UNUSED __attribute__((unused)) // Does not give a warning if unused
 #endif
 
 #if AC_MPI_ENABLED
+
+AC_BEGIN_C_DECLARATIONS
 
 /**
 Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color =
@@ -58,6 +63,8 @@ Devices in the grid are configured based on the contents of AcMesh.
  */
 
 FUNC_DEFINE(AcResult, acGridInitBase, (const AcMesh mesh));
+
+
 static AcResult UNUSED 
 acGridInit(const AcMeshInfo info)
 {
@@ -329,6 +336,8 @@ typedef struct AcTaskDefinition {
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
  * operations.*/
 typedef struct AcTaskGraph AcTaskGraph;
+
+AC_END_C_DECLARATIONS
 
 #if __cplusplus
 using KernelParamsLoader = std::function<void(ParamLoadingInfo step_info)>;

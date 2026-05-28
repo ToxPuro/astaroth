@@ -139,18 +139,6 @@ set_info_val(AcMeshInfo& info, const AcInt3Param param, const int3 value)
 static inline void UNUSED
 set_info_val(AcMeshInfo& , const int3 , const int3 ){}
 
-struct node_s {
-    int id;
-
-    int num_devices;
-    Device devices[MAX_NUM_DEVICES];
-
-    GridDims grid;
-    GridDims subgrid;
-
-    AcMeshInfo config;
-};
-
 static int
 gridIdx(const GridDims grid, const Volume idx)
 {

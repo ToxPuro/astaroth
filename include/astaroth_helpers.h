@@ -295,3 +295,93 @@ acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
     printf("{%s: (%d, %d, %d)}\n", int3param_names[a], vec.x, vec.y, vec.z);
 }
 
+#ifdef __cplusplus
+
+FUNC_DEFINE(AcReal*, acHostCreateVertexBufferVariable,(const AcMeshInfo info, const VertexBufferHandle vtxbuf));
+
+static inline size_t
+acVertexBufferSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return acVertexBufferVariableSize(info,vtxbuf);
+}
+static inline AcReal*
+acHostCreateVertexBuffer(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return acHostCreateVertexBufferVariable(info,vtxbuf);
+}
+
+static inline AcMeshDims
+acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+   #include "user_builtin_non_scalar_constants.inc"
+   const int3 halos = acGetFieldHalos(info,vtxbuf);
+   const Volume n0 = 
+          (Volume)
+          {
+                  as_size_t(halos.x),
+                  as_size_t(halos.y),
+                  as_size_t(halos.z)
+          };
+   const Volume m1 = 
+	   (Volume){
+		as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].x),
+		as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].y),
+		as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].z)
+	   };
+   const Volume n1 = 
+	   (Volume)
+	   {
+	   	m1.x-n0.x,
+	   	m1.y-n0.y,
+	   	m1.z-n0.z,
+	   };
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume nn = 
+	   (Volume)
+	   {
+	   	m1.x-2*n0.x,
+	   	m1.y-2*n0.y,
+	   	m1.z-2*n0.z,
+	   };
+   const Volume reduction_tile = (Volume)
+   {
+           as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+           as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+           as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
+   };
+
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+       .reduction_tile = reduction_tile,
+   };
+}
+
+static inline size_t
+acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return acVertexBufferIdxVariable(i,j,k,info,vtxbuf);
+}
+
+static inline Volume 
+acVertexBufferDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return acVertexBufferDimsVariable(info,vtxbuf);
+}
+
+static inline size_t
+acVertexBufferSizeBytes(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return acVertexBufferSizeBytesVariable(info,vtxbuf);
+}
+
+static inline size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf) {return acVertexBufferCompdomainSizeVariable(info,vtxbuf);}
+
+static inline size_t
+acVertexBufferCompdomainSizeBytes(const AcMeshInfo info, const VertexBufferHandle vtxbuf) {return  acVertexBufferCompdomainSizeBytesVariable(info,vtxbuf); }
+
+#endif

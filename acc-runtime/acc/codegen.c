@@ -1954,7 +1954,7 @@ gen_datatype_enums(FILE* fp, const char* datatype_scalar)
   counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
      counter  += (symbol_table[i].tspecifier == datatype_arr&& str_vec_contains(symbol_table[i].tqualifiers,CONST_STR));
-  fprintf(fp, "#define NUM_%s_ARR_CONSTS (%d)\n",strupr(convert_to_define_name(datatype_scalar)),counter);
+  fprintf(fp, "#define NUM_%s_ARR_CONSTS %d\n",strupr(convert_to_define_name(datatype_scalar)),counter);
 
   const char* uppr = strupr(convert_to_define_name(datatype_scalar));
   counter = 0;
@@ -1962,12 +1962,12 @@ gen_datatype_enums(FILE* fp, const char* datatype_scalar)
   {
      counter  += (symbol_table[i].tspecifier == datatype_scalar && symbol_table[i].type == NODE_VARIABLE_ID);
   }
-  fprintf(fp,"#define MAX_NUM_%s_COMP_PARAMS (%d)\n",uppr,counter);
+  fprintf(fp,"#define MAX_NUM_%s_COMP_PARAMS %d\n",uppr,counter);
   counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
      counter  += (symbol_table[i].tspecifier == datatype_arr && symbol_table[i].type == NODE_VARIABLE_ID);
 
-  fprintf(fp,"#define MAX_NUM_%s_COMP_ARRAYS (%d)\n",uppr,counter);
+  fprintf(fp,"#define MAX_NUM_%s_COMP_ARRAYS %d\n",uppr,counter);
 }
 void
 gen_param_names(FILE* fp, const char* datatype_scalar, const char* place_attribute)

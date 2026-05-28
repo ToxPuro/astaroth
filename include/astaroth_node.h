@@ -1,9 +1,34 @@
 #pragma once
+
+#include "acc_runtime.h"
+#include "astaroth_base.h"
+#include "func_define.h"
+#include "host_datatypes.h"
+
+#ifndef UNUSED
+#define UNUSED __attribute__((unused)) // Does not give a warning if unused
+#endif
+
 /*
  * =============================================================================
  * Node interface
  * =============================================================================
  */
+
+AC_BEGIN_C_DECLARATIONS
+
+struct node_s {
+    int id;
+
+    int num_devices;
+    Device devices[32];
+
+    GridDims grid;
+    GridDims subgrid;
+
+    AcMeshInfo config;
+};
+
 /**
 Initializes all devices on the current node.
 
@@ -162,3 +187,4 @@ FUNC_DEFINE(AcResult, acNodeLoadPlateXcomp,(const Node node, const Stream stream
 FUNC_DEFINE(AcResult, acNodeGetVBApointers,(Node* node_handle, AcReal *vbapointer[2]));
 #endif
 
+AC_END_C_DECLARATIONS

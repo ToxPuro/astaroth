@@ -164,11 +164,11 @@ typedef struct
   bool runtime_compilation_skip_make_if_nothing_has_changed;
   bool runtime_compilation_skip_autotuning;
   AcCommunicator* comm;
+  AcCompInfo run_consts;
+
 #ifdef __cplusplus
 #include "info_access_operators.inc"
 #endif
-
-    AcCompInfo run_consts;
   } AcMeshInfo;
 
 
