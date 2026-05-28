@@ -1,3 +1,55 @@
+[project]
+name = "pyastaroth"
+version = "2026.0"
+description = "Python bindings for Astaroth."
+authors = [
+    { name = "Ondřej Míchal", email = "harrymichal@seznam.cz" }
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "mpi4py",
+    "numpy",
+]
+
+[project.urls]
+homepage = "https://bitbucket.org/jpekkila/astaroth"
+
+[build-system]
+requires = [
+    "scikit-build-core>=0.10",
+    "nanobind",
+    "litgen>=0.22.0",
+    "black",
+    "ruff",
+    "mpi4py",
+]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+cmake.args = [
+    "-DBUILD_PYTHON_BINDINGS=on",
+    "-DBUILD_SAMPLES=off",
+    "-DBUILD_TESTS=off",
+    "-DCPU_BUILD=on",
+    "-DMPI_ENABLED=on",
+    "-DPROFILING_ENABLED=off",
+    "-DRUNTIME_COMPILATION=on",
+    "-DVERBOSE=on",
+]
+ninja.make-fallback = true
+wheel.py-api = "cp312"
+wheel.packages = ["python/pyastaroth"]
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "./**/*.{h,c,hpp,cpp,cc,cu,cuh,ac}" },
+    { file = "./**/CMakeLists.txt" },
+]
+
 [tool.uv.workspace]
 members = [
     "analysis/viz_tools",
