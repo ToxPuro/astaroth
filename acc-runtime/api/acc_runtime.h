@@ -25,6 +25,8 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+
+#include "ac_mpi.h"
 #include "device_headers.h"
 #include "builtin_enums.h"
 #include "datatypes.h"
@@ -163,7 +165,7 @@ typedef struct
   const char* acc_compiler_path;
   bool runtime_compilation_skip_make_if_nothing_has_changed;
   bool runtime_compilation_skip_autotuning;
-  AcCommunicator* comm;
+  AcCommunicator comm;
   AcCompInfo run_consts;
 
 #ifdef __cplusplus
@@ -350,7 +352,7 @@ AC_BEGIN_C_DECLARATIONS
 	char original_runtime_astaroth_runtime_path[40000];
 	sprintf(original_runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 	static int counter = 0;
-	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,info.comm);
+	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,&info.comm);
 	++counter;
  	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_LOCAL);
 	if(!handle)

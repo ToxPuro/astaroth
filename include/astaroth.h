@@ -168,7 +168,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	sprintf(original_runtime_astaroth_path,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 	kernelsLibHandle=acLoadRunTime(stream,info);
 	static int counter = 0;
-	const char* runtime_astaroth_path = acLibraryVersion(original_runtime_astaroth_path,counter,info.comm);
+	const char* runtime_astaroth_path = acLibraryVersion(original_runtime_astaroth_path,counter,&info.comm);
 	++counter;
  	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW | RTLD_LOCAL);
 	if (!handle)
@@ -466,8 +466,7 @@ acInitInfo()
       memset(&res.complex_params, (uint8_t)0xFF, sizeof(res.complex_params));
 
 #if AC_MPI_ENABLED
-      res.comm = (AcCommunicator*)malloc(sizeof(AcCommunicator));
-      res.comm->handle = MPI_COMM_NULL;
+      res.comm.handle = MPI_COMM_NULL;
 #endif
       res.run_consts = acInitCompInfo();
       return res;
@@ -1013,9 +1012,9 @@ acUpdateDecompositionParams(AcMeshInfo* dst)
 #if AC_MPI_ENABLED
 	int nprocs{};
 	int rank{};
-	ERRCHK_ALWAYS(dst->comm != NULL && dst->comm->handle != MPI_COMM_NULL);
-	MPI_Comm_size(dst->comm->handle,&nprocs);
-	MPI_Comm_rank(dst->comm->handle,&rank);
+	ERRCHK_ALWAYS(dst->comm.handle != MPI_COMM_NULL);
+	MPI_Comm_size(dst->comm.handle,&nprocs);
+	MPI_Comm_rank(dst->comm.handle,&rank);
 	const int3 decomp = acDecompose(nprocs,*dst);
 	const int3 pid3d = acGetPid3D(rank,decomp,*dst);
 	acPushToConfig((*dst),AC_domain_coordinates,pid3d);

@@ -996,7 +996,7 @@ load_config_file(const char* config_path)
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
 
-    info.comm->handle = MPI_COMM_WORLD;
+    info.comm.handle = MPI_COMM_WORLD;
     info.runtime_compilation_log_dst = "ac_compilation_log";
 
     acLogFromRootProc(pid, "Done loading config file\n");
