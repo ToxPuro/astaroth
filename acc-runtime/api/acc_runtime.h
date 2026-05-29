@@ -479,20 +479,20 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   }
 
   static UNUSED const char* 
-  get_name(const AcRealOutputParam& param)
+  get_name(const AcRealOutputParam param)
   {
 	  if constexpr(NUM_REAL_OUTPUTS == 0) return "NO REAL OUTPUTS";
           return real_output_names[param];
   }
   static UNUSED const char* 
-  get_name(const AcIntOutputParam& param)
+  get_name(const AcIntOutputParam param)
   {
 	  if constexpr(NUM_INT_OUTPUTS == 0) return "NO INT OUTPUTS";
 	  else return int_output_names[param];
   }
 #if AC_DOUBLE_PRECISION
   static UNUSED const char* 
-  get_name(const AcFloatOutputParam& param)
+  get_name(const AcFloatOutputParam param)
   {
 	  if constexpr(NUM_FLOAT_OUTPUTS == 0) return "NO FLOAT OUTPUTS";
 	  else return float_output_names[param];
