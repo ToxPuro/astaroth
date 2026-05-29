@@ -6,7 +6,7 @@
 #define UNUSED __attribute__((unused)) // Does not give a warning if unused
 #endif
 
-#if AC_MPI_ENABLED
+#ifdef AC_MPI_ENABLED
 
 /**
 Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color =
