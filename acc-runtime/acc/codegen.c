@@ -6880,7 +6880,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
 
   {
-  	fprintf(fp, "static const bool skip_kernel_in_analysis[NUM_KERNELS] = {");
+  	fprintf(fp, "static const bool skip_kernel_in_analysis[NUM_KERNELS] = {\n");
   	int k_counter = 0;
   	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   	  if (symbol_table[i].tspecifier == KERNEL_STR)
@@ -6888,62 +6888,62 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   	    if (str_vec_contains(symbol_table[i].tqualifiers,UTILITY_STR))
   	    {
   	            skip_kernel_in_analysis[k_counter] = 1;
-  	            fprintf(fp,"true,");
+  	            fprintf(fp,"true,\n");
   	    }
   	    else
   	    {
   	            skip_kernel_in_analysis[k_counter] = 0;
-  	            fprintf(fp,"false,");
+  	            fprintf(fp,"false,\n");
   	    }
   	    k_counter++;
   	  }
-  	fprintf(fp, "};");
+  	fprintf(fp, "};\n\n");
   }
 
   {
-  	fprintf(fp, "static const AcKernel kernel_enums[NUM_KERNELS] = {");
+  	fprintf(fp, "static const AcKernel kernel_enums[NUM_KERNELS] = {\n");
   	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   	  if (symbol_table[i].tspecifier == KERNEL_STR)
   	  {
-	    fprintf(fp,"%s,",symbol_table[i].identifier);
+	    fprintf(fp,"%s,\n",symbol_table[i].identifier);
   	  }
-  	fprintf(fp, "};");
+  	fprintf(fp, "};\n\n");
   }
 
 
-  fprintf(fp, "static const bool is_boundcond_kernel[NUM_KERNELS] = {");
+  fprintf(fp, "static const bool is_boundcond_kernel[NUM_KERNELS] = {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
     {
       if (str_vec_contains(symbol_table[i].tqualifiers,BOUNDCOND_STR))
-              fprintf(fp,"true,");
+              fprintf(fp,"true,\n");
       else
-              fprintf(fp,"false,");
+              fprintf(fp,"false,\n");
     }
-  fprintf(fp, "};");
+  fprintf(fp, "};\n\n");
 
-  fprintf(fp, "static const bool no_swap_after_kernel[NUM_KERNELS] = {");
+  fprintf(fp, "static const bool no_swap_after_kernel[NUM_KERNELS] = {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
     {
       if (str_vec_contains(symbol_table[i].tqualifiers,NO_SWAP_STR))
-              fprintf(fp,"true,");
+              fprintf(fp,"true,\n");
       else
-              fprintf(fp,"false,");
+              fprintf(fp,"false,\n");
     }
-  fprintf(fp, "};");
+  fprintf(fp, "};\n\n");
 
 
-  fprintf(fp, "static const bool kernel_has_fixed_boundary[NUM_KERNELS] = {");
+  fprintf(fp, "static const bool kernel_has_fixed_boundary[NUM_KERNELS] = {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
     {
       if (str_vec_contains(symbol_table[i].tqualifiers,FIXED_BOUNDARY_STR))
-	      fprintf(fp,"true,");
+	      fprintf(fp,"true,\n");
       else
-	      fprintf(fp,"false,");
+	      fprintf(fp,"false,\n");
     }
-  fprintf(fp, "};");
+  fprintf(fp, "};\n\n");
 
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   // START---------------------------
