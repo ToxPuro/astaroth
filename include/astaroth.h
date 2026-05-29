@@ -580,15 +580,6 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 #endif
 #endif
 
-#if AC_MPI_ENABLED
-static UNUSED AcResult
-acGridInit(const AcMesh mesh)
-{
-	return acGridInitBase(mesh);
-}
-#endif
-
-
 #define OVERLOAD_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
 	static UNUSED AcResult acDeviceStore(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) { return acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform(device,stream,param,value); }
 #define OVERLOAD_DEVICE_STORE_ARRAY(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \

@@ -62,6 +62,11 @@ Devices in the grid are configured based on the contents of AcMesh.
 
 FUNC_DEFINE(AcResult, acGridInitBase, (const AcMesh mesh));
 
+static UNUSED AcResult
+acGridInit(const AcMesh mesh)
+{
+	return acGridInitBase(mesh);
+}
 
 static AcResult UNUSED 
 acGridInit(const AcMeshInfo info)
