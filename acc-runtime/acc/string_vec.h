@@ -1,5 +1,9 @@
+#pragma once
+
 #include "stdarg.h"
+
 #define VEC_INITIALIZER {.size = 0,.capacity  = 0,.data = NULL}
+
 typedef struct string_vec
 {
 	const char** data;

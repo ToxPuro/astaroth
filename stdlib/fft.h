@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef AC_MATH_FFT_INCLUDED
 AcResult
 ac_fft_split_diffusion_update(Field f, const AcReal dt, const AcReal diffusion_coeff, Field real_src, Field imag_src, Field real_dst, Field imag_dst)

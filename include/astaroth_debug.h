@@ -1,3 +1,5 @@
+#pragma once
+
 #if AC_MPI_ENABLED
 /** */
 void acGraphPrintDependencies(const AcTaskGraph* graph);

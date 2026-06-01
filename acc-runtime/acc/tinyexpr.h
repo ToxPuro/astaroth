@@ -22,9 +22,7 @@
  * misrepresented as being the original software.
  * 3. This notice may not be removed or altered from any source distribution.
  */
-
-#ifndef TINYEXPR_H
-#define TINYEXPR_H
+#pragma once
 
 
 #ifdef __cplusplus
@@ -83,9 +81,6 @@ void te_print(const te_expr *n);
 /* This is safe to call on NULL pointers. */
 void te_free(te_expr *n);
 
-
 #ifdef __cplusplus
 }
 #endif
-
-#endif /*TINYEXPR_H*/

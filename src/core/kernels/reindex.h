@@ -1,7 +1,10 @@
+#pragma once
+
 #ifdef __cplusplus
 extern "C" 
 {
 #endif
+
 AcResult acReindex(const cudaStream_t stream, //
                    const AcReal* in, const AcIndex in_offset,
                    const AcIndex in_shape, //

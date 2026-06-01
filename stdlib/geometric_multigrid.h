@@ -1,3 +1,5 @@
+#pragma once
+
 #include "math_utils.h"
 #include "astaroth_grid.h"
 

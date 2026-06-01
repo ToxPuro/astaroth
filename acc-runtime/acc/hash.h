@@ -1,4 +1,7 @@
+#pragma once
+
 #include <hashtable.h>
+
 static inline const char*
 intern(const char* buffer)
 {

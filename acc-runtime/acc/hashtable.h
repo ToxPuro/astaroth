@@ -29,8 +29,7 @@
 
    For more information, please refer to <http://unlicense.org/>
 */
-#ifndef SHEREDOM_HASHMAP_H_INCLUDED
-#define SHEREDOM_HASHMAP_H_INCLUDED
+#pragma once
 
 #if defined(_MSC_VER)
 // Workaround a bug in the MSVC runtime where it uses __cplusplus when not
@@ -732,6 +731,4 @@ HASHMAP_ALWAYS_INLINE hashmap_uint32_t hashmap_clz(const hashmap_uint32_t x) {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif
-
 #endif

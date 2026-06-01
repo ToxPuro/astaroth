@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 std::vector<KernelAnalysisInfo>
 get_kernel_analysis_info(const AcMeshInfo config);

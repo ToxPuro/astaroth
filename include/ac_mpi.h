@@ -1,7 +1,7 @@
-#if AC_MPI_ENABLED
+#pragma once
 
-#define AC_MPI_H
 #include <mpi.h>
+
 struct AcCommunicator
 {
 	MPI_Comm handle;
@@ -17,4 +17,3 @@ typedef struct AcSubCommunicators {
 	MPI_Comm xz;
 	MPI_Comm yz;
 } AcSubCommunicators;
-#endif

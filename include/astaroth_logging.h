@@ -1,3 +1,5 @@
+#pragma once
+
 /* Log a message with a timestamp from the root proc (if pid == 0) */
 void acLogFromRootProc(const int pid, const char* msg, ...);
 void acVA_LogFromRootProc(const int pid, const char* msg, va_list args);

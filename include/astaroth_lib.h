@@ -1,5 +1,4 @@
-#ifndef AC_LIB_H
-#define AC_LIB_H
+#pragma once
 
 //#ifdef __cplusplus
 //  class AcLibHandle
@@ -15,5 +14,3 @@
 //#endif
 typedef void* AcLibHandle;
 static AcLibHandle UNUSED astarothLibHandle=NULL, kernelsLibHandle=NULL, utilsLibHandle=NULL;
-
-#endif
