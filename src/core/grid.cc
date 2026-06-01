@@ -664,7 +664,9 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
 #include "stencil_accesses.h"
 	for(int k = 0; k < NUM_KERNELS; ++k)
+	{
 		for(int j= 0; j< NUM_ALL_FIELDS; ++j)
+		{
 			for(int i = 0; i < NUM_STENCILS; ++i)
 			{
 				//TP: in case some fields are dead and Fields are re-ordered because of that
@@ -700,7 +702,41 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 					}
 				}
 			}
+		}
+		for(size_t j= 0; j< info[k].n_reduce_outputs; ++j)
+		{
+			const int var = info[k].reduce_outputs[j].variable;
+			if(info[k].reduce_outputs[j].type == AC_REAL_TYPE && !reduced_reals[k][var])
+			{
+				fatal("In Kernel %s %s was reduced at runtime even though reductions were not generated for it!\n"
+				      "Most likely because the stencil call is performed inside conditional control-flow.\n"    
+				      "Consider using runtime-compilation or to rewriting the kernel to avoid the conditional reduce call!\n"
+				      ,kernel_names[k],real_output_names[var]
+				     )
 
+			}
+			if(info[k].reduce_outputs[j].type == AC_INT_TYPE && !reduced_ints[k][var])
+			{
+				fatal("In Kernel %s %s was reduced at runtime even though reductions were not generated for it!\n"
+				      "Most likely because the stencil call is performed inside conditional control-flow.\n"    
+				      "Consider using runtime-compilation or to rewriting the kernel to avoid the conditional reduce call!\n"
+				      ,kernel_names[k],int_output_names[var]
+				     )
+
+			}
+#if AC_DOUBLE_PRECISION
+			if(info[k].reduce_outputs[j].type == AC_FLOAT_TYPE && !reduced_floats[k][var])
+			{
+				fatal("In Kernel %s %s was reduced at runtime even though reductions were not generated for it!\n"
+				      "Most likely because the stencil call is performed inside conditional control-flow.\n"    
+				      "Consider using runtime-compilation or to rewriting the kernel to avoid the conditional reduce call!\n"
+				      ,kernel_names[k],float_output_names[var]
+				     )
+
+			}
+#endif
+		}
+	}
 }
 static AcAutotuneMeasurement
 grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
