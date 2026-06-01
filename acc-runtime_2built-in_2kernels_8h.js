@@ -1,0 +1,27 @@
+var acc_runtime_2built_in_2kernels_8h =
+[
+    [ "AC_BUILTIN_RESET", "acc-runtime_2built-in_2kernels_8h.html#aea19fe34530d702d9bc4045b5ac982e3", null ],
+    [ "AC_COMPLEX_TO_PLANAR", "acc-runtime_2built-in_2kernels_8h.html#ae1d9d559a348a300fa3d1695b6fe1603", null ],
+    [ "AC_COMPLEX_TO_REAL", "acc-runtime_2built-in_2kernels_8h.html#af8223b5458229f89bad203f5b6f0a51c", null ],
+    [ "AC_FLUSH_COMPLEX", "acc-runtime_2built-in_2kernels_8h.html#afe29c5ffc54987c24a4866826d20ffd2", null ],
+    [ "AC_FLUSH_FLOAT", "acc-runtime_2built-in_2kernels_8h.html#acd107e9bd7f664bc8e749107e7e7b9a4", null ],
+    [ "AC_FLUSH_INT", "acc-runtime_2built-in_2kernels_8h.html#aa61509aeef23fc548de43ac7aa7e285c", null ],
+    [ "AC_FLUSH_REAL", "acc-runtime_2built-in_2kernels_8h.html#a1c81ba411d403d8dc93e438370b9749e", null ],
+    [ "AC_MULTIPLY_INPLACE", "acc-runtime_2built-in_2kernels_8h.html#a21b63ea4d830011d5fc942a5264d21c9", null ],
+    [ "AC_MULTIPLY_INPLACE_COMPLEX", "acc-runtime_2built-in_2kernels_8h.html#a752912111fdd8821d1222278a4b8c770", null ],
+    [ "AC_MULTIPLY_INPLACE_COMPLEX_FLOAT", "acc-runtime_2built-in_2kernels_8h.html#ada3e054a3a13f56c3610190af2b05825", null ],
+    [ "AC_NULL_KERNEL", "acc-runtime_2built-in_2kernels_8h.html#a11cb24db253e71a45437badb67cfe578", null ],
+    [ "AC_PLANAR_TO_COMPLEX", "acc-runtime_2built-in_2kernels_8h.html#ad7eef89aa8afdac0bb93a39bae632ab5", null ],
+    [ "AC_REAL_TO_COMPLEX", "acc-runtime_2built-in_2kernels_8h.html#aa27f9960d3e50c902a5a0857878e7942", null ],
+    [ "AC_VOLUME_COPY", "acc-runtime_2built-in_2kernels_8h.html#a87a3365a60373dab121579211fba9b00", null ],
+    [ "AC_VOLUME_COPY_COMPLEX", "acc-runtime_2built-in_2kernels_8h.html#ac0a1153d589582d70e536fb225dcd9d6", null ],
+    [ "AC_VOLUME_COPY_COMPLEX_FLOAT_TO_PLANAR_FLOAT_BATCHED", "acc-runtime_2built-in_2kernels_8h.html#ae3bddbfd7361731e2b2875a33b89dbfe", null ],
+    [ "AC_VOLUME_COPY_COMPLEX_TO_PLANAR_BATCHED", "acc-runtime_2built-in_2kernels_8h.html#a52f10329b21480d2f58ca42d237cba86", null ],
+    [ "AC_VOLUME_COPY_COMPLEX_TO_REAL_BATCHED", "acc-runtime_2built-in_2kernels_8h.html#a9b68aa747d1f842169d10ae1639c3776", null ],
+    [ "AC_VOLUME_COPY_FLOAT_TO_COMPLEX_FLOAT_BATCHED", "acc-runtime_2built-in_2kernels_8h.html#ac2579c1c9c5a9a48bee3d20b44cc6bf5", null ],
+    [ "AC_VOLUME_COPY_REAL_TO_COMPLEX_BATCHED", "acc-runtime_2built-in_2kernels_8h.html#ae2d33f3ea7b6234e838e5451715fa800", null ],
+    [ "AC_VOLUME_COPY_REAL_TO_COMPLEX_FLOAT_BATCHED", "acc-runtime_2built-in_2kernels_8h.html#a9052567f9b8faf9ebbcce0badf76d457", null ],
+    [ "BOUNDCOND_PERIODIC", "acc-runtime_2built-in_2kernels_8h.html#a30006e056b1a6abc2cc2bfca46b1a690", null ],
+    [ "BOUNDCOND_PERIODIC_DEVICE", "acc-runtime_2built-in_2kernels_8h.html#a0ea1d682291942c5823d364bd374d83e", null ],
+    [ "get_copy_indexes", "acc-runtime_2built-in_2kernels_8h.html#a5fdf2b930a2127c2c2ca674552841d18", null ]
+];

@@ -1,0 +1,15 @@
+<map id="acc&#45;runtime/api/device_details.h" name="acc&#45;runtime/api/device_details.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="453,5,624,45"/>
+<area shape="rect" id="Node000002" href="$acc__runtime_8cu.html" title=" " alt="" coords="27,93,178,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="440,48,191,96,179,99,177,93,190,91,439,42"/>
+<area shape="rect" id="Node000004" href="$reductions_8cu.html" title=" " alt="" coords="202,101,417,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="477,53,341,103,339,98,475,48"/>
+<area shape="rect" id="Node000005" href="$reindex_8cu.html" title=" " alt="" coords="441,101,637,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="541,59,541,100,536,100,536,59"/>
+<area shape="rect" id="Node000006" href="$transpose_8cc.html" title=" " alt="" coords="661,101,872,126"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="602,48,737,98,735,103,600,53"/>
+<area shape="rect" id="Node000007" href="$transpose_8cu.html" title=" " alt="" coords="896,101,1107,126"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="638,42,940,98,939,103,637,47"/>
+<area shape="rect" id="Node000003" href="$kernels_8cu.html" title=" " alt="" coords="5,181,200,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="105,147,105,181,100,181,100,147"/>
+</map>

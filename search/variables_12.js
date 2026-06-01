@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['tag_0',['tag',['../structHaloMessage.html#a54b1da61cc78313909e7c34793a9b2cb',1,'HaloMessage::tag'],['../structRegion.html#a6590d085e16c84710d1a86739c384538',1,'Region::tag']]],
+  ['targets_1',['targets',['../classTask.html#a0c44d2a439dd0e6744b73ea57dfa429b',1,'Task']]],
+  ['task_5ftype_2',['task_type',['../classTask.html#adcb05d47f677bceb97d23d1f148efb11',1,'Task']]],
+  ['tensor_5fstr_3',['TENSOR_STR',['../codegen_8c.html#a540c87ca85150432b967df6422e3cca3',1,'codegen.c']]],
+  ['test_5fcomm_5fgraph_4',['test_comm_graph',['../stdlib_2geometric__multigrid_8h.html#a0d68bde08658717807204b0cf94686ee',1,'geometric_multigrid.h']]],
+  ['time_5',['time',['../structAcAutotuneMeasurement.html#afa596f4b367cd5ad741ea97b451b9907',1,'AcAutotuneMeasurement']]],
+  ['timer_6',['timer',['../structTraceFile.html#ab50deb1c3e2da273492115b1bb5a427c',1,'TraceFile']]],
+  ['tmp_5fbuffers_7',['tmp_buffers',['../rocfft_8cc.html#ab9cc93ae72dba31729719484e53b3c27',1,'rocfft.cc']]],
+  ['tmpbuf_8',['tmpbuf',['../structkiss__fftnd__state.html#a5a2fbe494c8e53174cb9050fd2888edd',1,'kiss_fftnd_state']]],
+  ['to_5fdsl_9',['to_DSL',['../structtraverse__base__params.html#acd4bc413806565703a38c9d070e809ee',1,'traverse_base_params']]],
+  ['token_10',['token',['../structastnode__s.html#a57b868dbca8ab8ada4a3ffae5c4a925e',1,'astnode_s::token'],['../structtspecifier.html#a2cf41d58fc0330ad1ef7007e9cf234fe',1,'tspecifier::token']]],
+  ['topological_5findex_11',['topological_index',['../structfuncs__calling__info.html#a581930a26929833714f0ed2a3a6c4e4f',1,'funcs_calling_info']]],
+  ['tpb_12',['tpb',['../structTBConfig.html#ac4ec06a6adff3c24065c21c3411932bb',1,'TBConfig::tpb'],['../structAcAutotuneMeasurement.html#aa766bdc21a35a06a5ede906a379272ba',1,'AcAutotuneMeasurement::tpb'],['../structKernelConfig.html#aac19c86063efaa6e112850a55c4d35cd',1,'KernelConfig::tpb']]],
+  ['tqualifiers_13',['tqualifiers',['../structSymbol.html#ab1ed79e283a2348fb27b1d81eafe4a01',1,'Symbol']]],
+  ['trace_5ffile_14',['trace_file',['../structAcTaskGraph.html#abf372b09f20d63b63a55fbe31c1a0d65',1,'AcTaskGraph']]],
+  ['transposed_15',['transposed',['../structAcReduceBuffer.html#ad1e82adc51e7ca1eb0dca35a3b58d0ee',1,'AcReduceBuffer']]],
+  ['true_5fstr_16',['TRUE_STR',['../codegen_8c.html#a259a992bb394d1afecdff1d9e1314c90',1,'codegen.c']]],
+  ['tspecifier_17',['tspecifier',['../structSymbol.html#a65a0fcc5efc8462caa20150ab0c75ed2',1,'Symbol']]],
+  ['twiddles_18',['twiddles',['../structkiss__fft__state.html#aa7d1cab86ec03a8ecddfe0d91ef0bd20',1,'kiss_fft_state']]],
+  ['two_5fdimensional_5fsetup_19',['TWO_DIMENSIONAL_SETUP',['../decomposition_8cc.html#af2498a75ffbe9c8245c822f541d5244e',1,'decomposition.cc']]],
+  ['type_20',['type',['../structte__expr.html#a3e7afb069294af6962be87bfaeaf5edc',1,'te_expr::type'],['../structte__variable.html#af07e006edd70271440a510748f6cd9c4',1,'te_variable::type'],['../structKernelReduceOutput.html#a7fd4212f8856e3c939dc49617c218d9e',1,'KernelReduceOutput::type'],['../structSymbol.html#a73400486952f1adcd53489a23fd848af',1,'Symbol::type'],['../structHaloMessage.html#acfec68f192d4ac680ecf256ae55cb277',1,'HaloMessage::type'],['../structstate.html#a8f960cbbf1b94dee7dc6cf2fe3b5c4c4',1,'state::type'],['../structvariable.html#a2a9eeb57183d967d7086abf99348c6e5',1,'variable::type'],['../structSymbol.html#ae49229da2b4fbb7ef7ba12f24d8ac14b',1,'Symbol::type'],['../structastnode__s.html#a9e243e676693de7a781652fde1985c9f',1,'astnode_s::type']]],
+  ['type_5fqualifier_21',['type_qualifier',['../structSymbol.html#a21bce1a3f292b72060ea2bb474897d1b',1,'Symbol']]],
+  ['type_5fspecifier_22',['type_specifier',['../structSymbol.html#a3ce38edb84950e88ca9a82d829536586',1,'Symbol']]],
+  ['types_23',['types',['../structfunc__params__info.html#a1120aac67e50ae778da99ce1b24357b1',1,'func_params_info::types'],['../structdfunc__possibilities.html#afa3a960b0ddd4b30abc06626ee3ac222',1,'dfunc_possibilities::types']]]
+];

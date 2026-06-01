@@ -1,0 +1,26 @@
+var classHaloExchangeTask =
+[
+    [ "HaloExchangeTask", "classHaloExchangeTask.html#a952cf2ee977a4ffbd9a589f4cfa40c52", null ],
+    [ "~HaloExchangeTask", "classHaloExchangeTask.html#a3a64471e4a9018a9fcfbad94851b4ed4", null ],
+    [ "HaloExchangeTask", "classHaloExchangeTask.html#acd2594f272c4418a57f8947ae59aa3b6", null ],
+    [ "advance", "classHaloExchangeTask.html#ab6cc60ff76f57f2fb4910c4831e881a1", null ],
+    [ "exchange", "classHaloExchangeTask.html#aaa6bd25acd324fa8d8b879d1af72604c", null ],
+    [ "exchangeDevice", "classHaloExchangeTask.html#a72abceda9e5c17753a2691d94bcdfb60", null ],
+    [ "exchangeHost", "classHaloExchangeTask.html#ab4e5ea767a8e4cace06055d9fc04797a", null ],
+    [ "isHaloExchangeTask", "classHaloExchangeTask.html#aaa66c64c1d704b4919af2dd46f22b8f5", null ],
+    [ "move", "classHaloExchangeTask.html#ac2188cc822822f23931f09812d6de96f", null ],
+    [ "operator=", "classHaloExchangeTask.html#a50b380e95000a2a4076b948afc063949", null ],
+    [ "pack", "classHaloExchangeTask.html#a7abf95ddbe1f5e34047f0091719c2f88", null ],
+    [ "receive", "classHaloExchangeTask.html#a7040db8b060e276a53785fb35237ff8b", null ],
+    [ "receiveDevice", "classHaloExchangeTask.html#aaf28fcc58a9b92e3e2e44970b2bddb83", null ],
+    [ "receiveHost", "classHaloExchangeTask.html#adf7a3be34b3516a328446fe12b592e03", null ],
+    [ "send", "classHaloExchangeTask.html#a49c118e8198429f5c4dea42e29ce1b5d", null ],
+    [ "sendDevice", "classHaloExchangeTask.html#a1068f06f24c8a9966ecdb900d0ca3b4d", null ],
+    [ "sendHost", "classHaloExchangeTask.html#aa5d7b7ca1c4a3d3be6605f98eb0a48ba", null ],
+    [ "sendingToItself", "classHaloExchangeTask.html#a57319b4479dfc0e1865db37946120a31", null ],
+    [ "sync", "classHaloExchangeTask.html#a04c7a07443f7cdef8b1e20be9ecc5af4", null ],
+    [ "test", "classHaloExchangeTask.html#a8a87ea5ce648b44dfaf39183ca99f5d5", null ],
+    [ "unpack", "classHaloExchangeTask.html#ae39eafa85a5fb3121e0033f67ca354e9", null ],
+    [ "wait_recv", "classHaloExchangeTask.html#ae34aace24986189d75e3ab97eec35118", null ],
+    [ "wait_send", "classHaloExchangeTask.html#ac564a31700789e53674ab27d88cdd027", null ]
+];

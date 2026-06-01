@@ -1,0 +1,11 @@
+<map id="src/core/kernels/kernels.h" name="src/core/kernels/kernels.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="287,5,473,31"/>
+<area shape="rect" id="Node000002" href="$device_8cc.html" title=" " alt="" coords="5,79,144,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="318,36,125,81,124,76,317,31"/>
+<area shape="rect" id="Node000003" href="$kernels_8cu.html" title=" " alt="" coords="168,79,363,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="352,40,285,81,283,76,349,35"/>
+<area shape="rect" id="Node000004" href="$reductions_8cu.html" title=" " alt="" coords="387,79,602,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="411,35,477,76,475,81,408,40"/>
+<area shape="rect" id="Node000005" href="$task_8h.html" title=" " alt="" coords="627,79,744,104"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="443,31,636,76,635,81,442,36"/>
+</map>
