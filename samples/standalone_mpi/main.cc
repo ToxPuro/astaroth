@@ -1006,7 +1006,7 @@ load_config_file(const char* config_path)
 void
 ac_runtime_compile(const AcMeshInfo info)
 {
-    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF"
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF"
 	    		    ;
     acCompile(build_str,info);
     acLoadLibrary(stdout,info);
@@ -1621,7 +1621,10 @@ main(int argc, char** argv)
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
     	        acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
+		const AcReal start_time = MPI_Wtime();
     		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
+		const AcReal end_time   = MPI_Wtime();
+		fprintf(stderr,"Substep %d took %.14e\n",substep,end_time-start_time);
     	}
         simulation_time += dt;
 

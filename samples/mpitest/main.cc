@@ -87,7 +87,7 @@ main(int argc, char* argv[])
     acLoadCompInfo(AC_runtime_real_arr,real_arr,&info.run_consts);
     acLoadCompInfo(AC_runtime_int_arr,int_arr,&info.run_consts);
     acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&info.run_consts);
-    const char* build_str = "-DOPTIMIZE_FIELDS=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
+    const char* build_str = "-DOPTIMIZE_FIELDS=ON -DOPTIMIZE_INPUT_PARAMS=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
     info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
     acLoadLibrary(stdout,info);
@@ -266,7 +266,10 @@ main(int argc, char* argv[])
     {
 	for(int substep = 0; substep < 3; ++substep)
 	{
+		const AcReal start_time = MPI_Wtime();
 		acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
+		const AcReal end_time = MPI_Wtime();
+		fprintf(stderr,"Substep %d took %.14e seconds\n",substep,end_time-start_time);
     		acGridExecuteTaskGraph(dsl_graph,1);
 	}
     }
