@@ -214,9 +214,13 @@ main(int argc, char* argv[])
     acGridIntegrate(STREAM_DEFAULT, dt);
     acGridSynchronizeStream(STREAM_DEFAULT);
 
-    AcTaskGraph* dsl_graph = acGetOptimizedDSLTaskGraph(AC_rhs_substep);
-    acGridExecuteTaskGraph(dsl_graph,1);
-    acGridSynchronizeStream(STREAM_DEFAULT);
+    for(int substep = 0; substep < 3; ++substep)
+    {
+      acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
+      AcTaskGraph* dsl_graph = acGetOptimizedDSLTaskGraph(AC_rhs_substep);
+      acGridExecuteTaskGraph(dsl_graph,1);
+      acGridSynchronizeStream(STREAM_DEFAULT);
+    }
 
 
     // Integration
@@ -268,9 +272,10 @@ main(int argc, char* argv[])
 	{
 		const AcReal start_time = MPI_Wtime();
 		acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
+                AcTaskGraph* dsl_graph = acGetOptimizedDSLTaskGraph(AC_rhs_substep);
+                acGridExecuteTaskGraph(dsl_graph,1);
 		const AcReal end_time = MPI_Wtime();
 		fprintf(stderr,"Substep %d took %.14e seconds\n",substep,end_time-start_time);
-    		acGridExecuteTaskGraph(dsl_graph,1);
 	}
     }
 
