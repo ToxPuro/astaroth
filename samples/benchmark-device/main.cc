@@ -50,6 +50,18 @@ main(int argc, char** argv)
     AcMeshInfo info = acInitInfo();
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     acSetLocalMeshDims(nx, ny, nz, &info);
+    info.comm->handle = MPI_COMM_WORLD;
+
+    acPushToConfig(info,AC_proc_mapping_strategy, AC_PROC_MAPPING_STRATEGY_LINEAR);
+    acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
+#if AC_RUNTIME_COMPILATION
+    const char* build_str = "-DOPTIMIZE_FIELDS=ON -DOPTIMIZE_INPUT_PARAMS=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
+    info.runtime_compilation_log_dst = "ac_compilation_log";
+    acCompile(build_str,info);
+    acLoadLibrary(stdout,info);
+    acLoadUtils(stdout,info);
+#endif
     acPrintMeshInfo(info);
 
     // Mesh dimensions

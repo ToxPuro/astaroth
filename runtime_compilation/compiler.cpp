@@ -345,9 +345,21 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 	check_that_built_ins_loaded(mesh_info.run_consts);
 	acHostUpdateParams(&mesh_info);
 #if AC_MPI_ENABLED
+        int mpi_has_been_initialized{};
+        MPI_Initialized(&mpi_has_been_initialized);
+        if(!mpi_has_been_initialized)
+        {
+                int provided{};
+                MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&provided);
+                ERRCHK_ALWAYS(provided >= MPI_THREAD_MULTIPLE);
+        }
 	ERRCHK_ALWAYS(mesh_info.comm != NULL && mesh_info.comm->handle != MPI_COMM_NULL);
 	int pid;
 	MPI_Comm_rank(mesh_info.comm->handle,&pid);
+	if(!mpi_has_been_initialized && pid == 0)
+	{
+          fprintf(stderr, "acCompile: MPI was not initialized so called MPI_Init_thread with MPI_THREAD_MULTIPLE\n");
+	}
 	decompose_info(mesh_info.comm->handle,mesh_info);
 #else
 	const int pid = 0;

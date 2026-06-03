@@ -100,6 +100,21 @@ timer_event_stop(const char* format, ...)
         fflush(stdout);
     }
 }
+void
+integrate(const AcReal dt)
+{
+    //acGridIntegrate(STREAM_DEFAULT, dt);
+    acDeviceSetInput(acGridGetDevice(),AC_dt,dt);
+    for(int substep = 0; substep < 3; ++substep)
+    {
+      acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
+      AcTaskGraph* dsl_graph = acGetOptimizedDSLTaskGraph(AC_rhs_substep);
+      const AcReal start = MPI_Wtime();
+      acGridExecuteTaskGraph(dsl_graph,1);
+      const AcReal end   = MPI_Wtime();
+      fprintf(stderr,"Substep took %.14e\n",end-start);
+    }
+}
 
 int
 main(int argc, char** argv)
@@ -116,6 +131,19 @@ main(int argc, char** argv)
     AcMeshInfo info = acInitInfo();
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     acHostUpdateParams(&info);
+
+    acPushToConfig(info,AC_proc_mapping_strategy, AC_PROC_MAPPING_STRATEGY_MORTON);
+    acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
+    info.comm->handle = MPI_COMM_WORLD;
+
+#if AC_RUNTIME_COMPILATION
+    const char* build_str = "-DOPTIMIZE_FIELDS=ON -DOPTIMIZE_INPUT_PARAMS=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
+    info.runtime_compilation_log_dst = "ac_compilation_log";
+    acCompile(build_str,info);
+    acLoadLibrary(stdout,info);
+    acLoadUtils(stdout,info);
+#endif
 
     TestType test = TEST_STRONG_SCALING;
 
@@ -195,7 +223,8 @@ main(int argc, char** argv)
 
     // Dryrun
     acDeviceSetInput(acGridGetDevice(), AC_current_time, 0.0);
-    acGridIntegrate(STREAM_DEFAULT, dt);
+    integrate(dt);
+
 
     if (verify) {
         // Host init
@@ -214,7 +243,7 @@ main(int argc, char** argv)
         // Verification run
         const size_t nsteps = 10;
         for (size_t i = 0; i < nsteps; ++i) {
-            acGridIntegrate(STREAM_DEFAULT, dt);
+	    integrate(dt);
 
             if (!pid) {
                 printf("Host integration step %lu\n", i);
@@ -253,7 +282,9 @@ main(int argc, char** argv)
 
     // Warmup
     for (size_t i = 0; i < 5; ++i)
-        acGridIntegrate(STREAM_DEFAULT, dt);
+    {
+	    integrate(dt);
+    }
 
     // Benchmark
     Timer t;
@@ -261,7 +292,7 @@ main(int argc, char** argv)
         acGridSynchronizeStream(STREAM_ALL);
         timer_reset(&t);
         acGridSynchronizeStream(STREAM_ALL);
-        acGridIntegrate(STREAM_DEFAULT, dt);
+	integrate(dt);
         acGridSynchronizeStream(STREAM_ALL);
         results.push_back(timer_diff_nsec(t) / 1e6); // ms
         acGridSynchronizeStream(STREAM_ALL);
@@ -328,7 +359,7 @@ main(int argc, char** argv)
 
     acProfilerStart();
     timer_event_launch();
-    acGridIntegrate(STREAM_DEFAULT, dt);
+    integrate(dt);
     timer_event_stop("acGridIntegrate: ");
     acProfilerStop();
 
