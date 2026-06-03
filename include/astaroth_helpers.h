@@ -294,8 +294,13 @@ acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
     printf("%s: %d\n", intparam_names[a], info.int_params[a]);
 }
 
-void acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c,
-                      const AcMeshInfo info);
+static void
+acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
+{
+    acPrintIntParam(a, info);
+    acPrintIntParam(b, info);
+    acPrintIntParam(c, info);
+}
 
 static inline void
 acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
