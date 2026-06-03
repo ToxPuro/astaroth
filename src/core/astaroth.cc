@@ -553,12 +553,3 @@ acQueryKernels(void)
         printf("%s (%d)\n", kernel_names[i], i);
 }
 
-
-void
-acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
-{
-    acPrintIntParam(a, info);
-    acPrintIntParam(b, info);
-    acPrintIntParam(c, info);
-}
-
