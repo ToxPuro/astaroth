@@ -89,14 +89,34 @@ FUNC_DEFINE(AcResult, acHostMeshWriteToFile,(const AcMesh mesh, const size_t id)
 FUNC_DEFINE(AcResult, acHostMeshReadFromFile,(const size_t id, AcMesh* mesh));
 
 FUNC_DEFINE(Error, acGetError,(const AcReal model, const AcReal candidate));
+
 // Profiles
-FUNC_DEFINE(AcResult, acHostProfileDerz,(const AcReal* in, const size_t count, const AcReal grid_spacing,
-                           AcReal* out));
+FUNC_DEFINE(AcResult, acHostProfileDerz,
+            (const AcReal* in, const size_t count, const AcReal grid_spacing, AcReal* out));
 
-FUNC_DEFINE(AcResult, acHostProfileDerzz,(const AcReal* in, const size_t count, const AcReal grid_spacing,
-                            AcReal* out));
+FUNC_DEFINE(AcResult, acHostProfileDerzz,
+            (const AcReal* in, const size_t count, const AcReal grid_spacing, AcReal* out));
 
-FUNC_DEFINE(AcResult, acHostReduceXYAverage,(const AcReal* in, const AcMeshDims dims, AcReal* out));
+FUNC_DEFINE(AcResult, acHostReduceXYAverage,
+            (const AcReal* in, const AcMeshDims dims, AcReal* out));
+
+/** Inits the profile to cosine wave */
+FUNC_DEFINE(AcResult, acHostInitProfileToCosineWave,
+            (const AcReal spacing, const AcReal initial_pos, const AcReal amplitude,
+             const AcReal wavenumber, const size_t mz, AcReal* profile));
+
+/** Inits the profile to sine wave */
+FUNC_DEFINE(AcResult, acHostInitProfileToSineWave,
+            (const AcReal spacing, const AcReal initial_pos, const AcReal amplitude,
+             const AcReal wavenumber, const size_t mz, AcReal* profile));
+
+/** Initialize a profile to a constant value */
+FUNC_DEFINE(AcResult, acHostInitProfileToValue,
+            (const long double value, const size_t profile_count, AcReal* profile));
+
+/** Writes the host profile to a file */
+FUNC_DEFINE(AcResult, acHostWriteProfileToFile,
+            (const char* filepath, const AcReal* profile, const size_t profile_count));
 
 #include "astaroth_lib.h"
 #if AC_RUNTIME_COMPILATION
@@ -124,6 +144,7 @@ static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMes
 	LOAD_DSYM(acHostMeshApplyPeriodicBounds,stream);
 	LOAD_DSYM(acHostMeshApplyConstantBounds,stream);
 	LOAD_DSYM(acHostMeshClear,stream);
+	LOAD_DSYM(acHostIntegrateStep,stream);
 	LOAD_DSYM(acHostReduceScal,stream);
 	LOAD_DSYM(acHostReduceVec,stream);
 	LOAD_DSYM(acHostReduceVecScal,stream);
@@ -133,10 +154,17 @@ static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMes
 	LOAD_DSYM(acVerifyMeshWithMaximumError,stream);
 	LOAD_DSYM(acMeshDiffWriteSliceZ,stream);
 	LOAD_DSYM(acMeshDiffWrite,stream);
+        LOAD_DSYM(acVerifyMeshCompDomain,stream);
 	LOAD_DSYM(acHostMeshWriteToFile,stream);
 	LOAD_DSYM(acHostMeshReadFromFile,stream);
 	LOAD_DSYM(acGetError,stream);
-	LOAD_DSYM(acHostIntegrateStep,stream);
+	LOAD_DSYM(acHostProfileDerz,stream);
+	LOAD_DSYM(acHostProfileDerzz,stream);
+	LOAD_DSYM(acHostReduceXYAverage,stream);
+	LOAD_DSYM(acHostInitProfileToCosineWave,stream);
+	LOAD_DSYM(acHostInitProfileToSineWave,stream);
+	LOAD_DSYM(acHostInitProfileToValue,stream);
+	LOAD_DSYM(acHostWriteProfileToFile,stream);
 
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);

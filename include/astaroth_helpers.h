@@ -286,7 +286,7 @@ acQueryVtxbufs(void)
 }
 
 /** Prints a list of kernels */
-void acQueryKernels(void);
+FUNC_DEFINE (void, acQueryKernels, (void));
 
 static inline void
 acPrintIntParam(const AcIntParam a, const AcMeshInfo info)

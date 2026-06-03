@@ -392,7 +392,6 @@ AC_BEGIN_C_DECLARATIONS
 	LOAD_DSYM(acGetKernels,stream)
 	LOAD_DSYM(acGetOptimTPB,stream);
         LOAD_DSYM(acRuntimeQuit,stream);
-	LOAD_DSYM(acGetRealScratchpadSize,stream);
 
 	return handle;
   }
@@ -818,5 +817,81 @@ ac_get_scratchpad_size_float(const size_t i);
 
 void
 ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
+
+#if AC_RUNTIME_COMPILATION
+#define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
+			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
+  static UNUSED void* acLoadRunTime(FILE* stream, const AcMeshInfo info)
+  {
+	char original_runtime_astaroth_runtime_path[40000];
+	sprintf(original_runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+	static int counter = 0;
+	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,info.comm);
+	++counter;
+ 	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_LOCAL);
+	if(!handle)
+	{
+    		fprintf(stderr,"%s","Fatal error was not able to load Astaroth runtime\n"); 
+		fprintf(stderr,"Error message: %s\n",dlerror());
+		exit(EXIT_FAILURE);
+	}
+	LOAD_DSYM(acKernelFlush,stream);
+	LOAD_DSYM(acKernelFlushInt,stream);
+	LOAD_DSYM(acKernelFlushReal,stream);
+	LOAD_DSYM(acKernelFlushComplex,stream);
+	LOAD_DSYM(acKernelFlushFloat,stream);
+	LOAD_DSYM(acPreprocessScratchPad,stream);
+	LOAD_DSYM(acVBAReset,stream);
+	LOAD_DSYM(acGetRealScratchpadSize,stream);
+	LOAD_DSYM(acVBACreate,stream);
+	LOAD_DSYM(acGetProfileReduceScratchPadDims,stream);
+	LOAD_DSYM(acAllocateArrays,stream);
+	LOAD_DSYM(acUpdateArrays,stream);
+	LOAD_DSYM(acFreeArrays,stream);
+	LOAD_DSYM(acVBADestroy,stream);
+	LOAD_DSYM(acRandInitAlt,stream);
+	LOAD_DSYM(acRandQuit,stream);
+	LOAD_DSYM(acLaunchKernel,stream);
+	LOAD_DSYM(acLaunchKernelWithTPB,stream);
+	LOAD_DSYM(acLaunchKernelBase,stream);
+	LOAD_DSYM(acSetReduceOffset,stream);
+	LOAD_DSYM(acBenchmarkKernel,stream);
+	LOAD_DSYM(acGetOptimTPB,stream);
+	LOAD_DSYM(acLoadStencil,stream);
+	LOAD_DSYM(acStoreStencil,stream);
+	LOAD_DSYM(acLoadRealUniform,stream);
+	LOAD_DSYM(acLoadRealArrayUniform,stream);
+	LOAD_DSYM(acLoadReal3Uniform,stream);
+	LOAD_DSYM(acLoadIntUniform,stream);
+	LOAD_DSYM(acLoadIntUniform,stream);
+	LOAD_DSYM(acLoadIntArrayUniform,stream);
+	LOAD_DSYM(acLoadBoolUniform,stream);
+	LOAD_DSYM(acLoadIntArrayUniform,stream);
+	LOAD_DSYM(acLoadInt3Uniform,stream);
+	LOAD_DSYM(acStoreRealUniform,stream);
+	LOAD_DSYM(acStoreReal3Uniform,stream);
+	LOAD_DSYM(acStoreIntUniform,stream);
+	LOAD_DSYM(acStoreBoolUniform,stream);
+	LOAD_DSYM(acStoreInt3Uniform,stream);
+	LOAD_DSYM(acKernelLaunchGetLastTPB,stream);
+	LOAD_DSYM(acGetOptimizedKernel,stream);
+	LOAD_DSYM(acGetKernelReduceScratchPadSize,stream);
+	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream);
+	LOAD_DSYM(acGetSmallestRealReduceScratchPadSizeBytes,stream);
+	LOAD_DSYM(acRuntimeIsInitialized,stream);
+	LOAD_DSYM(acGetKernels,stream);
+        LOAD_DSYM(acRuntimeQuit,stream);
+
+        LOAD_DSYM(acLoadRealReduceRes,stream);
+        LOAD_DSYM(acLoadIntReduceRes,stream);
+        LOAD_DSYM(acLoadFloatReduceRes,stream);
+        LOAD_DSYM(acPBAReset,stream);
+        LOAD_DSYM(acPBACreate,stream);
+        LOAD_DSYM(acPBADestroy,stream);
+        LOAD_DSYM(acVerifyMeshInfo,stream);
+
+	return handle;
+  }
+#endif
 
 AC_END_C_DECLARATIONS
