@@ -1,6 +1,7 @@
 #include "astaroth.h"
 #include "astaroth_runtime_compilation.h"
 #include <string>
+#include <stdlib.h>
 #if AC_MPI_ENABLED
 #include "../src/core/decomposition/decomposition.h"
 #endif
@@ -161,6 +162,8 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   sprintf(cmd,"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options);
 #if AC_USE_HIP
 #else
+  //TP: needed to ensure nvcc does not write under /tmp which on compute nodes does not have enough memory
+  setenv("TMPDIR", dynamic_binary_path, 1);
   strcat(cmd,"-DCMAKE_CUDA_FLAGS=-objtemp ");
 #endif
   strcat(cmd,get_astaroth_base_path().c_str());
