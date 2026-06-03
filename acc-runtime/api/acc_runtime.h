@@ -355,39 +355,59 @@ AC_BEGIN_C_DECLARATIONS
 		exit(EXIT_FAILURE);
 	}
 	LOAD_DSYM(acKernelFlush,stream);
+	LOAD_DSYM(acKernelFlushInt,stream);
+	LOAD_DSYM(acKernelFlushReal,stream);
+	LOAD_DSYM(acKernelFlushComplex,stream);
+	LOAD_DSYM(acKernelFlushFloat,stream);
+	LOAD_DSYM(acPreprocessScratchPad,stream);
 	LOAD_DSYM(acVBAReset,stream);
+	LOAD_DSYM(acGetRealScratchpadSize,stream);
 	LOAD_DSYM(acVBACreate,stream);
+	LOAD_DSYM(acGetProfileReduceScratchPadDims,stream);
 	LOAD_DSYM(acAllocateArrays,stream);
 	LOAD_DSYM(acUpdateArrays,stream);
+	LOAD_DSYM(acFreeArrays,stream);
 	LOAD_DSYM(acVBADestroy,stream);
 	LOAD_DSYM(acRandInitAlt,stream);
 	LOAD_DSYM(acRandQuit,stream);
 	LOAD_DSYM(acLaunchKernel,stream);
+	LOAD_DSYM(acLaunchKernelWithTPB,stream);
+	LOAD_DSYM(acLaunchKernelBase,stream);
+	LOAD_DSYM(acSetReduceOffset,stream);
 	LOAD_DSYM(acBenchmarkKernel,stream);
+	LOAD_DSYM(acGetOptimTPB,stream);
 	LOAD_DSYM(acLoadStencil,stream);
 	LOAD_DSYM(acStoreStencil,stream);
 	LOAD_DSYM(acLoadRealUniform,stream);
 	LOAD_DSYM(acLoadRealArrayUniform,stream);
 	LOAD_DSYM(acLoadReal3Uniform,stream);
-	LOAD_DSYM(acLoadIntUniform,stream)
-	LOAD_DSYM(acLoadIntUniform,stream)
-	LOAD_DSYM(acLoadIntArrayUniform,stream)
-	LOAD_DSYM(acLoadBoolUniform,stream)
-	LOAD_DSYM(acLoadIntArrayUniform,stream)
-	LOAD_DSYM(acLoadInt3Uniform,stream)
-	LOAD_DSYM(acStoreRealUniform,stream)
-	LOAD_DSYM(acStoreReal3Uniform,stream)
-	LOAD_DSYM(acStoreIntUniform,stream)
-	LOAD_DSYM(acStoreBoolUniform,stream)
-	LOAD_DSYM(acStoreInt3Uniform,stream)
-	LOAD_DSYM(acKernelLaunchGetLastTPB,stream)
-	LOAD_DSYM(acGetOptimizedKernel,stream)
-	LOAD_DSYM(acGetKernelReduceScratchPadSize,stream)
-	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream)
-	LOAD_DSYM(acGetKernels,stream)
-	LOAD_DSYM(acGetOptimTPB,stream);
+	LOAD_DSYM(acLoadIntUniform,stream);
+	LOAD_DSYM(acLoadIntUniform,stream);
+	LOAD_DSYM(acLoadIntArrayUniform,stream);
+	LOAD_DSYM(acLoadBoolUniform,stream);
+	LOAD_DSYM(acLoadIntArrayUniform,stream);
+	LOAD_DSYM(acLoadInt3Uniform,stream);
+	LOAD_DSYM(acStoreRealUniform,stream);
+	LOAD_DSYM(acStoreReal3Uniform,stream);
+	LOAD_DSYM(acStoreIntUniform,stream);
+	LOAD_DSYM(acStoreBoolUniform,stream);
+	LOAD_DSYM(acStoreInt3Uniform,stream);
+	LOAD_DSYM(acKernelLaunchGetLastTPB,stream);
+	LOAD_DSYM(acGetOptimizedKernel,stream);
+	LOAD_DSYM(acGetKernelReduceScratchPadSize,stream);
+	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream);
+	LOAD_DSYM(acGetSmallestRealReduceScratchPadSizeBytes,stream);
+	LOAD_DSYM(acRuntimeIsInitialized,stream);
+	LOAD_DSYM(acGetKernels,stream);
         LOAD_DSYM(acRuntimeQuit,stream);
-	LOAD_DSYM(acGetRealScratchpadSize,stream);
+
+        LOAD_DSYM(acLoadRealReduceRes,stream);
+        LOAD_DSYM(acLoadIntReduceRes,stream);
+        LOAD_DSYM(acLoadFloatReduceRes,stream);
+        LOAD_DSYM(acPBAReset,stream);
+        LOAD_DSYM(acPBACreate,stream);
+        LOAD_DSYM(acPBADestroy,stream);
+        LOAD_DSYM(acVerifyMeshInfo,stream);
 
 	return handle;
   }

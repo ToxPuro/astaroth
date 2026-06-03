@@ -134,7 +134,7 @@ FUNC_DEFINE(AcResult, acGridReduceVecScal,(const Stream stream, const AcReductio
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result));
 
-AcResult acGridReduceXY(const Stream stream, const Field field, const Profile profile, const AcReduction reduction);
+FUNC_DEFINE (AcResult, acGridReduceXY, (const Stream stream, const Field field, const Profile profile, const AcReduction reduction));
 
 typedef enum {
     ACCESS_READ,

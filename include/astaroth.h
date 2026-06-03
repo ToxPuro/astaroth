@@ -212,9 +212,6 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acDeviceGetLocalConfig,stream)
         LOAD_DSYM(acDeviceFinishReduceInt,stream) 
 	LOAD_DSYM(acDeviceMemGetInfo,stream)
-	LOAD_DSYM(acKernelFlushInt,stream) 
-	LOAD_DSYM(acAnalysisGetKernelInfo,stream)
-	LOAD_DSYM(acAnalysisCheckForDSLErrors,stream)
         LOAD_DSYM(acDeviceSwapAllProfileBuffers,stream)
 	LOAD_DSYM(acDeviceFFTR2C,stream)
 	LOAD_DSYM(acDeviceFFTC2R,stream)
@@ -234,8 +231,6 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridInitialized,stream);
 	LOAD_DSYM(acGridMPIComm,stream);
 	LOAD_DSYM(acGridMPISubComms,stream);
-	LOAD_DSYM(acGridDecomposeMeshInfo,stream);
-	LOAD_DSYM(acGridGetLocalMeshInfo,stream);
 	LOAD_DSYM(acGridQuit,stream);
 	LOAD_DSYM(acGridGetDevice,stream);
 	LOAD_DSYM(acGridRandomize,stream);
@@ -255,6 +250,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridReduceScal,stream);
 	LOAD_DSYM(acGridReduceVec,stream);
 	LOAD_DSYM(acGridReduceVecScal,stream);
+	LOAD_DSYM(acGridReduceXY,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronous,stream);
 	LOAD_DSYM(acGridDiskAccessLaunch,stream);
 	LOAD_DSYM(acGridWriteSlicesToDiskLaunch,stream);
@@ -305,6 +301,19 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGetMaxNN,stream)
 	LOAD_DSYM(acGetGridMaxNN,stream)
 	LOAD_DSYM(acGetLengths,stream)
+	LOAD_DSYM(acStoreConfig,stream)
+	LOAD_DSYM(acAnalysisCheckForDSLErrors,stream)
+	LOAD_DSYM(acAnalysisGetKernelInfo,stream)
+	LOAD_DSYM(acAnalysisGetKernelInfoSingle,stream)
+	LOAD_DSYM(acAnalysisGetKernelInfoSingleWithInputParams,stream)
+	LOAD_DSYM(acGetKernelId,stream)
+	LOAD_DSYM(acGetKernelIdByName,stream)
+	LOAD_DSYM(acGridGetLocalMeshInfo,stream)
+	LOAD_DSYM(acGridDecomposeMeshInfo,stream)
+#ifndef AC_RUNTIME_COMPILATION
+	LOAD_DSYM(acGridGetVBA,stream)
+#endif
+	LOAD_DSYM(acQueryKernels,stream)
 	LOAD_DSYM(acHostMeshCopyVertexBuffers,stream)
 #include "device_load_uniform_loads.h"
         LOAD_DSYM(acHostMeshCopy,stream)
@@ -352,6 +361,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acDeviceSynchronizeStream,stream)
 	LOAD_DSYM(acDeviceSwapBuffer,stream)
 	LOAD_DSYM(acDeviceSwapBuffers,stream)
+	LOAD_DSYM(acDeviceLoadRealReduceRes,stream);
 	LOAD_DSYM(acDeviceLoadScalarUniform,stream)
 	LOAD_DSYM(acDeviceLoadVectorUniform,stream)
 	LOAD_DSYM(acDeviceLoadIntUniform,stream)
@@ -408,15 +418,19 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
 	*(void**)(&acDeviceGetIntInput) = dlsym(handle,"acDeviceGetIntInput");
 	*(void**)(&acDeviceGetRealOutput) = dlsym(handle,"acDeviceGetRealOutput");
+	LOAD_DSYM(acHostCreateVertexBufferVariable,stream);
+	LOAD_DSYM(acHostMeshCreateProfiles,stream);
+	LOAD_DSYM(acHostMeshDestroyVertexBuffer,stream);
 	LOAD_DSYM(acHostMeshCreate,stream)
+	LOAD_DSYM(acHostMeshCopyVertexBuffers,stream)
+	LOAD_DSYM(acHostMeshCopy,stream)
 	LOAD_DSYM(acHostGridMeshCreate,stream)
+	LOAD_DSYM(acVerifyCompatibility,stream);
 	LOAD_DSYM(acHostMeshRandomize,stream);
 	LOAD_DSYM(acHostGridMeshRandomize,stream);
 	LOAD_DSYM(acHostMeshDestroy,stream);
-
 	LOAD_DSYM(acVerifyCompatibility,stream);
 	LOAD_DSYM(acStoreConfig,stream);
-	LOAD_DSYM(acDeviceLoadRealReduceRes,stream);
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);
 //#else
