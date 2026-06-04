@@ -48,9 +48,12 @@
 #include "astaroth_lib.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "device_set_input_decls.h"
+#include "device_get_output_decls.h"
+#include "device_get_input_decls.h"
+#include "get_vtxbufs_declares.h"
+
+AC_BEGIN_C_DECLARATIONS
 
 /*
  * =============================================================================
@@ -376,9 +379,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
   static AcResult __attribute__((unused)) acCloseLibrary() {return AC_FAILURE;}
 #endif
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
+AC_END_C_DECLARATIONS
 
 static AcCompInfo UNUSED
 acInitCompInfo()

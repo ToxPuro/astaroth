@@ -17,10 +17,12 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
+
 #include <stddef.h>
 #include <stdint.h>  //uint64_t
 
 #include "acc_runtime.h"
+#include "astaroth_grid.h"
 #include "host_datatypes.h"
 #include "math_utils.h"  //uint64_t, uint3_64
 
@@ -62,8 +64,9 @@ int getPid(const int3 pid_raw, const uint3_64 decomp,const AcProcMappingStrategy
 int3 getPid3D(const uint64_t pid, const uint3_64 decomp,const AcProcMappingStrategy proc_mapping_strategy);
 void acVerifyDecomposition(const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy);
 
-extern "C"
-{
-  void acInitDecomposition(const AcMeshInfo info, const size_t nprocs);
-  void acQuitDecomposition(const AcDecomposeStrategy decompose_strategy);
-}
+AC_BEGIN_C_DECLARATIONS
+
+void acInitDecomposition(const AcMeshInfo info, const size_t nprocs);
+void acQuitDecomposition(const AcDecomposeStrategy decompose_strategy);
+
+AC_END_C_DECLARATIONS

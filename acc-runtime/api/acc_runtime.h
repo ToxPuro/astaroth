@@ -271,9 +271,8 @@ acGetFieldHalos(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 }
 
 typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
-  #ifdef __cplusplus
-  extern "C" {
-  #endif
+
+AC_BEGIN_C_DECLARATIONS
 
 #if AC_MPI_ENABLED
    FUNC_DEFINE(AcResult, acInitializeRuntimeMPI,(const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
@@ -399,9 +398,9 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   }
 #endif
 
-  #ifdef __cplusplus
-  } // extern "C"
-    //
+AC_END_C_DECLARATIONS
+
+#ifdef __cplusplus
 #if AC_RUNTIME_COMPILATION
 #else
 AcResult

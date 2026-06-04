@@ -12,9 +12,7 @@ typedef struct {
     AcReal kaver;
 } ForcingParams;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 /** Generates PC-inspired forcing params (vaisala_interactionoflarge_2021:
  * https://doi.org/10.3847/1538-4357/abceca) */
@@ -32,7 +30,4 @@ int loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* 
 
 void printForcingParams(const ForcingParams forcing_params);
 
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
+AC_END_C_DECLARATIONS

@@ -25,9 +25,7 @@
 #pragma once
 #include "astaroth.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 #include <stdarg.h>
 
@@ -155,9 +153,7 @@ static AcLibHandle __attribute__((unused)) acLoadUtils(FILE*, const AcMeshInfo)
 AcResult UNUSED
 acLoadConfig(const char* config_path, AcMeshInfo* config);
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
+AC_END_C_DECLARATIONS
 
 #define AC_RED   "\x1B[31m"
 #define AC_GRN   "\x1B[32m"

@@ -1,18 +1,16 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#include "func_define.h"
+
+AC_BEGIN_C_DECLARATIONS
+
 AcResult
 acCompile(const char* compilation_string, const char* target, AcMeshInfo info);
 void
 acLoadRunConsts(AcMeshInfo info);
 
+AC_END_C_DECLARATIONS
 
-#ifdef __cplusplus
-}
-#endif
 #ifdef __cplusplus
 
 static UNUSED AcResult

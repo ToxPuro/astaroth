@@ -42,6 +42,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "func_define.h"
+
 #if (defined(_MSC_VER) && defined(__AVX__)) ||                                 \
     (!defined(_MSC_VER) && defined(__SSE4_2__))
 #define HASHMAP_X86_SSE42
@@ -155,9 +157,7 @@ typedef struct hashmap_create_options_s {
   hashmap_uint32_t _;
 } hashmap_create_options_t;
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 /// @brief Create a hashmap.
 /// @param initial_capacity The initial capacity of the hashmap.
@@ -280,9 +280,7 @@ HASHMAP_WEAK int hashmap_rehash_iterator(void *const new_hash,
 HASHMAP_ALWAYS_INLINE int hashmap_rehash_helper(struct hashmap_s *const m);
 HASHMAP_ALWAYS_INLINE hashmap_uint32_t hashmap_clz(const hashmap_uint32_t x);
 
-#if defined(__cplusplus)
-}
-#endif
+AC_END_C_DECLARATIONS
 
 #if defined(__cplusplus)
 #define HASHMAP_CAST(type, x) static_cast<type>(x)
