@@ -1,7 +1,7 @@
-#ifdef __cplusplus
-extern "C" 
-{
-#endif
+#include "func_define.h"
+
+AC_BEGIN_C_DECLARATIONS
+
 AcResult acReindex(const cudaStream_t stream, //
                    const AcReal* in, const AcIndex in_offset,
                    const AcIndex in_shape, //
@@ -16,6 +16,5 @@ AcResult acReindexCross(const cudaStream_t stream, //
                         const AcShape out_shape, const AcShape block_shape);
 
 **/
-#ifdef __cplusplus
-}
-#endif
+
+AC_END_C_DECLARATIONS

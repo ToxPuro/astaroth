@@ -1,5 +1,17 @@
 #pragma once
 
+#ifdef __cplusplus
+
+#define AC_BEGIN_C_DECLARATIONS extern "C" {
+#define AC_END_C_DECLARATIONS }
+
+#else
+
+#define AC_BEGIN_C_DECLARATIONS
+#define AC_END_C_DECLARATIONS
+
+#endif
+
 #if AC_RUNTIME_COMPILATION
 
 #ifndef BASE_FUNC_NAME

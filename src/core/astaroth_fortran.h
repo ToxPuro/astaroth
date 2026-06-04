@@ -19,9 +19,7 @@
 #pragma once
 #include "astaroth.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 /**
  * Utils
@@ -63,6 +61,4 @@ void acdevicereducevec_(const Device* device, const Stream* stream, const Reduct
 
 void acdevicesynchronizestream_(const Device* device, const Stream* stream);
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
+AC_END_C_DECLARATIONS

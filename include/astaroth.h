@@ -48,9 +48,7 @@
 #include "astaroth_lib.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 /*
  * =============================================================================
@@ -399,10 +397,7 @@ AcResult acHostInitProfileToValue(const long double value, const size_t profile_
 AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
                                   const size_t profile_count);
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
+AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
 

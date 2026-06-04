@@ -1,9 +1,9 @@
 #pragma once
 #include "device_headers.h"
-#ifdef __cplusplus
-extern "C" 
-{
-#endif
+#include "func_define.h"
+
+AC_BEGIN_C_DECLARATIONS
+
 cudaError_t
 acDriverGetVersion(int* dst);
 cudaError_t
@@ -83,8 +83,9 @@ cudaError_t
 acProfilerStop();
 #endif
 
+AC_END_C_DECLARATIONS
+
 #ifdef __cplusplus
-}
 cudaError_t
 acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind);
 cudaError_t

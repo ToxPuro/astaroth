@@ -26,12 +26,9 @@
 #ifndef TINYEXPR_H
 #define TINYEXPR_H
 
+#include "func_define.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
+AC_BEGIN_C_DECLARATIONS
 
 typedef struct te_expr {
     int type;
@@ -83,9 +80,6 @@ void te_print(const te_expr *n);
 /* This is safe to call on NULL pointers. */
 void te_free(te_expr *n);
 
-
-#ifdef __cplusplus
-}
-#endif
+AC_END_C_DECLARATIONS
 
 #endif /*TINYEXPR_H*/

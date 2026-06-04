@@ -21,14 +21,14 @@
 
 #include "acc_runtime.h"
 #include "common_kernels.h"
+#include "func_define.h"
 #include "reindex.h"
 #include "transpose.h"
 
 typedef AcReal AcRealPacked;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
+
 AcResult acKernelDummy(void);
 
 typedef struct AcShearInterpolationCoeffs
@@ -124,9 +124,9 @@ acKernelsClean();
 
 // Astaroth 2.0 backwards compatibility.
 
-#ifdef __cplusplus
-} // extern "C"
+AC_END_C_DECLARATIONS
 
+#ifdef __cplusplus
 // cplusplus overloads
 //
 

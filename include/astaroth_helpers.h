@@ -1,12 +1,12 @@
 #pragma once
 
+#include "func_define.h"
+
 #ifdef __cplusplus
 #include "user_builtin_non_scalar_constants.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
                           const AcMeshInfo info);
@@ -336,9 +336,7 @@ AcResult acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, Ac
 
 AcResult acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
+AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
 

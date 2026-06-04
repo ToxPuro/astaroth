@@ -542,16 +542,16 @@ get_name(const Profile& param)
 	return profile_names[param];
 }
 
- 
+AC_BEGIN_C_DECLARATIONS
 
-extern "C" 
-{
-	void acAnalysisCheckForDSLErrors(const AcMeshInfo info);
-	AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
-	KernelAnalysisInfo acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel);
-	KernelAnalysisInfo acAnalysisGetKernelInfoSingleWithInputParams(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params);
-	acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary);
-}
+void acAnalysisCheckForDSLErrors(const AcMeshInfo info);
+AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
+KernelAnalysisInfo acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel);
+KernelAnalysisInfo acAnalysisGetKernelInfoSingleWithInputParams(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params);
+acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary);
+
+AC_END_C_DECLARATIONS
+
 //#include "user_constants.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define tid  ((int3){0,0,0})

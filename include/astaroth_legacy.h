@@ -8,9 +8,7 @@
  * =============================================================================
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 /** Allocates all memory and initializes the devices visible to the caller. Should be
  * called before any other function in this interface. */
@@ -81,6 +79,4 @@ FUNC_DEFINE(AcResult, acIntegrateStepWithOffset,(const int isubstep, const AcRea
 FUNC_DEFINE(AcResult, acSynchronize,(void));
 FUNC_DEFINE(AcResult, acLoadWithOffset,(const AcMesh host_mesh, const int3 src, const int num_vertices));
 
-#ifdef __cplusplus
-}
-#endif
+AC_END_C_DECLARATIONS

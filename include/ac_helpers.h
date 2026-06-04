@@ -2,6 +2,7 @@
 
 #include "acreal.h"
 #include "device_headers.h"
+#include "func_define.h"
 #include "host_datatypes.h"
 
 typedef struct device_s* Device;
@@ -15,10 +16,7 @@ typedef struct device_s* Device;
 #endif
   } AcBuffer;
 
-#ifdef __cplusplus
-extern "C" 
-{
-#endif
+AC_BEGIN_C_DECLARATIONS
 
 void
 ac_unset_floating_point_exceptions();
@@ -57,11 +55,6 @@ int acMemUsage();
 size_t
 acGetAmountOfDeviceMemoryFree();
 
-#ifdef __cplusplus
-cudaDeviceProp
-get_device_prop();
-#endif
-
 size_t
 acDeviceResize(void** dst,const size_t old_bytes,const size_t new_bytes);
 
@@ -74,6 +67,7 @@ AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cu
 
 AcShape  acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims);
 AcShape  acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
+AcMeshOrder acGetMeshOrderForProfile(const AcProfileType type);
 
 AcBuffer
 acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaStream_t stream);
@@ -83,8 +77,14 @@ void acBufferDestroy(AcBuffer* buffer);
 AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
 AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
 
+// Returns the number of elements contained within shape
+size_t acShapeSize(const AcShape shape);
+
+AC_END_C_DECLARATIONS
+
 #ifdef __cplusplus
-}
+
+cudaDeviceProp get_device_prop();
 
 int3
 ceil(AcReal3 a);
@@ -117,8 +117,3 @@ void
 acDeviceFree(AcComplex** dst, const int bytes);
 
 #endif
-AcMeshOrder acGetMeshOrderForProfile(const AcProfileType type);
-
-// Returns the number of elements contained within shape
-size_t acShapeSize(const AcShape shape);
-
