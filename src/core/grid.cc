@@ -3291,7 +3291,6 @@ acGridReduceXYAverages(const Stream stream)
     }
 }
 
-/** */
 AcResult
 acGridLaunchKernel(const Stream stream, const AcKernel kernel, const Volume start, const Volume end)
 {
@@ -3307,7 +3306,6 @@ acGridSwapBuffers(void)
     return acDeviceSwapBuffers(grid.device);
 }
 
-/** */
 AcResult
 acGridLoadStencil(const Stream stream, const Stencil stencil,
                   const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -3318,7 +3316,6 @@ acGridLoadStencil(const Stream stream, const Stencil stencil,
     return acDeviceLoadStencil(grid.device, stream, stencil, data);
 }
 
-/** */
 AcResult
 acGridStoreStencil(const Stream stream, const Stencil stencil,
                    AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -3329,7 +3326,6 @@ acGridStoreStencil(const Stream stream, const Stencil stencil,
     return acDeviceStoreStencil(grid.device, stream, stencil, data);
 }
 
-/** */
 AcResult
 acGridLoadStencils(const Stream stream,
                    const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -3346,7 +3342,6 @@ acGridLoadStencils(const Stream stream,
     return (AcResult)retval;
 }
 
-/** */
 AcResult
 acGridStoreStencils(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])

@@ -929,7 +929,6 @@ acDeviceBenchmarkKernel(const Device device, const AcKernel kernel, const int3 s
     return acBenchmarkKernel(kernel, start, end, device->vba);
 }
 
-/** */
 AcResult
 acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
                      AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
