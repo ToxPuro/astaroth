@@ -70,25 +70,20 @@ AcResult
 acKernelMoveData(const cudaStream_t stream, const Volume src_start, const Volume dst_start, const Volume src_dims, const Volume dst_dims, VertexBufferArray vba,
                           const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
-/** */
 size_t acKernelReduceGetMinimumScratchpadSize(const int3 max_dims);
 
-/** */
 size_t acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims);
 
-/** */
 AcReal acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction,
                           const VertexBufferHandle vtxbuf, const Volume start, const Volume end,
 			  const int scratchpad_index,
                           VertexBufferArray vba);
 
-/** */
 AcReal acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const Volume start,
                          const Volume end, const Field3 vec, VertexBufferArray vba,
 			 const int scratchpad_index
                          );
 
-/** */
 AcReal
 acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, const Volume start,
                       const Volume end, const Field4 vtxbufs,VertexBufferArray vba,
@@ -129,11 +124,9 @@ AC_END_C_DECLARATIONS
 // cplusplus overloads
 //
 
-/** */
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                             const Volume vba_start, const Volume dims, VertexBufferArray vba);
 
-/** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const Volume vba_start, const Volume dims, AcRealPacked* packed);
 

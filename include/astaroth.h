@@ -84,7 +84,6 @@ FUNC_DEFINE(size_t, acGetNumFields,(void));
 FUNC_DEFINE(AcResult, acGetFieldHandle,(const char* field, size_t* handle));
 FUNC_DEFINE(const char*,acGetFieldName,(const Field field));
 
-/** */
 FUNC_DEFINE(Node, acGetNode,(void));
 
 /*
@@ -670,7 +669,6 @@ acRayUpdate(AcKernel kernel, const AcBoundary boundary, const int3 ray_direction
 	return BASE_FUNC_NAME(acRayUpdate)(kernel, boundary, ray_direction, fields.data(), fields.size(), fields.data(), fields.size(), (KernelParamsLoader){});
 }
 
-/** */
 template <size_t num_fields>
 static AcTaskDefinition
 acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], KernelParamsLoader loader)
@@ -774,7 +772,6 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
     return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out, num_fields_out, NULL, 0, NULL, 0, NULL, 0, NULL, 0,(Volume){0,0,0}, (Volume){0,0,0}, 1, loader);
 }
 
-/** */
 template <size_t num_fields>
 static AcTaskDefinition
 acHaloExchange(Field (&fields)[num_fields])
@@ -980,7 +977,6 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
 
-/** */
 template <size_t n_ops>
 static AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])

@@ -22,7 +22,6 @@ FUNC_DEFINE(AcResult, acQuit,(void));
  * parameter*/
 FUNC_DEFINE(AcResult, acSynchronizeStream,(const Stream stream));
 
-/** */
 FUNC_DEFINE(AcResult, acSynchronizeMesh,(void));
 
 /** Loads a constant to the memories of the devices visible to the caller */
