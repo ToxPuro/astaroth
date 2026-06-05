@@ -1,6 +1,6 @@
 ## Astaroth Core
 if(RUNTIME_COMPILATION)
-	add_library(astaroth_helpers OBJECT helpers.cc device.cc logging.c)
+	add_library(astaroth_helpers OBJECT helpers.cc device.cc buffer.cc logging.c)
 else()
 	add_library(astaroth_helpers OBJECT helpers.cc device.cc buffer.cc logging.c)
 endif()
