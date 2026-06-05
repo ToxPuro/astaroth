@@ -1,6 +1,13 @@
 #pragma once
 
+#include "acc_runtime.h"
+#include "astaroth_base.h"
 #include "func_define.h"
+#include "host_datatypes.h"
+
+#ifndef UNUSED
+#define UNUSED __attribute__((unused)) // Does not give a warning if unused
+#endif
 
 /*
  * =============================================================================
