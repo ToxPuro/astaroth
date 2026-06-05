@@ -388,12 +388,6 @@ FUNC_DEFINE(bool, acGridInitialized, ());
 #endif
 
 #if __cplusplus
-static UNUSED AcResult
-acGridInit(const AcMesh mesh)
-{
-    return acGridInitBase(mesh);
-}
-
 using KernelParamsLoader = std::function<void(ParamLoadingInfo step_info)>;
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,
                        (const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
