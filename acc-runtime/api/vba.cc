@@ -16,6 +16,7 @@
 #include "math_utils.h"
 #include "math_utils_base.h"
 #include "static_analysis.h"
+#include "stencil_accesses.h"
 
 // clang-format off
 #include "user_defines.h"
