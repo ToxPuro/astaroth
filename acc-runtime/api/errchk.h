@@ -33,7 +33,7 @@
 #include <time.h>
 
 #include "astaroth_device_headers.h"
-#include "host_datatypes.h"
+#include "datatypes.h"
 #ifdef __cplusplus
 #include "astaroth_cuda_wrappers.h"
 #endif

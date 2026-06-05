@@ -11,8 +11,8 @@
 #include "ac_mpi.h"
 #include "astaroth_cuda_wrappers.h"
 #include "common_kernels.h"
+#include "datatypes.h"
 #include "errchk.h"
-#include "host_datatypes.h"
 
 static MPI_Comm communicator{};
 [[maybe_unused]] static Volume global_offset = (Volume){0,0,0};

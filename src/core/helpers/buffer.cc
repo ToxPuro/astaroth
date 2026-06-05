@@ -4,8 +4,8 @@
 #include "acreal.h"
 #include "astaroth_cuda_wrappers.h"
 #include "astaroth_device_headers.h"
+#include "datatypes.h"
 #include "errchk.h"
-#include "host_datatypes.h"
 #include "reindex.h"
 #include "transpose.h"
 

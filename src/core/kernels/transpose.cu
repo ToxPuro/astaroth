@@ -1,13 +1,13 @@
-#include "host_datatypes.h"
-#include "astaroth_device_headers.h"
-#include "device_details.h"
-#include "ac_helpers.h"
 #include "transpose.h"
 
+#include "ac_helpers.h"
 #include "astaroth_cuda_wrappers.h"
+#include "astaroth_device_headers.h"
+#include "datatypes.h"
+#include "device_details.h"
 #include "errchk.h"
+#include "host_datatypes.h"
 #include "math_utils_base.h"
-
 
 #define TILE_DIM (32)
 

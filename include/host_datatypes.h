@@ -7,6 +7,57 @@
 #include "builtin_enums.h"
 #include "astaroth_device_headers.h"
 
+#if AC_CPU_BUILD
+typedef struct
+{
+	int x,y,z;
+} int3;
+
+typedef struct
+{
+	int x,y,z,w;
+} int4;
+
+typedef struct
+{
+	unsigned int x, y, z;
+} dim3;
+
+typedef struct
+{
+	unsigned int x, y, z;
+} uint3;
+#endif
+
+#ifndef VOLUME_DEFINED
+typedef struct
+{
+	size_t x,y,z;
+} Volume;
+#define VOLUME_DEFINED
+#endif
+
+#ifndef COMPLEX_DEFINED
+typedef struct
+{
+	AcReal x,y;
+} AcComplex;
+
+typedef struct
+{ 
+	float x,y;
+} AcComplexFloat;
+#define COMPLEX_DEFINED
+#endif
+
+#ifndef REAL3_DEFINED
+typedef struct
+{
+	AcReal x,y,z;
+} AcReal3;
+#define REAL3_DEFINED
+#endif
+
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 
 #define N_DIMS (3)
@@ -55,38 +106,9 @@ typedef AcShape AcIndex;
 //TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm
 typedef struct AcCommunicator AcCommunicator;
 
-#if AC_CPU_BUILD
-
-#ifndef INT3_DEFINED
-typedef struct
-{
-	int x,y,z;
-} int3;
-typedef struct
-{
-        int x,y,z,w;
-} int4;
-#define INT3_DEFINED
-#endif
-
-typedef struct
-{
-    unsigned int x, y, z;
-} dim3;
-
-typedef struct
-{
-    unsigned int x, y, z;
-} uint3;
-#endif
-
-#include "user_typedefs.h"
-
-typedef Volume size3_t;
-
 typedef struct {
-    size3_t n0, n1;
-    size3_t m0, m1;
-    size3_t nn;
-    size3_t reduction_tile;
+	size3_t n0, n1;
+	size3_t m0, m1;
+	size3_t nn;
+	size3_t reduction_tile;
 } AcMeshDims;

@@ -52,19 +52,9 @@
 #define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 #define AcVector AcReal3
 
-#if AC_CPU_BUILD
-#ifndef INT3_DEFINED
-typedef struct
-{
-	int x,y,z;
-} int3;
-typedef struct
-{
-        int x,y,z,w;
-} int4;
-#define INT3_DEFINED
-#endif
-#endif
+#include "builtin_enums.h"
+#include "user_typedefs.h"
+#include "host_datatypes.h"
 
 #ifdef __cplusplus
 

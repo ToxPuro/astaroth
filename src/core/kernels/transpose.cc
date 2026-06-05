@@ -4,8 +4,8 @@
 
 #include "astaroth_cuda_wrappers.h"
 #include "astaroth_device_headers.h"
+#include "datatypes.h"
 #include "errchk.h"
-#include "host_datatypes.h"
 #include "math_utils_base.h"
 
 template <typename T>

@@ -1,9 +1,5 @@
 #include "implementation.h"
 
-typedef struct {
-  size_t x, y, z;
-} Volume;
-
 static Volume
 as_volume(const int x, const int y, const int z)
 {

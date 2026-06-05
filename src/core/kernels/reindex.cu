@@ -1,10 +1,11 @@
+#include "reindex.h"
+
 #include <stddef.h>
 
 #include "acreal.h"
 #include "astaroth_device_headers.h"
+#include "datatypes.h"
 #include "errchk.h"
-#include "host_datatypes.h"
-#include "reindex.h"
 
 __host__ __device__ constexpr bool
 acOutOfBounds(const AcIndex& index, const AcShape& shape)

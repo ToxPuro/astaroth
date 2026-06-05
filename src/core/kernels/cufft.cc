@@ -9,8 +9,8 @@
 #include "ac_mpi.h"
 #include "astaroth_cuda_wrappers.h"
 #include "common_kernels.h"
+#include "datatypes.h"
 #include "errchk.h"
-#include "host_datatypes.h"
 
 #if AC_DOUBLE_PRECISION
 using  cuFFTPrecision = cuDoubleComplex;
