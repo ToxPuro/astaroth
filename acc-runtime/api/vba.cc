@@ -1,6 +1,7 @@
+#include "astaroth_cuda_wrappers.h"
 #include "acc_runtime.h"
 #include "math_utils.h"
-#include "astaroth_cuda_wrappers.h"
+#include "reduce_helpers.h"
 #include "stencil_accesses.h"
 #include "static_analysis.h"
 
