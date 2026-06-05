@@ -3,7 +3,6 @@
 #include "acreal.h"
 #include "device_headers.h"
 #include "func_define.h"
-#include "host_datatypes.h"
 
 AC_BEGIN_C_DECLARATIONS
 

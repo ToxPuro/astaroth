@@ -13,7 +13,6 @@ typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 #define X_ORDER_INT (0)
 #define Y_ORDER_INT (1)
 #define Z_ORDER_INT (2)
-
 typedef enum {
 	XYZ = X_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*Z_ORDER_INT,
 	XZY = X_ORDER_INT + N_DIMS*Z_ORDER_INT + N_DIMS*N_DIMS*Y_ORDER_INT,
@@ -55,34 +54,34 @@ typedef AcShape AcIndex;
 //TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm
 typedef struct AcCommunicator AcCommunicator;
 
-#if AC_CPU_BUILD
-
-#ifndef INT3_DEFINED
+#ifndef VOLUME_DEFINED
 typedef struct
 {
-	int x,y,z;
-} int3;
-typedef struct
-{
-        int x,y,z,w;
-} int4;
-#define INT3_DEFINED
+	size_t x,y,z;
+} Volume;
+#define VOLUME_DEFINED
 #endif
 
+#ifndef COMPLEX_DEFINED
 typedef struct
 {
-    unsigned int x, y, z;
-} dim3;
+	AcReal x,y;
+} AcComplex;
 
 typedef struct
-{
-    unsigned int x, y, z;
-} uint3;
+{ 
+	float x,y;
+} AcComplexFloat;
+#define COMPLEX_DEFINED
 #endif
 
-#include "user_typedefs.h"
-
-typedef Volume size3_t;
+#ifndef REAL3_DEFINED
+typedef struct
+{
+	AcReal x,y,z;
+} AcReal3;
+#define REAL3_DEFINED
+#endif
 
 typedef struct {
     size3_t n0, n1;

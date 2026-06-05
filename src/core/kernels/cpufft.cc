@@ -1,4 +1,4 @@
-#include "host_datatypes.h"
+#include "datatypes.h"
 #include "ac_fft.h"
 #include "ac_mpi.h"
 #include <stdio.h>
