@@ -771,6 +771,8 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 #endif
   #endif
 
+AC_BEGIN_C_DECLARATIONS
+
 static UNUSED size_t
 prof_count(const Profile prof, const size3_t counts)
 {
@@ -817,3 +819,4 @@ ac_get_scratchpad_size_float(const size_t i);
 void
 ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
 
+AC_END_C_DECLARATIONS

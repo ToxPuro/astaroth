@@ -23,11 +23,13 @@
  *
  */
 #pragma once
-#include "astaroth.h"
-
-AC_BEGIN_C_DECLARATIONS
 
 #include <stdarg.h>
+
+#include "astaroth.h"
+#include "func_define.h"
+
+AC_BEGIN_C_DECLARATIONS
 
 typedef struct {
     AcReal model;

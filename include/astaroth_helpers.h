@@ -1,5 +1,7 @@
 #pragma once
 
+#include "func_define.h"
+
 #ifdef __cplusplus
 #include "user_builtin_non_scalar_constants.h"
 #endif

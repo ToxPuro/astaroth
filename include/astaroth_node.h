@@ -7,6 +7,9 @@
  * Node interface
  * =============================================================================
  */
+
+AC_BEGIN_C_DECLARATIONS
+
 /**
 Initializes all devices on the current node.
 
