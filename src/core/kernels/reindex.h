@@ -1,10 +1,14 @@
+#pragma once
+
+#include "func_define.h"
+
 AC_BEGIN_C_DECLARATIONS
 
-AcResult acReindex(const cudaStream_t stream, //
-                   const AcReal* in, const AcIndex in_offset,
-                   const AcIndex in_shape, //
-                   AcReal* out, const AcIndex out_offset,
-                   const AcIndex out_shape, const AcShape block_shape);
+FUNC_DEFINE(AcResult, acReindex,
+            (const cudaStream_t stream, const AcReal* in, const AcIndex in_offset,
+             const AcIndex in_shape, //
+             AcReal* out, const AcIndex out_offset, const AcIndex out_shape,
+             const AcShape block_shape));
 
 /**
 AcResult acReindexCross(const cudaStream_t stream, //
