@@ -15,6 +15,7 @@
 #include "host_datatypes.h"
 #include "math_utils.h"
 #include "math_utils_base.h"
+#include "stencil_accesses.h"
 #include "static_analysis.h"
 
 // clang-format off
