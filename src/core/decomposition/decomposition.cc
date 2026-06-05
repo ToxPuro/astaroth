@@ -35,6 +35,11 @@
 #include "user_defines.h"
 // clang-format on
 
+#include "astaroth.h"
+#include "astaroth_cuda_wrappers.h"
+#include "decomposition.h"
+#include "device_headers.h"
+
 #define DECOMPOSITION_TYPE_ZORDER (1)
 #define DECOMPOSITION_TYPE_HIERARCHICAL (2)
 int MPI_DECOMPOSITION_AXES = 3;
