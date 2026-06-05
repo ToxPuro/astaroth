@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #ifdef __cplusplus
 
 #define AC_BEGIN_C_DECLARATIONS extern "C" {
@@ -13,6 +16,14 @@
 #endif
 
 #if AC_RUNTIME_COMPILATION
+
+static void
+ac_library_not_yet_loaded()
+{
+    fprintf(stderr,
+            "This function needs Astaroth to be loaded via acLoadLibrary before calling it!\n");
+    abort();
+}
 
 #ifndef BASE_FUNC_NAME
 

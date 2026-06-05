@@ -71,12 +71,6 @@
 #define MAYBE_UNUSED
 #endif
 
-static UNUSED void ac_library_not_yet_loaded()
-{
-	fprintf(stderr,"This function needs Astaroth to be loaded via acLoadLibrary before calling it!\n");
-	ERRCHK_ALWAYS(false);
-}
-
 typedef struct KernelReduceOutput {
   int variable;
   AcType type;
