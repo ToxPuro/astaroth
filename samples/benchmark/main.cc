@@ -112,7 +112,7 @@ integrate(const AcReal dt)
       const AcReal start = MPI_Wtime();
       acGridExecuteTaskGraph(dsl_graph,1);
       const AcReal end   = MPI_Wtime();
-      fprintf(stderr,"Substep took %.14e\n",end-start);
+      fprintf(stderr,"Substep %d took %.14e\n", substep, end-start);
     }
 }
 
