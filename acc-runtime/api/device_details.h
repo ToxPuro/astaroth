@@ -1,4 +1,10 @@
+#include <rocprim/rocprim_version.hpp>
+
+#if ROCPRIM_VERSION >= 400000
+#define rocprim__warpSize() rocprim::arch::wavefront::min_size()
+#else
 #define rocprim__warpSize() rocprim::device_warp_size()
+#endif
 #define rocprim__warpId()   rocprim::warp_id()
 #define rocprim__warp_shuffle_down rocprim::warp_shuffle_down
 #define rocprim__warp_shuffle rocprim::warp_shuffle
