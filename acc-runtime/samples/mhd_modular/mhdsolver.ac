@@ -86,7 +86,7 @@ hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (0)
+hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
@@ -604,7 +604,7 @@ Kernel twopass_solve_intermediate(AC_SUBSTEP_NUMBER step_num, real dt) {
     if(step_num == AC_THIRD_SUBSTEP && AC_timestep_calc_with_rhs) calc_timestep();
 }
 
-fixed_boundary Kernel twopass_solve_final(int step_num, real current_time) {
+fixed_boundary Kernel twopass_solve_final(int step_num, real current_time, real dt) {
     write(VTXBUF_LNRHO, rk3_final(VTXBUF_LNRHO, step_num))
 
     #if LENTROPY 
@@ -615,7 +615,8 @@ fixed_boundary Kernel twopass_solve_final(int step_num, real current_time) {
     #if LFORCING
     if step_num == 2 {
         if current_time > AC_switch_forcing {
-            forcing_step = forcing()
+            // MV: Added dt because thin would not otherwise compile. 
+            forcing_step = forcing(dt)
         }
     }
     #endif
@@ -888,19 +889,19 @@ ComputeSteps AC_get_sph(boundconds)
 ComputeSteps AC_rhs_substep(boundconds)
 {
         twopass_solve_intermediate(AC_SUBSTEP,AC_dt)
-        twopass_solve_final(AC_SUBSTEP,AC_current_time);
+        twopass_solve_final(AC_SUBSTEP,AC_current_time,AC_dt);
 }
 
 ComputeSteps AC_rhs(boundconds)
 {
         twopass_solve_intermediate(AC_FIRST_SUBSTEP,AC_dt)
-        twopass_solve_final(AC_FIRST_SUBSTEP,AC_current_time);
+        twopass_solve_final(AC_FIRST_SUBSTEP,AC_current_time,AC_dt);
 
         twopass_solve_intermediate(AC_SECOND_SUBSTEP,AC_dt)
-        twopass_solve_final(AC_SECOND_SUBSTEP,AC_current_time);
+        twopass_solve_final(AC_SECOND_SUBSTEP,AC_current_time,AC_dt);
 
         twopass_solve_intermediate(AC_THIRD_SUBSTEP,AC_dt)
-        twopass_solve_final(AC_THIRD_SUBSTEP,AC_current_time);
+        twopass_solve_final(AC_THIRD_SUBSTEP,AC_current_time,AC_dt);
 }
 Kernel calc_timestep_kernel() {calc_timestep()}
 
