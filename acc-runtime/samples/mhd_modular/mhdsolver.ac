@@ -548,6 +548,16 @@ calc_timestep()
     bb = curl(AA)
     b2 = dot(bb,bb)
     alfven_speed = sqrt(b2/rho);
+    //MV: Moved these up here because otherwise they would not work
+    //MV: These do not like to be under the if statement! 
+	reduce_max(norm(UU),UU_MAX_ADVEC)
+	reduce_max(alfven_speed,ALFVEN_SPEED_MAX)
+#if LSHOCK
+        reduce_max(VTXBUF_SHOCK,AC_MAX_SHOCK)	
+#endif
+#if LADONEFLUID
+        reduce_max(pow(rho,AC_onefluid_ad_exp)/b2,AD_ONE_FLUID_MAX_ADVEC)	
+#endif
     if(AC_additive_timestep)
     {
     	visc_max =
@@ -565,13 +575,13 @@ calc_timestep()
     }
     else
     {
-	reduce_max(norm(UU),UU_MAX_ADVEC)
-	reduce_max(alfven_speed,ALFVEN_SPEED_MAX)
+	//reduce_max(norm(UU),UU_MAX_ADVEC)
+	//reduce_max(alfven_speed,ALFVEN_SPEED_MAX)
 #if LSHOCK
-        reduce_max(VTXBUF_SHOCK,AC_MAX_SHOCK)	
+        //reduce_max(VTXBUF_SHOCK,AC_MAX_SHOCK)	
 #endif
 #if LADONEFLUID
-        reduce_max(pow(rho,AC_onefluid_ad_exp)/b2,AD_ONE_FLUID_MAX_ADVEC)	
+        //reduce_max(pow(rho,AC_onefluid_ad_exp)/b2,AD_ONE_FLUID_MAX_ADVEC)	
 #endif
     }
 }
