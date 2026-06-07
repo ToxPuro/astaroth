@@ -21,6 +21,8 @@ parser.add_argument('--only-lines',  default=False,action="store_true", help='Wr
 parser.add_argument('--write-movie', default=False,action="store_true", help='Write slices to gif movies')
 parser.add_argument('--write-bin',   default=False,action="store_true", help='Write slices to binary files')
 parser.add_argument('--spherical',   default=False,action="store_true", help='Plots spherical data')
+parser.add_argument('--slices-info', type=pathlib.Path, default='ac_slices_info.csv', help='Path to ac_slices_info.csv')
+parser.add_argument('--grid-info', type=pathlib.Path, default='ac_grid_info.csv', help='Path to ac_grid_info.csv')
 args = parser.parse_args()
 
 #Term colors
@@ -64,8 +66,8 @@ if args.write_movie:
 segmented_filename_regex = re.compile(r'([^-]*)-segment-at_(\d+)_(\d+)_(\d+)-dims_(\d+)_(\d+)-step_(\d+).slice')
 monolithic_filename_regex = re.compile(r'([^-]*)-dims_(\d+)_(\d+)-step_(\d+).slice')
 
-info = pd.read_csv("ac_slices_info.csv",sep=",")
-grid_info = pd.read_csv("ac_grid_info.csv",sep=',')
+info = pd.read_csv(args.slices_info, sep=",")
+grid_info = pd.read_csv(args.grid_info, sep=',')
 nxgrid  = grid_info["nxgrid"].iloc[0]
 nygrid  = grid_info["nygrid"].iloc[0]
 nzgrid  = grid_info["nzgrid"].iloc[0]
