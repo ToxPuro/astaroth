@@ -1036,12 +1036,7 @@ output_config_info(AcMeshInfo* info)
 	//silence unused warnings
 	(void)is_on; (void) is_off;
 
-        const char* forcing_flag =
-#if LFORCING
-            is_on;
-#else
-            is_off;
-#endif
+        const char* forcing_flag = (*info)[AC_lforcing] ? is_on : is_off;
         const char* sink_flag =
 #if LSINK
             is_on;
@@ -1245,6 +1240,8 @@ initialize_mesh(const AcMeshInfo info, const CommandLineArguments cmdline_args, 
 int
 main(int argc, char** argv)
 {
+    //Set random seed for reproducibility
+    srand(321654987);
     // Use multi-threaded MPI
     {
 
@@ -1376,11 +1373,12 @@ main(int argc, char** argv)
     // These run before the simulation step
     std::map<PeriodicAction, SimulationPeriod> pre_step_actions;
     // Generate forcing
-#if LFORCING
-    pre_step_actions[PeriodicAction::GenerateForcing] = SimulationPeriod(info,
-                                                                         AC_forcing_period_steps,
-                                                                         AC_forcing_period_t);
-#endif
+    if(info[AC_lforcing])
+    {
+      pre_step_actions[PeriodicAction::GenerateForcing] = SimulationPeriod(info,
+                                                                           AC_forcing_period_steps,
+                                                                           AC_forcing_period_t);
+    }
     // Print diagnostics
     pre_step_actions
         [PeriodicAction::PrintDiagnostics] = SimulationPeriod(info, AC_save_steps,
@@ -1444,15 +1442,14 @@ main(int argc, char** argv)
             acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
             set_event(&events, SimulationEvent::NanDetected);
         }
-
-#if LFORCING
-
-        log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing "
-                                                  "parameters\n");
-        auto forcing_params = generateForcingParams(info);
-        // printForcingParams(forcing_params);
-        loadForcingParamsToGrid(forcing_params);
-#endif
+	if(info[AC_lforcing])
+	{
+          log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing "
+                                                    "parameters\n");
+          auto forcing_params = generateForcingParams(info);
+          // printForcingParams(forcing_params);
+          loadForcingParamsToGrid(forcing_params);
+	}
     }
     else if (pid == 0) {
         // add newline to old diag_file from previous run
@@ -1565,7 +1562,6 @@ main(int argc, char** argv)
         	    write_slices(pid, i, simulation_time);
                     break;
                 }
-#if LFORCING
                 case PeriodicAction::GenerateForcing: {
                     log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new "
                                                               "forcing parameters\n");
@@ -1574,7 +1570,6 @@ main(int argc, char** argv)
                     loadForcingParamsToGrid(forcing_params);
                     break;
                 }
-#endif
                 default:
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Unsupported periodic action pre sim "

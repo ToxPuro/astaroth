@@ -86,7 +86,6 @@ hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
@@ -276,7 +275,6 @@ induction() {
 
 
 
-#if LFORCING
 // The Pencil Code forcing_hel_noshear(), manual Eq. 222, inspired forcing function with adjustable
 // helicity
 helical_forcing(k_force, xx, ff_re, ff_im, phi)
@@ -319,7 +317,6 @@ forcing(dt)
 
     return force
 }
-#endif // LFORCING
 
 
 continuity() {
@@ -511,7 +508,7 @@ bc_sym_z(sgn,topbot,VtxBuffer j,rel)
 
 
 bool bool_param
-
+run_const bool AC_lforcing = false
 
 Kernel singlepass_solve(int step_num, TimeParams time_params) {
     write(VTXBUF_LNRHO, rk3(VTXBUF_LNRHO, continuity(), step_num, time_params.dt))
@@ -519,20 +516,18 @@ Kernel singlepass_solve(int step_num, TimeParams time_params) {
 #if LENTROPY 
     write(VTXBUF_ENTROPY, rk3(VTXBUF_ENTROPY, entropy(),step_num, time_params.dt))
 #endif 
-#if LFORCING
     //Add the forcing component to the velocity field at the last integration step.
     //Important to init to zero here: ohterwise will produce numerical garbage! 
     forcing_step = real3(0.0, 0.0, 0.0)
-    if step_num == 2 {
-        if time_params.current_time > AC_switch_forcing {
-            forcing_step = forcing(time_params.dt)
-        }
+    if(AC_lforcing)
+    {
+      if step_num == 2 {
+          if time_params.current_time > AC_switch_forcing {
+              forcing_step = forcing(time_params.dt)
+          }
+      }
+      write(UU, rk3(UU, momentum(), step_num,time_params.dt) + forcing_step)
     }
-    write(UU, rk3(UU, momentum(), step_num,time_params.dt) + forcing_step)
-#else 
-    write(UU, rk3(UU, momentum(), step_num,time_params.dt))
-#endif
-
 #if LMAGNETIC
     write(AA, rk3(AA, induction(), step_num, time_params.dt))
 #endif
@@ -613,14 +608,15 @@ fixed_boundary Kernel twopass_solve_final(int step_num, real current_time, real 
     #endif
 
     forcing_step = real3(0.0, 0.0, 0.0)
-    #if LFORCING
-    if step_num == 2 {
-        if current_time > AC_switch_forcing {
-            // MV: Added dt because thin would not otherwise compile. 
-            forcing_step = forcing(dt)
-        }
+    if(AC_lforcing)
+    {
+      if step_num == 2 {
+          if current_time > AC_switch_forcing {
+              // MV: Added dt because thin would not otherwise compile. 
+              forcing_step = forcing(dt)
+          }
+      }
     }
-    #endif
     write(UU, rk3_final(UU, step_num) + forcing_step)
 
     #if LMAGNETIC
