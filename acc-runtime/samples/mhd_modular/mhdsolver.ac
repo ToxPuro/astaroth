@@ -508,7 +508,6 @@ bc_sym_z(sgn,topbot,VtxBuffer j,rel)
 
 
 bool bool_param
-run_const bool AC_lforcing = false
 
 Kernel singlepass_solve(int step_num, TimeParams time_params) {
     write(VTXBUF_LNRHO, rk3(VTXBUF_LNRHO, continuity(), step_num, time_params.dt))

@@ -43,3 +43,5 @@ real AC_cdtv
 //TP: same default as in PC
 real AC_cdtv3 = 0.01
 real AC_cdts
+
+run_const bool AC_lforcing = false
