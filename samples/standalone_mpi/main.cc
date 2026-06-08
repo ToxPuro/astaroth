@@ -44,7 +44,7 @@
 
 #include "config_loader.h"
 #include "errchk.h"
-#include "host_forcing.h"
+#include "host_forcing.cc"
 //TP: not used anymore
 //#include "host_memory.h"
 #include "math_utils.h"
@@ -1266,6 +1266,8 @@ main(int argc, char** argv)
     AcMeshInfo info = load_config_file(cmdline_args.config_path);
     if(AC_RUNTIME_COMPILATION) ac_runtime_compile(info);
 
+    ForcingInit(info);
+
     //////////////////////////////
     // Output run configuration //
     //////////////////////////////
@@ -1621,10 +1623,7 @@ main(int argc, char** argv)
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
     	        acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
-		const AcReal start_time = MPI_Wtime();
     		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
-		const AcReal end_time   = MPI_Wtime();
-		fprintf(stderr,"Substep %d took %.14e\n",substep,end_time-start_time);
     	}
         simulation_time += dt;
 

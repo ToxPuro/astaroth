@@ -1,7 +1,6 @@
 add_executable(
 ac_run_mpi
 	main.cc
-	host_forcing.cc
 	simulation_rng.cc
 )
 

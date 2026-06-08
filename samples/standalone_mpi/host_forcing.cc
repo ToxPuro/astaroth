@@ -24,9 +24,8 @@
  * Detailed info.
  *
  */
-#include "host_forcing.h"
 #include "simulation_rng.h"
-
+#include "host_forcing.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
 
@@ -397,3 +396,11 @@ generateForcingParams(const AcMeshInfo& mesh_info)
 #endif
     return params;
 }
+
+void
+ForcingInit(AcMeshInfo info)
+{
+	if(AC_RUNTIME_COMPILATION) acLoadLibrary(stdout,info);
+}
+
+
