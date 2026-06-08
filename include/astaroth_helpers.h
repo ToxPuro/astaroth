@@ -253,19 +253,19 @@ acPrintMeshInfo(const AcMeshInfo config)
 }
 
 /** Prints a list of initial condition condition types */
-void acQueryInitcondtypes(void);
-
+// void acQueryInitcondtypes(void);
+//
 /** Prints a list of int parameters */
-void acQueryIntparams(void);
+// void acQueryIntparams(void);
 
 /** Prints a list of int3 parameters */
-void acQueryInt3params(void);
+// void acQueryInt3params(void);
 
 /** Prints a list of real parameters */
-void acQueryRealparams(void);
+// void acQueryRealparams(void);
 
 /** Prints a list of real3 parameters */
-void acQueryReal3params(void);
+// void acQueryReal3params(void);
 
 /** Prints a list of Scalar array handles */
 /*
