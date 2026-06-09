@@ -1,7 +1,5 @@
 <map id="acc&#45;runtime/api/device_details.h" name="acc&#45;runtime/api/device_details.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="130,5,301,45"/>
-<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,215,119"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="191,48,138,87,135,83,188,43"/>
-<area shape="rect" id="Node000003" title=" " alt="" coords="239,93,402,119"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,43,296,83,292,87,239,48"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,176,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="9,93,172,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,46,93,79,88,79,88,46"/>
 </map>

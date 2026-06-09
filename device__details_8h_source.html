@@ -98,34 +98,38 @@ $(document).ready(function(){initNavTree('device__details_8h_source.html',''); i
   <div class="headertitle"><div class="title">device_details.h</div></div>
 </div><!--header-->
 <div class="contents">
-<a href="device__details_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#include &lt;rocprim/rocprim_version.hpp&gt;</span></div>
-<div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span> </div>
-<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#if ROCPRIM_VERSION &gt;= 400000</span></div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#define rocprim__warpSize() rocprim::arch::wavefront::min_size()</span></div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno"><a class="line" href="device__details_8h.html#ae0a4b574398bedf42367a4746b2f5706">    6</a></span><span class="preprocessor">#define rocprim__warpSize() rocprim::device_warp_size()</span></div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno"><a class="line" href="device__details_8h.html#aa703881f12a8897f3b741331d66da745">    8</a></span><span class="preprocessor">#define rocprim__warpId()   rocprim::warp_id()</span></div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno"><a class="line" href="device__details_8h.html#aa511a64c88e0d396f16c3e2b3f2f44c0">    9</a></span><span class="preprocessor">#define rocprim__warp_shuffle_down rocprim::warp_shuffle_down</span></div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno"><a class="line" href="device__details_8h.html#af25f72b50d470e443d38d87641fb2e31">   10</a></span><span class="preprocessor">#define rocprim__warp_shuffle rocprim::warp_shuffle</span></div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span> </div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="preprocessor">#if AC_CPU_BUILD</span></div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span> </div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span> </div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="preprocessor">#if AC_USE_HIP</span></div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="preprocessor">#include &lt;string.h&gt;</span> <span class="comment">// OM: At least with ROCm 7.2.1 and rocPRIM 7.2.0 on Fedora 44 rocPRIM sources</span></div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>                    <span class="comment">// fail to compile due to missing declaration of memset. The error is quite</span></div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>                    <span class="comment">// curious because the header does correctly include &lt;cstring&gt; but seems like</span></div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>                    <span class="comment">// including the C header is necessary.</span></div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="preprocessor">#include &lt;hip/hip_runtime.h&gt;</span> <span class="comment">// Needed in files that include kernels</span></div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span><span class="preprocessor">#include &lt;rocprim/rocprim.hpp&gt;</span></div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#include &lt;hip/hip_cooperative_groups.h&gt;</span></div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="preprocessor">#include &lt;cooperative_groups.h&gt;</span></div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#endif</span></div>
+<a href="device__details_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#if !AC_USE_HIP || AC_CPU_BUILD</span></div>
+<div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span><span class="comment">// OM: I used the same value as is used in stencil_accesses.cpp because I don&#39;t have the time now</span></div>
+<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="comment">// to figure out how to de-duplicate that particular bit of code.</span></div>
+<div class="line"><a id="l00004" name="l00004"></a><span class="lineno"><a class="line" href="device__details_8h.html#ae0a4b574398bedf42367a4746b2f5706">    4</a></span><span class="preprocessor">#define rocprim__warpSize() 64</span></div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span> </div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno"><a class="line" href="device__details_8h.html#aa703881f12a8897f3b741331d66da745">    7</a></span><span class="preprocessor">#define rocprim__warpId()   rocprim::warp_id()</span></div>
+<div class="line"><a id="l00008" name="l00008"></a><span class="lineno"><a class="line" href="device__details_8h.html#aa511a64c88e0d396f16c3e2b3f2f44c0">    8</a></span><span class="preprocessor">#define rocprim__warp_shuffle_down rocprim::warp_shuffle_down</span></div>
+<div class="line"><a id="l00009" name="l00009"></a><span class="lineno"><a class="line" href="device__details_8h.html#af25f72b50d470e443d38d87641fb2e31">    9</a></span><span class="preprocessor">#define rocprim__warp_shuffle rocprim::warp_shuffle</span></div>
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span> </div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">#if !AC_CPU_BUILD</span></div>
+<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span> </div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="preprocessor">#if AC_USE_HIP</span></div>
+<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="preprocessor">#include &lt;string.h&gt;</span> <span class="comment">// OM: At least with ROCm 7.2.1 and rocPRIM 7.2.0 on Fedora 44 rocPRIM sources</span></div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span>                    <span class="comment">// fail to compile due to missing declaration of memset. The error is quite</span></div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span>                    <span class="comment">// curious because the header does correctly include &lt;cstring&gt; but seems like</span></div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>                    <span class="comment">// including the C header is necessary.</span></div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="preprocessor">#include &lt;hip/hip_runtime.h&gt;</span> <span class="comment">// Needed in files that include kernels</span></div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="preprocessor">#include &lt;rocprim/rocprim.hpp&gt;</span></div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="preprocessor">#include &lt;hip/hip_cooperative_groups.h&gt;</span></div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span> </div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span><span class="preprocessor">#include &lt;rocprim/rocprim_version.hpp&gt;</span></div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#if ROCPRIM_VERSION &gt;= 400000</span></div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="preprocessor">#define rocprim__warpSize() rocprim::arch::wavefront::min_size()</span></div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#define rocprim__warpSize() rocprim::device_warp_size()</span></div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="preprocessor">#include &lt;cooperative_groups.h&gt;</span></div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="preprocessor">#endif</span></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
