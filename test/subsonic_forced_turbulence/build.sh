@@ -14,7 +14,7 @@ git rev-parse HEAD > COMMIT_CODE.log
 # the correct path to astaroth/CMakeLists.txt
 
 # Default cmake configuration
-CMAKE_FLAGS="-DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DRUNTIME_COMPILATION=ON -DOPTIMIZE_INPUT_PARAMS=ON -DUSE_CUDA_AWARE_MPI=OFF"
+CMAKE_FLAGS="-DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DOPTIMIZE_INPUT_PARAMS=ON -DUSE_CUDA_AWARE_MPI=OFF"
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -44,11 +44,12 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-echo "Buiilding CMake..."
+echo "Building CMake..."
 
 # Run cmake with the selected flags
 mkdir -p build && cd build
-cmake $CMAKE_FLAGS ../../..
+echo $CMAKE_FLAGS
+cmake  -DRUNTIME_CMAKE_OPTIONS="${CMAKE_FLAGS}" -DRUNTIME_COMPILATION=ON $CMAKE_FLAGS ../../..
 
 echo "Compiling..."
 
