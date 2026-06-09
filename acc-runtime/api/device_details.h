@@ -14,6 +14,10 @@
 #else
 
 #if AC_USE_HIP
+#include <string.h> // OM: At least with ROCm 7.2.1 and rocPRIM 7.2.0 on Fedora 44 rocPRIM sources
+                    // fail to compile due to missing declaration of memset. The error is quite
+                    // curious because the header does correctly include <cstring> but seems like
+                    // including the C header is necessary.
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #include <rocprim/rocprim.hpp>
 #include <hip/hip_cooperative_groups.h>
