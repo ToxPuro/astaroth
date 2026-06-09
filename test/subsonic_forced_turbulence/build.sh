@@ -47,13 +47,12 @@ done
 echo "Building CMake..."
 
 # Run cmake with the selected flags
-mkdir -p build && cd build
 echo $CMAKE_FLAGS
-cmake  -DRUNTIME_CMAKE_OPTIONS="${CMAKE_FLAGS}" -DRUNTIME_COMPILATION=ON $CMAKE_FLAGS ../../..
+cmake -B build -S $AC_HOME -DRUNTIME_CMAKE_OPTIONS="${CMAKE_FLAGS}" -DRUNTIME_COMPILATION=ON $CMAKE_FLAGS ../../..
 
 echo "Compiling..."
 
 # Standard compilation
 
-make -j
+cmake --build build -j
 

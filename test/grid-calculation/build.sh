@@ -1,3 +1,3 @@
 #!/bin/bash
 #
-mkdir -p build && cd build && cmake -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_TESTS=ON -DRUNTIME_COMPILATION=ON -DDSL_MODULE_DIR=../DSL $AC_HOME && make grid-calculation -j
+cmake -B build -S $AC_HOME -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_TESTS=ON -DRUNTIME_COMPILATION=ON -DDSL_MODULE_DIR=../DSL && cmake --build build -t grid-calculation -j
