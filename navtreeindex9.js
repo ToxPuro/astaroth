@@ -1,7 +1,5 @@
 var NAVTREEINDEX9 =
 {
-"functions_vars_z.html":[18,3,2,24],
-"functions_w.html":[18,3,0,21],
 "functions_x.html":[18,3,0,22],
 "functions_y.html":[18,3,0,23],
 "functions_z.html":[18,3,0,24],
@@ -41,8 +39,8 @@ var NAVTREEINDEX9 =
 "general__derivs_8h.html#a6ed734bf8a0d2264f7b4ac73167306d0":[19,0,0,5,11,26],
 "general__derivs_8h.html#a7233fe047cb92b14cd56d71e5cbd3547":[19,0,0,5,11,11],
 "general__derivs_8h.html#a76c8b5731ba1b2c7a1ca6fdaaf5cdf82":[19,0,0,5,11,35],
-"general__derivs_8h.html#a7ce60a283f472e27e9f9de5b0460732d":[19,0,0,5,11,53],
 "general__derivs_8h.html#a7ce60a283f472e27e9f9de5b0460732d":[19,0,0,5,11,54],
+"general__derivs_8h.html#a7ce60a283f472e27e9f9de5b0460732d":[19,0,0,5,11,53],
 "general__derivs_8h.html#a7f16283d002374281a1909f53c65234a":[19,0,0,5,11,43],
 "general__derivs_8h.html#a8158f6e79d2afdb43c5555864ad28003":[19,0,0,5,11,66],
 "general__derivs_8h.html#a85b9790e5a836b4f7694032a9cf209a0":[19,0,0,5,11,38],
@@ -186,8 +184,8 @@ var NAVTREEINDEX9 =
 "geometric__multigrid__core_8h.html#ac3ca3a756a48a25c261c22ae7ab6cfc4":[19,0,0,5,14,2],
 "geometric__multigrid__core_8h.html#ad4341623573ea5c6cd29d261ae667ea2":[19,0,0,5,14,3],
 "geometric__multigrid__core_8h_source.html":[19,0,0,5,14],
-"globals.html":[19,1,0,0],
 "globals.html":[19,1,0],
+"globals.html":[19,1,0,0],
 "globals_a.html":[19,1,0,1],
 "globals_b.html":[19,1,0,2],
 "globals_c.html":[19,1,0,3],
@@ -220,8 +218,8 @@ var NAVTREEINDEX9 =
 "globals_defs_z.html":[19,1,6,24],
 "globals_e.html":[19,1,0,5],
 "globals_enum.html":[19,1,4],
-"globals_eval.html":[19,1,5],
 "globals_eval.html":[19,1,5,0],
+"globals_eval.html":[19,1,5],
 "globals_eval_b.html":[19,1,5,1],
 "globals_eval_f.html":[19,1,5,2],
 "globals_eval_n.html":[19,1,5,3],
@@ -249,5 +247,7 @@ var NAVTREEINDEX9 =
 "globals_func_m.html":[19,1,1,12],
 "globals_func_n.html":[19,1,1,13],
 "globals_func_o.html":[19,1,1,14],
-"globals_func_p.html":[19,1,1,15]
+"globals_func_p.html":[19,1,1,15],
+"globals_func_q.html":[19,1,1,16],
+"globals_func_r.html":[19,1,1,17]
 };

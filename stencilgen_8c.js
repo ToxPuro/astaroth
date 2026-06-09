@@ -9,6 +9,7 @@ var stencilgen_8c =
     [ "int3", "stencilgen_8c.html#a21d942232c0a6fe2b0e51f8f74d0f397", null ],
     [ "ReduceOp", "stencilgen_8c.html#af529ff78d887853c155bbd9e85ca6daa", null ],
     [ "AcProfileType", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88", [
+      [ "PROFILE_NONE", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a18412c03ee36f7cbcecc963fc75e363b", null ],
       [ "PROFILE_X", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d", null ],
       [ "PROFILE_Y", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aaa2c0412d9da1e06b915191a589a1b25", null ],
       [ "PROFILE_Z", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a895e5c1a6c4f1f5b4421af1d945123df", null ],

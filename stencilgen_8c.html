@@ -159,17 +159,18 @@ Enumerations</h2></td></tr>
  }</td></tr>
 <tr class="separator:a1c3bc08749070d6f6b4702e44752d11f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab40314f722f618913ce8af1992cbfa88" id="r_ab40314f722f618913ce8af1992cbfa88"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88">AcProfileType</a> { <br />
-&#160;&#160;<a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d">PROFILE_X</a> = (1 &lt;&lt; 0) | ONE_DIMENSIONAL_PROFILE
+&#160;&#160;<a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a18412c03ee36f7cbcecc963fc75e363b">PROFILE_NONE</a> = 0
+, <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d">PROFILE_X</a> = (1 &lt;&lt; 0) | ONE_DIMENSIONAL_PROFILE
 , <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aaa2c0412d9da1e06b915191a589a1b25">PROFILE_Y</a> = (1 &lt;&lt; 1) | ONE_DIMENSIONAL_PROFILE
 , <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a895e5c1a6c4f1f5b4421af1d945123df">PROFILE_Z</a> = (1 &lt;&lt; 2) | ONE_DIMENSIONAL_PROFILE
-, <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88ab5deb5ccef445a25ea74605b121bf78d">PROFILE_XY</a> = (1 &lt;&lt; 3) | TWO_DIMENSIONAL_PROFILE
 , <br />
-&#160;&#160;<a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a618c3d05df2893d887d66e94b05e3095">PROFILE_XZ</a> = (1 &lt;&lt; 4) | TWO_DIMENSIONAL_PROFILE
+&#160;&#160;<a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88ab5deb5ccef445a25ea74605b121bf78d">PROFILE_XY</a> = (1 &lt;&lt; 3) | TWO_DIMENSIONAL_PROFILE
+, <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a618c3d05df2893d887d66e94b05e3095">PROFILE_XZ</a> = (1 &lt;&lt; 4) | TWO_DIMENSIONAL_PROFILE
 , <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a428951609f981ff5db5a0ef4ee1c9d9b">PROFILE_YX</a> = (1 &lt;&lt; 5) | TWO_DIMENSIONAL_PROFILE
 , <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aabd40d231a3fb6818d77db0a54d53d9f">PROFILE_YZ</a> = (1 &lt;&lt; 6) | TWO_DIMENSIONAL_PROFILE
-, <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88ac4978dfeda8fcc48a84988716f21fbef">PROFILE_ZX</a> = (1 &lt;&lt; 7) | TWO_DIMENSIONAL_PROFILE
 , <br />
-&#160;&#160;<a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a0b92292bdfe9e60ab755e077bc589391">PROFILE_ZY</a> = (1 &lt;&lt; 8) | TWO_DIMENSIONAL_PROFILE
+&#160;&#160;<a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88ac4978dfeda8fcc48a84988716f21fbef">PROFILE_ZX</a> = (1 &lt;&lt; 7) | TWO_DIMENSIONAL_PROFILE
+, <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a0b92292bdfe9e60ab755e077bc589391">PROFILE_ZY</a> = (1 &lt;&lt; 8) | TWO_DIMENSIONAL_PROFILE
 <br />
  }</td></tr>
 <tr class="separator:ab40314f722f618913ce8af1992cbfa88"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -415,7 +416,8 @@ CS view:
       </table>
 </div><div class="memdoc">
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d" name="ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d"></a>PROFILE_X&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88a18412c03ee36f7cbcecc963fc75e363b" name="ab40314f722f618913ce8af1992cbfa88a18412c03ee36f7cbcecc963fc75e363b"></a>PROFILE_NONE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d" name="ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d"></a>PROFILE_X&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88aaa2c0412d9da1e06b915191a589a1b25" name="ab40314f722f618913ce8af1992cbfa88aaa2c0412d9da1e06b915191a589a1b25"></a>PROFILE_Y&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88a895e5c1a6c4f1f5b4421af1d945123df" name="ab40314f722f618913ce8af1992cbfa88a895e5c1a6c4f1f5b4421af1d945123df"></a>PROFILE_Z&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88ab5deb5ccef445a25ea74605b121bf78d" name="ab40314f722f618913ce8af1992cbfa88ab5deb5ccef445a25ea74605b121bf78d"></a>PROFILE_XY&#160;</td><td class="fielddoc"></td></tr>

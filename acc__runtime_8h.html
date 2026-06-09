@@ -120,6 +120,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h.html',''); initResizab
 <code>#include &quot;scalar_reduce_buffer_defs.h&quot;</code><br />
 <code>#include &quot;scalar_reduce_buffers_in_vba.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="astaroth__analysis_8h_source.html">astaroth_analysis.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="common__kernels_8h_source.html">common_kernels.h</a>&quot;</code><br />
 <code>#include &quot;user_declarations.h&quot;</code><br />
 <code>#include &quot;load_and_store_uniform_header.h&quot;</code><br />
@@ -193,10 +194,6 @@ Macros</h2></td></tr>
 <tr class="separator:a07d932791f722cd5b75c111e51ef2023"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1082d01a08c0fbec4d9238f881fd8170" id="r_a1082d01a08c0fbec4d9238f881fd8170"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a1082d01a08c0fbec4d9238f881fd8170">NUM_REDUCE_SCRATCHPADS</a>&#160;&#160;&#160;(2)</td></tr>
 <tr class="separator:a1082d01a08c0fbec4d9238f881fd8170"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:add738453ca233fa9a21ec46f6b3380b4" id="r_add738453ca233fa9a21ec46f6b3380b4"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(return_type,  func_name, ...)&#160;&#160;&#160;return_type func_name __VA_ARGS__</td></tr>
-<tr class="separator:add738453ca233fa9a21ec46f6b3380b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a03a1141e8160c486095f0c82640fa777" id="r_a03a1141e8160c486095f0c82640fa777"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a03a1141e8160c486095f0c82640fa777">BASE_FUNC_NAME</a>(func_name)&#160;&#160;&#160;func_name</td></tr>
-<tr class="separator:a03a1141e8160c486095f0c82640fa777"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
@@ -377,24 +374,6 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a03a1141e8160c486095f0c82640fa777" name="a03a1141e8160c486095f0c82640fa777"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a03a1141e8160c486095f0c82640fa777">&#9670;&#160;</a></span>BASE_FUNC_NAME</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define BASE_FUNC_NAME</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">func_name</td><td>)</td>
-          <td>&#160;&#160;&#160;func_name</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="acaa06fbc27c59926a41e7575667e5280" name="acaa06fbc27c59926a41e7575667e5280"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acaa06fbc27c59926a41e7575667e5280">&#9670;&#160;</a></span>CONSTEXPR</h2>
 
@@ -417,40 +396,6 @@ Functions</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">#define DEVICE_INLINE&#160;&#160;&#160;__device__ __forceinline__</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="add738453ca233fa9a21ec46f6b3380b4" name="add738453ca233fa9a21ec46f6b3380b4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#add738453ca233fa9a21ec46f6b3380b4">&#9670;&#160;</a></span>FUNC_DEFINE</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define FUNC_DEFINE</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">return_type, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">func_name, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;return_type func_name __VA_ARGS__</td>
         </tr>
       </table>
 </div><div class="memdoc">

@@ -13,14 +13,15 @@ var astaroth__base_8h =
     [ "AcMPICommStrategy_DUPLICATE_USER_COMM", "astaroth__base_8h.html#abcf296f8f5059823fbab222b0f218ce0", null ],
     [ "AcProcMappingStrategy_LINEAR", "astaroth__base_8h.html#aa3b170934977a156f44bd506b8347840", null ],
     [ "AcProcMappingStrategy_MORTON", "astaroth__base_8h.html#af36055989edf4c2cb9fde7b5f890be1f", null ],
-    [ "BASE_FUNC_NAME", "astaroth__base_8h.html#a03a1141e8160c486095f0c82640fa777", null ],
-    [ "FUNC_DEFINE", "astaroth__base_8h.html#add738453ca233fa9a21ec46f6b3380b4", null ],
     [ "NUM_STREAMS", "astaroth__base_8h.html#a876704225d1c5ecd8b0fc85315f88397", null ],
-    [ "OVERLOADED_FUNC_DEFINE", "astaroth__base_8h.html#a4c5307d09a6e1193c9df6c7632265b3b", null ],
     [ "RTYPE_ISNAN", "astaroth__base_8h.html#a5a802f6492438259b3360450d252b487", null ],
     [ "UNUSED", "astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076", null ],
     [ "Device", "astaroth__base_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7", null ],
     [ "Node", "astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612", null ],
+    [ "AcPlateDirection", "astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94c", [
+      [ "AC_H2D", "astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94ca2abe9b61a1673d1fa5c8fae444290126", null ],
+      [ "AC_D2H", "astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94cadf1122edbb03a436a7d52e7134edd66d", null ]
+    ] ],
     [ "InitType", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257", [
       [ "NUM_INIT_TYPES", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a03d7cfe98f35bec25375e803412ac94d", null ]
     ] ],

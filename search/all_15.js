@@ -67,7 +67,7 @@ var searchData=
   ['longlong_64',['longlong',['../acc__runtime_8cu.html#af25d1911ed951caf594252e1a419b4f3',1,'acc_runtime.cu']]],
   ['lookup_65',['lookup',['../structstate.html#ab6e60877bc5b7942473d7965775188f5',1,'state']]],
   ['lookup_5flen_66',['lookup_len',['../structstate.html#a08a3ee1e049fc017fea97958e3fc20d6',1,'state']]],
-  ['loop_5fcntr_67',['loop_cntr',['../classTask.html#a0b5b32cf26cac3acf04357f5c9dc2798',1,'Task']]],
+  ['loop_5fcntr_67',['loop_cntr',['../classTask.html#a8cd810db83a7fdc37acc35d9c4891776',1,'Task']]],
   ['looping_68',['Looping',['../md_acc-runtime_2README.html#autotoc_md40',1,'']]],
   ['lpressuregradient_5fgas_69',['lpressuregradient_gas',['../samples_2test_2PC__modulepardecs_8h.html#a532b9c4160e9c311b04b26e643d03901',1,'lpressuregradient_gas:&#160;PC_modulepardecs.h'],['../samples_2conv-slab_2PC__modulepardecs_8h.html#a532b9c4160e9c311b04b26e643d03901',1,'lpressuregradient_gas:&#160;PC_modulepardecs.h']]],
   ['lswitches_70',['lswitches',['../md_config_2samples_2shockturb_2README.html#autotoc_md75',1,'Required LSWITCHES'],['../md_config_2samples_2subsonic__forced__nonhelical__turbulence_2README.html#autotoc_md81',1,'Required LSWITCHES'],['../md_config_2samples_2subsonic__forced__turbulence_2README.html#autotoc_md87',1,'Required LSWITCHES'],['../md_config_2samples_2tubeflow_2README.html#autotoc_md93',1,'Required LSWITCHES'],['../md_config_2samples_2haatouken_2README.html#autotoc_md69',1,'Required LSWITCHES'],['../md_config_2samples_2boundtest_2README.html#autotoc_md63',1,'Required LSWITCHES']]]

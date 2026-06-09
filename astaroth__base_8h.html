@@ -101,6 +101,7 @@ $(document).ready(function(){initNavTree('astaroth__base_8h.html',''); initResiz
 <div class="contents">
 <div class="textblock"><code>#include &lt;stdbool.h&gt;</code><br />
 <code>#include &quot;<a class="el" href="acc__runtime_8h_source.html">acc_runtime.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
 <code>#include &quot;user_built-in_constants.h&quot;</code><br />
 <code>#include &quot;user_builtin_non_scalar_constants.h&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
@@ -157,12 +158,6 @@ Macros</h2></td></tr>
 <tr class="separator:abcf296f8f5059823fbab222b0f218ce0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac7f86c76a4d3ce7b11f00fcfdba809b8" id="r_ac7f86c76a4d3ce7b11f00fcfdba809b8"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#ac7f86c76a4d3ce7b11f00fcfdba809b8">AC_GEN_STR</a>(X)&#160;&#160;&#160;#X,</td></tr>
 <tr class="separator:ac7f86c76a4d3ce7b11f00fcfdba809b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:add738453ca233fa9a21ec46f6b3380b4" id="r_add738453ca233fa9a21ec46f6b3380b4"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(return_type,  func_name, ...)&#160;&#160;&#160;static <a class="el" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> return_type func_name __VA_ARGS__</td></tr>
-<tr class="separator:add738453ca233fa9a21ec46f6b3380b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4c5307d09a6e1193c9df6c7632265b3b" id="r_a4c5307d09a6e1193c9df6c7632265b3b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a4c5307d09a6e1193c9df6c7632265b3b">OVERLOADED_FUNC_DEFINE</a>&#160;&#160;&#160;<a class="el" href="acc__runtime_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a></td></tr>
-<tr class="separator:a4c5307d09a6e1193c9df6c7632265b3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a03a1141e8160c486095f0c82640fa777" id="r_a03a1141e8160c486095f0c82640fa777"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a03a1141e8160c486095f0c82640fa777">BASE_FUNC_NAME</a>(func_name)&#160;&#160;&#160;func_name</td></tr>
-<tr class="separator:a03a1141e8160c486095f0c82640fa777"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
@@ -218,10 +213,10 @@ Enumerations</h2></td></tr>
 <br />
  }</td></tr>
 <tr class="separator:a0b8b584f5fb32277059bc4e6b9bcd6f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0411cd49bb5b71852cecd93bcbf0ca2d" id="r_a0411cd49bb5b71852cecd93bcbf0ca2d"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom">{ <a class="el" href="astaroth__base_8h.html#a0411cd49bb5b71852cecd93bcbf0ca2da2abe9b61a1673d1fa5c8fae444290126">AC_H2D</a>
-, <a class="el" href="astaroth__base_8h.html#a0411cd49bb5b71852cecd93bcbf0ca2dadf1122edbb03a436a7d52e7134edd66d">AC_D2H</a>
+<tr class="memitem:af2a8c11d6508bd7c70f49c57b6f5e94c" id="r_af2a8c11d6508bd7c70f49c57b6f5e94c"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94c">AcPlateDirection</a> { <a class="el" href="astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94ca2abe9b61a1673d1fa5c8fae444290126">AC_H2D</a>
+, <a class="el" href="astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94cadf1122edbb03a436a7d52e7134edd66d">AC_D2H</a>
  }</td></tr>
-<tr class="separator:a0411cd49bb5b71852cecd93bcbf0ca2d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:af2a8c11d6508bd7c70f49c57b6f5e94c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a63f31c6e4874260362c8995061883c78" id="r_a63f31c6e4874260362c8995061883c78"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78">PlateType</a> { <br />
 &#160;&#160;<a class="el" href="astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78a08bb143a0b28c4876ee060d4feb17a44">AC_XZ</a> =0
 , <a class="el" href="astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78aa47b9f1c0b9f0e52479034c4c43cc4c9">AC_YZ</a> =1
@@ -391,58 +386,6 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a id="a03a1141e8160c486095f0c82640fa777" name="a03a1141e8160c486095f0c82640fa777"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a03a1141e8160c486095f0c82640fa777">&#9670;&#160;</a></span>BASE_FUNC_NAME</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define BASE_FUNC_NAME</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">func_name</td><td>)</td>
-          <td>&#160;&#160;&#160;func_name</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="add738453ca233fa9a21ec46f6b3380b4" name="add738453ca233fa9a21ec46f6b3380b4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#add738453ca233fa9a21ec46f6b3380b4">&#9670;&#160;</a></span>FUNC_DEFINE</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define FUNC_DEFINE</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">return_type, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">func_name, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>...</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;static <a class="el" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> return_type func_name __VA_ARGS__</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a876704225d1c5ecd8b0fc85315f88397" name="a876704225d1c5ecd8b0fc85315f88397"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a876704225d1c5ecd8b0fc85315f88397">&#9670;&#160;</a></span>NUM_STREAMS</h2>
 
@@ -451,20 +394,6 @@ Variables</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">#define NUM_STREAMS&#160;&#160;&#160;(32)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a4c5307d09a6e1193c9df6c7632265b3b" name="a4c5307d09a6e1193c9df6c7632265b3b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4c5307d09a6e1193c9df6c7632265b3b">&#9670;&#160;</a></span>OVERLOADED_FUNC_DEFINE</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define OVERLOADED_FUNC_DEFINE&#160;&#160;&#160;<a class="el" href="acc__runtime_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -529,20 +458,20 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Enumeration Type Documentation</h2>
-<a id="a0411cd49bb5b71852cecd93bcbf0ca2d" name="a0411cd49bb5b71852cecd93bcbf0ca2d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0411cd49bb5b71852cecd93bcbf0ca2d">&#9670;&#160;</a></span>anonymous enum</h2>
+<a id="af2a8c11d6508bd7c70f49c57b6f5e94c" name="af2a8c11d6508bd7c70f49c57b6f5e94c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af2a8c11d6508bd7c70f49c57b6f5e94c">&#9670;&#160;</a></span>AcPlateDirection</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">anonymous enum</td>
+          <td class="memname">enum <a class="el" href="astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94c">AcPlateDirection</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a0411cd49bb5b71852cecd93bcbf0ca2da2abe9b61a1673d1fa5c8fae444290126" name="a0411cd49bb5b71852cecd93bcbf0ca2da2abe9b61a1673d1fa5c8fae444290126"></a>AC_H2D&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a0411cd49bb5b71852cecd93bcbf0ca2dadf1122edbb03a436a7d52e7134edd66d" name="a0411cd49bb5b71852cecd93bcbf0ca2dadf1122edbb03a436a7d52e7134edd66d"></a>AC_D2H&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="af2a8c11d6508bd7c70f49c57b6f5e94ca2abe9b61a1673d1fa5c8fae444290126" name="af2a8c11d6508bd7c70f49c57b6f5e94ca2abe9b61a1673d1fa5c8fae444290126"></a>AC_H2D&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="af2a8c11d6508bd7c70f49c57b6f5e94cadf1122edbb03a436a7d52e7134edd66d" name="af2a8c11d6508bd7c70f49c57b6f5e94cadf1122edbb03a436a7d52e7134edd66d"></a>AC_D2H&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
