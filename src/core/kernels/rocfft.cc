@@ -12,7 +12,7 @@
 #else
 #define AC_FFT_PRECISION rocfft_precision_single
 #endif
-#include <rocfft.h>
+#include <rocfft/rocfft.h>
 
 #if AC_MPI_ENABLED
 #include <mpi.h>
