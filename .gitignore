@@ -24,6 +24,8 @@ makefile~
 # Build directories
 build/
 build*/
+2d-build/
+3d-build/
 benchmark-data/
 # Clangd files
 .cache/
