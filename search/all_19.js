@@ -17,7 +17,7 @@ var searchData=
   ['patents_14',['patents',['../md_acc-runtime_2LICENCE.html#autotoc_md14',1,'11. Patents.'],['../md_LICENCE.html#autotoc_md151',1,'11. Patents.']]],
   ['pause_15',['pause',['../namespacematplotlibcpp.html#aa5bc4092c9e2acbb2c6ec4efd024cf2f',1,'matplotlibcpp']]],
   ['pc_5fderivs_2eh_16',['pc_derivs.h',['../pc__derivs_8h.html',1,'']]],
-  ['pc_5fmodulepardecs_2eh_17',['pc_modulepardecs.h',['../samples_2test_2PC__modulepardecs_8h.html',1,'(Global Namespace)'],['../samples_2conv-slab_2PC__modulepardecs_8h.html',1,'(Global Namespace)'],['../Pencil_2PC__modulepardecs_8h.html',1,'(Global Namespace)']]],
+  ['pc_5fmodulepardecs_2eh_17',['pc_modulepardecs.h',['../Pencil_2PC__modulepardecs_8h.html',1,'(Global Namespace)'],['../samples_2test_2PC__modulepardecs_8h.html',1,'(Global Namespace)'],['../samples_2conv-slab_2PC__modulepardecs_8h.html',1,'(Global Namespace)']]],
   ['pcforcing_18',['pcforcing',['../pcstyleforcing_8h.html#a94bead3fb1314abed3f3aa9860347640',1,'pcstyleforcing.h']]],
   ['pcpx_19',['pcpx',['../__kiss__fft__guts_8h.html#ac1abb41ecdedd05dda5d1ce83b67a704',1,'_kiss_fft_guts.h']]],
   ['pcstyleforcing_2eh_20',['pcstyleforcing.h',['../pcstyleforcing_8h.html',1,'']]],
