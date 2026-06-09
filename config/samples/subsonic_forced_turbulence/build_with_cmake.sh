@@ -14,7 +14,7 @@ git rev-parse HEAD > COMMIT_CODE.log
 # the correct path to astaroth/CMakeLists.txt
 
 # Default cmake configuration
-CMAKE_FLAGS="-DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DRUNTIME_COMPILATION=ON -DOPTIMIZE_INPUT_PARAMS=ON -DUSE_CUDA_AWARE_MPI=OFF"
+CMAKE_FLAGS="-DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DOPTIMIZE_INPUT_PARAMS=ON -DUSE_CUDA_AWARE_MPI=OFF"
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -34,7 +34,7 @@ while [[ "$#" -gt 0 ]]; do
             CMAKE_FLAGS="$CMAKE_FLAGS -DMPI_C_LIBRARIES=$HOME/openmpi/v5/lib/libmpi.so"
             CMAKE_FLAGS="$CMAKE_FLAGS -DMPI_CXX_INCLUDE_PATH=$HOME/openmpi/v5/include"
             CMAKE_FLAGS="$CMAKE_FLAGS -DMPI_CXX_LIBRARIES=$HOME/openmpi/v5/lib/libmpi.so"
-            CMAKE_FLAGS="$CMAKE_FLAGS -DGPU_ARCH=100"
+            CMAKE_FLAGS="$CMAKE_FLAGS -DGPU_ARCH=120"
             ;;
         *)
             echo "Unknown parameter passed: $1"
@@ -44,10 +44,11 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-echo "Buiilding CMake..."
+echo "Building CMake..."
+echo $CMAKE_FLAGS
 
 # Run cmake with the selected flags
-cmake $CMAKE_FLAGS ../../..
+cmake  -DRUNTIME_CMAKE_OPTIONS="${CMAKE_FLAGS}" -DRUNTIME_COMPILATION=ON $CMAKE_FLAGS ../../..
 
 echo "Compiling..."
 
