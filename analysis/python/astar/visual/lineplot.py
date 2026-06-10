@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import matplotlib.colors as colors
-import matplotlib.gridspec as gridspec
-import numpy as np
 import pylab as plt
 
 CM_INFERNO = plt.get_cmap("inferno")
@@ -53,7 +50,6 @@ def plot_ts(
     aaz=False,
     ss=False,
     acc=False,
-    sink=False,
     rho=False,
     bb=False,
     alfven=False,
@@ -68,7 +64,6 @@ def plot_ts(
         uuz = True
         ss = True
         acc = True
-        sink = True
         bb = True
         alfven = True
         shock = True
@@ -82,7 +77,6 @@ def plot_ts(
         uuz = True
         ss = False
         acc = True
-        sink = True
 
     if lnrho:
         plt.figure()

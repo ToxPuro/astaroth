@@ -85,7 +85,7 @@ def plot_3(
     # Set the coulourscale
     cmin = np.amin([yz_slice.min(), xz_slice.min(), xy_slice.min()])
     cmax = np.amax([yz_slice.max(), xz_slice.max(), xy_slice.max()])
-    if colrange == None:
+    if colrange is None:
         plotnorm = colors.Normalize(vmin=cmin, vmax=cmax)
     else:
         plotnorm = colors.Normalize(vmin=colrange[0], vmax=colrange[1])
@@ -202,7 +202,7 @@ def plot_3(
             mesh.xx, mesh.yy, mesh.uu[1][:, :, mesh.zmid], mesh.uu[0][:, :, mesh.zmid]
         )
 
-    cbar = plt.colorbar(map1, cax=axcbar)
+    plt.colorbar(map1, cax=axcbar)
 
     if bitmap:
         plt.savefig("%s_%s.png" % (fname, mesh.framenum))
@@ -253,7 +253,7 @@ def volume_render(
     hist, bedges = np.histogram(array, bins=mesh.xx.size)
     plt.plot(bedges[:-1], hist)
     plt.yscale("log")
-    if val1["min"] != None or val1["max"] != None:
+    if val1["min"] is not None or val1["max"] is not None:
         plt.plot([val1["min"], val1["min"]], [1, hist.max()], label=varname + " min")
         plt.plot([val1["max"], val1["max"]], [1, hist.max()], label=varname + " max")
         plt.legend()
@@ -261,7 +261,7 @@ def volume_render(
     plt.savefig("volrend_hist_%s_%s.png" % (varname, mesh.framenum))
     plt.close()
 
-    if val1["min"] != None or val1["max"] != None:
+    if val1["min"] is not None or val1["max"] is not None:
 
         # print(np.where(bb_tot < val1["min"]))
 

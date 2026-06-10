@@ -24,7 +24,6 @@ import sys
 import numpy as np
 import pandas as pd
 import pylab as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 import astar.data as ad
 import astar.visual as vis

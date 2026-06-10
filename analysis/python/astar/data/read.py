@@ -1,5 +1,5 @@
 """
-Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
+Copyright (C) 2014-2026, Johannes Pekkila, Miikka Vaisala.
 
 This file is part of Astaroth.
 
@@ -258,8 +258,8 @@ def parse_directory(meshdir):
 def apply_boundcond(array, btype):
 
     if btype == "p":
-        be = 3
-        bi = 6
+        #be = 3
+        #bi = 6
         # Edges
         # xx
         array[:3, :, :] = array[-6:-3, :, :]
@@ -467,7 +467,7 @@ class Mesh:
 
         self.minfo = MeshInfo(fdir)
 
-        if only_info == False:
+        if not only_info:
             self.lnrho, self.timestamp, self.ok = read_bin(
                 "VTXBUF_LNRHO",
                 fdir,
@@ -771,7 +771,7 @@ class Mesh:
         # print(self.df_lines)
 
     def get_jj(self, trim=False):
-        self.jj = curl_of_curl(self.aa, minfo, trim=False)
+        self.jj = curl_of_curl(self.aa, self.minfo, trim=False)
         if trim:
             self.jj = (
                 self.jj[0][3:-3, 3:-3, 3:-3],

@@ -1,5 +1,5 @@
 """
-Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
+Copyright (C) 2014-2026, Johannes Pekkila, Miikka Vaisala.
 
 This file is part of Astaroth.
 
@@ -17,8 +17,3 @@ You should have received a copy of the GNU General Public License
 along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# Developers note. We require Python 3 approach to have
-# compatibility towards the future.
-
-import numpy as np
-import pylab as plt

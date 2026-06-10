@@ -1,5 +1,5 @@
 """
-Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
+Copyright (C) 2014-2026, Johannes Pekkila, Miikka Vaisala.
 
 This file is part of Astaroth.
 
@@ -16,5 +16,5 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+__all__ = ["read"]
 from . import read

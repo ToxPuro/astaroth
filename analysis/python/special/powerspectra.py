@@ -33,7 +33,6 @@ import scipy.stats as stats
 import tqdm
 
 import astar.data as ad
-import astar.visual as vis
 
 df_archive = pd.DataFrame()
 
@@ -145,7 +144,6 @@ def pfft_shell(mymesh, dx, dy, dz, title="", ffttest=False):
         plt.figure()
 
     pbar = tqdm.tqdm(range(fft_mesh.shape[0]))
-    pile = np.array([])
     for i in pbar:
         pbar.set_description("Computing prowerspectra %s" % title)
         for j in range(fft_mesh.shape[1]):
@@ -264,7 +262,7 @@ def extract_spectra(meshdirs, uu=False, noheltext=""):
         mesh_file_numbers = ad.read.parse_directory(meshdir)
 
         if len(mesh_file_numbers) > 0:
-            maxfiles = np.amax(mesh_file_numbers)
+            #maxfiles = np.amax(mesh_file_numbers)
 
             # Get text for hearder
             mesh = ad.read.Mesh(0, fdir=meshdir, only_info=True)
@@ -275,13 +273,13 @@ def extract_spectra(meshdirs, uu=False, noheltext=""):
             dsy = mesh.minfo.contents["AC_dsy"]
             dsz = mesh.minfo.contents["AC_dsz"]
             relhel = mesh.minfo.contents["AC_relhel"]
-            Prandtl = nu / eta
+            #Prandtl = nu / eta
             kk = (mesh.minfo.contents["AC_kmax"] + mesh.minfo.contents["AC_kmin"]) / 2.0
-            headertext = r"%i$^3$, $\eta$ = %.2e, $\sigma$ = %.0f" % (
-                resolution,
-                eta,
-                relhel,
-            )
+            #headertext = r"%i$^3$, $\eta$ = %.2e, $\sigma$ = %.0f" % (
+            #    resolution,
+            #    eta,
+            #    relhel,
+            #)
             filename = "%i_k%.0f_eta%.2e.esp" % (resolution, kk, eta)
 
             if uu:
@@ -407,16 +405,16 @@ def plot_pspec(
     my_yrange=None,
     kazantsev=False,
 ):
-    if power_info != None:
+    if power_info is not None:
 
         plt.figure()
 
-        mytitle = r"$%s$, $N = %i^3$, $\eta =$ %.2e, $\sigma = %i$" % (
-            titlepart,
-            power_info["nx"],
-            power_info["eta"],
-            power_info["relhel"],
-        )
+        #mytitle = r"$%s$, $N = %i^3$, $\eta =$ %.2e, $\sigma = %i$" % (
+        #    titlepart,
+        #    power_info["nx"],
+        #    power_info["eta"],
+        #    power_info["relhel"],
+        #)
         filename = "sigma%i_%i_eta%.2e.pdf" % (
             power_info["relhel"],
             power_info["nx"],
@@ -485,9 +483,9 @@ def plot_pspec(
 
         print("x = ", my_xrange, "y = ", my_yrange)
 
-        if my_xrange != None:
+        if my_xrange is not None:
             plt.xlim(my_xrange)
-        if my_yrange != None:
+        if my_yrange is not None:
             plt.ylim(my_yrange)
 
         savefile = kazan + vartype + vdir + "_powerspectra_" + filename
@@ -619,13 +617,13 @@ if "histogram" in sys.argv:
         dy = mesh.minfo.contents["AC_dsy"]
         dz = mesh.minfo.contents["AC_dsz"]
         relhel = mesh.minfo.contents["AC_relhel"]
-        Prandtl = nu / eta
+        #Prandtl = nu / eta
         kk = (mesh.minfo.contents["AC_kmax"] + mesh.minfo.contents["AC_kmin"]) / 2.0
-        headertext = r"%i$^3$, $\eta$ = %.2e, $\sigma$ = %.0f" % (
-            resolution,
-            eta,
-            relhel,
-        )
+        #headertext = r"%i$^3$, $\eta$ = %.2e, $\sigma$ = %.0f" % (
+        #    resolution,
+        #    eta,
+        #    relhel,
+        #)
         filename = "%i_k%.0f_eta%.2e.pdf" % (resolution, kk, eta)
 
         for i in mesh_file_numbers:
@@ -722,13 +720,13 @@ if "xyaver" in sys.argv:
         dsy = mesh.minfo.contents["AC_dsy"]
         dsz = mesh.minfo.contents["AC_dsz"]
         relhel = mesh.minfo.contents["AC_relhel"]
-        Prandtl = nu / eta
+        #Prandtl = nu / eta
         kk = (mesh.minfo.contents["AC_kmax"] + mesh.minfo.contents["AC_kmin"]) / 2.0
-        headertext = r"%i$^3$, $\eta$ = %.2e, $\sigma$ = %.0f" % (
-            resolution,
-            eta,
-            relhel,
-        )
+        #headertext = r"%i$^3$, $\eta$ = %.2e, $\sigma$ = %.0f" % (
+        #    resolution,
+        #    eta,
+        #    relhel,
+        #)
         filename = "sigma%i_%i_k%.0f_eta%.2e.png" % (relhel, resolution, kk, eta)
 
         fig, axs = plt.subplots(9, 1, sharex=True, figsize=(7, 10))
@@ -920,7 +918,7 @@ if "kurtosis" in sys.argv:
         nu = mesh.minfo.contents["AC_nu_visc"]
         eta = mesh.minfo.contents["AC_eta"]
         relhel = mesh.minfo.contents["AC_relhel"]
-        Prandtl = nu / eta
+        #Prandtl = nu / eta
         kk = (mesh.minfo.contents["AC_kmax"] + mesh.minfo.contents["AC_kmin"]) / 2.0
 
         print("resolution", resolution, "nu", nu, "relhel", relhel)
