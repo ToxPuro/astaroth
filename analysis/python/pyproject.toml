@@ -5,6 +5,7 @@ description = "Astaroth Python visualization and analysis tools."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "black>=26.5.1",
     "isort>=8.0.1",
     "matplotlib",
     "pandas",
