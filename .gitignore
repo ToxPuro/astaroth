@@ -30,6 +30,12 @@ benchmark-data/
 # Clangd files
 .cache/
 
+# Test artifacts
+run_log.txt
+taskgraph_log.txt
+ac_grid_info.csv
+ac_compilation_log
+
 # Other
 compile_commands.json
 compilation_log.txt
