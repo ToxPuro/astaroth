@@ -16,10 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 '''
-import pylab as plt 
-import numpy as np 
-import matplotlib.gridspec as gridspec
 import matplotlib.colors as colors
+import matplotlib.gridspec as gridspec
+import numpy as np
+import pylab as plt
 
 CM_INFERNO = plt.get_cmap('inferno')
 

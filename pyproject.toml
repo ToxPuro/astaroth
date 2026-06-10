@@ -1,5 +1,11 @@
 [tool.uv.workspace]
 members = [
     "analysis/viz_tools",
+    "analysis/python",
     # Do NOT include "config/samples/subsonic_forced_turbulence" if it's not a Python project
+]
+
+[dependency-groups]
+dev = [
+    "isort>=8.0.1",
 ]

@@ -16,18 +16,17 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 '''
-import astar.data as ad
-import astar.visual as vis
-import pylab as plt 
-import numpy as np 
+import gc
+import os
 import sys
 
-import gc
-
-import os
+import numpy as np
 import pandas as pd
-
+import pylab as plt
 from mpl_toolkits.mplot3d import Axes3D
+
+import astar.data as ad
+import astar.visual as vis
 
 try:
     import pyvista as pv

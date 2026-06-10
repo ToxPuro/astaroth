@@ -18,5 +18,4 @@
 '''
 
 
-from . import slices
-from . import lineplot
+from . import lineplot, slices

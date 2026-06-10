@@ -19,8 +19,9 @@
 
 # This module is for reading data.
 
-import numpy as np
 import os
+
+import numpy as np
 import pandas as pd
 
 #Optional YT interface

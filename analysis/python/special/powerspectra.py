@@ -22,20 +22,18 @@
 # Krasnopolsky R., 2021, Astrophysical Journal, 907, 83. 
 # doi:10.3847/1538-4357/abceca
 
-import astar.data as ad
-import astar.visual as vis
-import pylab as plt 
-import numpy as np 
+import os
 import sys
+
 import matplotlib as mpl
-
-import pandas as pd 
-
-import os 
-
+import numpy as np
+import pandas as pd
+import pylab as plt
+import scipy.stats as stats
 import tqdm
 
-import scipy.stats as stats
+import astar.data as ad
+import astar.visual as vis
 
 df_archive = pd.DataFrame()
 
