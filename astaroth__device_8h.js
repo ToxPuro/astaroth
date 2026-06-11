@@ -42,6 +42,7 @@ var astaroth__device_8h =
     [ "FUNC_DEFINE", "astaroth__device_8h.html#a52a6ca03d2998a3d08aab2491b19681f", null ],
     [ "FUNC_DEFINE", "astaroth__device_8h.html#a985784055bdee5f64e1b80f4da892388", null ],
     [ "FUNC_DEFINE", "astaroth__device_8h.html#aa21e9457767daed79aa3e280df014d5f", null ],
+    [ "FUNC_DEFINE", "astaroth__device_8h.html#a18a64cf89ad94b7a3fa9e091248fe904", null ],
     [ "FUNC_DEFINE", "astaroth__device_8h.html#ac8c684793adbca2ba266d7fe8394c6b6", null ],
     [ "FUNC_DEFINE", "astaroth__device_8h.html#a14f543c24199c47509c5f85798c2c329", null ],
     [ "FUNC_DEFINE", "astaroth__device_8h.html#a15105d4e2d348e0d0daa496c7610e738", null ],

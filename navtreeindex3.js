@@ -1,5 +1,6 @@
 var NAVTREEINDEX3 =
 {
+"astaroth__fortran_8h.html#aff01171f79fd49df06f59ac6abe1a736":[19,0,6,0,9,3],
 "astaroth__fortran_8h_source.html":[19,0,6,0,9],
 "astaroth__grid_8h.html":[19,0,4,10],
 "astaroth__grid_8h.html#addf5ec070e9499d36b7f2009ce736076":[19,0,4,10,0],
@@ -248,6 +249,5 @@ var NAVTREEINDEX3 =
 "cg_8h_source.html":[19,0,0,5,7],
 "classBoundaryConditionTask.html":[18,0,40],
 "classBoundaryConditionTask.html#a1e2942aa7d0f36205fce53d309b346e8":[18,0,40,3],
-"classBoundaryConditionTask.html#a436993de9286acdbd39ab3bc697f823c":[18,0,40,0],
-"classBoundaryConditionTask.html#a73fa49407a498c7686854c9c6e619b9f":[18,0,40,1]
+"classBoundaryConditionTask.html#a436993de9286acdbd39ab3bc697f823c":[18,0,40,0]
 };

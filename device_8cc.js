@@ -48,6 +48,7 @@ var device_8cc =
     [ "acDeviceLoadMeshInfo", "device_8cc.html#ad78b99bd9fee6fa26f3a6cd29ae4cf15", null ],
     [ "acDeviceLoadMeshWithOffset", "device_8cc.html#aa7f6c7d0f5b4e9d65cc80420a555a016", null ],
     [ "acDeviceLoadProfile", "device_8cc.html#a7cc14f0dfe9270447a28db716c1029cf", null ],
+    [ "acDeviceLoadRealReduceRes", "device_8cc.html#a51b0a1473236b8a06cd55113146a764a", null ],
     [ "acDeviceLoadScalarUniform", "device_8cc.html#ac8b592b7625728481233116382548951", null ],
     [ "acDeviceLoadStencil", "device_8cc.html#a4896684b19fd5828e833bad3c374b356", null ],
     [ "acDeviceLoadStencils", "device_8cc.html#a87f250c16a2915b843f0ceb952e45c82", null ],

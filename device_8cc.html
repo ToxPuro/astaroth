@@ -166,6 +166,8 @@ Functions</h2></td></tr>
 <tr class="separator:a477308d715587d95c81c4c411c951e7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a60c3c22d242d585a4ef0d74dbc3a32ed" id="r_a60c3c22d242d585a4ef0d74dbc3a32ed"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a60c3c22d242d585a4ef0d74dbc3a32ed">acDeviceUpdate</a> (<a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> config)</td></tr>
 <tr class="separator:a60c3c22d242d585a4ef0d74dbc3a32ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a51b0a1473236b8a06cd55113146a764a" id="r_a51b0a1473236b8a06cd55113146a764a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a51b0a1473236b8a06cd55113146a764a">acDeviceLoadRealReduceRes</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealOutputParam param, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="separator:a51b0a1473236b8a06cd55113146a764a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6a47b0dcaafe8a81a9b7c144665c432d" id="r_a6a47b0dcaafe8a81a9b7c144665c432d"><td class="memTemplParams" colspan="2">template&lt;typename P &gt; </td></tr>
 <tr class="memitem:a6a47b0dcaafe8a81a9b7c144665c432d"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="device_8cc.html#a6a47b0dcaafe8a81a9b7c144665c432d">acDeviceLoadArray</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> host_info, const P array)</td></tr>
 <tr class="separator:a6a47b0dcaafe8a81a9b7c144665c432d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -411,7 +413,7 @@ Functions</h2></td></tr>
 <div class="line">    { \</div>
 <div class="line">        <span class="keywordflow">return</span> <a class="code hl_function" href="device_8cc.html#a6a47b0dcaafe8a81a9b7c144665c432d">acDeviceLoadArray</a>(device,stream,host_info,array); \</div>
 <div class="line">    }</div>
-<div class="ttc" id="adevice_8cc_html_a6a47b0dcaafe8a81a9b7c144665c432d"><div class="ttname"><a href="device_8cc.html#a6a47b0dcaafe8a81a9b7c144665c432d">acDeviceLoadArray</a></div><div class="ttdeci">AcResult acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info, const P array)</div><div class="ttdef"><b>Definition</b> device.cc:304</div></div>
+<div class="ttc" id="adevice_8cc_html_a6a47b0dcaafe8a81a9b7c144665c432d"><div class="ttname"><a href="device_8cc.html#a6a47b0dcaafe8a81a9b7c144665c432d">acDeviceLoadArray</a></div><div class="ttdeci">AcResult acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info, const P array)</div><div class="ttdef"><b>Definition</b> device.cc:313</div></div>
 <div class="ttc" id="astructAcMeshInfo_html"><div class="ttname"><a href="structAcMeshInfo.html">AcMeshInfo</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:153</div></div>
 <div class="ttc" id="astructArray_html"><div class="ttname"><a href="structArray.html">Array</a></div><div class="ttdef"><b>Definition</b> bwtest-stencil.cu:22</div></div>
 </div><!-- fragment -->
@@ -1907,6 +1909,46 @@ template&lt;typename P &gt; </div>
           <td></td>
           <td class="paramtype">const Profile&#160;</td>
           <td class="paramname"><em>profile</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a51b0a1473236b8a06cd55113146a764a" name="a51b0a1473236b8a06cd55113146a764a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a51b0a1473236b8a06cd55113146a764a">&#9670;&#160;</a></span>acDeviceLoadRealReduceRes()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acDeviceLoadRealReduceRes </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a>&#160;</td>
+          <td class="paramname"><em>device</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a>&#160;</td>
+          <td class="paramname"><em>stream</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const AcRealOutputParam&#160;</td>
+          <td class="paramname"><em>param</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
+          <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
