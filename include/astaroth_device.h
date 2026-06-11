@@ -29,6 +29,9 @@ FUNC_DEFINE(AcResult, acDeviceSwapBuffer,(const Device device, const VertexBuffe
 FUNC_DEFINE(AcResult, acDeviceSwapBuffers,(const Device device));
 
 /** */
+FUNC_DEFINE(AcResult, acDeviceLoadRealReduceRes,(const Device device, const Stream stream, const AcRealOutputParam param, const AcReal value));
+
+/** */
 FUNC_DEFINE(AcResult, acDeviceLoadScalarUniform,(const Device device, const Stream stream,
                                    const AcRealParam param, const AcReal value));
 FUNC_DEFINE(AcResult, acDevicePrintProfiles,(const Device device));

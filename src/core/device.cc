@@ -296,6 +296,15 @@ acDeviceUpdate(Device device, const AcMeshInfo config)
     return AC_SUCCESS;
 }
 
+AcResult
+acDeviceLoadRealReduceRes(const Device device, const Stream stream, const AcRealOutputParam param, const AcReal value)
+{
+        acSetDevice(device->id);                                                                 \
+	acLoadRealReduceRes(stream,param,&value);
+	return AC_SUCCESS;
+}
+
+
 
 
 

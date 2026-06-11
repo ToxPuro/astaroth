@@ -698,6 +698,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
 	LOAD_DSYM(acVerifyCompatibility,stream);
 	LOAD_DSYM(acStoreConfig,stream);
+	LOAD_DSYM(acDeviceLoadRealReduceRes,stream);
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);
 //#else
