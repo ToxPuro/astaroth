@@ -1,5 +1,5 @@
 #if STENCIL_ORDER >= 6
-Stencil gaussian_smooth_stencil_6th_order
+Stencil gaussian_smooth_stencil_r3
 {
 	  [-3][-3][-3] = 2.7212025766230546e-05,
 	  [-3][-3][-2] = 9.497930249143296e-05,
@@ -346,9 +346,9 @@ Stencil gaussian_smooth_stencil_6th_order
 	  [3][3][3] = 2.7212025766230546e-05,
 }
 
-elemental gaussian_smooth_inplace_6th_order(Field f)
+elemental gaussian_smooth_inplace_r3(Field f)
 {
-	val = gaussian_smooth_stencil_6th_order(f)
+	val = gaussian_smooth_stencil_r3(f)
 	val = 0.0
 	res = 
 	  f[vertexIdx.x-3][vertexIdx.y-3][vertexIdx.z-3] * 2.7212025766230546e-05+
@@ -700,7 +700,7 @@ elemental gaussian_smooth_inplace_6th_order(Field f)
 #endif
 
 #if STENCIL_ORDER >= 10
-Stencil gaussian_smooth_stencil_10th_order
+Stencil gaussian_smooth_stencil_r5
 {
 	  [-5][-5][-5] = 6.843170593447783e-07,
 	  [-5][-5][-4] = 2.1078449361958263e-06,
@@ -2034,9 +2034,9 @@ Stencil gaussian_smooth_stencil_10th_order
 	  [5][5][4] = 2.1078449361958263e-06,
 	  [5][5][5] = 6.843170593447783e-07
 }
-elemental gaussian_smooth_inplace_10th_order(Field f)
+elemental gaussian_smooth_inplace_r5(Field f)
 {
-	val = gaussian_smooth_stencil_10th_order(f)
+	val = gaussian_smooth_stencil_r5(f)
 	val = 0.0
 	real res =
 	  f[vertexIdx.x+-5][vertexIdx.y+-5][vertexIdx.z+-5] * 6.843170593447783e-07+
@@ -3376,12 +3376,12 @@ elemental gaussian_smooth_inplace_10th_order(Field f)
 #endif
 
 #if  STENCIL_ORDER == 6
-elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil_6th_order(f)}
-elemental gaussian_smooth_inplace(Field f) {return gaussian_smooth_inplace_6th_order(f)}
+elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil_r3(f)}
+elemental gaussian_smooth_inplace(Field f) {return gaussian_smooth_inplace_r3(f)}
 #else
 #if STENCIL_ORDER == 10
-elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil_10th_order(f)}
-elemental gaussian_smooth_inplace(Field f) {return gaussian_smooth_inplace_10th_order(f)}
+elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil_r5(f)}
+elemental gaussian_smooth_inplace(Field f) {return gaussian_smooth_inplace_r5(f)}
 #else
 elemental gaussian_smooth(Field f)
 {
