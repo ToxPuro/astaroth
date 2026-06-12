@@ -1,5 +1,5 @@
-#if STENCIL_ORDER == 6
-Stencil gaussian_smooth_stencil
+#if STENCIL_ORDER >= 6
+Stencil gaussian_smooth_stencil_6th_order
 {
 	  [-3][-3][-3] = 2.7212025766230546e-05,
 	  [-3][-3][-2] = 9.497930249143296e-05,
@@ -345,10 +345,9 @@ Stencil gaussian_smooth_stencil
 	  [3][3][2] = 9.497930249143296e-05,
 	  [3][3][3] = 2.7212025766230546e-05,
 }
-elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil(f)}
-elemental gaussian_smooth_inplace(Field f)
+elemental gaussian_smooth_inplace_6th_order(Field f)
 {
-	val = gaussian_smooth(f)
+	val = gaussian_smooth_6th_order(f)
 	val = 0.0
 	res = 
 	  f[vertexIdx.x-3][vertexIdx.y-3][vertexIdx.z-3] * 2.7212025766230546e-05+
@@ -696,8 +695,12 @@ elemental gaussian_smooth_inplace(Field f)
 	  f[vertexIdx.x+3][vertexIdx.y+3][vertexIdx.z+3] * 2.7212025766230546e-05
 	return res + 0.0*val
 }
+#endif
+
+#if  STENCIL_ORDER == 6
+elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil(f)}
 #else
-gaussian_smooth(Field f)
+elemental gaussian_smooth(Field f)
 {
 	suppress_unused_warning(f)
 	fatal_error_message(true,"Gaussian smooth only implemented for 6th order!\n");
