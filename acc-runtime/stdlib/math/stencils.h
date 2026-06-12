@@ -345,7 +345,7 @@ Stencil gaussian_smooth_stencil_6th_order
 	  [3][3][2] = 9.497930249143296e-05,
 	  [3][3][3] = 2.7212025766230546e-05,
 }
-elemental gaussian_smooth_inplace_6th_order(Field f)
+gaussian_smooth_inplace_6th_order(Field f)
 {
 	val = gaussian_smooth_6th_order(f)
 	val = 0.0
@@ -2033,7 +2033,7 @@ Stencil gaussian_smooth_stencil_10th_order
 	  [5][5][4] = 2.1078449361958263e-06,
 	  [5][5][5] = 6.843170593447783e-07
 }
-elemental gaussian_smooth_inplace_10th_order(Field f)
+gaussian_smooth_inplace_10th_order(Field f)
 {
 	val = gaussian_smooth_10th_order(f)
 	val = 0.0
