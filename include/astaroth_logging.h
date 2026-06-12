@@ -1,3 +1,5 @@
+#pragma once
+
 #include "func_define.h"
 
 AC_BEGIN_C_DECLARATIONS
