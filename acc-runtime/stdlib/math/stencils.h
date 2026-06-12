@@ -3396,4 +3396,5 @@ elemental gaussian_smooth_inplace(Field f)
 	return 0.0
 }
 #endif
+#endif
 
