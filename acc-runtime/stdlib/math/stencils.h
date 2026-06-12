@@ -3379,6 +3379,7 @@ elemental gaussian_smooth_inplace_r5(Field f)
 elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil_r3(f)}
 elemental gaussian_smooth_inplace(Field f) {return gaussian_smooth_inplace_r3(f)}
 #else
+
 #if STENCIL_ORDER == 10
 elemental gaussian_smooth(Field f) {return gaussian_smooth_stencil_r5(f)}
 elemental gaussian_smooth_inplace(Field f) {return gaussian_smooth_inplace_r5(f)}
@@ -3396,5 +3397,7 @@ elemental gaussian_smooth_inplace(Field f)
 	return 0.0
 }
 #endif
+#endif
+
 #endif
 
