@@ -183,6 +183,15 @@ local_jacobi_spectral_radius_estimate_extended()
         inv_dx2 = inv_ds.x*inv_ds.x
         inv_dy2 = inv_ds.y*inv_ds.y
         inv_dz2 = inv_ds.z*inv_ds.z
+	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
+	{
+          return (2.0/laplace_central_coeff_extended())*
+                  (
+                     cos(AC_REAL_PI/AC_ngrid_extended.x)*inv_dx2
+                    +cos(AC_REAL_PI/AC_ngrid_extended.y)*inv_dy2
+                    +cos(AC_REAL_PI/AC_ngrid_extended.z)*inv_dz2
+                  )
+	}
 
         inv_r = AC_INV_R_extended
         inv_r2 = inv_r*inv_r
