@@ -23,6 +23,7 @@ var NAVTREEINDEX17 =
 "stencilgen_8c.html#afc9ca37c16a98da65d9cc3e56cd6b0a4":[19,0,0,0,14,43],
 "stencils_8h.html":[19,0,0,5,2,4],
 "stencils_8h.html#a187d532a3bac987a50addb4b5f831828":[19,0,0,5,2,4,0],
+"stencils_8h.html#aa77c02a717e52630553e8c7c811daa80":[19,0,0,5,2,4,1],
 "stencils_8h_source.html":[19,0,0,5,2,4],
 "string__vec_8h.html":[19,0,0,0,15],
 "string__vec_8h.html#a03cbd7543ad334167af12654f70f567e":[19,0,0,0,15,2],
@@ -248,6 +249,5 @@ var NAVTREEINDEX17 =
 "structHaloMessage.html#a62dbc46ce56a28d5466ef14a4bbac177":[18,0,65,7],
 "structHaloMessage.html#a7460f7c149c84cb63fb4a0d7922c0db6":[18,0,65,20],
 "structHaloMessage.html#a756d0aac63e180c4b06ac75047f42dcf":[18,0,65,18],
-"structHaloMessage.html#a8a890b4a1a293f1f360a7660773e9367":[18,0,65,1],
-"structHaloMessage.html#a8cce0dbcf7770194320cf6cf0da59568":[18,0,65,14]
+"structHaloMessage.html#a8a890b4a1a293f1f360a7660773e9367":[18,0,65,1]
 };

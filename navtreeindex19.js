@@ -1,5 +1,6 @@
 var NAVTREEINDEX19 =
 {
+"structkiss__fft__state.html#aa7d1cab86ec03a8ecddfe0d91ef0bd20":[18,0,81,3],
 "structkiss__fftnd__state.html":[18,0,82],
 "structkiss__fftnd__state.html#a0cb5ed1a3d72940d6a274a768f39011a":[18,0,82,3],
 "structkiss__fftnd__state.html#a4d2c3adb6a9a4a70c0fb5b29d4297819":[18,0,82,2],
@@ -248,6 +249,5 @@ var NAVTREEINDEX19 =
 "structstring__vec.html#aec09d69eba5353ab27801d2f72089d86":[18,0,114,0],
 "structstructs__info.html":[18,0,115],
 "structstructs__info.html#a7f6d1bbd36fb6b55a274cda8ed79941e":[18,0,115,0],
-"structstructs__info.html#ac1d06d51c7c7dc4920ce669e0cc9b918":[18,0,115,2],
-"structstructs__info.html#acef2fd1f3ecc3bbf5475ce99a9d26eb5":[18,0,115,1]
+"structstructs__info.html#ac1d06d51c7c7dc4920ce669e0cc9b918":[18,0,115,2]
 };
