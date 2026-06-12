@@ -693,7 +693,8 @@ elemental gaussian_smooth_inplace_6th_order(Field f)
 	  f[vertexIdx.x+3][vertexIdx.y+3][vertexIdx.z+1] * 0.00020107118495222385+
 	  f[vertexIdx.x+3][vertexIdx.y+3][vertexIdx.z+2] * 9.497930249143296e-05+
 	  f[vertexIdx.x+3][vertexIdx.y+3][vertexIdx.z+3] * 2.7212025766230546e-05
-	return res + 0.0*val
+	res += 0.0*val
+	return res
 }
 #endif
 
@@ -2036,7 +2037,7 @@ elemental gaussian_smooth_inplace_10th_order(Field f)
 {
 	val = gaussian_smooth_10th_order(f)
 	val = 0.0
-	res =
+	real res =
 	  f[vertexIdx.x+-5][vertexIdx.y+-5][vertexIdx.z+-5] * 6.843170593447783e-07+
 	  f[vertexIdx.x+-5][vertexIdx.y+-5][vertexIdx.z+-4] * 2.1078449361958263e-06+
 	  f[vertexIdx.x+-5][vertexIdx.y+-5][vertexIdx.z+-3] * 5.0564571409538215e-06+
@@ -3368,7 +3369,8 @@ elemental gaussian_smooth_inplace_10th_order(Field f)
 	  f[vertexIdx.x+5][vertexIdx.y+5][vertexIdx.z+3] * 5.0564571409538215e-06+
 	  f[vertexIdx.x+5][vertexIdx.y+5][vertexIdx.z+4] * 2.1078449361958263e-06+
 	  f[vertexIdx.x+5][vertexIdx.y+5][vertexIdx.z+5] * 6.843170593447783e-07
-	return res + 0.0*val
+	res += 0.0*val
+	return res
 }
 #endif
 
