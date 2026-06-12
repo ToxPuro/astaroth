@@ -3468,39 +3468,40 @@ $(document).ready(function(){initNavTree('stencils_8h_source.html',''); initResi
 <div class="line"><a id="l03368" name="l03368"></a><span class="lineno"> 3368</span>      f[vertexIdx.x+5][vertexIdx.y+5][vertexIdx.z+3] * 5.0564571409538215e-06+</div>
 <div class="line"><a id="l03369" name="l03369"></a><span class="lineno"> 3369</span>      f[vertexIdx.x+5][vertexIdx.y+5][vertexIdx.z+4] * 2.1078449361958263e-06+</div>
 <div class="line"><a id="l03370" name="l03370"></a><span class="lineno"> 3370</span>      f[vertexIdx.x+5][vertexIdx.y+5][vertexIdx.z+5] * 6.843170593447783e-07</div>
-<div class="line"><a id="l03371" name="l03371"></a><span class="lineno"> 3371</span>}</div>
-<div class="line"><a id="l03372" name="l03372"></a><span class="lineno"> 3372</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l03373" name="l03373"></a><span class="lineno"> 3373</span> </div>
-<div class="line"><a id="l03374" name="l03374"></a><span class="lineno"> 3374</span><span class="preprocessor">#if  STENCIL_ORDER == 6</span></div>
-<div class="line"><a id="l03375" name="l03375"></a><span class="lineno"> 3375</span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_stencil_6th_order(f)}</div>
-<div class="line"><a id="l03376" name="l03376"></a><span class="lineno"> 3376</span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_inplace_6th_order(f)}</div>
-<div class="line"><a id="l03377" name="l03377"></a><span class="lineno"> 3377</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l03378" name="l03378"></a><span class="lineno"> 3378</span><span class="preprocessor">#if STENCIL_ORDER == 10</span></div>
-<div class="line"><a id="l03379" name="l03379"></a><span class="lineno"> 3379</span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_stencil_10th_order(f)}</div>
-<div class="line"><a id="l03380" name="l03380"></a><span class="lineno"> 3380</span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_inplace_10th_order(f)}</div>
-<div class="line"><a id="l03381" name="l03381"></a><span class="lineno"> 3381</span><span class="preprocessor">#else</span></div>
-<div class="foldopen" id="foldopen03382" data-start="{" data-end="}">
-<div class="line"><a id="l03382" name="l03382"></a><span class="lineno"><a class="line" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828"> 3382</a></span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f)</div>
-<div class="line"><a id="l03383" name="l03383"></a><span class="lineno"> 3383</span>{</div>
-<div class="line"><a id="l03384" name="l03384"></a><span class="lineno"> 3384</span>    <a class="code hl_define" href="acc__runtime_8cu.html#a38715da958262eb3d7b9768e2b85dea9">suppress_unused_warning</a>(f)</div>
-<div class="line"><a id="l03385" name="l03385"></a><span class="lineno"> 3385</span>    <a class="code hl_define" href="acc__runtime_8cu.html#aca5d6ff754fb064af3f3e1f6c9707a23">fatal_error_message</a>(<span class="keyword">true</span>,<span class="stringliteral">&quot;Gaussian smoothing only implemented for 6th and 10th order!\n&quot;</span>);</div>
-<div class="line"><a id="l03386" name="l03386"></a><span class="lineno"> 3386</span>    <span class="keywordflow">return</span> 0.0</div>
-<div class="line"><a id="l03387" name="l03387"></a><span class="lineno"> 3387</span>}</div>
+<div class="line"><a id="l03371" name="l03371"></a><span class="lineno"> 3371</span>    <span class="keywordflow">return</span> res + 0.0*val</div>
+<div class="line"><a id="l03372" name="l03372"></a><span class="lineno"> 3372</span>}</div>
+<div class="line"><a id="l03373" name="l03373"></a><span class="lineno"> 3373</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l03374" name="l03374"></a><span class="lineno"> 3374</span> </div>
+<div class="line"><a id="l03375" name="l03375"></a><span class="lineno"> 3375</span><span class="preprocessor">#if  STENCIL_ORDER == 6</span></div>
+<div class="line"><a id="l03376" name="l03376"></a><span class="lineno"> 3376</span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_stencil_6th_order(f)}</div>
+<div class="line"><a id="l03377" name="l03377"></a><span class="lineno"> 3377</span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_inplace_6th_order(f)}</div>
+<div class="line"><a id="l03378" name="l03378"></a><span class="lineno"> 3378</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l03379" name="l03379"></a><span class="lineno"> 3379</span><span class="preprocessor">#if STENCIL_ORDER == 10</span></div>
+<div class="line"><a id="l03380" name="l03380"></a><span class="lineno"> 3380</span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_stencil_10th_order(f)}</div>
+<div class="line"><a id="l03381" name="l03381"></a><span class="lineno"> 3381</span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_inplace_10th_order(f)}</div>
+<div class="line"><a id="l03382" name="l03382"></a><span class="lineno"> 3382</span><span class="preprocessor">#else</span></div>
+<div class="foldopen" id="foldopen03383" data-start="{" data-end="}">
+<div class="line"><a id="l03383" name="l03383"></a><span class="lineno"><a class="line" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828"> 3383</a></span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f)</div>
+<div class="line"><a id="l03384" name="l03384"></a><span class="lineno"> 3384</span>{</div>
+<div class="line"><a id="l03385" name="l03385"></a><span class="lineno"> 3385</span>    <a class="code hl_define" href="acc__runtime_8cu.html#a38715da958262eb3d7b9768e2b85dea9">suppress_unused_warning</a>(f)</div>
+<div class="line"><a id="l03386" name="l03386"></a><span class="lineno"> 3386</span>    <a class="code hl_define" href="acc__runtime_8cu.html#aca5d6ff754fb064af3f3e1f6c9707a23">fatal_error_message</a>(<span class="keyword">true</span>,<span class="stringliteral">&quot;Gaussian smoothing only implemented for 6th and 10th order!\n&quot;</span>);</div>
+<div class="line"><a id="l03387" name="l03387"></a><span class="lineno"> 3387</span>    <span class="keywordflow">return</span> 0.0</div>
+<div class="line"><a id="l03388" name="l03388"></a><span class="lineno"> 3388</span>}</div>
 </div>
-<div class="foldopen" id="foldopen03388" data-start="{" data-end="}">
-<div class="line"><a id="l03388" name="l03388"></a><span class="lineno"><a class="line" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80"> 3388</a></span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f)</div>
-<div class="line"><a id="l03389" name="l03389"></a><span class="lineno"> 3389</span>{</div>
-<div class="line"><a id="l03390" name="l03390"></a><span class="lineno"> 3390</span>    <a class="code hl_define" href="acc__runtime_8cu.html#a38715da958262eb3d7b9768e2b85dea9">suppress_unused_warning</a>(f)</div>
-<div class="line"><a id="l03391" name="l03391"></a><span class="lineno"> 3391</span>    <a class="code hl_define" href="acc__runtime_8cu.html#aca5d6ff754fb064af3f3e1f6c9707a23">fatal_error_message</a>(<span class="keyword">true</span>,<span class="stringliteral">&quot;Gaussian smoothing only implemented for 6th and 10th order!\n&quot;</span>);</div>
-<div class="line"><a id="l03392" name="l03392"></a><span class="lineno"> 3392</span>    <span class="keywordflow">return</span> 0.0</div>
-<div class="line"><a id="l03393" name="l03393"></a><span class="lineno"> 3393</span>}</div>
+<div class="foldopen" id="foldopen03389" data-start="{" data-end="}">
+<div class="line"><a id="l03389" name="l03389"></a><span class="lineno"><a class="line" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80"> 3389</a></span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f)</div>
+<div class="line"><a id="l03390" name="l03390"></a><span class="lineno"> 3390</span>{</div>
+<div class="line"><a id="l03391" name="l03391"></a><span class="lineno"> 3391</span>    <a class="code hl_define" href="acc__runtime_8cu.html#a38715da958262eb3d7b9768e2b85dea9">suppress_unused_warning</a>(f)</div>
+<div class="line"><a id="l03392" name="l03392"></a><span class="lineno"> 3392</span>    <a class="code hl_define" href="acc__runtime_8cu.html#aca5d6ff754fb064af3f3e1f6c9707a23">fatal_error_message</a>(<span class="keyword">true</span>,<span class="stringliteral">&quot;Gaussian smoothing only implemented for 6th and 10th order!\n&quot;</span>);</div>
+<div class="line"><a id="l03393" name="l03393"></a><span class="lineno"> 3393</span>    <span class="keywordflow">return</span> 0.0</div>
+<div class="line"><a id="l03394" name="l03394"></a><span class="lineno"> 3394</span>}</div>
 </div>
-<div class="line"><a id="l03394" name="l03394"></a><span class="lineno"> 3394</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l03395" name="l03395"></a><span class="lineno"> 3395</span> </div>
+<div class="line"><a id="l03395" name="l03395"></a><span class="lineno"> 3395</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l03396" name="l03396"></a><span class="lineno"> 3396</span> </div>
 <div class="ttc" id="aacc__runtime_8cu_html_a38715da958262eb3d7b9768e2b85dea9"><div class="ttname"><a href="acc__runtime_8cu.html#a38715da958262eb3d7b9768e2b85dea9">suppress_unused_warning</a></div><div class="ttdeci">#define suppress_unused_warning(X)</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:464</div></div>
 <div class="ttc" id="aacc__runtime_8cu_html_aca5d6ff754fb064af3f3e1f6c9707a23"><div class="ttname"><a href="acc__runtime_8cu.html#aca5d6ff754fb064af3f3e1f6c9707a23">fatal_error_message</a></div><div class="ttdeci">#define fatal_error_message(error, message)</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:468</div></div>
-<div class="ttc" id="astencils_8h_html_a187d532a3bac987a50addb4b5f831828"><div class="ttname"><a href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a></div><div class="ttdeci">elemental gaussian_smooth(Field f)</div><div class="ttdef"><b>Definition</b> stencils.h:3382</div></div>
-<div class="ttc" id="astencils_8h_html_aa77c02a717e52630553e8c7c811daa80"><div class="ttname"><a href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a></div><div class="ttdeci">elemental gaussian_smooth_inplace(Field f)</div><div class="ttdef"><b>Definition</b> stencils.h:3388</div></div>
+<div class="ttc" id="astencils_8h_html_a187d532a3bac987a50addb4b5f831828"><div class="ttname"><a href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a></div><div class="ttdeci">elemental gaussian_smooth(Field f)</div><div class="ttdef"><b>Definition</b> stencils.h:3383</div></div>
+<div class="ttc" id="astencils_8h_html_aa77c02a717e52630553e8c7c811daa80"><div class="ttname"><a href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a></div><div class="ttdeci">elemental gaussian_smooth_inplace(Field f)</div><div class="ttdef"><b>Definition</b> stencils.h:3389</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
