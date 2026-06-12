@@ -3398,6 +3398,3 @@ elemental gaussian_smooth_inplace(Field f)
 }
 #endif
 #endif
-
-#endif
-
