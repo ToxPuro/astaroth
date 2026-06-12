@@ -40,7 +40,7 @@ var searchData=
   ['kernelreduceoutput_37',['kernelreduceoutput',['../acc__runtime_8h.html#ab0641d8f8018b1e669acf2f1796dd448',1,'KernelReduceOutput:&#160;acc_runtime.h'],['../structKernelReduceOutput.html',1,'KernelReduceOutput']]],
   ['kernels_38',['kernels',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md130',1,'Kernels'],['../md_acc-runtime_2README.html#autotoc_md43',1,'Kernels']]],
   ['kernels_2ecu_39',['kernels.cu',['../kernels_8cu.html',1,'']]],
-  ['kernels_2eh_40',['kernels.h',['../acc-runtime_2built-in_2kernels_8h.html',1,'(Global Namespace)'],['../src_2core_2kernels_2kernels_8h.html',1,'(Global Namespace)'],['../acc-runtime_2stdlib_2utils_2kernels_8h.html',1,'(Global Namespace)']]],
+  ['kernels_2eh_40',['kernels.h',['../src_2core_2kernels_2kernels_8h.html',1,'(Global Namespace)'],['../acc-runtime_2stdlib_2utils_2kernels_8h.html',1,'(Global Namespace)'],['../acc-runtime_2built-in_2kernels_8h.html',1,'(Global Namespace)']]],
   ['kernels_5fwith_5finput_5fparams_41',['kernels_with_input_params',['../structcombinatorial__params__info.html#a78238cff38a44824b94c3f3276a0c08d',1,'combinatorial_params_info']]],
   ['key_42',['key',['../structhashmap__element__s.html#a9285188fdcfd10f600c523b30e0c12db',1,'hashmap_element_s']]],
   ['key_5flen_43',['key_len',['../structhashmap__element__s.html#afe57b47c01ca7ecace981282bc019339',1,'hashmap_element_s']]],

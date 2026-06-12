@@ -1,7 +1,7 @@
 var searchData=
 [
   ['gather_5fdfunc_5freturn_5ftypes_0',['gather_dfunc_return_types',['../codegen_8c.html#a237f133bce289ee38e406847f3eb2f16',1,'codegen.c']]],
-  ['gaussian_5fsmooth_1',['gaussian_smooth',['../stencils_8h.html#a532fd09cceb968f26df5018df5f834be',1,'stencils.h']]],
+  ['gaussian_5fsmooth_1',['gaussian_smooth',['../stencils_8h.html#a187d532a3bac987a50addb4b5f831828',1,'stencils.h']]],
   ['gen_5fall_5ffinal_5freductions_2',['gen_all_final_reductions',['../codegen_8c.html#a576113ca4898d9a6c014265b5ac59106',1,'codegen.c']]],
   ['gen_5fall_5ffused_5fcombinations_3',['gen_all_fused_combinations',['../codegen_8c.html#ad3bc2001fad228a28fcfa2c758557c18',1,'codegen.c']]],
   ['gen_5fall_5fpossibilities_4',['gen_all_possibilities',['../codegen_8c.html#a49559fba2800faf87a4147c23cc437e1',1,'codegen.c']]],

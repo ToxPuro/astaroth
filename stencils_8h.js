@@ -1,4 +1,4 @@
 var stencils_8h =
 [
-    [ "gaussian_smooth", "stencils_8h.html#a532fd09cceb968f26df5018df5f834be", null ]
+    [ "gaussian_smooth", "stencils_8h.html#a187d532a3bac987a50addb4b5f831828", null ]
 ];
