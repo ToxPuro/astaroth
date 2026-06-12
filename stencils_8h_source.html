@@ -99,7 +99,7 @@ $(document).ready(function(){initNavTree('stencils_8h_source.html',''); initResi
 </div><!--header-->
 <div class="contents">
 <a href="stencils_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#if STENCIL_ORDER &gt;= 6</span></div>
-<div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span>Stencil gaussian_smooth_stencil_6th_order</div>
+<div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span>Stencil gaussian_smooth_stencil_r3</div>
 <div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span>{</div>
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span>      [-3][-3][-3] = 2.7212025766230546e-05,</div>
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span>      [-3][-3][-2] = 9.497930249143296e-05,</div>
@@ -446,9 +446,9 @@ $(document).ready(function(){initNavTree('stencils_8h_source.html',''); initResi
 <div class="line"><a id="l00346" name="l00346"></a><span class="lineno">  346</span>      [3][3][3] = 2.7212025766230546e-05,</div>
 <div class="line"><a id="l00347" name="l00347"></a><span class="lineno">  347</span>}</div>
 <div class="line"><a id="l00348" name="l00348"></a><span class="lineno">  348</span> </div>
-<div class="line"><a id="l00349" name="l00349"></a><span class="lineno">  349</span>elemental gaussian_smooth_inplace_6th_order(Field f)</div>
+<div class="line"><a id="l00349" name="l00349"></a><span class="lineno">  349</span>elemental gaussian_smooth_inplace_r3(Field f)</div>
 <div class="line"><a id="l00350" name="l00350"></a><span class="lineno">  350</span>{</div>
-<div class="line"><a id="l00351" name="l00351"></a><span class="lineno">  351</span>    val = gaussian_smooth_stencil_6th_order(f)</div>
+<div class="line"><a id="l00351" name="l00351"></a><span class="lineno">  351</span>    val = gaussian_smooth_stencil_r3(f)</div>
 <div class="line"><a id="l00352" name="l00352"></a><span class="lineno">  352</span>    val = 0.0</div>
 <div class="line"><a id="l00353" name="l00353"></a><span class="lineno">  353</span>    res = </div>
 <div class="line"><a id="l00354" name="l00354"></a><span class="lineno">  354</span>      f[vertexIdx.x-3][vertexIdx.y-3][vertexIdx.z-3] * 2.7212025766230546e-05+</div>
@@ -800,7 +800,7 @@ $(document).ready(function(){initNavTree('stencils_8h_source.html',''); initResi
 <div class="line"><a id="l00700" name="l00700"></a><span class="lineno">  700</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00701" name="l00701"></a><span class="lineno">  701</span> </div>
 <div class="line"><a id="l00702" name="l00702"></a><span class="lineno">  702</span><span class="preprocessor">#if STENCIL_ORDER &gt;= 10</span></div>
-<div class="line"><a id="l00703" name="l00703"></a><span class="lineno">  703</span>Stencil gaussian_smooth_stencil_10th_order</div>
+<div class="line"><a id="l00703" name="l00703"></a><span class="lineno">  703</span>Stencil gaussian_smooth_stencil_r5</div>
 <div class="line"><a id="l00704" name="l00704"></a><span class="lineno">  704</span>{</div>
 <div class="line"><a id="l00705" name="l00705"></a><span class="lineno">  705</span>      [-5][-5][-5] = 6.843170593447783e-07,</div>
 <div class="line"><a id="l00706" name="l00706"></a><span class="lineno">  706</span>      [-5][-5][-4] = 2.1078449361958263e-06,</div>
@@ -2134,9 +2134,9 @@ $(document).ready(function(){initNavTree('stencils_8h_source.html',''); initResi
 <div class="line"><a id="l02034" name="l02034"></a><span class="lineno"> 2034</span>      [5][5][4] = 2.1078449361958263e-06,</div>
 <div class="line"><a id="l02035" name="l02035"></a><span class="lineno"> 2035</span>      [5][5][5] = 6.843170593447783e-07</div>
 <div class="line"><a id="l02036" name="l02036"></a><span class="lineno"> 2036</span>}</div>
-<div class="line"><a id="l02037" name="l02037"></a><span class="lineno"> 2037</span>elemental gaussian_smooth_inplace_10th_order(Field f)</div>
+<div class="line"><a id="l02037" name="l02037"></a><span class="lineno"> 2037</span>elemental gaussian_smooth_inplace_r5(Field f)</div>
 <div class="line"><a id="l02038" name="l02038"></a><span class="lineno"> 2038</span>{</div>
-<div class="line"><a id="l02039" name="l02039"></a><span class="lineno"> 2039</span>    val = gaussian_smooth_stencil_10th_order(f)</div>
+<div class="line"><a id="l02039" name="l02039"></a><span class="lineno"> 2039</span>    val = gaussian_smooth_stencil_r5(f)</div>
 <div class="line"><a id="l02040" name="l02040"></a><span class="lineno"> 2040</span>    val = 0.0</div>
 <div class="line"><a id="l02041" name="l02041"></a><span class="lineno"> 2041</span>    real res =</div>
 <div class="line"><a id="l02042" name="l02042"></a><span class="lineno"> 2042</span>      f[vertexIdx.x+-5][vertexIdx.y+-5][vertexIdx.z+-5] * 6.843170593447783e-07+</div>
@@ -3476,12 +3476,12 @@ $(document).ready(function(){initNavTree('stencils_8h_source.html',''); initResi
 <div class="line"><a id="l03376" name="l03376"></a><span class="lineno"> 3376</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l03377" name="l03377"></a><span class="lineno"> 3377</span> </div>
 <div class="line"><a id="l03378" name="l03378"></a><span class="lineno"> 3378</span><span class="preprocessor">#if  STENCIL_ORDER == 6</span></div>
-<div class="line"><a id="l03379" name="l03379"></a><span class="lineno"> 3379</span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_stencil_6th_order(f)}</div>
-<div class="line"><a id="l03380" name="l03380"></a><span class="lineno"> 3380</span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_inplace_6th_order(f)}</div>
+<div class="line"><a id="l03379" name="l03379"></a><span class="lineno"> 3379</span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_stencil_r3(f)}</div>
+<div class="line"><a id="l03380" name="l03380"></a><span class="lineno"> 3380</span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_inplace_r3(f)}</div>
 <div class="line"><a id="l03381" name="l03381"></a><span class="lineno"> 3381</span><span class="preprocessor">#else</span></div>
 <div class="line"><a id="l03382" name="l03382"></a><span class="lineno"> 3382</span><span class="preprocessor">#if STENCIL_ORDER == 10</span></div>
-<div class="line"><a id="l03383" name="l03383"></a><span class="lineno"> 3383</span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_stencil_10th_order(f)}</div>
-<div class="line"><a id="l03384" name="l03384"></a><span class="lineno"> 3384</span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_inplace_10th_order(f)}</div>
+<div class="line"><a id="l03383" name="l03383"></a><span class="lineno"> 3383</span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_stencil_r5(f)}</div>
+<div class="line"><a id="l03384" name="l03384"></a><span class="lineno"> 3384</span>elemental <a class="code hl_function" href="stencils_8h.html#aa77c02a717e52630553e8c7c811daa80">gaussian_smooth_inplace</a>(Field f) {<span class="keywordflow">return</span> gaussian_smooth_inplace_r5(f)}</div>
 <div class="line"><a id="l03385" name="l03385"></a><span class="lineno"> 3385</span><span class="preprocessor">#else</span></div>
 <div class="foldopen" id="foldopen03386" data-start="{" data-end="}">
 <div class="line"><a id="l03386" name="l03386"></a><span class="lineno"><a class="line" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828"> 3386</a></span>elemental <a class="code hl_function" href="stencils_8h.html#a187d532a3bac987a50addb4b5f831828">gaussian_smooth</a>(Field f)</div>
