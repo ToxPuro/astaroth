@@ -173,43 +173,42 @@ get_cmake_options(const char* user_cmake_options)
 AcResult
 run_cmake(const char* user_cmake_options, const char* log_dst)
 {
-  
-  char cmd[2*10000];
-  const char* options = get_cmake_options(user_cmake_options);
-  snprintf(cmd,max_string_size,"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options);
-#if AC_USE_HIP
-#else
-  //TP: needed to ensure nvcc does not write under /tmp which on compute nodes does not have enough memory
-  setenv("TMPDIR", dynamic_binary_path, 1);
-  strcat(cmd,"-DCMAKE_CUDA_FLAGS=-objtemp ");
+    const char* options = get_cmake_options(user_cmake_options);
+
+    char cmd[BUFSIZ];
+    sprintf(cmd, "cmake -B %s -S %s %s", runtime_astaroth_build_path().c_str(),
+            get_astaroth_base_path().c_str(), options);
+#ifndef AC_USE_HIP
+    // TP: needed to ensure nvcc does not write under /tmp which on compute nodes does not have
+    // enough memory
+    setenv("TMPDIR", dynamic_binary_path, 1);
+    strcat(cmd, "-DCMAKE_CUDA_FLAGS=-objtemp ");
 #endif
-  strcat(cmd,get_astaroth_base_path().c_str());
-  if(log_dst)
-  {
-	  strcat(cmd," > ");
-  	  strcat(cmd,log_dst);
-	  strcat(cmd," 2>&1");
-  }
-  const int retval = system(cmd);
-  if(retval)
-  {
-  	fprintf(stderr,"%s %d\n","Fatal was not able to run cmake:",retval);
-  	fprintf(stderr,"Cmake command: %s\n",cmd);
-  	fflush(stdout);
-  	fflush(stderr);
-	return AC_FAILURE;
-  }
-  snprintf(cmd,max_string_size,"echo %s > %s", get_cmake_options(user_cmake_options), previous_cmake_options_path().c_str());
-  const int echo_retval = system(cmd);
-  if(echo_retval)
-  {
-  	fprintf(stderr,"%s %d\n","Was not able to store cmake options:",retval);
-  	fprintf(stderr,"Storing command: %s\n",cmd);
-  	fflush(stdout);
-  	fflush(stderr);
-	return AC_FAILURE;
-  }
-  return AC_SUCCESS;
+    strcat(cmd, get_astaroth_base_path().c_str());
+    if (log_dst) {
+        strcat(cmd, " > ");
+        strcat(cmd, log_dst);
+        strcat(cmd, " 2>&1");
+    }
+    const int retval = system(cmd);
+    if (retval) {
+        fprintf(stderr, "%s %d\n", "Fatal was not able to run cmake:", retval);
+        fprintf(stderr, "Cmake command: %s\n", cmd);
+        fflush(stdout);
+        fflush(stderr);
+        return AC_FAILURE;
+    }
+    sprintf(cmd, "echo %s > %s", get_cmake_options(user_cmake_options),
+            previous_cmake_options_path().c_str());
+    const int echo_retval = system(cmd);
+    if (echo_retval) {
+        fprintf(stderr, "%s %d\n", "Was not able to store cmake options:", retval);
+        fprintf(stderr, "Storing command: %s\n", cmd);
+        fflush(stdout);
+        fflush(stderr);
+        return AC_FAILURE;
+    }
+    return AC_SUCCESS;
 }
 
 AcResult
