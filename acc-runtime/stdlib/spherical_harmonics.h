@@ -11,7 +11,7 @@ hostdefine AC_SPHERICAL_HARMONICS_INCLUDED (1)
 #ifdef AC_HOME
 #include "$AC_HOME/acc-runtime/stdlib/general_grid"
 #endif
-const int AC_n_spherical_harmonics = 6
+const int AC_n_spherical_harmonics = 14
 gmem real AC_PLM[AC_mlocal.y][AC_n_spherical_harmonics][AC_n_spherical_harmonics]
 gmem real AC_cos_m_phis[AC_mlocal.z][AC_n_spherical_harmonics]
 gmem real AC_sin_m_phis[AC_mlocal.z][AC_n_spherical_harmonics]

@@ -257,101 +257,21 @@ main(void)
     //acPrintMeshInfo(acDeviceGetLocalConfig(acGridGetDevice()));
     //fflush(stdout);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-
-    const auto jacobi_graph = acGetOptimizedDSLTaskGraph(jacobi_step);
-    const auto sor_rb_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
-    //const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_step);
-    const auto bicgstab_graph    = acGetOptimizedDSLTaskGraph(bicgstab_preconditioned_step);
-    const auto reinit_bicgstab_graph = acGetOptimizedDSLTaskGraph(reinitialize_bicgstab);
-    const auto sor_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
-    const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
-    const size_t NUM_SOLVING_STEPS = info[AC_n_solving_steps];
-    FILE* fp = fopen("residual.dat","w");
-    for (size_t i = 0; i < NUM_SOLVING_STEPS; ++i)
+    auto calculate_integrals_graph = acGetOptimizedDSLTaskGraph(calculate_integrals);
+    for(int i= 0; i < 100; ++i)
     {
-	if(i == 0)
-	{
-    		acGridExecuteTaskGraph(residual_graph,1);
-		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
-		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-		printf("Initial residual: %zu,%7e\n",i,residual_norm);
-		acGridExecuteTaskGraph(reinit_bicgstab_graph,1);
-	}
-    	acGridExecuteTaskGraph(bicgstab_graph,1);
-    	//acGridExecuteTaskGraph(sor_graph,1);
-	if(i % 100 == 0)
-	{
-		acGridExecuteTaskGraph(reinit_bicgstab_graph,1);
-    		acGridExecuteTaskGraph(residual_graph,1);
-		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
-		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-		printf("Residual: %zu,%7e\n",i,residual_norm);
-		fflush(stdout);
-		fflush(stderr);
-		//printf("||S||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_S));
-		//printf("||H||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_H));
-		//printf("||R||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_R));
-		//printf("||R0||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_R0));
-		//printf("||T||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_T));
-		//printf("||P||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_P));
-		//printf("||V||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_V));
-		//printf("<r0,v>: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_r0Tv));
-		//printf("rho-1: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_rho_prev));
-		//printf("rho: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_rho_next));
-		//printf("<t,t>: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_tTt));
-		//printf("<t,s>: %.14e\n",acDeviceGetOutput(acGridGetDevice(),BICGSTAB_tTs));
-	}
-	{
-    		acGridExecuteTaskGraph(residual_graph,1);
-		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-		fprintf(fp,"%.14e,",residual_norm);
-	}
+      const AcReal start_time = MPI_Wtime();
+      acGridExecuteTaskGraph(calculate_integrals_graph,1);
+      const AcReal end_time   = MPI_Wtime();
+      fprintf(stderr,"Calculating integrals took: %.14e\n",end_time-start_time);
     }
-    fclose(fp);
-    acGridExecuteTaskGraph(residual_graph,1);
-    AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-    printf("Final residual: %7e\n",residual_norm);
-
-    acGridExecuteTaskGraph(acGetDSLTaskGraph(get_potential_with_sph),1);
-    AcReal M_00 = ((4*AC_REAL_PI*R*R*R)/3.0)*sqrt(4*AC_REAL_PI);
-    M_00 -= ((4*AC_REAL_PI*R_min*R_min*R_min)/3.0)*sqrt(4*AC_REAL_PI);
-    AcReal M_inner = 2.0*AC_REAL_PI*(R*R - R_min*R_min)*sqrt(4*AC_REAL_PI);
-    /**
-    printf("M_00 should be: %14e\n",M_00);
-    printf("M_inner should be: %14e\n",M_inner);
-    for(int l = 0; l < 6; ++l)
-    {
-	    for(int m = 0; m <= l; ++m)
-	    {
-		printf("l,m: %d,%d --> %14e\n",l,m,acDeviceGetOutput(acGridGetDevice(), AC_upper_positive_MLM[l + 6*m]));
-		printf("lower l,m: %d,%d --> %14e\n",l,m,acDeviceGetOutput(acGridGetDevice(), AC_lower_positive_MLM[l + 6*m]));
-		if(m > 0)
-		{
-			printf("l,m: %d,%d --> %14e\n",l,-m,acDeviceGetOutput(acGridGetDevice(), AC_upper_negative_MLM[l + 6*m]));
-			printf("lower l,m: %d,%d --> %14e\n",l,-m,acDeviceGetOutput(acGridGetDevice(), AC_lower_negative_MLM[l + 6*m]));
-		}
-	    }
-    }
-    **/
-    acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
-
-
-    int retval = AC_SUCCESS;
-    if(residual_norm > 4e-8)
-    {
-	    fprintf(stderr,"Residual is too large: %.14e\n",residual_norm);
-	    retval = AC_FAILURE;
-    }
-    acGridQuit();
-    ac_MPI_Finalize();
-    fflush(stdout);
-    finalized = true;
-
-    if (pid == 0)
-        fprintf(stderr, "POISSON_TEST complete: %s\n",
-                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
-
-    return retval;
+    //TP: does not matter which harmonic we choose since all of them take the same amount of memory
+    //
+    const Volume nn = acGetLocalNN(info);
+    AcReal full_size =    (AcReal)nn.x*nn.y*nn.z*sizeof(AcReal);
+    AcReal reduced_size = (AcReal)acGetRealScratchpadSize(AC_upper_negative_MLM[0]);
+    printf("Saving a factor of %14e memory for scratchpads for calculating harmonic expansion\n",full_size/reduced_size);
+    return 0;
 }
 
 #else

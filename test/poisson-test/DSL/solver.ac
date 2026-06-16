@@ -471,3 +471,8 @@ ComputeSteps get_potential_with_sph(jacobi_bcs)
 	calculate_mlm_kernel()
 	calculate_potential_with_mlm()
 }
+
+ComputeSteps calculate_integrals(jacobi_bcs)
+{
+	calculate_mlm_kernel()
+}
