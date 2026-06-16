@@ -392,6 +392,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	LOAD_DSYM(acGetKernels,stream)
 	LOAD_DSYM(acGetOptimTPB,stream);
         LOAD_DSYM(acRuntimeQuit,stream);
+	LOAD_DSYM(acGetRealScratchpadSize,stream);
 
 	return handle;
   }
