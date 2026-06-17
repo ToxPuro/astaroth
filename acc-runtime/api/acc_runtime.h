@@ -276,8 +276,6 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   extern "C" {
   #endif
 
-  #include "user_declarations.h"
-
 #if AC_MPI_ENABLED
    FUNC_DEFINE(AcResult, acInitializeRuntimeMPI,(const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
 #endif

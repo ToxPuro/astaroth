@@ -7159,23 +7159,11 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 static void
 gen_user_kernels(const char* out)
 {
-  FILE* fp = fopen(out, "w");
-  assert(fp);
-  // fprintf(fp, "#pragma once\n");
-
-  // Kernels
-  // for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  //   if (symbol_table[i].type & NODE_KFUNCTION_ID)
-  //     fprintf(fp,
-  //             "__global__ void %s(const int3 start, const int3 end, "
-  //             "VertexBufferArray vba);",
-  //             symbol_table[i].identifier);
-
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
 
   const char* default_param_list=  "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
-  FILE* fp_dec = fopen("user_kernel_declarations.h","a");
+  FILE* fp_dec = fopen(out, "a");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
       fprintf(fp_dec, "static void __global__ KERNEL_%s %s);\n", symbol_table[i].identifier, default_param_list);
@@ -7189,9 +7177,6 @@ gen_user_kernels(const char* out)
   fclose(fp_dec);
 
   // Astaroth 2.0 backwards compatibility END
-
-  fprintf(fp, "\n"); // Add newline at EOF
-  fclose(fp);
 }
 
 //void
@@ -10623,13 +10608,9 @@ gen_output_files(ASTNode* root)
   gen_user_structs();
   gen_user_defines(root, "user_defines.h");
   gen_kernel_structs(root);
-  FILE* fp = fopen("user_kernel_declarations.h","w");
-  fclose(fp);
-  fp = fopen("user_kernel_declarations.h","a");
-  fclose(fp);
   stencilgen(root);
-  gen_user_kernels("user_declarations.h");
-  fp = fopen("user_typedefs.h","a");
+  gen_user_kernels("user_kernel_declarations.h");
+  FILE *fp = fopen("user_typedefs.h","a");
   fprintf(fp,"typedef enum{\n");
   string_vec datatypes = get_all_datatypes();
   for (size_t i = 0; i < datatypes.size; ++i)
