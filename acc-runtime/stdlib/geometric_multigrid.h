@@ -12,7 +12,7 @@
 #include "$AC_HOME/acc-runtime/stdlib/poisson.h"
 #include "$AC_HOME/acc-runtime/stdlib/cg.h"
 hostdefine AC_GMG_ENABLED (1)
-run_const real AC_gmg_coarse_level_solve_accuracy = 1e-14
+real AC_gmg_coarse_level_solve_accuracy = 1e-14
 run_const int AC_gmg_number_of_levels = 5
 input int AC_GMG_SMOOTHER_COLOR
 enum GMG_Smoother
