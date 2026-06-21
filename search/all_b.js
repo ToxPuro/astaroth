@@ -106,7 +106,7 @@ var searchData=
   ['ac_5fget_5fscratchpad_5fsize_5freal_103',['ac_get_scratchpad_size_real',['../acc__runtime_8h.html#af45b1f0ed8e2fdf944b127b47208d8a1',1,'acc_runtime.h']]],
   ['ac_5fglobal_5fposition_104',['ac_global_position',['../grid_8h.html#a30ed4dcbb28222615b48a50690ecdc53',1,'grid.h']]],
   ['ac_5fglobal_5fvertex_5fidx_105',['ac_global_vertex_idx',['../grid_8h.html#a5a356515da390a56ac5c044b92c67a44',1,'grid.h']]],
-  ['ac_5fgmg_5fenabled_106',['AC_GMG_ENABLED',['../acc-runtime_2stdlib_2geometric__multigrid_8h.html#abb6ad9414ac319aa70b1c5454d3a6b0e',1,'geometric_multigrid.h']]],
+  ['ac_5fgmg_5fenabled_106',['AC_GMG_ENABLED',['../acc-runtime_2stdlib_2geometric__multigrid_8h.html#a6526cbf6c3540a5e09f38f98be91659f',1,'geometric_multigrid.h']]],
   ['ac_5fgmg_5fmaximum_5flevel_107',['AC_gmg_maximum_level',['../geometric__multigrid__core_8h.html#ac3ca3a756a48a25c261c22ae7ab6cfc4',1,'geometric_multigrid_core.h']]],
   ['ac_5fgmg_5fpost_5fsmooth_5fsteps_108',['AC_gmg_post_smooth_steps',['../acc-runtime_2stdlib_2geometric__multigrid_8h.html#a86617d794548a0927f1a413ac87af189',1,'geometric_multigrid.h']]],
   ['ac_5fgmg_5fsmoother_109',['AC_GMG_SMOOTHER',['../acc-runtime_2stdlib_2geometric__multigrid_8h.html#adb72bf523a5fd72af9410e16a4dfb54e',1,'geometric_multigrid.h']]],
