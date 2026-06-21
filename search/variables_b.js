@@ -9,14 +9,13 @@ var searchData=
   ['leq_5fstr_6',['LEQ_STR',['../codegen_8c.html#a0ed432ad4cc98aceed3018f35229d301',1,'codegen.c']]],
   ['less_5fstr_7',['LESS_STR',['../codegen_8c.html#a4bc9b7b8fc58aaaab0651b9838fe84b5',1,'codegen.c']]],
   ['level_5fdims_8',['level_dims',['../stdlib_2geometric__multigrid_8h.html#a4f07557538cba67a86437433deb10266',1,'geometric_multigrid.h']]],
-  ['level_5fdivisor_9',['level_divisor',['../geometric__multigrid__core_8h.html#ad4341623573ea5c6cd29d261ae667ea2',1,'geometric_multigrid_core.h']]],
-  ['lhs_10',['lhs',['../structastnode__s.html#a3c1f8130dbb5b007e930ee12a69f3409',1,'astnode_s']]],
-  ['line_11',['line',['../cuda_8cc.html#a93346abb21c5f2298d56b7e25479ce45',1,'line:&#160;cuda.cc'],['../string__vec_8h.html#a6d574f3bbd7bbcb2515d234be74beaa4',1,'line:&#160;string_vec.h']]],
-  ['loader_12',['loader',['../structLoadKernelParamsFunc.html#a68b2264dbc8b1384650d1a0bffcb3399',1,'LoadKernelParamsFunc']]],
-  ['local_5fconfig_13',['local_config',['../structdevice__s.html#a415cf9e554c5034c41aad64c9b7868d2',1,'device_s']]],
-  ['local_5fdims_14',['local_dims',['../structAcDecompositionInfo.html#a5643723bda2e3b116ea80a5f31885260',1,'AcDecompositionInfo']]],
-  ['log2_5fcapacity_15',['log2_capacity',['../structhashmap__s.html#a9c1552f61f364ff3643fd0c5a760383d',1,'hashmap_s']]],
-  ['lookup_16',['lookup',['../structstate.html#ab6e60877bc5b7942473d7965775188f5',1,'state']]],
-  ['lookup_5flen_17',['lookup_len',['../structstate.html#a08a3ee1e049fc017fea97958e3fc20d6',1,'state']]],
-  ['loop_5fcntr_18',['loop_cntr',['../classTask.html#a8cd810db83a7fdc37acc35d9c4891776',1,'Task']]]
+  ['lhs_9',['lhs',['../structastnode__s.html#a3c1f8130dbb5b007e930ee12a69f3409',1,'astnode_s']]],
+  ['line_10',['line',['../cuda_8cc.html#a93346abb21c5f2298d56b7e25479ce45',1,'line:&#160;cuda.cc'],['../string__vec_8h.html#a6d574f3bbd7bbcb2515d234be74beaa4',1,'line:&#160;string_vec.h']]],
+  ['loader_11',['loader',['../structLoadKernelParamsFunc.html#a68b2264dbc8b1384650d1a0bffcb3399',1,'LoadKernelParamsFunc']]],
+  ['local_5fconfig_12',['local_config',['../structdevice__s.html#a415cf9e554c5034c41aad64c9b7868d2',1,'device_s']]],
+  ['local_5fdims_13',['local_dims',['../structAcDecompositionInfo.html#a5643723bda2e3b116ea80a5f31885260',1,'AcDecompositionInfo']]],
+  ['log2_5fcapacity_14',['log2_capacity',['../structhashmap__s.html#a9c1552f61f364ff3643fd0c5a760383d',1,'hashmap_s']]],
+  ['lookup_15',['lookup',['../structstate.html#ab6e60877bc5b7942473d7965775188f5',1,'state']]],
+  ['lookup_5flen_16',['lookup_len',['../structstate.html#a08a3ee1e049fc017fea97958e3fc20d6',1,'state']]],
+  ['loop_5fcntr_17',['loop_cntr',['../classTask.html#a8cd810db83a7fdc37acc35d9c4891776',1,'Task']]]
 ];

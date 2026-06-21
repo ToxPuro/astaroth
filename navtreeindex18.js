@@ -1,6 +1,5 @@
 var NAVTREEINDEX18 =
 {
-"structHaloMessage.html#a8cce0dbcf7770194320cf6cf0da59568":[18,0,65,14],
 "structHaloMessage.html#a8dc24f3072ab6f764a45289ef2dd9114":[18,0,65,23],
 "structHaloMessage.html#a90044b0087f3b49feaf59bf18166c9a8":[18,0,65,22],
 "structHaloMessage.html#a932e751bc0850adc9fc8729667b3b34c":[18,0,65,17],
@@ -249,5 +248,6 @@ var NAVTREEINDEX18 =
 "structkiss__fft__state.html":[18,0,81],
 "structkiss__fft__state.html#a2d5d0897276dbac0674fae556f951d18":[18,0,81,0],
 "structkiss__fft__state.html#a8faed935610ffb08bf7ad9ea8d6c81d2":[18,0,81,1],
-"structkiss__fft__state.html#aa7446bded329a40e13aef0826e349791":[18,0,81,2]
+"structkiss__fft__state.html#aa7446bded329a40e13aef0826e349791":[18,0,81,2],
+"structkiss__fft__state.html#aa7d1cab86ec03a8ecddfe0d91ef0bd20":[18,0,81,3]
 };

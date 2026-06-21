@@ -101,15 +101,13 @@ $(document).ready(function(){initNavTree('geometric__multigrid__core_8h.html',''
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:a865fc505c2bc00519087f20f1dad5f46" id="r_a865fc505c2bc00519087f20f1dad5f46"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="geometric__multigrid__core_8h.html#a865fc505c2bc00519087f20f1dad5f46">GMG_PRECISION</a></td></tr>
-<tr class="separator:a865fc505c2bc00519087f20f1dad5f46"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9eb9b6e1d08db2f074505cc57b3ab68e" id="r_a9eb9b6e1d08db2f074505cc57b3ab68e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="geometric__multigrid__core_8h.html#a9eb9b6e1d08db2f074505cc57b3ab68e">GMG_OUTPUT_PRECISION</a>&#160;&#160;&#160;real</td></tr>
 <tr class="separator:a9eb9b6e1d08db2f074505cc57b3ab68e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:ad4341623573ea5c6cd29d261ae667ea2" id="r_ad4341623573ea5c6cd29d261ae667ea2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structint3.html">int3</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="geometric__multigrid__core_8h.html#ad4341623573ea5c6cd29d261ae667ea2">level_divisor</a></td></tr>
-<tr class="separator:ad4341623573ea5c6cd29d261ae667ea2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac730fa1bb31f8dbc5085beb3c9572d93" id="r_ac730fa1bb31f8dbc5085beb3c9572d93"><td class="memItemLeft" align="right" valign="top">run_const <a class="el" href="host__datatypes_8h.html#acf378d4b5531d10d4e4dbfcd06dbd472">AcPrecision</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="geometric__multigrid__core_8h.html#ac730fa1bb31f8dbc5085beb3c9572d93">AC_GMG_precision</a></td></tr>
+<tr class="separator:ac730fa1bb31f8dbc5085beb3c9572d93"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac3ca3a756a48a25c261c22ae7ab6cfc4" id="r_ac3ca3a756a48a25c261c22ae7ab6cfc4"><td class="memItemLeft" align="right" valign="top">const int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="geometric__multigrid__core_8h.html#ac3ca3a756a48a25c261c22ae7ab6cfc4">AC_gmg_maximum_level</a> = 10</td></tr>
 <tr class="separator:ac3ca3a756a48a25c261c22ae7ab6cfc4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -128,21 +126,6 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a id="a865fc505c2bc00519087f20f1dad5f46" name="a865fc505c2bc00519087f20f1dad5f46"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a865fc505c2bc00519087f20f1dad5f46">&#9670;&#160;</a></span>GMG_PRECISION</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define GMG_PRECISION</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<p>This file is for a geometric multigrid (GMG) implementation of the Poisson equation -Δu = f, in Cartesian coordinates. For a good introduction to multigrid methods see the book Multigrid by Trottenberg. </p>
-
-</div>
-</div>
 <h2 class="groupheader">Variable Documentation</h2>
 <a id="ac3ca3a756a48a25c261c22ae7ab6cfc4" name="ac3ca3a756a48a25c261c22ae7ab6cfc4"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac3ca3a756a48a25c261c22ae7ab6cfc4">&#9670;&#160;</a></span>AC_gmg_maximum_level</h2>
@@ -158,18 +141,22 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a id="ad4341623573ea5c6cd29d261ae667ea2" name="ad4341623573ea5c6cd29d261ae667ea2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad4341623573ea5c6cd29d261ae667ea2">&#9670;&#160;</a></span>level_divisor</h2>
+<a id="ac730fa1bb31f8dbc5085beb3c9572d93" name="ac730fa1bb31f8dbc5085beb3c9572d93"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac730fa1bb31f8dbc5085beb3c9572d93">&#9670;&#160;</a></span>AC_GMG_precision</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structint3.html">int3</a> level_divisor</td>
+          <td class="memname">run_const <a class="el" href="host__datatypes_8h.html#acf378d4b5531d10d4e4dbfcd06dbd472">AcPrecision</a> AC_GMG_precision</td>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Initial value:</b><div class="fragment"><div class="line">= (<a class="code hl_struct" href="structint3.html">int3</a>)</div>
+<b>Initial value:</b><div class="fragment"><div class="line">= <a class="code hl_enumvalue" href="host__datatypes_8h.html#acf378d4b5531d10d4e4dbfcd06dbd472af828a41028ccb7b29b09df0618420809">AC_REAL_PRECISION</a></div>
+<div class="line"><span class="preprocessor">#define GMG_OUTPUT_PRECISION     </span></div>
+<div class="line"> </div>
+<div class="line"> </div>
+<div class="line"><a class="code hl_struct" href="structint3.html">int3</a> level_divisor = (<a class="code hl_struct" href="structint3.html">int3</a>)</div>
 <div class="line">{</div>
 <div class="line">    <a class="code hl_variable" href="variables_8h.html#a1aeb09ae6c2e41a7c1ac9ae4c11d7f23">AC_dimension_inactive</a>.<a class="code hl_variable" href="structbool3.html#a0a487884cdc070d7f0de0f2c9ae83ad9">x</a> ? 1 : 2,</div>
 <div class="line">    <a class="code hl_variable" href="variables_8h.html#a1aeb09ae6c2e41a7c1ac9ae4c11d7f23">AC_dimension_inactive</a>.<a class="code hl_variable" href="structbool3.html#a6c1aee22778f595647cacedd6ab333eb">y</a> ? 1 : 2,</div>
@@ -177,12 +164,14 @@ Variables</h2></td></tr>
 <div class="line">}</div>
 <div class="line"> </div>
 <div class="line"><span class="keywordtype">bool</span> AC_power_of_two_minus_one_grid = <span class="keyword">false</span></div>
+<div class="ttc" id="ahost__datatypes_8h_html_acf378d4b5531d10d4e4dbfcd06dbd472af828a41028ccb7b29b09df0618420809"><div class="ttname"><a href="host__datatypes_8h.html#acf378d4b5531d10d4e4dbfcd06dbd472af828a41028ccb7b29b09df0618420809">AC_REAL_PRECISION</a></div><div class="ttdeci">@ AC_REAL_PRECISION</div><div class="ttdef"><b>Definition</b> host_datatypes.h:14</div></div>
 <div class="ttc" id="astructbool3_html_a0a487884cdc070d7f0de0f2c9ae83ad9"><div class="ttname"><a href="structbool3.html#a0a487884cdc070d7f0de0f2c9ae83ad9">bool3::x</a></div><div class="ttdeci">bool x</div><div class="ttdef"><b>Definition</b> typedefs.h:68</div></div>
 <div class="ttc" id="astructbool3_html_a6c1aee22778f595647cacedd6ab333eb"><div class="ttname"><a href="structbool3.html#a6c1aee22778f595647cacedd6ab333eb">bool3::y</a></div><div class="ttdeci">bool y</div><div class="ttdef"><b>Definition</b> typedefs.h:69</div></div>
 <div class="ttc" id="astructbool3_html_a9302d1f8d65a441e2afa647c7a956265"><div class="ttname"><a href="structbool3.html#a9302d1f8d65a441e2afa647c7a956265">bool3::z</a></div><div class="ttdeci">bool z</div><div class="ttdef"><b>Definition</b> typedefs.h:70</div></div>
 <div class="ttc" id="astructint3_html"><div class="ttname"><a href="structint3.html">int3</a></div><div class="ttdef"><b>Definition</b> stencilgen.c:49</div></div>
 <div class="ttc" id="avariables_8h_html_a1aeb09ae6c2e41a7c1ac9ae4c11d7f23"><div class="ttname"><a href="variables_8h.html#a1aeb09ae6c2e41a7c1ac9ae4c11d7f23">AC_dimension_inactive</a></div><div class="ttdeci">run_const bool3 AC_dimension_inactive</div><div class="ttdef"><b>Definition</b> variables.h:19</div></div>
-</div><!-- fragment -->
+</div><!-- fragment --><p>This file is for a geometric multigrid (GMG) implementation of the Poisson equation -Δu = f, in Cartesian coordinates. For a good introduction to multigrid methods see the book Multigrid by Trottenberg. </p>
+
 </div>
 </div>
 </div><!-- contents -->
