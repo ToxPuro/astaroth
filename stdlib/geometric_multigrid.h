@@ -377,6 +377,12 @@ gmg_smoothing_step(const int level, const int nsteps)
 		}
 		break;
 	  }
+	  case RED_BLACK_SMOOTHER:
+	  {
+		  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(gmg_rb_smoother),nsteps);
+		  break;
+	  }
+
 	  case Y_LINE_SMOOTHER:
 	  {
 		for(int step = 0; step < nsteps; ++step)
