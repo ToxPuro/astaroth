@@ -18,6 +18,7 @@ input int AC_GMG_SMOOTHER_COLOR
 enum GMG_Smoother
 {
 	SPAI_SMOOTHER,
+	RED_BLACK_SMOOTHER,
 	Y_LINE_SMOOTHER
 };
 
@@ -2642,18 +2643,6 @@ gmg_poisson_jacobi_update(int level)
 	return (GMG_RHS[level]-Ax)/coef
 }
 
-gmg_poisson_sor_red_black(int color, int level, real omega)
-{
-	res = (1-omega)*GMG_SOLUTIONS[level] + omega*gmg_poisson_jacobi_update(level)
-	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color)
-	{
-		write(GMG_SOLUTIONS[level],res)
-	}
-	else
-	{
-		write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level])
-	}
-}
 **/
 
 Kernel gmg_prolong_solution_kernel(GMG_LEVEL level)
@@ -2796,6 +2785,35 @@ ComputeSteps gmg_optimized_smoother(gmg_boundconds)
 {
 	gmg_residual_kernel(AC_GMG_LEVEL)
 	gmg_optimized_smoother_kernel(AC_GMG_LEVEL)
+}
+
+gmg_poisson_sor_red_black(int color, int level, real omega)
+{
+	res = (1-omega)*GMG_SOLUTIONS[level] + omega*gmg_poisson_jacobi_update(level)
+	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color)
+	{
+		write(GMG_SOLUTIONS[level],res)
+	}
+	else
+	{
+		write(GMG_SOLUTIONS[level],GMG_SOLUTIONS[level])
+	}
+}
+
+fixed_boundary Kernel gmg_sor_red(real omega, GMG_LEVEL level)
+{
+	gmg_poisson_sor_red_black(SOR_RED,level,AC_SOR_omega)
+}
+fixed_boundary Kernel gmg_sor_black(real omega, GMG_LEVEL level)
+{
+	gmg_poisson_sor_red_black(SOR_BLACK,level,AC_SOR_omega)
+}
+
+ComputeSteps
+gmg_sor_red_black_step(boundconds)
+{
+	gmg_sor_red(AC_SOR_omega,AC_GMG_LEVEL)
+	gmg_sor_black(AC_SOR_omega,AC_GMG_LEVEL)
 }
 
 ComputeSteps gmg_jacobi_smoother(gmg_boundconds)
