@@ -2635,15 +2635,7 @@ gmg_laplace_central_coeff(int level)
 	return AC_GMG_CENTRAL_COEFFS[level]
 }
 
-/**
-gmg_poisson_jacobi_update(int level)
-{
-	Ax = -gmg_laplace_neighbours(GMG_SOLUTIONS[level],level)
-	coef = -gmg_laplace_central_coeff(level)
-	return (GMG_RHS[level]-Ax)/coef
-}
 
-**/
 
 Kernel gmg_prolong_solution_kernel(GMG_LEVEL level)
 {
@@ -2787,6 +2779,13 @@ ComputeSteps gmg_optimized_smoother(gmg_boundconds)
 	gmg_optimized_smoother_kernel(AC_GMG_LEVEL)
 }
 
+gmg_poisson_jacobi_update(int level)
+{
+	Ax = -gmg_laplace_neighbours(GMG_SOLUTIONS[level],level)
+	coef = -gmg_laplace_central_coeff(level)
+	return (GMG_RHS[level]-Ax)/coef
+}
+
 gmg_poisson_sor_red_black(int color, int level, real omega)
 {
 	res = (1-omega)*GMG_SOLUTIONS[level] + omega*gmg_poisson_jacobi_update(level)
@@ -2802,26 +2801,56 @@ gmg_poisson_sor_red_black(int color, int level, real omega)
 
 fixed_boundary Kernel gmg_sor_red(real omega, GMG_LEVEL level)
 {
-	gmg_poisson_sor_red_black(SOR_RED,level,AC_SOR_omega)
+	gmg_poisson_sor_red_black(SOR_RED,level,omega)
 }
 fixed_boundary Kernel gmg_sor_black(real omega, GMG_LEVEL level)
 {
-	gmg_poisson_sor_red_black(SOR_BLACK,level,AC_SOR_omega)
+	gmg_poisson_sor_red_black(SOR_BLACK,level,omega)
+}
+
+Kernel gmg_red_smoother_kernel(GMG_LEVEL level)
+{
+	Field u = GMG_SOLUTIONS[level]
+	Field r = GMG_RESIDUALS[level]
+	real u_value = value(u)
+	real r_value = value(r)
+	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == 0)
+	{
+		res = u + r_value/(-gmg_laplace_central_coeff(level))
+		write(u,res)
+	}
+	else
+	{
+		write(u,u_value)
+	}
+}
+
+Kernel gmg_black_smoother_kernel(GMG_LEVEL level)
+{
+	Field u = GMG_SOLUTIONS[level]
+	Field r = GMG_RESIDUALS[level]
+	real u_value = value(u)
+	real r_value = value(r)
+	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == 1)
+	{
+		res = u + r_value/(-gmg_laplace_central_coeff(level))
+		write(u,res)
+	}
+	else
+	{
+		write(u,u_value)
+	}
 }
 
 ComputeSteps
-gmg_sor_red_black_step(boundconds)
-{
-	gmg_sor_red(AC_SOR_omega,AC_GMG_LEVEL)
-	gmg_sor_black(AC_SOR_omega,AC_GMG_LEVEL)
-}
-
-ComputeSteps gmg_jacobi_smoother(gmg_boundconds)
+gmg_rb_smoother(gmg_boundconds)
 {
 	gmg_residual_kernel(AC_GMG_LEVEL)
-	gmg_jacobi_smoother_kernel(AC_GMG_LEVEL)
-}
+        gmg_red_smoother_kernel(AC_GMG_LEVEL)
 
+	gmg_residual_kernel(AC_GMG_LEVEL)
+        gmg_black_smoother_kernel(AC_GMG_LEVEL)
+}
 
 
 Kernel gmg_write_del2_kernel()
