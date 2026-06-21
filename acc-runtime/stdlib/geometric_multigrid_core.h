@@ -6,9 +6,8 @@
 #ifndef AC_GEOMETRIC_MULTIGRID_CORE_H
 #define AC_GEOMETRIC_MULTIGRID_CORE_H
 
-#define GMG_PRECISION
+run_const AcPrecision AC_GMG_precision = AC_REAL_PRECISION
 #define GMG_OUTPUT_PRECISION real
-//#define GMG_PRECISION single_precision
 //#define GMG_OUTPUT_PRECISION float
 
 int3 level_divisor = (int3)
@@ -308,52 +307,52 @@ int3 AC_mlocal_gmg_level_10 = AC_nlocal_gmg_level_10 + 2*AC_nmin
 int3 AC_mlocal_gmg_level_final = AC_nlocal_gmg_level_final + 2*AC_nmin
 
 dims(AC_mlocal_gmg_level_0)  Field GMG_SOLUTION_0
-GMG_PRECISION dims(AC_mlocal_gmg_level_1)  Field GMG_SOLUTION_1 
-GMG_PRECISION dims(AC_mlocal_gmg_level_2)  Field GMG_SOLUTION_2
-GMG_PRECISION dims(AC_mlocal_gmg_level_3)  Field GMG_SOLUTION_3
-GMG_PRECISION dims(AC_mlocal_gmg_level_4)  Field GMG_SOLUTION_4
-GMG_PRECISION dims(AC_mlocal_gmg_level_5)  Field GMG_SOLUTION_5
-GMG_PRECISION dims(AC_mlocal_gmg_level_6)  Field GMG_SOLUTION_6
-GMG_PRECISION dims(AC_mlocal_gmg_level_7)  Field GMG_SOLUTION_7
-GMG_PRECISION dims(AC_mlocal_gmg_level_8)  Field GMG_SOLUTION_8
-GMG_PRECISION dims(AC_mlocal_gmg_level_9)  Field GMG_SOLUTION_9
-GMG_PRECISION dims(AC_mlocal_gmg_level_10) Field GMG_SOLUTION_10
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_1)  Field GMG_SOLUTION_1 
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_2)  Field GMG_SOLUTION_2
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_3)  Field GMG_SOLUTION_3
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_4)  Field GMG_SOLUTION_4
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_5)  Field GMG_SOLUTION_5
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_6)  Field GMG_SOLUTION_6
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_7)  Field GMG_SOLUTION_7
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_8)  Field GMG_SOLUTION_8
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_9)  Field GMG_SOLUTION_9
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_10) Field GMG_SOLUTION_10
 
 communicated auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_INITIAL_RHS
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RHS_1
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RHS_2
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RHS_3
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RHS_4
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_5) Field GMG_RHS_5
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_6) Field GMG_RHS_6
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_7) Field GMG_RHS_7
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_8) Field GMG_RHS_8
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_9) Field GMG_RHS_9
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_10) Field GMG_RHS_10
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RHS_1
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RHS_2
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RHS_3
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RHS_4
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_5) Field GMG_RHS_5
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_6) Field GMG_RHS_6
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_7) Field GMG_RHS_7
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_8) Field GMG_RHS_8
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_9) Field GMG_RHS_9
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_10) Field GMG_RHS_10
 //Need to be communicated if use other smoothers than gauss-seidel or jacobi
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_RESIDUAL_0
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RESIDUAL_1 
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RESIDUAL_2
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RESIDUAL_3
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RESIDUAL_4
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_5) Field GMG_RESIDUAL_5
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_6) Field GMG_RESIDUAL_6
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_7) Field GMG_RESIDUAL_7
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_8) Field GMG_RESIDUAL_8
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_9) Field GMG_RESIDUAL_9
-GMG_PRECISION communicated auxiliary dims(AC_mlocal_gmg_level_10) Field GMG_RESIDUAL_10
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_RESIDUAL_0
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_RESIDUAL_1 
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_2) Field GMG_RESIDUAL_2
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_3) Field GMG_RESIDUAL_3
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_4) Field GMG_RESIDUAL_4
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_5) Field GMG_RESIDUAL_5
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_6) Field GMG_RESIDUAL_6
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_7) Field GMG_RESIDUAL_7
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_8) Field GMG_RESIDUAL_8
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_9) Field GMG_RESIDUAL_9
+precision(AC_GMG_precision) communicated auxiliary dims(AC_mlocal_gmg_level_10) Field GMG_RESIDUAL_10
 
-GMG_PRECISION dims(AC_mlocal_gmg_level_0)  Field GMG_SMOOTHER_RES_0
-GMG_PRECISION dims(AC_mlocal_gmg_level_1)  Field GMG_SMOOTHER_RES_1
-GMG_PRECISION dims(AC_mlocal_gmg_level_2)  Field GMG_SMOOTHER_RES_2
-GMG_PRECISION dims(AC_mlocal_gmg_level_3)  Field GMG_SMOOTHER_RES_3
-GMG_PRECISION dims(AC_mlocal_gmg_level_4)  Field GMG_SMOOTHER_RES_4
-GMG_PRECISION dims(AC_mlocal_gmg_level_5)  Field GMG_SMOOTHER_RES_5
-GMG_PRECISION dims(AC_mlocal_gmg_level_6)  Field GMG_SMOOTHER_RES_6
-GMG_PRECISION dims(AC_mlocal_gmg_level_7)  Field GMG_SMOOTHER_RES_7
-GMG_PRECISION dims(AC_mlocal_gmg_level_8)  Field GMG_SMOOTHER_RES_8
-GMG_PRECISION dims(AC_mlocal_gmg_level_9)  Field GMG_SMOOTHER_RES_9
-GMG_PRECISION dims(AC_mlocal_gmg_level_10) Field GMG_SMOOTHER_RES_10
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_0)  Field GMG_SMOOTHER_RES_0
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_1)  Field GMG_SMOOTHER_RES_1
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_2)  Field GMG_SMOOTHER_RES_2
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_3)  Field GMG_SMOOTHER_RES_3
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_4)  Field GMG_SMOOTHER_RES_4
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_5)  Field GMG_SMOOTHER_RES_5
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_6)  Field GMG_SMOOTHER_RES_6
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_7)  Field GMG_SMOOTHER_RES_7
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_8)  Field GMG_SMOOTHER_RES_8
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_9)  Field GMG_SMOOTHER_RES_9
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_10) Field GMG_SMOOTHER_RES_10
 
 auxiliary dims(AC_mlocal_gmg_level_0) Field GMG_TMP_0 
 auxiliary dims(AC_mlocal_gmg_level_1) Field GMG_TMP_1 

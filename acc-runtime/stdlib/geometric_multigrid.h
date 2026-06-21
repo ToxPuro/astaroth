@@ -2870,11 +2870,11 @@ gmg_get_residual_and_rhs_norms(gmg_boundconds)
 	gmg_get_residual_and_rhs_norms_kernel(AC_GMG_LEVEL)
 }
 
-GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P 
-GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R
-GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_Z
-GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P_LOCAL
-GMG_PRECISION dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R_LOCAL
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P 
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_Z
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_P_LOCAL
+precision(AC_GMG_precision) dims(AC_mlocal_gmg_level_final) Field GMG_COARSE_CG_R_LOCAL
 
 Kernel gmg_cg_compute_alpha(GMG_LEVEL level)
 {
