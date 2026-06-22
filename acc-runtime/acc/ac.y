@@ -164,7 +164,7 @@ static void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node_by_token(const int token, const ASTNode* node);
-static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code);
+static inline int eval_int(ASTNode* node, const string_vec values, const string_vec names, const string_vec run_values, const string_vec run_names, const bool failure_fatal, int* error_code);
 static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names);
 static ASTNode* create_type_declaration(const char* tqual, const char* tspec);
 static ASTNode* create_type_qualifiers(const char* tqual);
@@ -1230,7 +1230,7 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | halo '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | field_order '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); 
 						int err = 0;
-						int res = eval_int($3,false,&err);
+						int res = eval_int($3, const_int_values, const_ints, run_const_int_values, run_const_ints, false, &err);
 						if(err)
 					        {	
 							
@@ -2036,7 +2036,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			{
 				ASTNode* elem = (ASTNode*) dims.data[i];
 				int err = 0;
-				const int array_len = eval_int(elem,false,&err);
+				const int array_len = eval_int(elem, const_int_values, const_ints, run_const_int_values, run_const_ints, false, &err);
 				if(err && has_qualifier(variable_definition,DCONST_STR)) 
 				{
 					const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
@@ -2074,7 +2074,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 				//TP: for some reason does not work, for now can do without
 				/**
 				int err = 0;
-				const int array_len = eval_int(elem,false,&err);
+				const int array_len = eval_int(elem, const_int_values, const_ints, run_const_int_values, run_const_ints, false,&err);
 				if(!err)
 				{
 					set_buffers_empty(elem);
@@ -2121,7 +2121,7 @@ static void process_global_assignment(ASTNode* node,ASTNode* variable_definition
 			{
 				ASTNode* elem = (ASTNode*) vars.data[i];
 				const char* name = get_node_by_token(IDENTIFIER,elem)->buffer;
-				int val = eval_int(elem->rhs,true,NULL);
+				int val = eval_int(elem->rhs, const_int_values, const_ints, run_const_int_values, run_const_ints, true,NULL);
 				if(is_const)
 				{
 					push(&const_ints,name);

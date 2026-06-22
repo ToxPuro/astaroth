@@ -9459,7 +9459,9 @@ expand_allocating_types_base(ASTNode* node)
         ASTNode* declaration_list_head = node->rhs;
         if(array_decl)
         {
-                const int num_elems = eval_int(declaration_list_head->lhs->rhs,true,NULL);
+                const int num_elems = eval_int(
+                    declaration_list_head->lhs->rhs, const_int_values, const_ints,
+                    run_const_int_values, run_const_ints, true, NULL);
                 ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
                 const char* field_name_str = strdup(field_name->buffer);
                 node_vec id_nodes = VEC_INITIALIZER;
