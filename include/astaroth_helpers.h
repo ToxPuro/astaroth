@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+#include "user_builtin_non_scalar_constants.h"
+#endif
+
 int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
                           const AcMeshInfo info);
 
@@ -142,14 +146,12 @@ FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 static inline size_t
 acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    #include "user_builtin_non_scalar_constants.h"
     auto mm = info[AC_mgrid];
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    #include "user_builtin_non_scalar_constants.h"
     auto mm = info[AC_mlocal];
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }

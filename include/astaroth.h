@@ -21,6 +21,10 @@
 #include "astaroth_base.h"
 
 #ifdef __cplusplus
+#include "user_builtin_non_scalar_constants.h"
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -769,7 +773,6 @@ acHostCreateVertexBuffer(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
-   #include "user_builtin_non_scalar_constants.h"
    const int3 halos = acGetFieldHalos(info,vtxbuf);
    const Volume n0 = 
           (Volume)

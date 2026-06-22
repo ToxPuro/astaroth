@@ -3,11 +3,11 @@
 #include "astaroth_cuda_wrappers.h"
 #include "stencil_accesses.h"
 #include "static_analysis.h"
+#include "user_builtin_non_scalar_constants.h"
 
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)
 {
-   #include "user_builtin_non_scalar_constants.h"
    const Volume n0 = to_volume(info[AC_nmin]);
    const Volume n1 = to_volume(info[AC_nlocal_max]);
    const Volume m0 = (Volume){0, 0, 0};
@@ -33,7 +33,6 @@ acGetMeshDims(const AcMeshInfo info)
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
-   #include "user_builtin_non_scalar_constants.h"
    const Volume n0 = to_volume(acGetFieldHalos(info,vtxbuf));
    const Volume m1 = to_volume(info[vtxbuf_dims[vtxbuf]]);
    const Volume n1 = m1-n0;
@@ -297,7 +296,6 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
-  #include "user_builtin_non_scalar_constants.h"
   VertexBufferArray vba;
   vba.on_device.block_factor = config[AC_thread_block_loop_factors];
 
