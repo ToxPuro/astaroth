@@ -98,9 +98,6 @@ const char* COMPLEX_FIELD_STR  = NULL;
 #include <math.h>
 #include <limits.h>
 
-
-#define YYSTYPE ASTNode*
-
 bool RUNTIME_COMPILATION = false;
 bool READ_OVERRIDES      = false;
 bool ELIMINATE_CONDITIONALS = false;
@@ -878,6 +875,8 @@ main(int argc, char** argv)
     return EXIT_SUCCESS;
 }
 %}
+
+%define api.value.type {ASTNode*}
 
 %token  SELECTION_STATEMENT 
 %token  IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT HALF DOUBLE DEFAULT_INITIALIZER

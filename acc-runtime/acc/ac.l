@@ -8,41 +8,21 @@ L [a-zA-Z_]
 S [\s]
 
 %{
+#include "hashtable.h" // Needs to come before hash.h to have the type for string_intern_hasmap.
+struct hashmap_s string_intern_hashmap;
+
+#include "hash.h"
+#include "ast.h" // Needs to come before tab.h to have the definition of ASTNode.
 #include "tab.h"
 #include <ctype.h>
 #include <stdbool.h>
-struct hashmap_s string_intern_hashmap;
 const char* binary_op_val = NULL;
-#include <hash.h>
 #include "vecs.h"
 %}
 %{
 	string_vec struct_names          = VEC_INITIALIZER;
 	string_vec struct_datatype_names = VEC_INITIALIZER;
 	string_vec enum_names            = VEC_INITIALIZER;
-
-
-
-void strip_whitespace(char *str) {
-    char *dest = str; // Destination pointer to overwrite the original string
-    char *src = str;  // Source pointer to traverse the original string
-
-    // Skip leading whitespace
-    while (isspace((unsigned char)(*src))) {
-        src++;
-    }
-
-    // Copy non-whitespace characters to the destination
-    while (*src) {
-        if (!isspace((unsigned char)(*src))) {
-            *dest++ = *src;
-        }
-        src++;
-    }
-
-    // Null-terminate the destination string
-    *dest = '\0';
-}
 %}
 /**
 **/
