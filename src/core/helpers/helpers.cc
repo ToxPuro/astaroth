@@ -215,9 +215,9 @@ AcReal
 get_reduce_state_flush_var_real(const AcReduceOp state)
 {
 	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? (AcReal)0.0 :
-		(state == REDUCE_MIN) ? AC_REAL_MAX :
-		(state == REDUCE_MAX) ? -AC_REAL_MAX :
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (AcReal)0.0 :
+		(state == AC_REDUCE_OP_MIN) ? AC_REAL_MAX :
+		(state == AC_REDUCE_OP_MAX) ? -AC_REAL_MAX :
 		(AcReal)0.0;
 }
 
@@ -225,9 +225,9 @@ int
 get_reduce_state_flush_var_int(const AcReduceOp state)
 {
 	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? 0 :
-		(state == REDUCE_MIN) ? INT_MAX:
-		(state == REDUCE_MAX) ? -INT_MAX:
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? 0 :
+		(state == AC_REDUCE_OP_MIN) ? INT_MAX:
+		(state == AC_REDUCE_OP_MAX) ? -INT_MAX:
 		0;
 }
 
@@ -236,9 +236,9 @@ float
 get_reduce_state_flush_var_float(const AcReduceOp state)
 {
 	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? (float)0.0 :
-		(state == REDUCE_MIN) ? FLT_MAX :
-		(state == REDUCE_MAX) ? -FLT_MAX :
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (float)0.0 :
+		(state == AC_REDUCE_OP_MIN) ? FLT_MAX :
+		(state == AC_REDUCE_OP_MAX) ? -FLT_MAX :
 		(float)0.0;
 }
 #endif

@@ -223,14 +223,14 @@ ac_is_global(const AcRealOutputParam& param)
 AcReal
 output_value(const AcRealOutputParam& param)
 {
-	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 	return (AcReal)1.0;
 }
 
 int
 output_value(const AcIntOutputParam& param)
 {
-	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 	return (int)1;
 }
 
@@ -238,7 +238,7 @@ output_value(const AcIntOutputParam& param)
 float
 output_value(const AcFloatOutputParam& param)
 {
-	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_FLOAT_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_FLOAT_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 	return (float)1.0;
 }
 #endif
@@ -306,8 +306,8 @@ reduce_sum_real(const AcReal, const AcRealOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_reals[dst] = REDUCE_SUM;
-	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_reals[dst] = AC_REDUCE_OP_SUM;
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -329,8 +329,8 @@ reduce_max_real(const AcReal, const AcRealOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_reals[dst] = REDUCE_MAX;
-	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_reals[dst] = AC_REDUCE_OP_MAX;
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,AC_REDUCE_OP_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -352,8 +352,8 @@ reduce_min_real(const AcReal, const AcRealOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_reals[dst] = REDUCE_MIN;
-	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_reals[dst] = AC_REDUCE_OP_MIN;
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,AC_REDUCE_OP_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -375,8 +375,8 @@ reduce_sum_int(const int, const AcIntOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_ints[dst] = REDUCE_SUM;
-	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_ints[dst] = AC_REDUCE_OP_SUM;
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -398,8 +398,8 @@ reduce_max_int(const int, const AcIntOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_ints[dst] = REDUCE_MAX;
-	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_ints[dst] = AC_REDUCE_OP_MAX;
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,AC_REDUCE_OP_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -421,8 +421,8 @@ reduce_min_int(const int, const AcIntOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_ints[dst] = REDUCE_MIN;
-	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_ints[dst] = AC_REDUCE_OP_MIN;
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,AC_REDUCE_OP_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 #if AC_DOUBLE_PRECISION
@@ -445,8 +445,8 @@ reduce_sum_float(const float, const AcFloatOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_floats[dst] = REDUCE_SUM;
-	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_floats[dst] = AC_REDUCE_OP_SUM;
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -468,8 +468,8 @@ reduce_max_float(const float, const AcFloatOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_floats[dst] = REDUCE_MAX;
-	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_floats[dst] = AC_REDUCE_OP_MAX;
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,AC_REDUCE_OP_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -491,8 +491,8 @@ reduce_min_float(const float, const AcFloatOutputParam dst)
 		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
 		exit(EXIT_FAILURE);
 	}
-	reduced_floats[dst] = REDUCE_MIN;
-	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_floats[dst] = AC_REDUCE_OP_MIN;
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,AC_REDUCE_OP_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 #endif
 
@@ -508,8 +508,8 @@ reduce_prof(const AcReal, const Profile dst)
 		fprintf(stderr,"No profiles but trying to do a profile reduction!\n");
 		exit(EXIT_FAILURE);
 	}
-	reduced_profiles[(int)dst] = REDUCE_SUM;
-	reduce_outputs.push_back({(int)dst,AC_PROF_TYPE, REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
+	reduced_profiles[(int)dst] = AC_REDUCE_OP_SUM;
+	reduce_outputs.push_back({(int)dst,AC_PROF_TYPE, AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 

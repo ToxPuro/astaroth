@@ -928,11 +928,11 @@ simple_final_reduce_scal(const Node node, const AcReduction& reduction, const Ac
 {
     AcReal res = results[0];
     for (int i = 1; i < n; ++i) {
-	if (reduction.reduce_op == REDUCE_MAX)
+	if (reduction.reduce_op == AC_REDUCE_OP_MAX)
             res = max(res, results[i]);
-        else if (reduction.reduce_op == REDUCE_MIN)
+        else if (reduction.reduce_op == AC_REDUCE_OP_MIN)
             res = min(res, results[i]);
-        else if (reduction.reduce_op == REDUCE_SUM)
+        else if (reduction.reduce_op == AC_REDUCE_OP_SUM)
             res = sum(res, results[i]);
         else {
             ERROR("Invalid rtype");

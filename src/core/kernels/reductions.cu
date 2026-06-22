@@ -229,12 +229,12 @@ AcResult
 acReduceBase(const cudaStream_t, const AcReduceOp reduce_op, T buffer, const size_t count)
 {
   const auto data = *buffer.src;  
-  auto tmp =  (reduce_op == REDUCE_SUM) ? data[0] - data[0] : data[0];
+  auto tmp =  (reduce_op == AC_REDUCE_OP_SUM) ? data[0] - data[0] : data[0];
   for(size_t i = 0; i < count; ++i)
   {
-	  if(reduce_op == REDUCE_SUM) tmp += data[i];
-	  if(reduce_op == REDUCE_MAX) tmp = max(data[i],tmp);
-	  if(reduce_op == REDUCE_MIN) tmp = min(data[i],tmp);
+	  if(reduce_op == AC_REDUCE_OP_SUM) tmp += data[i];
+	  if(reduce_op == AC_REDUCE_OP_MAX) tmp = max(data[i],tmp);
+	  if(reduce_op == AC_REDUCE_OP_MIN) tmp = min(data[i],tmp);
   }
   *buffer.res = tmp;
   return AC_SUCCESS;
@@ -280,17 +280,17 @@ cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* 
 {
   switch(reduce_op)
   {
-	  case(REDUCE_SUM):
+	  case(AC_REDUCE_OP_SUM):
 	  	ERRCHK_CUDA(cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
 	  	break;
-	  case(REDUCE_MIN):
+	  case(AC_REDUCE_OP_MIN):
 	  	ERRCHK_CUDA(cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
 	  	break;
-	  case(REDUCE_MAX):
+	  case(AC_REDUCE_OP_MAX):
 	  	ERRCHK_CUDA(cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
 	  	break;
 	default:
-		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
+		ERRCHK_ALWAYS(reduce_op != AC_REDUCE_OP_NO_REDUCE);
   }
   if (acGetLastError() != cudaSuccess) {
           ERRCHK_CUDA_KERNEL_ALWAYS();

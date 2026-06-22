@@ -59,10 +59,10 @@ typedef enum {
 
 typedef enum AcReduceOp
 {
-	NO_REDUCE,
-	REDUCE_MIN,
-	REDUCE_MAX,
-	REDUCE_SUM,
+	AC_REDUCE_OP_NO_REDUCE,
+	AC_REDUCE_OP_MIN,
+	AC_REDUCE_OP_MAX,
+	AC_REDUCE_OP_SUM,
 } AcReduceOp;
 
 #define ONE_DIMENSIONAL_PROFILE (1 << 20)

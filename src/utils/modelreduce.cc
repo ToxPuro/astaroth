@@ -129,15 +129,15 @@ acHostReduceScal(const AcMesh mesh, const AcReduction reduction, const VertexBuf
 
     switch (reduction.reduce_op)
     {
-      case REDUCE_SUM: {
+      case AC_REDUCE_OP_SUM: {
          reduce = sum;
          break;
        }
-      case REDUCE_MAX: {
+      case AC_REDUCE_OP_MAX: {
          reduce = max;
          break;
        }
-      case REDUCE_MIN: {
+      case AC_REDUCE_OP_MIN: {
          reduce = min;
          break;
        }
@@ -148,7 +148,7 @@ acHostReduceScal(const AcMesh mesh, const AcReduction reduction, const VertexBuf
     const int initial_idx = get_initial_idx(mesh.info);
 
     long double res;
-    if (reduction.reduce_op == REDUCE_MAX || reduction.reduce_op == REDUCE_MIN)
+    if (reduction.reduce_op == AC_REDUCE_OP_MAX || reduction.reduce_op == AC_REDUCE_OP_MIN)
         res = reduce_initial((long double)mesh.vertex_buffer[a][initial_idx]);
     else
         res = 0;
@@ -204,15 +204,15 @@ acHostReduceVec(const AcMesh mesh, const AcReduction reduction, const VertexBuff
 
     switch (reduction.reduce_op)
     {
-      case REDUCE_SUM: {
+      case AC_REDUCE_OP_SUM: {
          reduce = sum;
          break;
        }
-      case REDUCE_MAX: {
+      case AC_REDUCE_OP_MAX: {
          reduce = max;
          break;
        }
-      case REDUCE_MIN: {
+      case AC_REDUCE_OP_MIN: {
          reduce = min;
          break;
        }
@@ -223,7 +223,7 @@ acHostReduceVec(const AcMesh mesh, const AcReduction reduction, const VertexBuff
     const int initial_idx = get_initial_idx(mesh.info);
 
     long double res;
-    if (reduction.reduce_op == REDUCE_MAX || reduction.reduce_op == REDUCE_MIN)
+    if (reduction.reduce_op == AC_REDUCE_OP_MAX || reduction.reduce_op == AC_REDUCE_OP_MIN)
         res = reduce_initial((long double)mesh.vertex_buffer[a][initial_idx],
                              (long double)mesh.vertex_buffer[b][initial_idx],
                              (long double)mesh.vertex_buffer[c][initial_idx]);
@@ -284,15 +284,15 @@ acHostReduceVecScal(const AcMesh mesh, const AcReduction reduction, const Vertex
 
     switch (reduction.reduce_op)
     {
-      case REDUCE_SUM: {
+      case AC_REDUCE_OP_SUM: {
          reduce = sum;
          break;
        }
-      case REDUCE_MAX: {
+      case AC_REDUCE_OP_MAX: {
          reduce = max;
          break;
        }
-      case REDUCE_MIN: {
+      case AC_REDUCE_OP_MIN: {
          reduce = min;
          break;
        }
@@ -303,7 +303,7 @@ acHostReduceVecScal(const AcMesh mesh, const AcReduction reduction, const Vertex
     const int initial_idx = get_initial_idx(mesh.info);
 
     long double res;
-    if (reduction.reduce_op == REDUCE_MAX || reduction.reduce_op == REDUCE_MIN)
+    if (reduction.reduce_op == AC_REDUCE_OP_MAX || reduction.reduce_op == AC_REDUCE_OP_MIN)
         res = reduce_initial((long double)mesh.vertex_buffer[a][initial_idx],
                              (long double)mesh.vertex_buffer[b][initial_idx],
                              (long double)mesh.vertex_buffer[c][initial_idx],
