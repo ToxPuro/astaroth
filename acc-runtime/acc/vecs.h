@@ -1,3 +1,5 @@
+#pragma once
+
 #include "stdarg.h"
 
 #include "string_vec.h"

@@ -1,4 +1,6 @@
 /** Supports 2.5D and 2D smem blocking (see `rolling_cache` switch) */
+#pragma once
+
 static void
 prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
 {

@@ -1,3 +1,5 @@
+#pragma once
+
 bool
 kernel_has_stencil_call(const int curr_kernel)
 {
