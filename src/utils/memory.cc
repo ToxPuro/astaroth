@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth_utils.h"
-#include "user_builtin_non_scalar_constants.h"
+#include "user_builtin_non_scalar_constants.inc"
 
 #include "errchk.h"
 

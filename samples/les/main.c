@@ -21,7 +21,7 @@
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
-#include "user_defines.h"
+#include "user_defines.inc"
 
 static AcMesh tmp_mesh;
 

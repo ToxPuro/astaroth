@@ -43,7 +43,7 @@ acAbort(void)
     if (!finalized)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
 }
-#include "user_constants.h"
+#include "user_constants.inc"
 
 constexpr AcReal boxxlength = lsf * sf * 10 * dx; // set the boxlength of one box xdir
 constexpr AcReal boxylength = lsf * sf * 10 * dy; // set the boxlength of one box ydir

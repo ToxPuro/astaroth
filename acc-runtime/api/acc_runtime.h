@@ -42,11 +42,11 @@
 #define CONSTEXPR
 #define MAYBE_UNUSED
 #endif
-  #include "user_defines.h"
-  #include "profiles_info.h"
-  #include "user_built-in_constants.h"
-  //#include "user_builtin_non_scalar_constants.h"
-  #include "func_attributes.h"
+#include "user_defines.inc"
+#include "profiles_info.inc"
+#include "user_built-in_constants.inc"
+//#include "user_builtin_non_scalar_constants.inc"
+#include "func_attributes.h"
 
 static UNUSED void ac_library_not_yet_loaded()
 {
@@ -82,7 +82,7 @@ typedef struct
 	const char* name;
 } AcReduction;
 
-  #include "user_input_typedefs.h"
+  #include "user_input_typedefs.inc"
 
 #if AC_RUNTIME_COMPILATION
   #include <dlfcn.h>
@@ -98,28 +98,28 @@ typedef struct
 
 
   typedef struct {
-#include "output_decl.h"
+#include "output_decl.inc"
   } AcDeviceKernelOutput;
 
 
   typedef struct AcCompInfoLoaded {
-#include "comp_loaded_decl.h"
+#include "comp_loaded_decl.inc"
 #ifdef __cplusplus
-#include "loaded_info_access_operators.h"
+#include "loaded_info_access_operators.inc"
 #endif
   } AcCompInfoLoaded;
 
   typedef struct AcCompInfoHasDefaultValue {
-#include "comp_loaded_decl.h"
+#include "comp_loaded_decl.inc"
 #ifdef __cplusplus
-#include "loaded_info_access_operators.h"
+#include "loaded_info_access_operators.inc"
 #endif
   } AcCompInfoHasDefaultValue;
 
   typedef struct AcCompInfoConfig{
-#include "comp_decl.h"
+#include "comp_decl.inc"
 #ifdef __cplusplus
-#include "comp_info_access_operators.h"
+#include "comp_info_access_operators.inc"
 #endif
   } AcCompInfoConfig;
 
@@ -129,31 +129,31 @@ typedef struct
 	  AcCompInfoHasDefaultValue has_default_value;
   } AcCompInfo;
 
-  #ifdef __cplusplus
-#include "is_comptime_param.h"
-#include "is_array_param.h"
-#include "is_output_param.h"
+#ifdef __cplusplus
+#include "is_comptime_param.inc"
+#include "is_array_param.inc"
+#include "is_output_param.inc"
 #endif
 
   typedef struct AcMeshInfoLoaded {
-#include "info_loaded_decl.h"
+#include "info_loaded_decl.inc"
 
 #ifdef __cplusplus
-#include "info_loaded_operator_decl.h"
+#include "info_loaded_operator_decl.inc"
 #endif
   } AcMeshInfoLoadedInfo;
 
 
   typedef struct AcMeshInfoScalars
   {
-#include "device_mesh_info_decl.h"
+#include "device_mesh_info_decl.inc"
   } AcMeshInfoScalars;
 
 
   typedef struct AcMeshInfo{
 
-#include "device_mesh_info_decl.h"
-#include "array_decl.h"
+#include "device_mesh_info_decl.inc"
+#include "array_decl.inc"
 
   AcMeshInfoLoadedInfo is_loaded;
   const char* runtime_compilation_log_dst;
@@ -166,14 +166,14 @@ typedef struct
   AcCompInfo run_consts;
 
 #ifdef __cplusplus
-#include "info_access_operators.h"
+#include "info_access_operators.inc"
 #endif
   } AcMeshInfo;
 
 
 
   typedef struct {
-#include "input_decl.h"
+#include "input_decl.inc"
   } AcInputs;
 
 typedef struct {
@@ -214,7 +214,7 @@ typedef struct {
 
 
 #include "ac_helpers.h"
-#include "scalar_reduce_buffer_defs.h"
+#include "scalar_reduce_buffer_defs.inc"
 
   typedef struct 
   {
@@ -237,7 +237,7 @@ typedef struct {
     DeviceVertexBufferArray on_device;
     size_t profile_count;
 
-#include "scalar_reduce_buffers_in_vba.h"
+#include "scalar_reduce_buffers_in_vba.inc"
 
     AcScratchpadStates* scratchpad_states;
     AcReduceBuffer profile_reduce_buffers[NUM_PROFILES+1];
@@ -325,7 +325,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-#include "load_and_store_uniform_header.h"
+#include "load_and_store_uniform_header.inc"
 
   // Diagnostics
   FUNC_DEFINE(Volume, acKernelLaunchGetLastTPB,(void));
@@ -422,7 +422,7 @@ acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
 #include <type_traits>
 #include <string.h>
 
-#include "load_comp_info.h"
+#include "load_comp_info.inc"
 
 void acVBASwapBuffer(const Field field, VertexBufferArray* vba);
 
@@ -461,8 +461,8 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 
 #define GEN_LOAD_COMP_INFO(PARAM_TYPE,VAL_TYPE,TYPE) \
   static AcResult __attribute__((unused)) acLoadCompInfo(const PARAM_TYPE param, const VAL_TYPE val, AcCompInfo* info) {return acLoad##TYPE##CompInfo(param,val,info);};
-#include "load_comp_info_overloads.h"
-#include "load_ac_kernel_params_def.h"
+#include "load_comp_info_overloads.inc"
+#include "load_ac_kernel_params_def.inc"
 
 #endif
 
@@ -470,7 +470,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   constexpr static array_info
   get_array_info(const P array)
   {
-#include "get_array_info.h"
+#include "get_array_info.inc"
 	  ERRCHK_ALWAYS(false); //did not find array info
 	  return (array_info){};
   }
@@ -520,7 +520,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   constexpr const char*
   get_param_name(const P param)
   {
-#include "get_param_name.h"
+#include "get_param_name.inc"
 	  //ERRCHK_ALWAYS(false); //did not find name
 	  return "NOT FOUND!";
   }
@@ -670,7 +670,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   get_num_params()
   {
 	  const int res=
-#include "get_num_params.h"
+#include "get_num_params.inc"
 		  -1;
 	  static_assert(res >= 0);
 	  return res;
@@ -719,12 +719,12 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   get_empty_pointer(const P param)
   {
    (void)param;
-#include "get_empty_pointer.h"
+#include "get_empty_pointer.inc"
   }	  
 
   
 
-#include "load_and_store_uniform_overloads.h"
+#include "load_and_store_uniform_overloads.inc"
   
   template<typename T, typename... Ts>
   struct ForEach
@@ -749,23 +749,23 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 
 
   using AcScalarTypes = ForEach<
-#include "scalar_types.h"
+#include "scalar_types.inc"
   AcIntParam
   >;
 
   using AcScalarCompTypes = ForEach<
-#include "scalar_comp_types.h"
+#include "scalar_comp_types.inc"
   AcIntCompParam
   >;
   
 
   using AcArrayTypes = ForEach<
-#include "array_types.h"
+#include "array_types.inc"
   AcIntArrayParam
   >;
 
   using AcArrayCompTypes = ForEach<
-#include "array_comp_types.h"
+#include "array_comp_types.inc"
   AcIntCompArrayParam
   >;
 

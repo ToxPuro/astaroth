@@ -21,7 +21,7 @@ This file is part of Astaroth.
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
-#include "user_constants.h"
+#include "user_constants.inc"
 
 #if AC_MPI_ENABLED
 

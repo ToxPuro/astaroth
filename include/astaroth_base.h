@@ -29,8 +29,9 @@
 
 #include "acc_runtime.h"
 #include "func_define.h"
-#include "user_built-in_constants.h"
-#include "user_builtin_non_scalar_constants.h"
+
+#include "user_built-in_constants.inc"
+#include "user_builtin_non_scalar_constants.inc"
 
 #if AC_MPI_ENABLED
 #include <mpi.h>

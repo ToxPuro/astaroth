@@ -5,7 +5,7 @@ template <typename P>
 auto
 get_default_value()
 {
-#include"get_default_value.h"
+#include"get_default_value.inc"
 }
 
 template <typename V>
@@ -118,7 +118,7 @@ to_str(const V value, const char* name, const char* prefix, const bool output_da
 	return prefix_str + datatype_str + name_str + " = " + val_str + "\n";
 }
 
-#include "to_str_funcs.h"
+#include "to_str_funcs.inc"
 
 template <typename V>
 std::string

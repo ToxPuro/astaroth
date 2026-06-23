@@ -4,7 +4,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
-#include "user_defines.h"
+#include "user_defines.inc"
 #include "../../stdlib/reduction.h"
 
 #if !AC_MPI_ENABLED

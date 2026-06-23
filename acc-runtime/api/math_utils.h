@@ -1125,7 +1125,7 @@ to_int3(const uint3_64 a)
 }
 
 
-#include "generated_comp_funcs.h"
+#include "generated_comp_funcs.inc"
 
 static HOST_DEVICE_INLINE bool
 operator==(const AcMeshDims& a, const AcMeshDims& b)

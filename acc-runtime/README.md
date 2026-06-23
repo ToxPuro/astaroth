@@ -23,13 +23,13 @@ expected. In case of issues, please check the following files in
 Intermediate files: 
 
 1. `user_kernels.ac.pp_stage*`. The DSL file after a specific preprocessing stage.
-2. `user_kernels.h.raw`. The generated CUDA kernels without formatting applied.
-3. `user_kernels_backup.h.`. The generated CUDA/CPU kernels with formatting applied. 
+2. `user_kernels.inc.raw`. The generated CUDA kernels without formatting applied.
+3. `user_kernels_backup.inc`. The generated CUDA/CPU kernels with formatting applied.
 
 Final files: 
 
-1. `user_defines.h`. The project-wide defines generated with the DSL.
-2. `user_kernels.h`. The generated CUDA kernels.
+1. `user_defines.inc`. The project-wide defines generated with the DSL.
+2. `user_kernels.inc`. The generated CUDA kernels.
 
 To make inspecting the code easier, we recommend using an
 autoformatting tool, for example, `clang-format` or GNU `indent`.

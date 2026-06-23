@@ -21,7 +21,7 @@
 */
 #include "astaroth.h"
 #include "astaroth_utils.h"
-#include "user_constants.h"
+#include "user_constants.inc"
 #include "errchk.h"
 
 #if AC_MPI_ENABLED

@@ -412,13 +412,13 @@ void
 reset_diff_files()
 {
   const char* files[] = {
-    "array_info.h",
-    "gmem_arrays_decl.h",
-    "memcpy_from_gmem_arrays.h",
-    "memcpy_from_gmem_arrays_header.h",
-    "memcpy_to_gmem_arrays.h",
-    "memcpy_to_gmem_arrays_header.h",
-    "taskgraph_enums.h",
+    "array_info.inc",
+    "gmem_arrays_decl.inc",
+    "memcpy_from_gmem_arrays.inc",
+    "memcpy_from_gmem_arrays_header.inc",
+    "memcpy_to_gmem_arrays.inc",
+    "memcpy_to_gmem_arrays_header.inc",
+    "taskgraph_enums.inc",
   };
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
     FILE* fp = fopen(files[i], "w");
@@ -429,8 +429,8 @@ void
 reset_extra_files()
 {
   const char* files[] = {
-    ACC_GEN_PATH "/boundcond_kernels.h",
-    ACC_GEN_PATH "/extra_dfuncs.h",
+    ACC_GEN_PATH "/boundcond_kernels.inc",
+    ACC_GEN_PATH "/extra_dfuncs.inc",
   };
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
     if (!file_exists(files[i]))
@@ -444,118 +444,106 @@ void
 reset_all_files()
 {
   const char* files[] = {
-    "array_comp_types.h",
-    "array_decl.h",
-    "array_info_access_operators.h",
-    "arrays_accessed_decl.h",
-    "arrays_output_accesses.h",
-    "array_types.h",
+    "array_comp_types.inc",
+    "array_decl.inc",
+    "array_info_access_operators.inc",
+    "array_types.inc",
+    "arrays_accessed_decl.inc",
     "builtin_enums.h",
-    "call_all_user_loaders.h",
-    "comp_decl.h",
-    "comp_info_access_operators.h",
-    "comp_loaded_decl.h",
-    "dconst_arrays_decl.h",
-    "dconst_decl.h",
-    "device_finalize_reduce.h",
-    "device_get_input_decls.h",
-    "device_get_input.h",
-    "device_get_input_loads.h",
-    "device_get_input_overloads.h",
-    "device_get_output_decls.h",
-    "device_get_output.h",
-    "device_get_output_loads.h",
-    "device_get_output_overloads.h",
-    "device_load_uniform_decl.h",
-    "device_load_uniform.h",
-    "device_load_uniform_loads.h",
-    "device_load_uniform_overloads.h",
-    "device_mesh_info_decl.h",
-    "device_set_input_decls.h",
-    "device_set_input.h",
-    "device_set_input_loads.h",
-    "device_set_input_overloads.h",
-    "device_set_output_decl.h",
-    "device_set_output.h",
-    "device_set_output_overloads.h",
-    "device_store_overloads.h",
-    "device_store_uniform_decl.h",
-    "device_store_uniform.h",
-    "fields_info.h",
-    "fused_kernels.h",
-    "get_address.h",
-    "get_array_info.h",
-    "get_arrays.h",
-    "get_config_arrays.h",
-    "get_default_value.h",
-    "get_device_array.h",
-    "get_empty_pointer.h",
-    "get_gmem_arrays.h",
-    "get_num_params.h",
-    "get_param_name.h",
-    "get_vtxbufs_declares.h",
-    "get_vtxbufs_funcs.h",
-    "get_vtxbufs_loads.h",
-    "gmem_arrays_decl.h",
-    "info_access_operators.h",
-    "info_loaded_decl.h",
-    "info_loaded_operator_decl.h",
-    "input_decl.h",
-    "is_array_param.h",
-    "is_comptime_param.h",
-    "is_output_param.h",
-    "kernel_input_param_str.h",
-    "kernel_reduce_outputs.h",
-    "kernel_region_read_info.h",
-    "kernel_region_write_info.h",
-    "kernel_user_builtin_non_scalar_constants.h",
-    "load_ac_kernel_params_def.h",
-    "load_ac_kernel_params.h",
-    "load_and_store_uniform_funcs.h",
-    "load_and_store_uniform_header.h",
-    "load_and_store_uniform_overloads.h",
-    "load_comp_info.h",
-    "load_comp_info_overloads.h",
-    "load_dconst_arrays.h",
-    "loaded_info_access_operators.h",
-    "output_decl.h",
-    "output_value_decl.h",
-    "param_info_access_operators.h",
-    "profiles_info.h",
-    "rconst_decl.h",
-    "reduce_dst_integers.h",
-    "reduce_helpers.h",
-    "safe_vtxbuf_input_params.h",
-    "scalar_comp_types.h",
-    "scalar_info_access_operators.h",
-    "scalar_reduce_buffer_defs.h",
-    "scalar_reduce_buffers_in_vba.h",
-    "scalar_types.h",
-    "store_dconst_arrays.h",
-    "taskgraph_bc_handles.h",
-    "taskgraph_kernel_bcs.h",
-    "taskgraph_kernels.h",
-    "to_str_funcs.h",
-    "user_builtin_non_scalar_constants.h",
-    "user_built-in_constants",
-    "user_constants.h",
-    "user_declarations.h",
-    "user_defines.h",
-    "user_dfuncs.h",
+    "arrays_output_accesses.inc",
+    "call_all_user_loaders.inc",
+    "comp_decl.inc",
+    "comp_info_access_operators.inc",
+    "comp_loaded_decl.inc",
+    "dconst_arrays_decl.inc",
+    "dconst_decl.inc",
+    "device_finalize_reduce.inc",
+    "device_get_input.inc",
+    "device_get_input_decls.inc",
+    "device_get_input_loads.inc",
+    "device_get_input_overloads.inc",
+    "device_get_output.inc",
+    "device_get_output_decls.inc",
+    "device_get_output_loads.inc",
+    "device_get_output_overloads.inc",
+    "device_load_uniform.inc",
+    "device_load_uniform_decl.inc",
+    "device_load_uniform_loads.inc",
+    "device_load_uniform_overloads.inc",
+    "device_mesh_info_decl.inc",
+    "device_set_input.inc",
+    "device_set_input_decls.inc",
+    "device_set_input_loads.inc",
+    "device_set_input_overloads.inc",
+    "device_set_output.inc",
+    "device_set_output_decl.inc",
+    "device_set_output_overloads.inc",
+    "device_store_overloads.inc",
+    "device_store_uniform.inc",
+    "device_store_uniform_decl.inc",
+    "fields_info.inc",
+    "fused_kernels.inc",
+    "get_address.inc",
+    "get_array_info.inc",
+    "get_default_value.inc",
+    "get_empty_pointer.inc",
+    "get_num_params.inc",
+    "get_param_name.inc",
+    "get_vtxbufs_declares.inc",
+    "get_vtxbufs_funcs.inc",
+    "get_vtxbufs_loads.inc",
+    "gmem_arrays_decl.inc",
+    "info_access_operators.inc",
+    "info_loaded_decl.inc",
+    "info_loaded_operator_decl.inc",
+    "input_decl.inc",
+    "is_array_param.inc",
+    "is_comptime_param.inc",
+    "is_output_param.inc",
+    "kernel_input_param_str.inc",
+    "kernel_reduce_info.inc",
+    "kernel_user_builtin_non_scalar_constants.inc",
+    "load_ac_kernel_params.inc",
+    "load_ac_kernel_params_def.inc",
+    "load_and_store_uniform_funcs.inc",
+    "load_and_store_uniform_header.inc",
+    "load_and_store_uniform_overloads.inc",
+    "load_comp_info.inc",
+    "load_comp_info_overloads.inc",
+    "load_dconst_arrays.inc",
+    "loaded_info_access_operators.inc",
+    "output_decl.inc",
+    "output_value_decl.inc",
+    "param_info_access_operators.inc",
+    "profiles_info.inc",
+    "rconst_decl.inc",
+    "reduce_helpers.inc",
+    "scalar_comp_types.inc",
+    "scalar_info_access_operators.inc",
+    "scalar_reduce_buffer_defs.inc",
+    "scalar_reduce_buffers_in_vba.inc",
+    "scalar_types.inc",
+    "store_dconst_arrays.inc",
+    "taskgraph_bc_handles.inc",
+    "taskgraph_kernel_bcs.inc",
+    "taskgraph_kernels.inc",
+    "to_str_funcs.inc",
+    "user_built-in_constants.inc",
+    "user_builtin_non_scalar_constants.inc",
+    "user_constants.inc",
+    "user_defines.inc",
     "user_field_has_stencil_op.bin",
-    "user_input_typedefs.h",
-    "user_kernel_declarations.h",
-    "user_kernel_ifs.h",
-    "user_kernels.h",
-    "user_kernels.h.raw",
-    //,"user_kernels_ifs.h",
-    "user_loader_impls.h",
-    "user_loaders.h",
+    "user_input_typedefs.inc",
+    "user_kernel_declarations.inc",
+    "user_kernels.inc",
+    "user_kernels.inc.raw",
+    "user_kernels_ifs.inc",
+    "user_loader_impls.inc",
+    "user_loaders.inc",
     "user_read_fields.bin",
-    "user_taskgraphs.h",
-    "user_typedefs.h",
     "user_written_fields.bin",
-    "vtxbuf_is_communicated_func.h",
+    "user_typedefs.inc",
+    "vtxbuf_is_communicated_func.inc",
   };
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
     // if(!file_exists(files[i])) continue;
@@ -599,13 +587,13 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
        	  process_includes(1, dir, ACC_BUILTIN_INTRINSICS, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out,log);
-	  if(file_exists(ACC_GEN_PATH"/extra_dfuncs.h"))
-       	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out,log);
+	  if(file_exists(ACC_GEN_PATH"/extra_dfuncs.inc"))
+       	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.inc", out,log);
 	  //the actual includes
           process_includes(0, dir, stage0, out,log);
 
-	  if(file_exists(ACC_GEN_PATH"/boundcond_kernels.h"))
-       	  	process_includes(1, dir, ACC_GEN_PATH"/boundcond_kernels.h", out,log);
+	  if(file_exists(ACC_GEN_PATH"/boundcond_kernels.inc"))
+       	  	process_includes(1, dir, ACC_GEN_PATH"/boundcond_kernels.inc", out,log);
        	  process_includes(1, dir, ACC_BUILTIN_KERNELS, out,log);
           fclose(out);
         }
@@ -655,14 +643,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         fclose(yyin);
 	if(gen_extra_dfuncs)
 	{
-		FILE* fp = fopen(ACC_GEN_PATH"/extra_dfuncs.h","w");
+		FILE* fp = fopen(ACC_GEN_PATH"/extra_dfuncs.inc","w");
 		gen_extra_funcs(root, fp);
 		fclose(fp);
 		return EXIT_SUCCESS;
 	}
 	if(gen_bc_kernels)
 	{
-		FILE* fp = fopen(ACC_GEN_PATH"/boundcond_kernels.h","w");
+		FILE* fp = fopen(ACC_GEN_PATH"/boundcond_kernels.inc","w");
 		gen_boundcond_kernels(root, fp);
 		fclose(fp);
 		return EXIT_SUCCESS;
@@ -680,7 +668,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	//TP: this is fine to do but we safe time by not doing it
 	if(!RUNTIME_COMPILATION)
 	{
-        	FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
+        	FILE* fp_cpu = fopen("user_kernels.inc.raw", "w");
         	assert(fp_cpu);
         	generate(new_root, fp_cpu, true,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 		fclose(fp_cpu);
@@ -688,9 +676,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	
 	//TP: do this here for safety in case OPTIMIZE_MEM_ACCESSES=OFF
 	{
-  		format_source("user_kernels.h.raw","user_kernels.h");
-		copy_file("user_kernels.h","user_kernels_backup.h");
-		copy_file("user_kernels.h","user_cpu_kernels.h");
+  		format_source("user_kernels.inc.raw","user_kernels.inc");
+		copy_file("user_kernels.inc","user_kernels_backup.inc");
+		copy_file("user_kernels.inc","user_cpu_kernels.inc");
 	}
 
 	if(OPTIMIZE_MEM_ACCESSES)
@@ -703,14 +691,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 			reset_all_files();
 			gen_output_files(new_root);
 
-			FILE* fp_cpu = fopen("user_kernels.h.raw","w");
+			FILE* fp_cpu = fopen("user_kernels.inc.raw","w");
 			generate(new_root,fp_cpu,true,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 			fclose(fp_cpu);
 			generate_mem_accesses();
 		}
 	}
 	reset_diff_files();
-        FILE* fp = fopen("user_kernels.h.raw", "w");
+        FILE* fp = fopen("user_kernels.inc.raw", "w");
         assert(fp);
         generate(new_root, fp, gen_mem_accesses,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 
@@ -721,7 +709,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
 
         // Stage 4: Format
-        format_source("user_kernels.h.raw", "user_kernels.h");
+        format_source("user_kernels.inc.raw", "user_kernels.inc");
 
 
         return EXIT_SUCCESS;
