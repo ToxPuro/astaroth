@@ -1,13 +1,15 @@
-#include "host_datatypes.h"
-#include "ac_fft.h"
-#include "astaroth_cuda_wrappers.h"
-#include "errchk.h"
-#include "ac_helpers.h"
-#include "common_kernels.h"
-#include <stdio.h>
-#include <cstdlib>
-#include <cufftXt.h>
 #include <cuComplex.h>
+#include <cufftXt.h>
+#include <stdio.h>
+
+#include <cstdlib>
+
+#include "ac_fft.h"
+#include "ac_helpers.h"
+#include "astaroth_cuda_wrappers.h"
+#include "common_kernels.h"
+#include "errchk.h"
+#include "host_datatypes.h"
 
 #if AC_DOUBLE_PRECISION
 using  cuFFTPrecision = cuDoubleComplex;

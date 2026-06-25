@@ -17,17 +17,17 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include "astaroth.h"
+#include <mpi.h>
 
 #include <array>
 #include <memory>
-#include <mpi.h>
 #include <string>
 #include <vector>
 
-#include "decomposition/decomposition.h"   //getPid and friends
-#include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
-#include "math_utils.h"      //max. Also included in decomposition.h
+#include "astaroth.h"
+#include "decomposition/decomposition.h"  //getPid and friends
+#include "kernels/kernels.h"              //AcRealPacked, VertexBufferArray
+#include "math_utils.h"                   //max. Also included in decomposition.h
 #include "timer_hires.h"
 
 

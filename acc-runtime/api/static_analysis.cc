@@ -1,6 +1,14 @@
-#include "acc_runtime.h"
-#include "stencil_accesses.h"
 #include "static_analysis.h"
+
+#include <stddef.h>
+
+#include "builtin_enums.h"
+
+// clang-format off
+#include "user_defines.h"
+#include "stencil_accesses.h"
+// clang-format on
+
 bool
 is_raytracing_kernel(const AcKernel kernel)
 {

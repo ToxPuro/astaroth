@@ -47,7 +47,7 @@ else()
 	
 	## Executable
 	add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
-	
+	target_include_directories(acc PUBLIC "${AC_BASE_PATH}/acc-runtime/api")
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		target_compile_definitions(acc PRIVATE -DACC_ARRAY_BOUND_CHECKS=1)

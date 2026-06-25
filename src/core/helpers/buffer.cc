@@ -1,9 +1,13 @@
-#include "host_datatypes.h"
-#include "transpose.h"
-#include "reindex.h"
+#include <stdlib.h>
+
 #include "ac_helpers.h"
+#include "acreal.h"
 #include "astaroth_cuda_wrappers.h"
+#include "device_headers.h"
 #include "errchk.h"
+#include "host_datatypes.h"
+#include "reindex.h"
+#include "transpose.h"
 
 AcShape
 acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims)

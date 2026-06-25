@@ -16,13 +16,24 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "astaroth_utils.h"
-
-#include <math.h>
-#include <stdbool.h>
+#include <bits/std_abs.h>
+#include <stdio.h>
 #include <string.h>
 
+#include <algorithm>
+#include <cmath>
+
+#include "acc_runtime.h"
+#include "acreal.h"
+#include "astaroth.h"
+#include "astaroth_base.h"
+#include "astaroth_utils.h"
 #include "errchk.h"
+#include "host_datatypes.h"
+
+// clang-format off
+#include "user_defines.h"
+// clang-format on
 
 // Defines for colored output
 static inline bool

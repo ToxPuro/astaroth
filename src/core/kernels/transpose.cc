@@ -1,11 +1,11 @@
-#include "host_datatypes.h"
-#include "device_headers.h"
-#include "device_details.h"
-#include "ac_helpers.h"
 #include "transpose.h"
 
+#include <stddef.h>
+
 #include "astaroth_cuda_wrappers.h"
+#include "device_headers.h"
 #include "errchk.h"
+#include "host_datatypes.h"
 #include "math_utils_base.h"
 
 template <typename T>

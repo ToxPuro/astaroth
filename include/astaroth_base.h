@@ -17,23 +17,27 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
+
 #include <stdbool.h>
-
-#ifdef __cplusplus
-#include <functional>
-#endif
-
-#if AC_RUNTIME_COMPILATION
-  #include <dlfcn.h>
-#endif
 
 #include "acc_runtime.h"
 #include "func_define.h"
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"
 
+#if AC_RUNTIME_COMPILATION
+#include <dlfcn.h>
+#endif
+
 #if AC_MPI_ENABLED
 #include <mpi.h>
+#endif
+
+#ifdef __cplusplus
+#include <functional>
+#endif
+
+#if AC_MPI_ENABLED
 struct AcCommunicator
 {
 	MPI_Comm handle;

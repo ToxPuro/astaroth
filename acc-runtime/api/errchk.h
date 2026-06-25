@@ -25,14 +25,15 @@
  *
  */
 #pragma once
-#include <stddef.h>
-#include "host_datatypes.h"
 #include <stdbool.h>
-#include <stdint.h> // SIZE_MAX
+#include <stddef.h>
+#include <stdint.h>  // SIZE_MAX
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+
 #include "device_headers.h"
+#include "host_datatypes.h"
 #ifdef __cplusplus
 #include "astaroth_cuda_wrappers.h"
 #endif

@@ -1,5 +1,11 @@
 #pragma once
 
+#include "builtin_enums.h"
+
+// clang-format off
+#include "user_defines.h"
+// clang-format on
+
 bool
 kernel_has_stencil_call(const int curr_kernel)
 {

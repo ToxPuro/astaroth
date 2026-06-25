@@ -1,10 +1,21 @@
 %{
 //#define _GNU_SOURCE
+#include <ctype.h>
+#include <dirent.h>
+#include <hash.h>
+#include <libgen.h>  // dirname
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <libgen.h> // dirname
 #include <sys/stat.h>
+#include <wordexp.h>
 
+#include "ast.h"
+#include "codegen.h"
+#include "create_node.h"
+#include "create_node_decl.h"
+#include "expr.h"
 
 extern struct hashmap_s string_intern_hashmap;
 extern const char* binary_op_val;
@@ -90,14 +101,6 @@ const char* FIELD4_STR      = NULL;
 const char* PROFILE_STR      = NULL;
 const char* COMPLEX_FIELD_STR  = NULL;
 
-#include <hash.h>
-#include "ast.h"
-#include "codegen.h"
-#include <ctype.h>
-#include <dirent.h>
-#include <math.h>
-#include <limits.h>
-
 bool RUNTIME_COMPILATION = false;
 bool READ_OVERRIDES      = false;
 bool ELIMINATE_CONDITIONALS = false;
@@ -169,7 +172,6 @@ static void replace_const_ints(ASTNode* node, const string_vec values, const str
 static ASTNode* create_type_declaration(const char* tqual, const char* tspec);
 static ASTNode* create_type_qualifiers(const char* tqual);
 static ASTNode* create_type_qualifier(const char* tqual);
-#include "create_node_decl.h"
 
 bool is_directory(const char *path) {
     if(!path) return false;
@@ -244,7 +246,6 @@ process_hostdefines(const char* file_in, const char* file_out)
   fclose(out);
 }
 
-#include <wordexp.h>
 void
 expand_env_variables(const char* in, char* out)
 {
@@ -2150,5 +2151,3 @@ static void process_global_assignment(ASTNode* node,ASTNode* variable_definition
 		}
 	
 	    }
-#include "create_node.h"
-#include "expr.h"
