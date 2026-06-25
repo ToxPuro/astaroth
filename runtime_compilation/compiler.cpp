@@ -1,13 +1,16 @@
+#include <stdlib.h>
+
+#include <string>
+
 #include "astaroth.h"
 #include "astaroth_runtime_compilation.h"
-#include <string>
-#include <stdlib.h>
 #if AC_MPI_ENABLED
 #include "../src/core/decomposition/decomposition.h"
 #endif
 #include <sys/stat.h>
-#include "../src/config_helpers.h"
 #include <unistd.h>
+
+#include "config_helpers.h"
 
 #if AC_MPI_ENABLED
 static uint3_64

@@ -17,12 +17,16 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth.h"
-#include "kernels.h"
+
+#include <stdlib.h>
+#include <string.h>  // strcmp
+
 #include "astaroth_cuda_wrappers.h"
-
-#include <string.h> // strcmp
-
-#include "math_utils.h"
+#include "astaroth_legacy.h"
+#include "astaroth_node.h"
+#include "config_helpers.h"
+#include "datatypes.h"
+#include "math_utils_base.h"
 
 static const int max_num_nodes   = 1;
 static Node nodes[max_num_nodes] = {0};
@@ -499,7 +503,6 @@ acGetLengths(const AcMeshInfo info)
 
 #include "get_vtxbufs_funcs.h"
 #include "stencil_accesses.h"
-#include "../config_helpers.h"
 void
 acStoreConfig(const AcMeshInfo info, const char* filename)
 {

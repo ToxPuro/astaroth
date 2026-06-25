@@ -17,8 +17,12 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include "acc_runtime.h"
 #include <stdbool.h>
+
+#include "acc_runtime.h"
+#include "common_kernels.h"
+#include "reindex.h"
+#include "transpose.h"
 
 typedef AcReal AcRealPacked;
 
@@ -31,10 +35,6 @@ typedef struct AcShearInterpolationCoeffs
 {
 	AcReal c1,c2,c3,c4,c5,c6;
 } AcShearInterpolationCoeffs;
-
-#include "transpose.h"
-#include "common_kernels.h"
-#include "reindex.h"
 
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const Volume vba_start, const Volume dims, 

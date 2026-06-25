@@ -17,6 +17,10 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 /**f
  * @file
  * \brief Multi-GPU implementation.
@@ -123,9 +127,22 @@
                                  db  da
  *
  */
+#include "acc_runtime.h"
+#include "acreal.h"
 #include "astaroth.h"
-#include "math_utils.h"
+#include "astaroth_base.h"
 #include "astaroth_cuda_wrappers.h"
+#include "astaroth_device.h"
+#include "astaroth_node.h"
+#include "datatypes.h"
+#include "errchk.h"
+#include "host_datatypes.h"
+#include "math_utils.h"
+#include "math_utils_base.h"
+
+// clang-format off
+#include "user_defines.h"
+// clang-format on
 
 static const int MAX_NUM_DEVICES = 32;
 

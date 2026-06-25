@@ -40,40 +40,26 @@
 */
 // clang-format on
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "acreal.h"
+#include "builtin_enums.h"
+#include "implementation.h"
+#include "vecs.h"
+#include "warp_reduce.h"
 
+// OM: These types are needed because we cannot include "host_datatypes.h" due
+// to it requiring API-specific headers which are not made available when
+// compiling using ACC.
 typedef struct int3
 {
 	int x,y,z;
 } int3;
 
-typedef double AcReal;
-#include "builtin_enums.h"
-#include "user_typedefs.h"
-#include "user_defines.h"
-
-#include "stencil_accesses.h"
-
-#include "stencilgen_calling_info.h"
-
-static const int AC_STENCIL_CALL = (1 << 2);
-typedef enum ReduceOp
-{
-	NO_REDUCE,
-	REDUCE_MIN,
-	REDUCE_MAX,
-	REDUCE_SUM,
-} ReduceOp;
-
-void
-print_warp_reduce_func(const char* datatype, const char* define_name, const ReduceOp op);
-
-#include "stencilgen.h"
-
-#include "implementation.h"
 #define ONE_DIMENSIONAL_PROFILE (1 << 20)
 #define TWO_DIMENSIONAL_PROFILE (1 << 21)
 typedef enum {
@@ -89,6 +75,29 @@ typedef enum {
 	PROFILE_ZY = (1 << 8) | TWO_DIMENSIONAL_PROFILE,
 } AcProfileType;
 #include "profiles_info.h"
+#undef ONE_DIMENSIONAL_PROFILE
+#undef TWO_DIMENSIONAL_PROFILE
+
+// clang-format off
+#include "user_typedefs.h"
+#include "user_defines.h"
+// clang-format on
+
+#include "stencilgen.h"
+
+// clang-format off
+#include "stencil_accesses.h"
+#include "3d_caching_implementations.h"
+#include "mem_access_helper_funcs.h"
+// clang-format on
+
+#include "kernel_reduce_info.h"
+#include "stencilgen_calling_info.h"
+
+static const int AC_STENCIL_CALL = (1 << 2);
+
+void
+print_warp_reduce_func(const char* datatype, const char* define_name, const ReduceOp op);
 
 #if AC_USE_HIP
 const char* ffs_string = "__ffsll";
@@ -193,9 +202,6 @@ gen_stencil_definitions(void)
   fprintf(stencil_coeffs_file,"};");
   fclose(stencil_coeffs_file);
 }
-
-#include "kernel_reduce_info.h"
-#include "mem_access_helper_funcs.h"
 
 bool
 z_block_loop_before_y(const int curr_kernel)
@@ -1759,9 +1765,6 @@ gen_kernel_prefix(const int curr_kernel)
   gen_profile_funcs(curr_kernel);
 }
 
-#include "warp_reduce.h"
-
-
 void
 print_butterfly_iteration(FILE* stream, const int iteration, const char* op_instruction, const char* base_shift_type, const char* tid_shift_type, const char* mask_type, const char* smallest_active_type)
 {
@@ -2421,10 +2424,6 @@ gen_stencil_functions(const int curr_kernel)
   }
 }
 
-#include "3d_caching_implementations.h"
-
-
-#include <stdint.h>
 typedef struct {
   uint64_t x, y;
 } uint2_64;

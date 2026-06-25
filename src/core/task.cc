@@ -34,27 +34,25 @@
  * This all happens in grid.cc:GridIntegrate
  */
 
-
-
 #include "task.h"
-#include "astaroth.h"
-#include "astaroth_cuda_wrappers.h"
 
-AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
-
-#include "internal_device_funcs.h"
-#include "ac_helpers.h"
-#include "astaroth_analysis_helpers.h"
-#include "grid_detail.h"
-
-#include <cassert>
-#include <memory>
 #include <mpi.h>
 #include <stdlib.h>
-#include <vector>
-#include <cstring>
 
+#include <cassert>
+#include <cstring>
+#include <memory>
+#include <vector>
+
+#include "ac_helpers.h"
+#include "astaroth.h"
+#include "astaroth_analysis_helpers.h"
+#include "astaroth_cuda_wrappers.h"
 #include "errchk.h"
+#include "grid_detail.h"
+#include "internal_device_funcs.h"
+
+AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 
 static int
 ac_pid()

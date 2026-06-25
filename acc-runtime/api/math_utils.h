@@ -25,12 +25,14 @@
  *
  */
 #pragma once
-#include <stdint.h> // uint64_t
-#include <stdlib.h> // rand
-#include <math.h>   // isnan, isinf
+#include <math.h>    // isnan, isinf
+#include <stdint.h>  // uint64_t
+#include <stdlib.h>  // rand
 
 #include "datatypes.h"
 #include "errchk.h"
+#include "func_attributes.h"
+#include "math_utils_base.h"
 
 #define __ac__max(a,b) (a > b ? a : b)
 #define __ac__min(a,b) (a < b ? a : b)
@@ -44,8 +46,6 @@
 #define fabs(x) fabsf(x)
 #endif
 #endif
-
-#include "func_attributes.h"
 
 static HOST_DEVICE_INLINE int3
 operator/(const int3& a, const int& b)
@@ -217,31 +217,6 @@ sum(const T& a, const T& b)
 {
   return a + b;
 }
-
-#include "math_utils_base.h"
-
-static HOST_DEVICE_INLINE const AcReal3
-max(const AcReal3& v, const AcReal& s)
-{
-	return (AcReal3)
-	{
-		v.x > s ? v.x : s,
-		v.y > s ? v.y : s,
-		v.z > s ? v.z : s
-	};
-}
-
-static HOST_DEVICE_INLINE const AcReal3
-max(const AcReal& s, const AcReal3& v)
-{
-	return (AcReal3)
-	{
-		v.x > s ? v.x : s,
-		v.y > s ? v.y : s,
-		v.z > s ? v.z : s
-	};
-}
-
 
 template <class T>
 static HOST_DEVICE_INLINE const T

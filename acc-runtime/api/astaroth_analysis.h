@@ -1,4 +1,8 @@
 #pragma once
+
+#include "acc_runtime.h"
+#include "builtin_enums.h"
+
 typedef struct
 {
       int read_fields[NUM_ALL_FIELDS];

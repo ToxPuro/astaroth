@@ -9,9 +9,9 @@
 #ifndef KISS_FFT_H
 #define KISS_FFT_H
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // Define KISS_FFT_SHARED macro to properly export symbols

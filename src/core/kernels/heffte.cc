@@ -1,13 +1,18 @@
-#include "host_datatypes.h"
+#include "heffte.h"
+
+#include <mpi.h>
+#include <stdio.h>
+
+#include <cstdlib>
+#include <unordered_map>
+
 #include "ac_fft.h"
+#include "ac_helpers.h"
 #include "ac_mpi.h"
 #include "astaroth_cuda_wrappers.h"
-#include "errchk.h"
-#include "ac_helpers.h"
 #include "common_kernels.h"
-#include <stdio.h>
-#include <cstdlib>
-#include "heffte.h"
+#include "errchk.h"
+#include "host_datatypes.h"
 
 static MPI_Comm communicator{};
 [[maybe_unused]] static Volume global_offset = (Volume){0,0,0};
@@ -45,7 +50,6 @@ typedef struct
 	AcComplexFloat* out;
 } AcComplexFloatInAndOut;
 
-#include <unordered_map>
 static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
 static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans_single{};
 static std::unordered_map<size_t,heffte::fft3d_r2c<heffte::backend::rocfft>> plans_r2c{};

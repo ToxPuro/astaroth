@@ -1,9 +1,15 @@
 #pragma once
+
 /*
  * =============================================================================
  * Device interface
  * =============================================================================
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** */
 FUNC_DEFINE(AcResult, acDeviceCreate,(const int id, const AcMeshInfo device_config, Device* device));
 
@@ -310,3 +316,7 @@ FUNC_DEFINE(AcResult, acDeviceMemGetInfo,(const Device device, size_t* free_mem,
 /** */
 AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
                                  const char* filepath);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,6 +1,6 @@
 #pragma once
-#include "device_headers.h"
 #include "acreal.h"
+#include "device_headers.h"
 #include "host_datatypes.h"
 
 #ifdef __cplusplus

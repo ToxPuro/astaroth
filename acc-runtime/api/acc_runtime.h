@@ -18,21 +18,49 @@
   */
 #pragma once
 
+#include <stdbool.h>
+#include <stdio.h>
+
+#include "ac_helpers.h"
+#include "builtin_enums.h"
+#include "common_kernels.h"
+#include "datatypes.h"
+#include "device_headers.h"
+#include "errchk.h"
+#include "func_define.h"
+
+// clang-format off
+#include "profiles_info.h"
+#include "scalar_reduce_buffer_defs.h"
+#include "user_built-in_constants.h"
+#include "user_defines.h"
+#include "user_input_typedefs.h"
+// clang-format on
+
+#if AC_RUNTIME_COMPILATION
+#include <dlfcn.h>
+#endif
+
+#ifndef AC_RUNTIME_SOURCE
+#include <string.h>
+
+#ifdef __cplusplus
+#include <type_traits>
+#endif
+#endif
+
+#ifdef __cplusplus
+#include "is_array_param.h"
+#include "is_comptime_param.h"
+#include "is_output_param.h"
+#endif
+
 #define AC_INDEX_ORDER(i,j,k,x,y,z) \
 	i + x*j + x*y*k
 
 #define DEVICE_INLINE __device__ __forceinline__
 
-#include <stdio.h>
-#include <stdbool.h>
-#include "device_headers.h"
-#include "builtin_enums.h"
-#include "datatypes.h"
-#include "errchk.h"
-
 #define AC_SIZE(arr) sizeof(arr)/sizeof(arr[0])
-
-
 
   //copied from the sample setup
 #ifdef __cplusplus
@@ -42,11 +70,6 @@
 #define CONSTEXPR
 #define MAYBE_UNUSED
 #endif
-  #include "user_defines.h"
-  #include "profiles_info.h"
-  #include "user_built-in_constants.h"
-  //#include "user_builtin_non_scalar_constants.h"
-  #include "func_attributes.h"
 
 static UNUSED void ac_library_not_yet_loaded()
 {
@@ -81,12 +104,6 @@ typedef struct
 	const AcKernel map_vtxbuf_vec_scal;
 	const char* name;
 } AcReduction;
-
-  #include "user_input_typedefs.h"
-
-#if AC_RUNTIME_COMPILATION
-  #include <dlfcn.h>
-#endif
 
   #define NUM_REDUCE_SCRATCHPADS (2)
 
@@ -128,12 +145,6 @@ typedef struct
 	  AcCompInfoLoaded is_loaded;
 	  AcCompInfoHasDefaultValue has_default_value;
   } AcCompInfo;
-
-  #ifdef __cplusplus
-#include "is_comptime_param.h"
-#include "is_array_param.h"
-#include "is_output_param.h"
-#endif
 
   typedef struct AcMeshInfoLoaded {
 #include "info_loaded_decl.h"
@@ -211,11 +222,6 @@ typedef struct {
 #endif
   } AcScratchpadStates;
 
-
-
-#include "ac_helpers.h"
-#include "scalar_reduce_buffer_defs.h"
-
   typedef struct 
   {
 	  AcBuffer src;
@@ -244,11 +250,6 @@ typedef struct {
 
   } VertexBufferArray;
 
-
-  
-#include "astaroth_analysis.h"
-#include "func_define.h"
-
 typedef struct
 {
         float time;
@@ -268,8 +269,6 @@ acGetFieldHalos(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 	}
 	return info.int3_params[vtxbuf_run_time_halos[vtxbuf]];
 }
-
-#include "common_kernels.h"
 
 typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
   #ifdef __cplusplus
@@ -423,9 +422,6 @@ acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
 #endif
 #endif
 #ifndef AC_RUNTIME_SOURCE
-#include <type_traits>
-#include <string.h>
-
 #include "load_comp_info.h"
 
 void acVBASwapBuffer(const Field field, VertexBufferArray* vba);

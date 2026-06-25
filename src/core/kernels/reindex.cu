@@ -1,8 +1,9 @@
-#include "host_datatypes.h"
+#include <stddef.h>
+
+#include "acreal.h"
 #include "device_headers.h"
-#include "device_details.h"
-#include "ac_helpers.h"
 #include "errchk.h"
+#include "host_datatypes.h"
 #include "reindex.h"
 
 __host__ __device__ constexpr bool

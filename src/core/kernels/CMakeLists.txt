@@ -34,12 +34,12 @@ else()
 	set_property(TARGET ac_transpose PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 	target_include_directories(ac_transpose PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-	target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers)
+	target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers acc-runtime-headers)
 	
 	add_library(ac_reindex OBJECT reindex.cu)
 	set_property(TARGET ac_reindex PROPERTY POSITION_INDEPENDENT_CODE ON)
 	target_include_directories(ac_reindex PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-	target_link_libraries(ac_reindex PRIVATE ac_cuda_wrappers)
+	target_link_libraries(ac_reindex PRIVATE ac_cuda_wrappers acc-runtime-headers)
 	if(FFT_ENABLED)
 		if(CPU_BUILD)
 			add_library(ac_fft OBJECT kissfft/kiss_fft.c kissfft/kiss_fftnd.c cpufft.cc)
@@ -75,7 +75,7 @@ else()
 	set_property(TARGET ac_fft PROPERTY POSITION_INDEPENDENT_CODE ON)
 	ac_link_mpi(ac_fft)
 	target_include_directories(ac_fft PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-	target_link_libraries(ac_fft PRIVATE ac_cuda_wrappers)
+	target_link_libraries(ac_fft PRIVATE ac_cuda_wrappers acc-runtime-headers)
 	add_library(static_kernels STATIC 
     		$<TARGET_OBJECTS:kernels_obj>
     		$<TARGET_OBJECTS:ac_fft>

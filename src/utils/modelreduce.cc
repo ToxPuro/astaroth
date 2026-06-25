@@ -17,20 +17,21 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/**
- * @file
- * \brief Brief info.
- *
- * Detailed info.
- *
- */
-#include "astaroth.h"
-#include "user_builtin_non_scalar_constants.h"
-#include "astaroth_utils.h"
-
 #include <math.h>
+#include <stddef.h>
 
+#include "acc_runtime.h"
+#include "acreal.h"
+#include "astaroth.h"
+#include "astaroth_base.h"
+#include "astaroth_utils.h"
+#include "builtin_enums.h"
 #include "errchk.h"
+#include "host_datatypes.h"
+
+// clang-format off
+#include "user_defines.h"
+// clang-format on
 
 #if AC_DOUBLE_PRECISION == 0 // HACK TODO fix, make cleaner (purkkaratkaisu)
 #define fabs fabsf

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "builtin_enums.h"
+#include "datatypes.h"
 #ifdef __cplusplus
 extern "C"
 {
