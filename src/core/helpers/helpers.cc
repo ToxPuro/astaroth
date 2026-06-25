@@ -1,21 +1,28 @@
-#include "host_datatypes.h"
-#include "device_headers.h"
-#include "ac_helpers.h"
-#include <sys/resource.h>
-#include "astaroth_cuda_wrappers.h"
-#include <stdio.h>
+#include <bits/types/struct_rusage.h>
+#include <fenv.h>
+#include <limits.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/resource.h>
+
+#include <cfloat>
+
+#include "ac_helpers.h"
+#include "acreal.h"
+#include "astaroth_cuda_wrappers.h"
+#include "device_headers.h"
 #include "errchk.h"
+#include "host_datatypes.h"
 #if AC_MPI_ENABLED
 #include <mpi.h>
+
 struct AcCommunicator
 {
 	MPI_Comm handle;
 };
 #endif
-#include <cfloat>
 
-#include <fenv.h>
 static int original_excepts{};
 
 void

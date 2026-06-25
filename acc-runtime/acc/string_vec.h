@@ -1,4 +1,7 @@
-#include "stdarg.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
 #define VEC_INITIALIZER {.size = 0,.capacity  = 0,.data = NULL}
 typedef struct string_vec
 {

@@ -8,16 +8,18 @@ L [a-zA-Z_]
 S [\s]
 
 %{
+#include <ctype.h>
+#include <stdbool.h>
+
 #include "hashtable.h" // Needs to come before hash.h to have the type for string_intern_hasmap.
 struct hashmap_s string_intern_hashmap;
 
-#include "hash.h"
 #include "ast.h" // Needs to come before tab.h to have the definition of ASTNode.
+#include "hash.h"
 #include "tab.h"
-#include <ctype.h>
-#include <stdbool.h>
-const char* binary_op_val = NULL;
 #include "vecs.h"
+
+const char* binary_op_val = NULL;
 %}
 %{
 	string_vec struct_names          = VEC_INITIALIZER;

@@ -1,7 +1,8 @@
 #pragma once
 
-
 #include "device_headers.h"
+#include "host_datatypes.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

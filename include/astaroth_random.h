@@ -1,8 +1,10 @@
 #pragma once
 
-#include "datatypes.h"
-#include <random>
 #include <stdint.h>
+
+#include <random>
+
+#include "acreal.h"
 
 void seed_rng(uint32_t seed);
 

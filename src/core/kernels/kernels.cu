@@ -16,9 +16,16 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "kernels.h"
-#include "acc_runtime.cu"
 #include "ac_fft.h"
+#include "acc_runtime.cu"
+#include "device_headers.h"
+#include "host_datatypes.h"
+#include "kernels.h"
+#include "packing.cuh"
+
+// clang-format off
+#include "user_defines.h"
+// clang-format on
 
 static __global__ void
 dummy_kernel(void)
@@ -52,5 +59,3 @@ acKernelsClean()
     	acFFTQuit();
 	return acReduceClean();
 }
-
-#include "packing.cuh"

@@ -51,18 +51,17 @@ Basic steps:
     - sync and start again
   3) Gather the mesh to rank 0 for postprocessing
 */
-#include "astaroth.h"
-
-#include <cstring> //memcpy
 #include <mpi.h>
-#include <utility> //std::swap
 
+#include <cstring>  //memcpy
+#include <utility>  //std::swap
+
+#include "astaroth.h"
+#include "decomposition.h"  //getPid3D, morton3D
 #include "errchk.h"
-#include "timer_hires.h"
-
-#include "decomposition.h" //getPid3D, morton3D
 #include "kernels/kernels.h"
 #include "math_utils.h"
+#include "timer_hires.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 

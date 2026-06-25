@@ -28,13 +28,12 @@
  *
  * DO NOT MODIFY
  */
-#include "astaroth_utils.h"
-
 #include <math.h>
 #include <stdbool.h>
 
+#include "astaroth_utils.h"
 #include "errchk.h"
-#include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
+#include "memory.h"  // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
 #ifdef AC_INTEGRATION_ENABLED
 /*

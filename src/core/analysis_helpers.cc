@@ -1,7 +1,23 @@
+#include <stddef.h>
+
+#include <algorithm>
+#include <array>
+#include <tuple>
+#include <vector>
+
+#include "acc_runtime.h"
+#include "acreal.h"
 #include "astaroth.h"
 #include "astaroth_analysis.h"
+#include "builtin_enums.h"
+#include "errchk.h"
+#include "host_datatypes.h"
+
+// clang-format off
+#include "user_defines.h"
+// clang-format on
+
 AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst);
-#include <vector>
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE  = (1 << 1);
 [[maybe_unused]] constexpr int AC_WRITE_TO_INPUT  = (1 << 2);

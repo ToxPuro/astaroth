@@ -40,12 +40,13 @@ For log = natural log uncomment the next line. */
 /* #define TE_NAT_LOG */
 
 #include "tinyexpr.h"
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-#include <stdio.h>
+
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifndef NAN
 #define NAN (0.0/0.0)

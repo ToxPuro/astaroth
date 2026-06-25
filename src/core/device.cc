@@ -17,12 +17,35 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "astaroth.h"
-#include "../../acc-runtime/api/math_utils.h"
-#include "kernels/kernels.h"
-#include "ac_helpers.h"
-#include "astaroth_cuda_wrappers.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <cmath>
+#include <vector>
+
 #include "ac_fft.h"
+#include "ac_helpers.h"
+#include "acc_runtime.h"
+#include "acreal.h"
+#include "astaroth.h"
+#include "astaroth_base.h"
+#include "astaroth_cuda_wrappers.h"
+#include "astaroth_device.h"
+#include "builtin_enums.h"
+#include "common_kernels.h"
+#include "device_headers.h"
+#include "errchk.h"
+#include "host_datatypes.h"
+#include "kernels/kernels.h"
+#include "math_utils.h"
+#include "transpose.h"
+
+// clang-format off
+#include "load_ac_kernel_params_def.h"
+#include "load_and_store_uniform_header.h"
+#include "user_defines.h"
+// clang-format on
 
 #if AC_MPI_ENABLED
 static int ac_pid()
@@ -49,8 +72,6 @@ struct device_s {
     VertexBufferArray vba;
     AcDeviceKernelOutput output;
 };
-
-#include <math.h>
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \

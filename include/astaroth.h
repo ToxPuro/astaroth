@@ -18,10 +18,27 @@
 */
 #pragma once
 
-#include "astaroth_base.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
-#ifdef __cplusplus
-#include "user_builtin_non_scalar_constants.h"
+#include "ac_helpers.h"
+#include "acc_runtime.h"
+#include "acreal.h"
+#include "astaroth_analysis.h"
+#include "astaroth_base.h"
+#include "builtin_enums.h"
+#include "device_headers.h"
+#include "errchk.h"
+#include "func_define.h"
+#include "host_datatypes.h"
+
+// clang-format off
+#include "user_defines.h"
+// clang-format on
+
+#if AC_RUNTIME_COMPILATION
+#include "astaroth_lib.h"
 #endif
 
 #ifdef __cplusplus
@@ -472,8 +489,6 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 #include "get_vtxbufs_declares.h"
 
 #if AC_RUNTIME_COMPILATION
-#include "astaroth_lib.h"
-
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
 
@@ -597,7 +612,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGetLengths,stream)
 	LOAD_DSYM(acHostMeshCopyVertexBuffers,stream)
 #include "device_load_uniform_loads.h"
-	LOAD_DSYM(acHostMeshCopy,stream)
+        LOAD_DSYM(acHostMeshCopy,stream)
 	LOAD_DSYM(acGetKernelId,stream)
 	LOAD_DSYM(acGetKernelIdByName,stream)
 	LOAD_DSYM(acCheckDeviceAvailability,stream)
@@ -1351,12 +1366,7 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start
 #endif
 #endif
 
-#include "astaroth_runtime_compilation.h"
-
 #ifdef __cplusplus
-#include <type_traits>
-
-
 template <typename P, typename V>
 void
 acPushToConfig(AcMeshInfo& config, P param, V val)
@@ -1395,7 +1405,6 @@ acUpdateDecompositionParams(AcMeshInfo* dst)
 }
 
 #endif
-#include <string.h>
 
   static AcCompInfo UNUSED acInitCompInfo()
   {
