@@ -20,7 +20,7 @@ set_property(TARGET acc_runtime_compiler PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_compile_definitions(acc_runtime_compiler PRIVATE -DAC_STENCIL_ORDER=${AC_STENCIL_ORDER})
 target_link_libraries(acc_runtime_compiler PRIVATE acc-runtime-headers)
-target_include_directories(acc_runtime_compiler PUBLIC ${AC_BASE_PATH}/include)
+target_include_directories(acc_runtime_compiler PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src)
 target_compile_definitions(acc_runtime_compiler PRIVATE DSL_MODULE_DIR="${DSL_MODULE_DIR}")
 target_compile_definitions(acc_runtime_compiler PRIVATE -DRUNTIME_CMAKE_OPTIONS="${RUNTIME_CMAKE_OPTIONS}")
 ac_link_mpi(acc_runtime_compiler)

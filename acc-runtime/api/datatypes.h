@@ -20,32 +20,37 @@
 #pragma GCC system_header // NOTE: Silences errors originating from HIP and CUDA
                           // headers
 
-#include <float.h> // DBL/FLT_EPSILON
-
+#include <float.h>  // DBL/FLT_EPSILON
 #include <math.h>
 
-#include "device_headers.h"
-#if AC_CPU_BUILD
-#else
-#if AC_USE_HIP
-  #include "hip.h"
-  #include <hip/hip_runtime_api.h>
-#else
-  #include <vector_types.h> // CUDA vector types
-  #include <cuda_runtime_api.h> // cuda_assert
-#endif
-
-#endif
-
 #include "acreal.h"
+#include "builtin_enums.h"
+#include "device_headers.h"
+
+#define VOLUME_DEFINED
+#define COMPLEX_DEFINED
+#define REAL3_DEFINED
+#include "host_datatypes.h"
+
+#ifdef __cplusplus
+#include <array>
+#endif
+
+#if AC_CPU_BUILD == 0
+#if AC_USE_HIP
+#include <hip/hip_runtime_api.h>
+
+#include "hip.h"
+#else
+#include <cuda_runtime_api.h>  // cuda_assert
+#include <vector_types.h>      // CUDA vector types
+#endif
+#endif
 
 // convert 3-array into vector
 #define TOVEC3(type,arr) ((type){arr[0],arr[1],arr[2]})
 #define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 #define AcVector AcReal3
-
-
-#include "acreal.h"
 
 #if AC_CPU_BUILD
 #ifndef INT3_DEFINED
@@ -61,19 +66,8 @@ typedef struct
 #endif
 #endif
 
-
-#include "builtin_enums.h"
-#include "user_typedefs.h"
-#define VOLUME_DEFINED
-#define COMPLEX_DEFINED
-#define REAL3_DEFINED
-#include "host_datatypes.h"
-
-
-
 #ifdef __cplusplus
 
-#include <array>
 #define AcArray std::array
 
 static HOST_DEVICE_INLINE size3_t

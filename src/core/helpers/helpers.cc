@@ -1,15 +1,21 @@
-#include "host_datatypes.h"
-#include "device_headers.h"
-#include "ac_helpers.h"
-#include "ac_mpi.h"
-#include <sys/resource.h>
-#include "astaroth_cuda_wrappers.h"
-#include <stdio.h>
+#include <bits/types/struct_rusage.h>
+#include <fenv.h>
+#include <limits.h>
 #include <math.h>
-#include "errchk.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/resource.h>
+
 #include <cfloat>
 
-#include <fenv.h>
+#include "ac_helpers.h"
+#include "ac_mpi.h"
+#include "acreal.h"
+#include "astaroth_cuda_wrappers.h"
+#include "device_headers.h"
+#include "errchk.h"
+#include "host_datatypes.h"
+
 static int original_excepts{};
 
 void

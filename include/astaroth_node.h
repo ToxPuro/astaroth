@@ -1,4 +1,5 @@
 #pragma once
+
 /*
  * =============================================================================
  * Node interface
@@ -23,6 +24,11 @@ acNodeCreate(0, info, &node);
 acNodeDestroy(node);
 @endcode
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 FUNC_DEFINE(AcResult, acNodeCreate,(const int id, const AcMeshInfo node_config, Node* node));
 
 /**
@@ -162,3 +168,6 @@ FUNC_DEFINE(AcResult, acNodeLoadPlateXcomp,(const Node node, const Stream stream
 FUNC_DEFINE(AcResult, acNodeGetVBApointers,(Node* node_handle, AcReal *vbapointer[2]));
 #endif
 
+#ifdef __cplusplus
+}
+#endif

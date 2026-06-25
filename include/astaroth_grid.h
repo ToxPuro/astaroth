@@ -3,6 +3,10 @@
 #define UNUSED __attribute__((unused)) // Does not give a warning if unused
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if AC_MPI_ENABLED
 
 /**
@@ -448,3 +452,7 @@ FUNC_DEFINE(bool, acGridInitialized,());
 #endif
 
 #endif // AC_MPI_ENABLED
+
+#ifdef __cplusplus
+}
+#endif

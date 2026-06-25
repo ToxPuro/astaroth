@@ -1,7 +1,11 @@
-#include "host_datatypes.h"
-#include "ac_fft.h"
 #include <stdio.h>
+
 #include <cstdlib>
+
+#include "ac_fft.h"
+#include "acreal.h"
+#include "device_headers.h"
+#include "host_datatypes.h"
 
 AcResult
 acFFTForwardTransformSymmetricR2C(const AcReal*, const Volume, const Volume, const Volume, AcComplex*) {

@@ -1,8 +1,15 @@
+#pragma once
+
 /*
  * =============================================================================
  * Legacy interface
  * =============================================================================
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Allocates all memory and initializes the devices visible to the caller. Should be
  * called before any other function in this interface. */
 FUNC_DEFINE(AcResult, acInit,(const AcMeshInfo mesh_info));
@@ -71,3 +78,7 @@ FUNC_DEFINE(AcResult, acIntegrateStepWithOffset,(const int isubstep, const AcRea
                                    const Volume end));
 FUNC_DEFINE(AcResult, acSynchronize,(void));
 FUNC_DEFINE(AcResult, acLoadWithOffset,(const AcMesh host_mesh, const int3 src, const int num_vertices));
+
+#ifdef __cplusplus
+}
+#endif

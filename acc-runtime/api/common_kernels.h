@@ -1,4 +1,9 @@
 #pragma once
+#include <stddef.h>
+
+#include "acreal.h"
+#include "device_headers.h"
+#include "host_datatypes.h"
 #ifdef __cplusplus
 extern "C"
 {

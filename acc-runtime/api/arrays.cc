@@ -1,7 +1,14 @@
+#include <stdio.h>
+
+#include "ac_helpers.h"
 #include "acc_runtime.h"
-#include "astaroth_cuda_wrappers.h"
-#include "memcpy_to_gmem_arrays_header.h"
+#include "errchk.h"
+#include "host_datatypes.h"
+
+// clang-format off
 #include "memcpy_from_gmem_arrays_header.h"
+#include "memcpy_to_gmem_arrays_header.h"
+// clang-format on
 
 template <typename P>
 struct allocate_arrays

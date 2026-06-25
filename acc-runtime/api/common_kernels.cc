@@ -1,7 +1,21 @@
+#include "common_kernels.h"
+
+#include <stddef.h>
+
 #include "acc_runtime.h"
-#include "kernels.h"
-#include "math_utils.h"
+#include "acreal.h"
 #include "astaroth_cuda_wrappers.h"
+#include "builtin_enums.h"
+#include "datatypes.h"
+#include "device_headers.h"
+#include "errchk.h"
+#include "host_datatypes.h"
+#include "math_utils.h"
+#include "math_utils_base.h"
+
+// clang-format off
+#include "load_ac_kernel_params_def.h"
+// clang-format on
 
 template<typename T1, typename T2, typename T3>
 AcResult

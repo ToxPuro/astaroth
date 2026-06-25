@@ -1,4 +1,7 @@
 #include <vector>
+
+#include "astaroth_analysis.h"
+
 std::vector<KernelAnalysisInfo>
 get_kernel_analysis_info(const AcMeshInfo config);
 
