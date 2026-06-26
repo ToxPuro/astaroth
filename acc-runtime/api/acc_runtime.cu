@@ -103,40 +103,6 @@ catch_previous_errors_debug(const AcKernel kernel, const char* msg)
 #endif
 }
 
-#if AC_CPU_BUILD
-cudaError_t
-acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind)
-{
-	memcpy((void*)((char*)symbol+offset),src,count);
-	return cudaSuccess;
-}
-cudaError_t
-acMemcpyToSymbolAsync(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind, cudaStream_t)
-{
-	memcpy((void*)((char*)symbol+offset),src,count);
-	return cudaSuccess;
-}
-cudaError_t 
-acMemcpyFromSymbol(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind)
-{
-	memcpy(dst,(void*)((char*)symbol+offset),count);
-	return cudaSuccess;
-}
-cudaError_t 
-acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind, cudaStream_t)
-{
-	memcpy(dst,(void*)((char*)symbol+offset),count);
-	return cudaSuccess;
-}
-#else
-
-#define acMemcpyFromSymbol cudaMemcpyFromSymbol
-#define acMemcpyFromSymbolAsync cudaMemcpyFromSymbolAsync
-#define acMemcpyToSymbol cudaMemcpyToSymbol
-#define acMemcpyToSymbolAsync cudaMemcpyToSymbolAsync
-
-#endif
-
 static dim3 last_tpb = (dim3){0, 0, 0};
 struct Int3Hash {
     std::size_t operator()(const int3& v) const {

@@ -65,6 +65,39 @@ acMemcpyPeerAsync(AcReal* dst, int, const AcReal* src, int, const size_t bytes, 
 	memcpy(dst,src,bytes);
 	return cudaSuccess;
 }
+
+cudaError_t
+acMemcpyToSymbol(const void* symbol, const void* src, size_t count,
+                 size_t offset, cudaMemcpyKind)
+{
+  memcpy((void*)((char*)symbol + offset), src, count);
+  return cudaSuccess;
+}
+
+cudaError_t
+acMemcpyToSymbolAsync(const void* symbol, const void* src, size_t count,
+                      size_t offset, cudaMemcpyKind, cudaStream_t)
+{
+  memcpy((void*)((char*)symbol + offset), src, count);
+  return cudaSuccess;
+}
+
+cudaError_t
+acMemcpyFromSymbol(void* dst, const void* symbol, size_t count, size_t offset,
+                   cudaMemcpyKind)
+{
+  memcpy(dst, (void*)((char*)symbol + offset), count);
+  return cudaSuccess;
+}
+
+cudaError_t
+acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count,
+                        size_t offset, cudaMemcpyKind, cudaStream_t)
+{
+  memcpy(dst, (void*)((char*)symbol + offset), count);
+  return cudaSuccess;
+}
+
 cudaError_t
 acMemGetInfo(size_t* free_mem, size_t* total_mem)
 {
