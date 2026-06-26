@@ -434,6 +434,13 @@ reset_diff_files()
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
     FILE* fp = fopen(files[i], "w");
     fclose(fp);
+
+    // The sources managed by the sources_manager are persisted across code
+    // generation passes and thus need to be reset manually.
+    char stripped_filename[BUFFER_SIZE] = {0};
+    strcpy(stripped_filename, files[i]);
+    *(strrchr(stripped_filename, '.')) = '\0';
+    acc_sources_manager_invalidate_source(acc_sources_manager_singleton(), stripped_filename);
   }
 }
 void
@@ -555,11 +562,9 @@ reset_all_files()
     "user_dfuncs.h",
     "user_field_has_stencil_op.bin",
     "user_input_typedefs.h",
-    "user_kernel_declarations.h",
-    "user_kernel_ifs.h",
-    "user_kernels.h",
-    "user_kernels.h.raw",
-    //,"user_kernels_ifs.h",
+    "user_kernels.cu",
+    "user_kernels.cu.raw",
+    //, "user_kernels_ifs.h",
     "user_loader_impls.h",
     "user_loaders.h",
     "user_read_fields.bin",
@@ -695,7 +700,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	//TP: this is fine to do but we safe time by not doing it
 	if(!RUNTIME_COMPILATION)
 	{
-        	FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
+        	FILE* fp_cpu = fopen("user_kernels.cu.raw", "w");
         	assert(fp_cpu);
         	generate(new_root, fp_cpu, true,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 		fclose(fp_cpu);
@@ -703,9 +708,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	
 	//TP: do this here for safety in case OPTIMIZE_MEM_ACCESSES=OFF
 	{
-  		format_source("user_kernels.h.raw","user_kernels.h");
-		copy_file("user_kernels.h","user_kernels_backup.h");
-		copy_file("user_kernels.h","user_cpu_kernels.h");
+  		format_source("user_kernels.cu.raw","user_kernels.cu");
+		copy_file("user_kernels.cu","user_kernels_backup.cu");
+		copy_file("user_kernels.cu","user_cpu_kernels.cc");
 	}
 
 	if(OPTIMIZE_MEM_ACCESSES)
@@ -718,14 +723,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 			reset_all_files();
 			gen_output_files(new_root);
 
-			FILE* fp_cpu = fopen("user_kernels.h.raw","w");
+			FILE* fp_cpu = fopen("user_kernels.cu.raw","w");
 			generate(new_root,fp_cpu,true,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 			fclose(fp_cpu);
 			generate_mem_accesses();
 		}
 	}
 	reset_diff_files();
-        FILE* fp = fopen("user_kernels.h.raw", "w");
+        FILE* fp = fopen("user_kernels.cu.raw", "w");
         assert(fp);
         generate(new_root, fp, gen_mem_accesses,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 
@@ -735,7 +740,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         fclose(fp);
 
         // Stage 4: Format
-        format_source("user_kernels.h.raw", "user_kernels.h");
+        format_source("user_kernels.cu.raw", "user_kernels.cu");
 
 
         return EXIT_SUCCESS;

@@ -929,7 +929,7 @@ fatal_error_message(const bool error, const char* message)
 	}
 }
 
-#include "user_cpu_kernels.h"
+#include "user_cpu_kernels.cc"
 #undef  constexpr
 #undef size
 

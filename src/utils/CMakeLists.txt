@@ -7,6 +7,7 @@ if(RUNTIME_COMPILATION)
 	target_link_libraries(astaroth_utils astaroth_core)
 else()
 	add_library(astaroth_utils memory.cc verification.cc modelreduce.cc modelsolver.cc profiles.cc config_loader.cc)
+	target_include_directories(astaroth_utils PUBLIC "${AC_BASE_PATH}/include" "${AC_BASE_PATH}/acc-runtime/api" "${CMAKE_BINARY_DIR}/acc-runtime/api")
 	target_link_libraries(astaroth_utils PUBLIC astaroth_core)
 
 	add_library(astaroth_random astaroth_random.cc)

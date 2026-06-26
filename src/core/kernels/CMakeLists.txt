@@ -22,6 +22,7 @@ if (RUNTIME_COMPILATION)
 	target_link_libraries(kernels PUBLIC static_kernels)
 else()
 	add_library(kernels_obj OBJECT kernels.cu reductions.cu)
+	target_compile_definitions(kernels_obj PRIVATE -DBOOBAA=1)
 	set_property(TARGET kernels_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
 	set_target_properties(kernels_obj PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
         target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
@@ -85,7 +86,7 @@ else()
     		$<TARGET_OBJECTS:acc-runtime-driver>
 	)
 
-	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
+	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers acc-runtime-driver)
 	add_library(kernels 
     		$<TARGET_OBJECTS:kernels_obj>
     		$<TARGET_OBJECTS:ac_fft>
@@ -93,7 +94,7 @@ else()
     		$<TARGET_OBJECTS:ac_reindex>
     		$<TARGET_OBJECTS:acc-runtime-driver>
 	)
-	target_link_libraries(kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
+	target_link_libraries(kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers acc-runtime-driver)
 endif()
 
 set_property(TARGET static_kernels PROPERTY POSITION_INDEPENDENT_CODE ON)

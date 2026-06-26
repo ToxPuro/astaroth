@@ -1229,115 +1229,170 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   fprintf(fp, "\n};");
 }
 
-
 void
 gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 {
-	const char* take_address = AC_CPU_BUILD ? "&" : "";
-	const char* define_name = convert_to_define_name(datatype_scalar);
-	const char* enum_name = convert_to_enum_name(datatype_scalar);
+  const char* take_address = AC_CPU_BUILD ? "&" : "";
+  const char* define_name  = convert_to_define_name(datatype_scalar);
+  const char* enum_name    = convert_to_enum_name(datatype_scalar);
 
-	char tmp[4098];
-	sprintf(tmp,"%s*",datatype_scalar);
-	const char* datatype = intern(tmp);
+  char tmp[4098];
+  sprintf(tmp, "%s*", datatype_scalar);
+  const char* datatype = intern(tmp);
 
+  AccSource* memcpy_to_gmem_arrays = acc_sources_manager_get_source(
+      acc_sources_manager_singleton(), "memcpy_to_gmem_arrays", ACC_SRC_CPP);
+  acc_source_add_include(memcpy_to_gmem_arrays, false, false, "acc_runtime.h", NULL);
+  acc_source_add_include(memcpy_to_gmem_arrays, false, false, "extern_arrays_decl.h", NULL);
+  acc_source_add_include(memcpy_to_gmem_arrays, false, false, "func_define.h", NULL);
+  acc_source_add_include(memcpy_to_gmem_arrays, true, false, "astaroth_cuda_wrappers.h", NULL);
 
-	FILE* fp = fopen("memcpy_to_gmem_arrays.h","a");
-	fprintf_filename("memcpy_to_gmem_arrays_header.h","void acMemcpyToGmemArray(const %sArrayParam param,%s* &ptr);\n"
-        , enum_name,datatype_scalar);
-	fprintf(fp,"void acMemcpyToGmemArray(const %sArrayParam param,%s* &ptr)\n"
-        "{\n", enum_name,datatype_scalar);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR))
-	  {
-		  if (!str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  {
-			if(str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR))
-			{
-				fprintf(fp,"if (param == %s) \n{//%s is dead\n return;}\n",symbol_table[i].identifier,symbol_table[i].identifier);
-			}
-			else
-		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(%sAC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice)); return;} \n",symbol_table[i].identifier,take_address,define_name,symbol_table[i].identifier);
-	  	  }
-	  }
-	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from acMemcpyToGmemArray\\n\");\n");
-	fprintf(fp,"\n(void)param;(void)ptr;}\n");
+  AccSourceFunction* func = acc_source_get_function(memcpy_to_gmem_arrays, 0,
+                                                    "acMemcpyToGmemArray");
+  acc_source_function_set_qualifiers(func, "void");
+  acc_source_function_set_params(func, "(const %sArrayParam param, %s* &ptr)",
+                                 enum_name, datatype_scalar);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        symbol_table[i].tspecifier == datatype &&
+        str_vec_contains(symbol_table[i].tqualifiers, GLOBAL_MEM_STR)) {
+      if (!str_vec_contains(symbol_table[i].tqualifiers, CONST_DIMS_STR)) {
+        if (str_vec_contains(symbol_table[i].tqualifiers, DEAD_STR)) {
+          acc_source_function_add_impl(
+              func, "if (param == %s) { /* %s is dead */ return; }\n",
+              symbol_table[i].identifier, symbol_table[i].identifier);
+        }
+        else {
+          acc_source_function_add_impl(
+              func,
+              // clang-format off
+              "if (param == %s) {\n"
+              "  ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(%sAC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice));\n"
+              "  return;\n"
+              "}\n",
+              symbol_table[i].identifier,
+              take_address, define_name, symbol_table[i].identifier);
+              // clang-format on
+        }
+      }
+    }
+  }
+  acc_source_function_add_impl(func,
+    "fprintf(stderr,\"FATAL AC ERROR from acMemcpyToGmemArray\\n\");\n"
+    "(void)param; (void)ptr;\n");
 
+  func = acc_source_get_function(memcpy_to_gmem_arrays, 0, "acMemcpyToConstDimsGmemArray");
+  acc_source_function_set_qualifiers(func, "void");
+  acc_source_function_set_params(func, "(const %sArrayParam param, %s* &ptr)",
+                                 enum_name, datatype_scalar);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        symbol_table[i].tspecifier == datatype &&
+        str_vec_contains(symbol_table[i].tqualifiers, GLOBAL_MEM_STR)) {
+      if (str_vec_contains(symbol_table[i].tqualifiers, CONST_DIMS_STR)) {
+        if (str_vec_contains(symbol_table[i].tqualifiers, DEAD_STR)) {
+          acc_source_function_add_impl(
+              func, "if (param == %s) { /* %s is dead */ return; }\n",
+              symbol_table[i].identifier, symbol_table[i].identifier);
+        }
+        else {
+          acc_source_function_add_impl(
+              func,
+              // clang-format off
+              "if (param == %s) {\n"
+              "  ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(AC_INTERNAL_gmem_%s_arrays_%s, ptr, sizeof(ptr[0]) * get_const_dims_array_length(param), 0, cudaMemcpyHostToDevice));\n"
+              "  return;\n"
+              "}\n",
+              symbol_table[i].identifier,
+              define_name, symbol_table[i].identifier);
+              // clang-format on
+        }
+      }
+    }
+  acc_source_function_add_impl(func,
+    "fprintf(stderr,\"FATAL AC ERROR from acMemcpyToConstDimsGmemArray\\n\");\n"
+    "(void)param; (void)ptr;\n");
 
+  AccSource* memcpy_from_gmem_arrays = acc_sources_manager_get_source(
+      acc_sources_manager_singleton(), "memcpy_from_gmem_arrays", ACC_SRC_CPP);
+  acc_source_add_include(memcpy_from_gmem_arrays, false, false, "acc_runtime.h", NULL);
+  acc_source_add_include(memcpy_from_gmem_arrays, false, false, "extern_arrays_decl.h", NULL);
+  acc_source_add_include(memcpy_from_gmem_arrays, false, false, "func_define.h", NULL);
+  acc_source_add_include(memcpy_from_gmem_arrays, true, false, "astaroth_cuda_wrappers.h", NULL);
 
+  func = acc_source_get_function(memcpy_from_gmem_arrays, 0, "acMemcpyFromGmemArray");
+  acc_source_function_set_qualifiers(func, "void");
+  acc_source_function_set_params(func, "(const %sArrayParam param, %s* &ptr)",
+                                 enum_name, datatype_scalar);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        symbol_table[i].tspecifier == datatype &&
+        str_vec_contains(symbol_table[i].tqualifiers, GLOBAL_MEM_STR)) {
+      if (str_vec_contains(symbol_table[i].tqualifiers, DEAD_STR)) {
+        acc_source_function_add_impl(
+            func,
+            // clang-format off
+            "if (param == %s) {\n"
+            "  fprintf(stderr, \"Can not read since %s is dead!\\n\");\n"
+            "  exit(EXIT_FAILURE);\n"
+            "}\n",
+            symbol_table[i].identifier,
+            symbol_table[i].identifier);
+            // clang-format on
+      }
+      else if (str_vec_contains(symbol_table[i].tqualifiers, CONST_DIMS_STR)) {
+        acc_source_function_add_impl(
+            func,
+            // clang-format off
+            "if (param == %s) {\n"
+            "  ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(ptr, AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr[0]) * get_const_dims_array_length(param), 0, cudaMemcpyDeviceToHost));\n"
+            "  return;\n"
+            "}\n",
+            symbol_table[i].identifier,
+            define_name, symbol_table[i].identifier);
+            // clang-format on
+      }
+      else {
+        acc_source_function_add_impl(
+            func,
+            // clang-format off
+            "if (param == %s) {\n"
+            "  ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(&ptr, %sAC_INTERNAL_gmem_%s_arrays_%s, sizeof(ptr), 0, cudaMemcpyDeviceToHost));\n"
+            "  return;\n"
+            "}\n",
+            symbol_table[i].identifier,
+            take_address, define_name, symbol_table[i].identifier);
+            // clang-format on
+      }
+    }
+  }
+  acc_source_function_add_impl(func,
+    "fprintf(stderr,\"FATAL AC ERROR from memcpy_from_gmem_array\\n\");\n"
+    "(void)param; (void)ptr;");
 
-	fprintf_filename("memcpy_to_gmem_arrays_header.h","void acMemcpyToConstDimsGmemArray(const %sArrayParam param,%s* &ptr);\n"
-	, enum_name,datatype_scalar);
-	fprintf(fp,"void acMemcpyToConstDimsGmemArray(const %sArrayParam param,const %s* ptr)\n"
-	"{\n", enum_name,datatype_scalar);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR))
-	  {
-		  if (str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  {
-			if(str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR))
-			{
-				fprintf(fp,"if (param == %s) \n{//%s is dead\n return;}\n",symbol_table[i].identifier,symbol_table[i].identifier);
-			}
-			else
-			{
-		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(AC_INTERNAL_gmem_%s_arrays_%s,ptr,sizeof(ptr[0])*get_const_dims_array_length(param),0,cudaMemcpyHostToDevice)); return;}\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
-			}
-		  }
-	  }
-	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from acMemcpyToConstDimsGmemArray\\n\");\n");
-	fprintf(fp,"\n(void)param;(void)ptr;}\n");
-
-
-	fclose(fp);
-
-
-	fp = fopen("memcpy_from_gmem_arrays.h","a");
-	
-	fprintf_filename("memcpy_from_gmem_arrays_header.h","void acMemcpyFromGmemArray(const %sArrayParam param,%s* &ptr);\n"
-		   , enum_name,datatype_scalar);
-	fprintf(fp,"void acMemcpyFromGmemArray(const %sArrayParam param, %s* &ptr)\n"
-		  "{\n", enum_name,datatype_scalar);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR))
-	  {
-		  if(str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR))
-		  {
-		  	fprintf(fp,"if (param == %s) {fprintf(stderr,\"Can not read since %s is dead!\\n\"); exit(EXIT_FAILURE);}\n",symbol_table[i].identifier,symbol_table[i].identifier);
-		  }
-		  else if (str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(ptr,AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr[0])*get_const_dims_array_length(param),0,cudaMemcpyDeviceToHost)); return;}\n"
-					
-		,symbol_table[i].identifier,define_name,symbol_table[i].identifier);
-		  else
-		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(&ptr,%sAC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr),0,cudaMemcpyDeviceToHost)); return;}\n",symbol_table[i].identifier,take_address,define_name,symbol_table[i].identifier);
-	  }
-	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from memcpy_from_gmem_array\\n\");\n");
-	fprintf(fp,"\n(void)param;(void)ptr;}\n");
-	fclose(fp);
-
-	fp = fopen("gmem_arrays_decl.h","a");
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	{
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR) && !str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR))
-	  {
-		  if (str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  {
-                  	char array_length_str[100000];
-                  	get_array_var_length(symbol_table[i].identifier,root,array_length_str);
-			if(!strcmp(array_length_str,"0"))
-				sprintf(array_length_str,"1");
-			fprintf(fp,"DECLARE_CONST_DIMS_GMEM_ARRAY(%s,%s,%s,%s);\n",datatype_scalar, define_name, symbol_table[i].identifier,array_length_str);
-		  }
-		  else
-			fprintf(fp,"DECLARE_GMEM_ARRAY(%s,%s,%s);\n",datatype_scalar, define_name, symbol_table[i].identifier);
-	  }
-	}
-	fclose(fp);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        symbol_table[i].tspecifier == datatype &&
+        str_vec_contains(symbol_table[i].tqualifiers, GLOBAL_MEM_STR) &&
+        !str_vec_contains(symbol_table[i].tqualifiers, DEAD_STR)) {
+      if (str_vec_contains(symbol_table[i].tqualifiers, CONST_DIMS_STR)) {
+        char array_length_str[BUFFER_SIZE];
+        get_array_var_length(symbol_table[i].identifier, root,
+                             array_length_str);
+        if (!strcmp(array_length_str, "0"))
+          sprintf(array_length_str, "1");
+        fprintf_filename("gmem_arrays_decl.h",
+                         "DECLARE_CONST_DIMS_GMEM_ARRAY(%s, %s, %s, %s);\n",
+                         datatype_scalar, define_name,
+                         symbol_table[i].identifier, array_length_str);
+      }
+      else {
+        fprintf_filename("gmem_arrays_decl.h",
+                         "DECLARE_GMEM_ARRAY(%s, %s, %s);", datatype_scalar,
+                         define_name, symbol_table[i].identifier);
+      }
+    }
+  }
 }
 
 void
@@ -1734,42 +1789,64 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	//fprintf_filename("get_address.h","size_t  get_address(const %sOutputParam& param){ return (size_t)&d_output.%s_outputs[(int)param];}\n"
 	//		,enum_name, define_name);
 
-	fprintf_filename("load_dconst_arrays.h","static cudaError_t\n"
-		   "load_array(const %s* values, const size_t bytes, const %sArrayParam arr)\n"
-		    "{\n",
-		     datatype_scalar, enum_name);
+        AccSource* load_dconst_arrays = acc_sources_manager_get_source(
+            sources_manager, "load_dconst_arrays",
+            ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+	acc_source_add_include(load_dconst_arrays, false, false, "astaroth_cuda_wrappers.h", NULL);
 
-		     
+        func = acc_source_get_function(load_dconst_arrays, 0, "load_array");
+        acc_source_function_set_qualifiers(func, "static cudaError_t");
+        acc_source_function_set_params(
+            func,
+            "(const %s* values, const size_t bytes, const %sArrayParam arr)",
+            datatype_scalar, enum_name);
 
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	{
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
-		  fprintf_filename("load_dconst_arrays.h","if (arr == %s)\n return acMemcpyToSymbol(AC_INTERNAL_d_%s_arrays_%s,values,bytes,0,cudaMemcpyHostToDevice);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
-  	}
-	fprintf_filename("load_dconst_arrays.h","(void)values;(void)bytes;(void)arr;\nreturn cudaSuccess;\n}\n");
+        for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+          if (symbol_table[i].type & NODE_VARIABLE_ID &&
+              symbol_table[i].tspecifier == datatype &&
+              str_vec_contains(symbol_table[i].tqualifiers, DCONST_STR)) {
+            acc_source_function_add_impl(
+                func,
+                "if (arr == %s)\n"
+                "  return acMemcpyToSymbol(AC_INTERNAL_d_%s_arrays_%s, values, bytes, 0, cudaMemcpyHostToDevice);\n",
+                symbol_table[i].identifier,
+                define_name, symbol_table[i].identifier);
+          }
+        }
+        acc_source_function_add_impl(
+            func,
+            "(void)values; (void)bytes; (void)arr;\n"
+            "return cudaSuccess;");
 
+        AccSource* store_dconst_arrays = acc_sources_manager_get_source(
+            sources_manager, "store_dconst_arrays",
+            ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+	acc_source_add_include(store_dconst_arrays, false, false, "astaroth_cuda_wrappers.h", NULL);
 
-	fprintf_filename("store_dconst_arrays.h","static cudaError_t\n"
-		  "store_array(%s* values, const size_t bytes, const %sArrayParam arr)\n"
-		    "{\n",
-	datatype_scalar, enum_name);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	{
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
-	  {
-		  fprintf_filename("store_dconst_arrays.h","if (arr == %s)\n return acMemcpyFromSymbol(values,AC_INTERNAL_d_%s_arrays_%s,bytes,0,cudaMemcpyDeviceToHost);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
-	  }
-  	}
-	fprintf_filename("store_dconst_arrays.h","(void)values;(void)bytes;(void)arr;\nreturn cudaSuccess;\n}\n");
+        func = acc_source_get_function(store_dconst_arrays, 0, "store_array");
+        acc_source_function_set_qualifiers(func, "static cudaError_t");
+        acc_source_function_set_params(
+            func,
+            "(%s* values, const size_t bytes, const %sArrayParam arr)",
+            datatype_scalar, enum_name);
+        for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+          if (symbol_table[i].type & NODE_VARIABLE_ID &&
+              symbol_table[i].tspecifier == datatype &&
+              str_vec_contains(symbol_table[i].tqualifiers, DCONST_STR)) {
+            acc_source_function_add_impl(
+                func,
+                "if (arr == %s)\n"
+                "  return acMemcpyFromSymbol(values, AC_INTERNAL_d_%s_arrays_%s, bytes, "
+                "0, cudaMemcpyDeviceToHost);\n",
+                symbol_table[i].identifier, define_name,
+                symbol_table[i].identifier);
+          }
+        }
+        acc_source_function_add_impl(func,
+                                     "(void)values; (void)bytes; (void)arr;\n"
+                                     "return cudaSuccess;");
 
-
-
-
-
-
-	fprintf_filename("load_and_store_uniform_overloads.h",
+        fprintf_filename("load_and_store_uniform_overloads.h",
 	        "static AcResult __attribute ((unused)) "
 		"acLoadUniform(const cudaStream_t stream, const %sParam param, const %s value) { return acLoad%sUniform(stream,param,value);}\n"
 	        "static AcResult __attribute ((unused)) "
@@ -7218,26 +7295,39 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   fclose(fp);
 }
 
-
 static void
-gen_user_kernels(const char* out)
+gen_user_kernels()
 {
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
+  const char* default_param_list = "(const int3 start, const int3 end, DeviceVertexBufferArray vba)";
 
-  const char* default_param_list=  "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
-  FILE* fp_dec = fopen(out, "a");
+  AccSource* user_kernel_declarations = acc_sources_manager_get_source(
+      acc_sources_manager_singleton(), "user_kernel_declarations",
+      ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].tspecifier != KERNEL_STR)
+      continue;
+
+    AccSourceFunction* func = acc_source_get_function(
+        user_kernel_declarations, 0, "KERNEL_%s", symbol_table[i].identifier);
+    acc_source_function_set_qualifiers(func, "void __global__");
+    acc_source_function_set_params(func, default_param_list);
+  }
+
+  char buf[100000] = {0};
+  char* buf_end         = buf;
+  buf_end += snprintf(buf, BUFFER_SIZE, "static const Kernel kernels[] = {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
-      fprintf(fp_dec, "static void __global__ KERNEL_%s %s);\n", symbol_table[i].identifier, default_param_list);
+      buf_end += snprintf(buf_end, BUFFER_SIZE - (buf_end - buf),
+                          "  KERNEL_%s,\n", symbol_table[i].identifier);
+  snprintf(buf_end, BUFFER_SIZE - (buf_end - buf), "};");
+  acc_source_add_declaration(user_kernel_declarations,
+                             ACC_SRC_DECL_UNMANAGED | ACC_SRC_DECL_PUBLIC | ACC_SRC_DECL_EPILOGUE, buf);
 
-  fprintf(fp_dec, "static const Kernel kernels[] = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].tspecifier == KERNEL_STR)
-      fprintf(fp_dec, "KERNEL_%s,", symbol_table[i].identifier);
-  fprintf(fp_dec, "};");
-
-  fclose(fp_dec);
+  acc_source_flush(user_kernel_declarations);
 
   // Astaroth 2.0 backwards compatibility END
 }
@@ -10685,7 +10775,7 @@ gen_output_files(ASTNode* root)
   gen_user_defines(root, "user_defines.h");
   gen_kernel_structs(root);
   stencilgen(root);
-  gen_user_kernels("user_kernel_declarations.h");
+  gen_user_kernels();
   FILE *fp = fopen("user_typedefs.h","a");
   fprintf(fp,"typedef enum{\n");
   string_vec datatypes = get_all_datatypes();
@@ -11600,8 +11690,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   generate_error_messages();
 
-  // Generate user_kernels.h
-  fprintf(stream, "#pragma once\n");
+  // Generate user_kernels.cu
+  fprintf(stream, "#include \"user_kernel.h\"\n\n");
 
   generate_fields_info(root);
   symboltable_reset();
@@ -11708,9 +11798,10 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 void
 compile_helper(const bool log)
 {
-  format_source("user_kernels.h.raw","user_kernels.h");
-  copy_file("user_kernels.h","user_kernels_backup.h");
-  copy_file("user_kernels.h","user_cpu_kernels.h");
+  format_source("user_kernels.cu.raw","user_kernels.cu");
+  copy_file("user_kernels.cu","user_kernels_backup.cu");
+  copy_file("user_kernels.cu","user_cpu_kernels.cc");
+  acc_sources_manager_flush(acc_sources_manager_singleton());
   if(log)
   {
   	printf("Compiling %s...\n", STENCILACC_SRC);
@@ -11724,7 +11815,7 @@ compile_helper(const bool log)
   }
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "%s -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
+  sprintf(cmd, "%s -I. -I " ACC_DIR "/.. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
   ,get_compiler(true),api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );
@@ -11773,8 +11864,8 @@ get_executed_nodes(const int round)
 {
 	compile_helper(false);
 	char dst[4096];
-	sprintf(dst,"user_kernels_round_%d.h",round);
-  	format_source("user_kernels.h",dst);
+	sprintf(dst,"user_kernels_round_%d.inc",round);
+  	format_source("user_kernels.cu",dst);
   	FILE* proc = popen("./" STENCILACC_EXEC " -C", "r");
   	assert(proc);
 	check_status(pclose(proc));
