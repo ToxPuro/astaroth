@@ -21,7 +21,7 @@ var searchData=
   ['errchk_5fcuda_5falways_18',['ERRCHK_CUDA_ALWAYS',['../errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee',1,'errchk.h']]],
   ['errchk_5fcuda_5fkernel_19',['ERRCHK_CUDA_KERNEL',['../errchk_8h.html#a989344a6ffee89d48309fea92999e6cd',1,'errchk.h']]],
   ['errchk_5fcuda_5fkernel_5falways_20',['ERRCHK_CUDA_KERNEL_ALWAYS',['../errchk_8h.html#a5b1648923d10009d9101dba333776cf7',1,'errchk.h']]],
-  ['error_21',['error',['../structError.html',1,'Error'],['../vecs_8h.html#ab70064e6ae258de4a1d0811824412152',1,'error:&#160;vecs.h'],['../errchk_8h.html#a39b3cc118c8339855e5578335a0b2417',1,'ERROR:&#160;errchk.h'],['../kiss__fft__log_8h.html#a8fe83ac76edc595f6b98cd4a4127aed5',1,'ERROR:&#160;kiss_fft_log.h']]],
+  ['error_21',['error',['../structError.html',1,'Error'],['../errchk_8h.html#a39b3cc118c8339855e5578335a0b2417',1,'ERROR:&#160;errchk.h'],['../kiss__fft__log_8h.html#a8fe83ac76edc595f6b98cd4a4127aed5',1,'ERROR:&#160;kiss_fft_log.h'],['../vecs_8h.html#ab70064e6ae258de4a1d0811824412152',1,'error:&#160;vecs.h']]],
   ['error_5fmessage_22',['error_message',['../acc__runtime_8cu.html#a690f8ad21232a5ea0bfb62b8887d46f0',1,'acc_runtime.cu']]],
   ['errorbar_23',['errorbar',['../namespacematplotlibcpp.html#a44ccb9a7b34bc240b8cc8b3095dd8537',1,'matplotlibcpp']]],
   ['eta_24',['eta',['../samples_2test_2PC__modulepardecs_8h.html#a3bf30168499b2b1234844547341f4705',1,'PC_modulepardecs.h']]],

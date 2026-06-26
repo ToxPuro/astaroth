@@ -45,10 +45,10 @@ var host__datatypes_8h =
       [ "PROFILE_ZY", "host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88a0b92292bdfe9e60ab755e077bc589391", null ]
     ] ],
     [ "AcReduceOp", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95", [
-      [ "NO_REDUCE", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95a001a4778587eaec0d67ffbcf4279ce38", null ],
-      [ "REDUCE_MIN", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95adb3866bc643932f773582218a4ba4f6a", null ],
-      [ "REDUCE_MAX", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95a1c72e5bd0886194ac31d693e50294088", null ],
-      [ "REDUCE_SUM", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95a5e32ce8a9bed04ef62416aad49c6adf0", null ]
+      [ "AC_REDUCE_OP_NO_REDUCE", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95ac525270ce7960b2bc5a14c4709134595", null ],
+      [ "AC_REDUCE_OP_MIN", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95a21fc16cf37f43c08430e7ba57adfebf9", null ],
+      [ "AC_REDUCE_OP_MAX", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95a63e264775b1e6f93b8b9a8b08e798c57", null ],
+      [ "AC_REDUCE_OP_SUM", "host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95a4eb337560cec007eff7fe1e56419b568", null ]
     ] ],
     [ "AcResult", "host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d", [
       [ "AC_SUCCESS", "host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf", null ],

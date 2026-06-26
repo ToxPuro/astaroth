@@ -62,7 +62,7 @@ var searchData=
   ['kiss_5ffft_5fcpx_59',['kiss_fft_cpx',['../structkiss__fft__cpx.html',1,'']]],
   ['kiss_5ffft_5fdebug_60',['KISS_FFT_DEBUG',['../kiss__fft__log_8h.html#a839ae15e8f6d48d8185c37314ddd7f23',1,'kiss_fft_log.h']]],
   ['kiss_5ffft_5ferror_61',['KISS_FFT_ERROR',['../kiss__fft__log_8h.html#ab8346c14c6a08e7d6b475b62881c2fce',1,'kiss_fft_log.h']]],
-  ['kiss_5ffft_5ffree_62',['kiss_fft_free',['../kiss__fft_8h.html#a167bff53d1f15bc13289353390b7faae',1,'KISS_FFT_FREE:&#160;kiss_fft.h'],['../kiss__fft_8h.html#a62e86236e852945b8e120d0228377d71',1,'kiss_fft_free:&#160;kiss_fft.h']]],
+  ['kiss_5ffft_5ffree_62',['kiss_fft_free',['../kiss__fft_8h.html#a62e86236e852945b8e120d0228377d71',1,'kiss_fft_free:&#160;kiss_fft.h'],['../kiss__fft_8h.html#a167bff53d1f15bc13289353390b7faae',1,'KISS_FFT_FREE:&#160;kiss_fft.h']]],
   ['kiss_5ffft_5finfo_63',['KISS_FFT_INFO',['../kiss__fft__log_8h.html#a117cff3289d6f953f65c7c517a16ed59',1,'kiss_fft_log.h']]],
   ['kiss_5ffft_5flog_2eh_64',['kiss_fft_log.h',['../kiss__fft__log_8h.html',1,'']]],
   ['kiss_5ffft_5flog_5fmsg_65',['KISS_FFT_LOG_MSG',['../kiss__fft__log_8h.html#af059bc9c0d55a3d8f2f28e1aaa83b12d',1,'kiss_fft_log.h']]],
