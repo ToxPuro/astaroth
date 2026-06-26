@@ -2894,7 +2894,7 @@ preprocess_reduce_buffers(const AcTaskGraph* graph)
 		acDevicePreprocessScratchPad(grid.device,output.variable,output.type,output.op);
 	const auto reduced_profiles = get_reduced_profiles(graph);
 	for(const auto& profile: reduced_profiles)
-		acDevicePreprocessScratchPad(grid.device,profile,AC_PROF_TYPE,REDUCE_SUM);
+		acDevicePreprocessScratchPad(grid.device,profile,AC_PROF_TYPE,AC_REDUCE_OP_SUM);
 }
 
 AcResult
@@ -2949,14 +2949,14 @@ to_mpi_op(const AcReduceOp op)
 {
 	switch(op)
 	{
-		case(REDUCE_SUM):
+		case(AC_REDUCE_OP_SUM):
 			return MPI_SUM;
-		case(REDUCE_MIN):
+		case(AC_REDUCE_OP_MIN):
 			return MPI_MIN;
-		case(REDUCE_MAX):
+		case(AC_REDUCE_OP_MAX):
 			return MPI_MAX;
-		case(NO_REDUCE):
-			fatal("%s","Should not call to_mpi_op for NO_REDUCE\n");
+		case(AC_REDUCE_OP_NO_REDUCE):
+			fatal("%s","Should not call to_mpi_op for AC_REDUCE_OP_NO_REDUCE\n");
 	}
 	fatal("%s","No mapping from AcReduceOp to MPI_Op\n");
 }
