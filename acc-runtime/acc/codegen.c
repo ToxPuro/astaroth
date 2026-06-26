@@ -1564,14 +1564,24 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 		if(datatype_scalar != REAL_STR)
 		{
-			fprintf_filename("reduce_helpers.h",
-					"__device__  __constant__ %s* d_symbol_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
-					"static %s* d_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
-					"static size_t d_reduce_scratchpads_size_%s[NUM_%s_OUTPUTS+1];\n"
-					"__device__ __constant__ %s d_reduce_%s_res_symbol[NUM_%s_OUTPUTS+1];\n"
-					,datatype_scalar,define_name,uppr_name,datatype_scalar,define_name,uppr_name,define_name,uppr_name
-					,datatype_scalar,define_name,uppr_name
-					);
+		fprintf_filename("reduce_helpers.h",
+				"__device__  __constant__ %s* d_symbol_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
+				"static %s* d_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
+				"static size_t d_reduce_scratchpads_size_%s[NUM_%s_OUTPUTS+1];\n"
+				"__device__ __constant__ %s d_reduce_%s_res_symbol[NUM_%s_OUTPUTS+1];\n"
+				,datatype_scalar,define_name,uppr_name,datatype_scalar,define_name,uppr_name,define_name,uppr_name
+				,datatype_scalar,define_name,uppr_name
+				);
+		}
+		else
+		{
+		fprintf_filename("reduce_helpers.h",
+				"__device__ __constant__ AcReal* d_symbol_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];\n"
+				"__device__ __constant__ AcReal d_reduce_%s_res_symbol[NUM_%s_SCRATCHPADS];\n"
+				"static AcReal* d_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];\n"
+				"static size_t d_reduce_scratchpads_size_%s[NUM_%s_SCRATCHPADS];\n"
+				,define_name,uppr_name,define_name,uppr_name,define_name,uppr_name,define_name,uppr_name
+				);
 		}
 		fprintf_filename("reduce_helpers.h",
 				"%s** \n"
