@@ -91,4 +91,21 @@ cudaError_t
 acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream);
 cudaError_t
 acStreamCreateWithPriority(cudaStream_t* dst, int option, int priority);
+
+#if AC_CPU_BUILD
+cudaError_t
+acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind kind);
+cudaError_t
+acMemcpyToSymbolAsync(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream);
+cudaError_t
+acMemcpyFromSymbol(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind);
+cudaError_t
+acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream);
+#else
+#define acMemcpyToSymbol cudaMemcpyToSymbol
+#define acMemcpyToSymbolAsync cudaMemcpyToSymbolAsync
+#define acMemcpyFromSymbol cudaMemcpyFromSymbol
+#define acMemcpyFromSymbolAsync cudaMemcpyFromSymbolAsync
+#endif
+
 #endif
