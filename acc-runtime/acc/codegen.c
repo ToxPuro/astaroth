@@ -1107,7 +1107,7 @@ output_array_info(FILE* fp, array_info info, const ASTNode* root)
 		const char* from_config = integer_dim ? "false" : "true";
 		if(dim >= info.dims.size) 
 		{
-			fprintf(fp,"{-1,NULL,%s,false},",from_config);
+			fprintf(fp,"{-1,nullptr,%s,false},",from_config);
 			continue;
 		}
 		const ASTNode* base = get_node_by_token(IDENTIFIER,info.dims.data[dim]);
@@ -1115,11 +1115,11 @@ output_array_info(FILE* fp, array_info info, const ASTNode* root)
 		const ASTNode* member = get_node(NODE_MEMBER_ID,info.dims.data[dim]);
 		if(!base)
 		{
-			fprintf(fp,"{%s,NULL,%s,%d},",combine_all_new(info.dims.data[dim]),from_config,run_const);
+			fprintf(fp,"{%s,nullptr,%s,%d},",combine_all_new(info.dims.data[dim]),from_config,run_const);
 			continue;
 		}
 		if(!member)
-			fprintf(fp,"{%s,NULL,%s,%d},",base->buffer,from_config,run_const);
+			fprintf(fp,"{%s,nullptr,%s,%d},",base->buffer,from_config,run_const);
 		else
 		{
 			if(integer_dim)
@@ -1226,7 +1226,7 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   //pad one extra to silence warnings
   fprintf(fp,"\n{false,-1,{{");
   for(int i = 0; i  < MAX_ARRAY_RANK; ++i)
-	  fprintf(fp,"{-1,NULL,false,false}%s",i < MAX_ARRAY_RANK-1 ? "," : "");
+	  fprintf(fp,"{-1,nullptr,false,false}%s",i < MAX_ARRAY_RANK-1 ? "," : "");
   fprintf(fp,"}},");
   fprintf(fp,"\"AC_EXTRA_PADDING\",true,true}");
   fprintf(fp, "\n};");
