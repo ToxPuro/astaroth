@@ -382,11 +382,6 @@ static std::vector<TBConfig> tbconfigs;
 
 static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
 
-__device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-__device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
-
-static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
 #include "reduce_helpers.h"
 
 void
