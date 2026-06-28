@@ -806,6 +806,23 @@ gen_postprocessing_metadata()
 	fclose(header_file);
     }
 }
+bool
+mpi_finalized()
+{
+	int finalized = 0;
+	MPI_Finalized(&finalized);
+	return finalized;
+}
+
+void
+ac_clean_mpi(void)
+{
+    if (!mpi_finalized())
+    {
+      	acLogFromRootProc(ac_pid(), "Astaroth exiting: MPI_Finalize was not called. Since I initialized MPI I am finalizing it now!\n");
+	MPI_Finalize();
+    }
+}
 
 AcResult
 acGridInitBase(const AcMesh user_mesh)
@@ -826,7 +843,11 @@ acGridInitBase(const AcMesh user_mesh)
     if (!grid.mpi_initialized)
       create_astaroth_comm(info);
 
-    if(!mpi_has_been_initialized) acLogFromRootProc(ac_pid(), "acGridInit: MPI was not initialized so called MPI_Init_thread with MPI_THREAD_MULTIPLE\n");
+    if(!mpi_has_been_initialized) 
+    {
+      acLogFromRootProc(ac_pid(), "acGridInit: MPI was not initialized so called MPI_Init_thread with MPI_THREAD_MULTIPLE\n");
+      atexit(ac_clean_mpi);
+    }
 
     if(
 	info[AC_ngrid].x < 0 ||
