@@ -26,7 +26,7 @@ get_info()
 
 
 
-#include "taskgraph_kernels.h"
+#include "taskgraph_kernels.inc"
 #include "taskgraph_bc_handles.inc"
 #include "taskgraph_kernel_bcs.inc"
 
