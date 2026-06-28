@@ -120,7 +120,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="preprocessor">#include &quot;<a class="code" href="device__details_8h.html">device_details.h</a>&quot;</span></div>
 <div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="preprocessor">#include &quot;<a class="code" href="acc__runtime_8h.html">acc_runtime.h</a>&quot;</span></div>
 <div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span><span class="preprocessor">#include &quot;kernels.h&quot;</span></div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#include &quot;user_defines_runtime_lib.h&quot;</span></div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#include &quot;user_defines_runtime_lib.inc&quot;</span></div>
 <div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="preprocessor">#include &quot;<a class="code" href="static__analysis_8h.html">static_analysis.h</a>&quot;</span></div>
 <div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span> </div>
 <div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#include &quot;../acc/string_vec.h&quot;</span></div>
@@ -143,8 +143,8 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="preprocessor">#include &lt;unordered_map&gt;</span></div>
 <div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span><span class="preprocessor">#include &lt;utility&gt;</span></div>
 <div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="preprocessor">#include &lt;sys/stat.h&gt;</span></div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="preprocessor">#include &quot;user_kernel_declarations.h&quot;</span></div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="preprocessor">#include &quot;kernel_reduce_info.h&quot;</span></div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="preprocessor">#include &quot;user_kernel_declarations.inc&quot;</span></div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="preprocessor">#include &quot;kernel_reduce_info.inc&quot;</span></div>
 <div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span> </div>
 <div class="line"><a id="l00049" name="l00049"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#a22aa0659c9e26b9557fb9e2dc4827aa8">   49</a></span><span class="preprocessor">#define USE_COMPRESSIBLE_MEMORY (0)</span></div>
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span> </div>
@@ -278,7 +278,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 </div>
 <div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span> </div>
 <div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span> </div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span><span class="preprocessor">#include &quot;stencil_accesses.h&quot;</span></div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span><span class="preprocessor">#include &quot;stencil_accesses.inc&quot;</span></div>
 <div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span><span class="preprocessor">#include &quot;../acc/mem_access_helper_funcs.h&quot;</span></div>
 <div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span> </div>
 <div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span><span class="keyword">static</span> <a class="code hl_struct" href="structVolume.html">Volume</a></div>
@@ -505,8 +505,8 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00389" name="l00389"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#ab7b7bffdc46e1140d9304ac947b97e6f">  389</a></span><span class="preprocessor">#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME </span></div>
 <div class="line"><a id="l00390" name="l00390"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#a1842622dd5252ac35d4f87e616526fff">  390</a></span><span class="preprocessor">#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]</span></div>
 <div class="line"><a id="l00391" name="l00391"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#a185dd75c52b9cef072553290bd9d0a4b">  391</a></span><span class="preprocessor">#define DECLARE_DCONST_ARRAY(DATATYPE,DEFINE_NAME,ARR_NAME,LEN) static UNUSED __device__ __constant__ DATATYPE AC_INTERNAL_d_##DEFINE_NAME##_arrays_##ARR_NAME[LEN];</span></div>
-<div class="line"><a id="l00392" name="l00392"></a><span class="lineno">  392</span><span class="preprocessor">#include &quot;dconst_arrays_decl.h&quot;</span></div>
-<div class="line"><a id="l00393" name="l00393"></a><span class="lineno">  393</span><span class="preprocessor">#include &quot;gmem_arrays_decl.h&quot;</span></div>
+<div class="line"><a id="l00392" name="l00392"></a><span class="lineno">  392</span><span class="preprocessor">#include &quot;dconst_arrays_decl.inc&quot;</span></div>
+<div class="line"><a id="l00393" name="l00393"></a><span class="lineno">  393</span><span class="preprocessor">#include &quot;gmem_arrays_decl.inc&quot;</span></div>
 <div class="line"><a id="l00394" name="l00394"></a><span class="lineno">  394</span> </div>
 <div class="foldopen" id="foldopen00395" data-start="{" data-end="};">
 <div class="line"><a id="l00395" name="l00395"></a><span class="lineno"><a class="line" href="structTBConfig.html">  395</a></span><span class="keyword">typedef</span> <span class="keyword">struct </span>{</div>
@@ -525,7 +525,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00407" name="l00407"></a><span class="lineno">  407</span> </div>
 <div class="line"><a id="l00408" name="l00408"></a><span class="lineno">  408</span><span class="keyword">static</span> <a class="code hl_typedef" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];</div>
 <div class="line"><a id="l00409" name="l00409"></a><span class="lineno">  409</span><span class="keyword">static</span> <span class="keywordtype">size_t</span> d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];</div>
-<div class="line"><a id="l00410" name="l00410"></a><span class="lineno">  410</span><span class="preprocessor">#include &quot;reduce_helpers.h&quot;</span></div>
+<div class="line"><a id="l00410" name="l00410"></a><span class="lineno">  410</span><span class="preprocessor">#include &quot;reduce_helpers.inc&quot;</span></div>
 <div class="line"><a id="l00411" name="l00411"></a><span class="lineno">  411</span> </div>
 <div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span><span class="keywordtype">void</span></div>
 <div class="foldopen" id="foldopen00413" data-start="{" data-end="}">
@@ -552,11 +552,11 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00430" name="l00430"></a><span class="lineno">  430</span><span class="comment">// Astaroth 2.0 backwards compatibility START</span></div>
 <div class="line"><a id="l00431" name="l00431"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#adb11b936e6ba7fb80d89da9df6ef6b5b">  431</a></span><span class="preprocessor">#define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])</span></div>
 <div class="line"><a id="l00432" name="l00432"></a><span class="lineno">  432</span> </div>
-<div class="line"><a id="l00433" name="l00433"></a><span class="lineno">  433</span><span class="preprocessor">#include &quot;dconst_decl.h&quot;</span></div>
-<div class="line"><a id="l00434" name="l00434"></a><span class="lineno">  434</span><span class="preprocessor">#include &quot;output_value_decl.h&quot;</span></div>
-<div class="line"><a id="l00435" name="l00435"></a><span class="lineno">  435</span><span class="preprocessor">#include &quot;get_address.h&quot;</span></div>
-<div class="line"><a id="l00436" name="l00436"></a><span class="lineno">  436</span><span class="preprocessor">#include &quot;load_dconst_arrays.h&quot;</span></div>
-<div class="line"><a id="l00437" name="l00437"></a><span class="lineno">  437</span><span class="preprocessor">#include &quot;store_dconst_arrays.h&quot;</span></div>
+<div class="line"><a id="l00433" name="l00433"></a><span class="lineno">  433</span><span class="preprocessor">#include &quot;dconst_decl.inc&quot;</span></div>
+<div class="line"><a id="l00434" name="l00434"></a><span class="lineno">  434</span><span class="preprocessor">#include &quot;output_value_decl.inc&quot;</span></div>
+<div class="line"><a id="l00435" name="l00435"></a><span class="lineno">  435</span><span class="preprocessor">#include &quot;get_address.inc&quot;</span></div>
+<div class="line"><a id="l00436" name="l00436"></a><span class="lineno">  436</span><span class="preprocessor">#include &quot;load_dconst_arrays.inc&quot;</span></div>
+<div class="line"><a id="l00437" name="l00437"></a><span class="lineno">  437</span><span class="preprocessor">#include &quot;store_dconst_arrays.inc&quot;</span></div>
 <div class="line"><a id="l00438" name="l00438"></a><span class="lineno">  438</span> </div>
 <div class="foldopen" id="foldopen00439" data-start="" data-end="">
 <div class="line"><a id="l00439" name="l00439"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#a3da0af7daef0c6dfd45419b1d1b8a1ff">  439</a></span><span class="preprocessor">#define PROFILE_X_Y_OR_Z_INDEX(i,j) \</span></div>
@@ -633,8 +633,8 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00496" name="l00496"></a><span class="lineno">  496</span>}</div>
 </div>
 <div class="line"><a id="l00497" name="l00497"></a><span class="lineno">  497</span> </div>
-<div class="line"><a id="l00498" name="l00498"></a><span class="lineno">  498</span><span class="preprocessor">#include &quot;device_fields_info.h&quot;</span></div>
-<div class="line"><a id="l00499" name="l00499"></a><span class="lineno">  499</span><span class="preprocessor">#include &quot;device_output_info.h&quot;</span></div>
+<div class="line"><a id="l00498" name="l00498"></a><span class="lineno">  498</span><span class="preprocessor">#include &quot;device_fields_info.inc&quot;</span></div>
+<div class="line"><a id="l00499" name="l00499"></a><span class="lineno">  499</span><span class="preprocessor">#include &quot;device_output_info.inc&quot;</span></div>
 <div class="line"><a id="l00500" name="l00500"></a><span class="lineno">  500</span> </div>
 <div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span><span class="keyword">static</span> __device__ <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a></div>
 <div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span><a class="code hl_struct" href="structint3.html">int3</a></div>
@@ -663,12 +663,12 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span> </div>
 <div class="line"><a id="l00526" name="l00526"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#a355892c8f5184273bc352d99c4b036f7">  526</a></span><span class="preprocessor">#define postprocess_reduce_result(DST,OP)</span></div>
 <div class="line"><a id="l00527" name="l00527"></a><span class="lineno">  527</span> </div>
-<div class="line"><a id="l00528" name="l00528"></a><span class="lineno">  528</span><span class="preprocessor">#include &quot;user_kernels.h&quot;</span></div>
+<div class="line"><a id="l00528" name="l00528"></a><span class="lineno">  528</span><span class="preprocessor">#include &quot;user_kernels.inc&quot;</span></div>
 <div class="line"><a id="l00529" name="l00529"></a><span class="lineno">  529</span><span class="preprocessor">#undef size</span></div>
 <div class="line"><a id="l00530" name="l00530"></a><span class="lineno">  530</span><span class="preprocessor">#undef longlong</span></div>
 <div class="line"><a id="l00531" name="l00531"></a><span class="lineno">  531</span> </div>
-<div class="line"><a id="l00532" name="l00532"></a><span class="lineno">  532</span><span class="preprocessor">#include &quot;user_built-in_constants.h&quot;</span></div>
-<div class="line"><a id="l00533" name="l00533"></a><span class="lineno">  533</span><span class="preprocessor">#include &quot;user_builtin_non_scalar_constants.h&quot;</span></div>
+<div class="line"><a id="l00532" name="l00532"></a><span class="lineno">  532</span><span class="preprocessor">#include &quot;user_built-in_constants.inc&quot;</span></div>
+<div class="line"><a id="l00533" name="l00533"></a><span class="lineno">  533</span><span class="preprocessor">#include &quot;user_builtin_non_scalar_constants.inc&quot;</span></div>
 <div class="line"><a id="l00534" name="l00534"></a><span class="lineno">  534</span> </div>
 <div class="line"><a id="l00535" name="l00535"></a><span class="lineno">  535</span><span class="keywordtype">bool</span></div>
 <div class="line"><a id="l00536" name="l00536"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#a54da622bd87b2b9e5935f8c82dadb5c5">  536</a></span><a class="code hl_function" href="acc__runtime_8cu.html#a54da622bd87b2b9e5935f8c82dadb5c5">acRuntimeIsInitialized</a>() { <span class="keywordflow">return</span> initialized; }</div>
@@ -1042,8 +1042,8 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00878" name="l00878"></a><span class="lineno">  878</span>    <span class="keywordflow">return</span> retval == <a class="code hl_define" href="hip_8h.html#a04a9de68edab0d52cdb600a2d76ca6ac">cudaSuccess</a> ? <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a> : <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da9fd47a52eddf507ba682403bd3a4728a">AC_FAILURE</a>;</div>
 <div class="line"><a id="l00879" name="l00879"></a><span class="lineno">  879</span>}</div>
 <div class="line"><a id="l00880" name="l00880"></a><span class="lineno">  880</span> </div>
-<div class="line"><a id="l00881" name="l00881"></a><span class="lineno">  881</span><span class="preprocessor">#include &quot;memcpy_to_gmem_arrays.h&quot;</span></div>
-<div class="line"><a id="l00882" name="l00882"></a><span class="lineno">  882</span><span class="preprocessor">#include &quot;memcpy_from_gmem_arrays.h&quot;</span></div>
+<div class="line"><a id="l00881" name="l00881"></a><span class="lineno">  881</span><span class="preprocessor">#include &quot;memcpy_to_gmem_arrays.inc&quot;</span></div>
+<div class="line"><a id="l00882" name="l00882"></a><span class="lineno">  882</span><span class="preprocessor">#include &quot;memcpy_from_gmem_arrays.inc&quot;</span></div>
 <div class="line"><a id="l00883" name="l00883"></a><span class="lineno">  883</span> </div>
 <div class="line"><a id="l00884" name="l00884"></a><span class="lineno">  884</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> P, <span class="keyword">typename</span> V&gt;</div>
 <div class="line"><a id="l00885" name="l00885"></a><span class="lineno">  885</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div>
@@ -1121,7 +1121,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l00953" name="l00953"></a><span class="lineno">  953</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00954" name="l00954"></a><span class="lineno">  954</span>    <span class="keywordflow">return</span> <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a>;</div>
 <div class="line"><a id="l00955" name="l00955"></a><span class="lineno">  955</span>}</div>
-<div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span><span class="preprocessor">#include &quot;load_and_store_uniform_funcs.h&quot;</span></div>
+<div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span><span class="preprocessor">#include &quot;load_and_store_uniform_funcs.inc&quot;</span></div>
 <div class="line"><a id="l00957" name="l00957"></a><span class="lineno">  957</span> </div>
 <div class="line"><a id="l00958" name="l00958"></a><span class="lineno">  958</span><span class="comment">//TP: best would be to use carriage return to have a single line that keeps growing but that seems not always to be supported in SLURM environments. </span></div>
 <div class="line"><a id="l00959" name="l00959"></a><span class="lineno">  959</span><span class="comment">// Or at least requires actions from the user.</span></div>
@@ -1192,7 +1192,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l01017" name="l01017"></a><span class="lineno"> 1017</span>{</div>
 <div class="line"><a id="l01018" name="l01018"></a><span class="lineno"> 1018</span>  <span class="comment">//TP: have to set reduce offset zero since it might not be</span></div>
 <div class="line"><a id="l01019" name="l01019"></a><span class="lineno"> 1019</span>  vba.<a class="code hl_variable" href="structVertexBufferArray.html#a04a36f61d471b67658a4eb18bd3782d4">on_device</a>.<a class="code hl_variable" href="structDeviceVertexBufferArray.html#a3ee06ccf6e4a50b859b2919cab6f3e71">reduce_offset</a> = 0;</div>
-<div class="line"><a id="l01020" name="l01020"></a><span class="lineno"> 1020</span><span class="comment">//#include &quot;safe_vtxbuf_input_params.h&quot;</span></div>
+<div class="line"><a id="l01020" name="l01020"></a><span class="lineno"> 1020</span><span class="comment">//#include &quot;safe_vtxbuf_input_params.inc&quot;</span></div>
 <div class="line"><a id="l01021" name="l01021"></a><span class="lineno"> 1021</span>}</div>
 </div>
 <div class="line"><a id="l01022" name="l01022"></a><span class="lineno"> 1022</span> </div>
@@ -1517,7 +1517,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="foldopen" id="foldopen01339" data-start="{" data-end="}">
 <div class="line"><a id="l01339" name="l01339"></a><span class="lineno"><a class="line" href="acc__runtime_8cu.html#a30e6eb2603910e1bb7aecbfe58d628fd"> 1339</a></span><a class="code hl_function" href="acc__runtime_8cu.html#a30e6eb2603910e1bb7aecbfe58d628fd">acGetOptimizedKernel</a>(<span class="keyword">const</span> AcKernel kernel_enum, <span class="keyword">const</span> acKernelInputParams kernel_input_params)</div>
 <div class="line"><a id="l01340" name="l01340"></a><span class="lineno"> 1340</span>{</div>
-<div class="line"><a id="l01341" name="l01341"></a><span class="lineno"> 1341</span><span class="preprocessor">    #include &quot;user_kernels_ifs.h&quot;</span></div>
+<div class="line"><a id="l01341" name="l01341"></a><span class="lineno"> 1341</span><span class="preprocessor">    #include &quot;user_kernels_ifs.inc&quot;</span></div>
 <div class="line"><a id="l01342" name="l01342"></a><span class="lineno"> 1342</span>    (void)kernel_input_params;</div>
 <div class="line"><a id="l01343" name="l01343"></a><span class="lineno"> 1343</span>    <span class="keywordflow">return</span> kernel_enum;</div>
 <div class="line"><a id="l01344" name="l01344"></a><span class="lineno"> 1344</span>    <span class="comment">//return kernels[(int) kernel_enum];</span></div>
@@ -1569,7 +1569,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8cu_source.html',''); ini
 <div class="line"><a id="l01380" name="l01380"></a><span class="lineno"> 1380</span>}</div>
 </div>
 <div class="line"><a id="l01381" name="l01381"></a><span class="lineno"> 1381</span> </div>
-<div class="line"><a id="l01382" name="l01382"></a><span class="lineno"> 1382</span><span class="preprocessor">#include &quot;load_ac_kernel_params.h&quot;</span></div>
+<div class="line"><a id="l01382" name="l01382"></a><span class="lineno"> 1382</span><span class="preprocessor">#include &quot;load_ac_kernel_params.inc&quot;</span></div>
 <div class="line"><a id="l01383" name="l01383"></a><span class="lineno"> 1383</span> </div>
 <div class="line"><a id="l01384" name="l01384"></a><span class="lineno"> 1384</span><span class="keywordtype">int</span></div>
 <div class="foldopen" id="foldopen01385" data-start="{" data-end="}">

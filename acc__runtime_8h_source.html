@@ -144,11 +144,11 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00042" name="l00042"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#acaa06fbc27c59926a41e7575667e5280">   42</a></span><span class="preprocessor">#define CONSTEXPR</span></div>
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#a07d932791f722cd5b75c111e51ef2023">   43</a></span><span class="preprocessor">#define MAYBE_UNUSED</span></div>
 <div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="preprocessor">  #include &quot;user_defines.h&quot;</span></div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="preprocessor">  #include &quot;profiles_info.h&quot;</span></div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="preprocessor">  #include &quot;user_built-in_constants.h&quot;</span></div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>  <span class="comment">//#include &quot;user_builtin_non_scalar_constants.h&quot;</span></div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span><span class="preprocessor">  #include &quot;<a class="code" href="func__attributes_8h.html">func_attributes.h</a>&quot;</span></div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="preprocessor">#include &quot;user_defines.inc&quot;</span></div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="preprocessor">#include &quot;profiles_info.inc&quot;</span></div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="preprocessor">#include &quot;user_built-in_constants.inc&quot;</span></div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="comment">//#include &quot;user_builtin_non_scalar_constants.inc&quot;</span></div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span><span class="preprocessor">#include &quot;<a class="code" href="func__attributes_8h.html">func_attributes.h</a>&quot;</span></div>
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span> </div>
 <div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span><span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keywordtype">void</span> ac_library_not_yet_loaded()</div>
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>{</div>
@@ -188,7 +188,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>} <a class="code hl_struct" href="structAcReduction.html">AcReduction</a>;</div>
 </div>
 <div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span> </div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span><span class="preprocessor">  #include &quot;user_input_typedefs.h&quot;</span></div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span><span class="preprocessor">  #include &quot;user_input_typedefs.inc&quot;</span></div>
 <div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span> </div>
 <div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span><span class="preprocessor">#if AC_RUNTIME_COMPILATION</span></div>
 <div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span><span class="preprocessor">  #include &lt;dlfcn.h&gt;</span></div>
@@ -207,34 +207,34 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span> </div>
 <div class="foldopen" id="foldopen00100" data-start="{" data-end="};">
 <div class="line"><a id="l00100" name="l00100"></a><span class="lineno"><a class="line" href="structAcDeviceKernelOutput.html">  100</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span>{</div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="preprocessor">#include &quot;output_decl.h&quot;</span></div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="preprocessor">#include &quot;output_decl.inc&quot;</span></div>
 <div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>  } <a class="code hl_struct" href="structAcDeviceKernelOutput.html">AcDeviceKernelOutput</a>;</div>
 </div>
 <div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span> </div>
 <div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span> </div>
 <div class="foldopen" id="foldopen00105" data-start="{" data-end="};">
 <div class="line"><a id="l00105" name="l00105"></a><span class="lineno"><a class="line" href="structAcCompInfoLoaded.html">  105</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code hl_struct" href="structAcCompInfoLoaded.html">AcCompInfoLoaded</a> {</div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="preprocessor">#include &quot;comp_loaded_decl.h&quot;</span></div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="preprocessor">#include &quot;comp_loaded_decl.inc&quot;</span></div>
 <div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span><span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span><span class="preprocessor">#include &quot;loaded_info_access_operators.h&quot;</span></div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span><span class="preprocessor">#include &quot;loaded_info_access_operators.inc&quot;</span></div>
 <div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00110" name="l00110"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#aee661173bbe075f15074d32805bf8657">  110</a></span>  } <a class="code hl_struct" href="structAcCompInfoLoaded.html">AcCompInfoLoaded</a>;</div>
 </div>
 <div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span> </div>
 <div class="foldopen" id="foldopen00112" data-start="{" data-end="};">
 <div class="line"><a id="l00112" name="l00112"></a><span class="lineno"><a class="line" href="structAcCompInfoHasDefaultValue.html">  112</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code hl_struct" href="structAcCompInfoHasDefaultValue.html">AcCompInfoHasDefaultValue</a> {</div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span><span class="preprocessor">#include &quot;comp_loaded_decl.h&quot;</span></div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span><span class="preprocessor">#include &quot;comp_loaded_decl.inc&quot;</span></div>
 <div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span><span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span><span class="preprocessor">#include &quot;loaded_info_access_operators.h&quot;</span></div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span><span class="preprocessor">#include &quot;loaded_info_access_operators.inc&quot;</span></div>
 <div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00117" name="l00117"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#a8390b4865f16f944d33ba367ddb278fc">  117</a></span>  } <a class="code hl_struct" href="structAcCompInfoHasDefaultValue.html">AcCompInfoHasDefaultValue</a>;</div>
 </div>
 <div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span> </div>
 <div class="foldopen" id="foldopen00119" data-start="{" data-end="};">
 <div class="line"><a id="l00119" name="l00119"></a><span class="lineno"><a class="line" href="structAcCompInfoConfig.html">  119</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code hl_struct" href="structAcCompInfoConfig.html">AcCompInfoConfig</a>{</div>
-<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span><span class="preprocessor">#include &quot;comp_decl.h&quot;</span></div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span><span class="preprocessor">#include &quot;comp_decl.inc&quot;</span></div>
 <div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span><span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span><span class="preprocessor">#include &quot;comp_info_access_operators.h&quot;</span></div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span><span class="preprocessor">#include &quot;comp_info_access_operators.inc&quot;</span></div>
 <div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00124" name="l00124"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#ad433993ee8cbe972c886c465dba4031b">  124</a></span>  } <a class="code hl_struct" href="structAcCompInfoConfig.html">AcCompInfoConfig</a>;</div>
 </div>
@@ -247,18 +247,18 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span>  } <a class="code hl_struct" href="structAcCompInfo.html">AcCompInfo</a>;</div>
 </div>
 <div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span> </div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span><span class="preprocessor">  #ifdef __cplusplus</span></div>
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span><span class="preprocessor">#include &quot;is_comptime_param.h&quot;</span></div>
-<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span><span class="preprocessor">#include &quot;is_array_param.h&quot;</span></div>
-<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span><span class="preprocessor">#include &quot;is_output_param.h&quot;</span></div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span><span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span><span class="preprocessor">#include &quot;is_comptime_param.inc&quot;</span></div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span><span class="preprocessor">#include &quot;is_array_param.inc&quot;</span></div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span><span class="preprocessor">#include &quot;is_output_param.inc&quot;</span></div>
 <div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span> </div>
 <div class="foldopen" id="foldopen00138" data-start="{" data-end="};">
 <div class="line"><a id="l00138" name="l00138"></a><span class="lineno"><a class="line" href="structAcMeshInfoLoaded.html">  138</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code hl_struct" href="structAcMeshInfoLoaded.html">AcMeshInfoLoaded</a> {</div>
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span><span class="preprocessor">#include &quot;info_loaded_decl.h&quot;</span></div>
+<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span><span class="preprocessor">#include &quot;info_loaded_decl.inc&quot;</span></div>
 <div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span> </div>
 <div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span><span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span><span class="preprocessor">#include &quot;info_loaded_operator_decl.h&quot;</span></div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span><span class="preprocessor">#include &quot;info_loaded_operator_decl.inc&quot;</span></div>
 <div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00144" name="l00144"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#a9fff84f39caf8898683bd417c7c7c90c">  144</a></span>  } <a class="code hl_typedef" href="acc__runtime_8h.html#a9fff84f39caf8898683bd417c7c7c90c">AcMeshInfoLoadedInfo</a>;</div>
 </div>
@@ -267,7 +267,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="foldopen" id="foldopen00147" data-start="{" data-end="};">
 <div class="line"><a id="l00147" name="l00147"></a><span class="lineno"><a class="line" href="structAcMeshInfoScalars.html">  147</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code hl_struct" href="structAcMeshInfoScalars.html">AcMeshInfoScalars</a></div>
 <div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>  {</div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span><span class="preprocessor">#include &quot;device_mesh_info_decl.h&quot;</span></div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span><span class="preprocessor">#include &quot;device_mesh_info_decl.inc&quot;</span></div>
 <div class="line"><a id="l00150" name="l00150"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#aac5839b1e1c9df008cff960cb8d7c84d">  150</a></span>  } <a class="code hl_struct" href="structAcMeshInfoScalars.html">AcMeshInfoScalars</a>;</div>
 </div>
 <div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span> </div>
@@ -275,8 +275,8 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="foldopen" id="foldopen00153" data-start="{" data-end="};">
 <div class="line"><a id="l00153" name="l00153"></a><span class="lineno"><a class="line" href="structAcMeshInfo.html">  153</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a>{</div>
 <div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span> </div>
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span><span class="preprocessor">#include &quot;device_mesh_info_decl.h&quot;</span></div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span><span class="preprocessor">#include &quot;array_decl.h&quot;</span></div>
+<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span><span class="preprocessor">#include &quot;device_mesh_info_decl.inc&quot;</span></div>
+<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span><span class="preprocessor">#include &quot;array_decl.inc&quot;</span></div>
 <div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span> </div>
 <div class="line"><a id="l00158" name="l00158"></a><span class="lineno"><a class="line" href="structAcMeshInfo.html#abd7fc33a74349fa320000f6a84740015">  158</a></span>  <a class="code hl_struct" href="structAcMeshInfoLoaded.html">AcMeshInfoLoadedInfo</a> <a class="code hl_variable" href="structAcMeshInfo.html#abd7fc33a74349fa320000f6a84740015">is_loaded</a>;</div>
 <div class="line"><a id="l00159" name="l00159"></a><span class="lineno"><a class="line" href="structAcMeshInfo.html#a562de969d5f3c6e6374f7f998dd0d9fd">  159</a></span>  <span class="keyword">const</span> <span class="keywordtype">char</span>* <a class="code hl_variable" href="structAcMeshInfo.html#a562de969d5f3c6e6374f7f998dd0d9fd">runtime_compilation_log_dst</a>;</div>
@@ -289,7 +289,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00166" name="l00166"></a><span class="lineno"><a class="line" href="structAcMeshInfo.html#a8411944366b0d3be19f2b469e4fb95c9">  166</a></span>  <a class="code hl_struct" href="structAcCompInfo.html">AcCompInfo</a> <a class="code hl_variable" href="structAcMeshInfo.html#a8411944366b0d3be19f2b469e4fb95c9">run_consts</a>;</div>
 <div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span> </div>
 <div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span><span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span><span class="preprocessor">#include &quot;info_access_operators.h&quot;</span></div>
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span><span class="preprocessor">#include &quot;info_access_operators.inc&quot;</span></div>
 <div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00171" name="l00171"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#aa39425d76d8bae601c7b247f9ed3642a">  171</a></span>  } <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a>;</div>
 </div>
@@ -298,7 +298,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span> </div>
 <div class="foldopen" id="foldopen00175" data-start="{" data-end="};">
 <div class="line"><a id="l00175" name="l00175"></a><span class="lineno"><a class="line" href="structAcInputs.html">  175</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span>{</div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span><span class="preprocessor">#include &quot;input_decl.h&quot;</span></div>
+<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span><span class="preprocessor">#include &quot;input_decl.inc&quot;</span></div>
 <div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>  } <a class="code hl_struct" href="structAcInputs.html">AcInputs</a>;</div>
 </div>
 <div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span> </div>
@@ -346,7 +346,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span> </div>
 <div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span> </div>
 <div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span><span class="preprocessor">#include &quot;<a class="code" href="ac__helpers_8h.html">ac_helpers.h</a>&quot;</span></div>
-<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span><span class="preprocessor">#include &quot;scalar_reduce_buffer_defs.h&quot;</span></div>
+<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span><span class="preprocessor">#include &quot;scalar_reduce_buffer_defs.inc&quot;</span></div>
 <div class="line"><a id="l00218" name="l00218"></a><span class="lineno">  218</span> </div>
 <div class="foldopen" id="foldopen00219" data-start="{" data-end="};">
 <div class="line"><a id="l00219" name="l00219"></a><span class="lineno"><a class="line" href="structAcReduceBuffer.html">  219</a></span>  <span class="keyword">typedef</span> <span class="keyword">struct </span></div>
@@ -372,7 +372,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00237" name="l00237"></a><span class="lineno"><a class="line" href="structVertexBufferArray.html#a04a36f61d471b67658a4eb18bd3782d4">  237</a></span>    <a class="code hl_struct" href="structDeviceVertexBufferArray.html">DeviceVertexBufferArray</a> <a class="code hl_variable" href="structVertexBufferArray.html#a04a36f61d471b67658a4eb18bd3782d4">on_device</a>;</div>
 <div class="line"><a id="l00238" name="l00238"></a><span class="lineno"><a class="line" href="structVertexBufferArray.html#a20f785fee36cb2d78836f722143b39e5">  238</a></span>    <span class="keywordtype">size_t</span> <a class="code hl_variable" href="structVertexBufferArray.html#a20f785fee36cb2d78836f722143b39e5">profile_count</a>;</div>
 <div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span> </div>
-<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span><span class="preprocessor">#include &quot;scalar_reduce_buffers_in_vba.h&quot;</span></div>
+<div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span><span class="preprocessor">#include &quot;scalar_reduce_buffers_in_vba.inc&quot;</span></div>
 <div class="line"><a id="l00241" name="l00241"></a><span class="lineno">  241</span> </div>
 <div class="line"><a id="l00242" name="l00242"></a><span class="lineno"><a class="line" href="structVertexBufferArray.html#abad7ee4f5d2a0f3323b2b5a8093370cb">  242</a></span>    <a class="code hl_struct" href="structAcScratchpadStates.html">AcScratchpadStates</a>* <a class="code hl_variable" href="structVertexBufferArray.html#abad7ee4f5d2a0f3323b2b5a8093370cb">scratchpad_states</a>;</div>
 <div class="line"><a id="l00243" name="l00243"></a><span class="lineno"><a class="line" href="structVertexBufferArray.html#ab1225b9bf0b7e6b73ab88dd1bafde5d3">  243</a></span>    <a class="code hl_struct" href="structAcReduceBuffer.html">AcReduceBuffer</a> profile_reduce_buffers[NUM_PROFILES+1];</div>
@@ -460,7 +460,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00324" name="l00324"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#a2dc37370ea01b876c341fb30e17dee49">  324</a></span>  <a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="code hl_function" href="acc__runtime_8cu.html#ad79c9df3421c2bf87ae7060a706408b1">acStoreStencil</a>,(<span class="keyword">const</span> Stencil stencil, <span class="keyword">const</span> <a class="code hl_define" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="code hl_typedef" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));</div>
 <div class="line"><a id="l00325" name="l00325"></a><span class="lineno">  325</span> </div>
 <div class="line"><a id="l00326" name="l00326"></a><span class="lineno">  326</span> </div>
-<div class="line"><a id="l00328" name="l00328"></a><span class="lineno">  328</span><span class="preprocessor">#include &quot;load_and_store_uniform_header.h&quot;</span></div>
+<div class="line"><a id="l00328" name="l00328"></a><span class="lineno">  328</span><span class="preprocessor">#include &quot;load_and_store_uniform_header.inc&quot;</span></div>
 <div class="line"><a id="l00329" name="l00329"></a><span class="lineno">  329</span> </div>
 <div class="line"><a id="l00330" name="l00330"></a><span class="lineno">  330</span>  <span class="comment">// Diagnostics</span></div>
 <div class="line"><a id="l00331" name="l00331"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#afe019a972d4e372964582be105b71673">  331</a></span>  <a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<a class="code hl_struct" href="structVolume.html">Volume</a>, <a class="code hl_function" href="acc__runtime_8cu.html#a4bfef942621753f6046122510328bbd1">acKernelLaunchGetLastTPB</a>,(<span class="keywordtype">void</span>));</div>
@@ -557,7 +557,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00422" name="l00422"></a><span class="lineno">  422</span><span class="preprocessor">#include &lt;type_traits&gt;</span></div>
 <div class="line"><a id="l00423" name="l00423"></a><span class="lineno">  423</span><span class="preprocessor">#include &lt;string.h&gt;</span></div>
 <div class="line"><a id="l00424" name="l00424"></a><span class="lineno">  424</span> </div>
-<div class="line"><a id="l00425" name="l00425"></a><span class="lineno">  425</span><span class="preprocessor">#include &quot;load_comp_info.h&quot;</span></div>
+<div class="line"><a id="l00425" name="l00425"></a><span class="lineno">  425</span><span class="preprocessor">#include &quot;load_comp_info.inc&quot;</span></div>
 <div class="line"><a id="l00426" name="l00426"></a><span class="lineno">  426</span> </div>
 <div class="line"><a id="l00427" name="l00427"></a><span class="lineno">  427</span><span class="keywordtype">void</span> <a class="code hl_function" href="vba_8cc.html#af216c8b16f7a4e3eea61b587f4957154">acVBASwapBuffer</a>(<span class="keyword">const</span> Field field, <a class="code hl_struct" href="structVertexBufferArray.html">VertexBufferArray</a>* vba);</div>
 <div class="line"><a id="l00428" name="l00428"></a><span class="lineno">  428</span> </div>
@@ -592,8 +592,8 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00461" name="l00461"></a><span class="lineno">  461</span> </div>
 <div class="line"><a id="l00462" name="l00462"></a><span class="lineno">  462</span><span class="preprocessor">#define GEN_LOAD_COMP_INFO(PARAM_TYPE,VAL_TYPE,TYPE) \</span></div>
 <div class="line"><a id="l00463" name="l00463"></a><span class="lineno">  463</span><span class="preprocessor">  static AcResult __attribute__((unused)) acLoadCompInfo(const PARAM_TYPE param, const VAL_TYPE val, AcCompInfo* info) {return acLoad##TYPE##CompInfo(param,val,info);};</span></div>
-<div class="line"><a id="l00464" name="l00464"></a><span class="lineno">  464</span><span class="preprocessor">#include &quot;load_comp_info_overloads.h&quot;</span></div>
-<div class="line"><a id="l00465" name="l00465"></a><span class="lineno">  465</span><span class="preprocessor">#include &quot;load_ac_kernel_params_def.h&quot;</span></div>
+<div class="line"><a id="l00464" name="l00464"></a><span class="lineno">  464</span><span class="preprocessor">#include &quot;load_comp_info_overloads.inc&quot;</span></div>
+<div class="line"><a id="l00465" name="l00465"></a><span class="lineno">  465</span><span class="preprocessor">#include &quot;load_ac_kernel_params_def.inc&quot;</span></div>
 <div class="line"><a id="l00466" name="l00466"></a><span class="lineno">  466</span> </div>
 <div class="line"><a id="l00467" name="l00467"></a><span class="lineno">  467</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00468" name="l00468"></a><span class="lineno">  468</span> </div>
@@ -601,7 +601,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00470" name="l00470"></a><span class="lineno">  470</span>  <span class="keyword">constexpr</span> <span class="keyword">static</span> <a class="code hl_struct" href="structarray__info.html">array_info</a></div>
 <div class="line"><a id="l00471" name="l00471"></a><span class="lineno">  471</span>  <a class="code hl_function" href="codegen_8c.html#a6698ddee4fbe36cba8e639555c9a117d">get_array_info</a>(<span class="keyword">const</span> P array)</div>
 <div class="line"><a id="l00472" name="l00472"></a><span class="lineno">  472</span>  {</div>
-<div class="line"><a id="l00473" name="l00473"></a><span class="lineno">  473</span><span class="preprocessor">#include &quot;get_array_info.h&quot;</span></div>
+<div class="line"><a id="l00473" name="l00473"></a><span class="lineno">  473</span><span class="preprocessor">#include &quot;get_array_info.inc&quot;</span></div>
 <div class="line"><a id="l00474" name="l00474"></a><span class="lineno">  474</span>      <a class="code hl_define" href="errchk_8h.html#ac61a83f1e8c5a2ef1d6222d2ebd67698">ERRCHK_ALWAYS</a>(<span class="keyword">false</span>); <span class="comment">//did not find array info</span></div>
 <div class="line"><a id="l00475" name="l00475"></a><span class="lineno">  475</span>      <span class="keywordflow">return</span> (<a class="code hl_struct" href="structarray__info.html">array_info</a>){};</div>
 <div class="line"><a id="l00476" name="l00476"></a><span class="lineno">  476</span>  }</div>
@@ -651,7 +651,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00520" name="l00520"></a><span class="lineno">  520</span>  <span class="keyword">constexpr</span> <span class="keyword">const</span> <span class="keywordtype">char</span>*</div>
 <div class="line"><a id="l00521" name="l00521"></a><span class="lineno">  521</span>  get_param_name(<span class="keyword">const</span> P param)</div>
 <div class="line"><a id="l00522" name="l00522"></a><span class="lineno">  522</span>  {</div>
-<div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span><span class="preprocessor">#include &quot;get_param_name.h&quot;</span></div>
+<div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span><span class="preprocessor">#include &quot;get_param_name.inc&quot;</span></div>
 <div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>      <span class="comment">//ERRCHK_ALWAYS(false); //did not find name</span></div>
 <div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span>      <span class="keywordflow">return</span> <span class="stringliteral">&quot;NOT FOUND!&quot;</span>;</div>
 <div class="line"><a id="l00526" name="l00526"></a><span class="lineno">  526</span>  }</div>
@@ -801,7 +801,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00670" name="l00670"></a><span class="lineno">  670</span>  get_num_params()</div>
 <div class="line"><a id="l00671" name="l00671"></a><span class="lineno">  671</span>  {</div>
 <div class="line"><a id="l00672" name="l00672"></a><span class="lineno">  672</span>      <span class="keyword">const</span> <span class="keywordtype">int</span> res=</div>
-<div class="line"><a id="l00673" name="l00673"></a><span class="lineno">  673</span><span class="preprocessor">#include &quot;get_num_params.h&quot;</span></div>
+<div class="line"><a id="l00673" name="l00673"></a><span class="lineno">  673</span><span class="preprocessor">#include &quot;get_num_params.inc&quot;</span></div>
 <div class="line"><a id="l00674" name="l00674"></a><span class="lineno">  674</span>          -1;</div>
 <div class="line"><a id="l00675" name="l00675"></a><span class="lineno">  675</span>      <span class="keyword">static_assert</span>(res &gt;= 0);</div>
 <div class="line"><a id="l00676" name="l00676"></a><span class="lineno">  676</span>      <span class="keywordflow">return</span> res;</div>
@@ -850,12 +850,12 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00719" name="l00719"></a><span class="lineno">  719</span>  get_empty_pointer(<span class="keyword">const</span> P param)</div>
 <div class="line"><a id="l00720" name="l00720"></a><span class="lineno">  720</span>  {</div>
 <div class="line"><a id="l00721" name="l00721"></a><span class="lineno">  721</span>   (void)param;</div>
-<div class="line"><a id="l00722" name="l00722"></a><span class="lineno">  722</span><span class="preprocessor">#include &quot;get_empty_pointer.h&quot;</span></div>
+<div class="line"><a id="l00722" name="l00722"></a><span class="lineno">  722</span><span class="preprocessor">#include &quot;get_empty_pointer.inc&quot;</span></div>
 <div class="line"><a id="l00723" name="l00723"></a><span class="lineno">  723</span>  }   </div>
 <div class="line"><a id="l00724" name="l00724"></a><span class="lineno">  724</span> </div>
 <div class="line"><a id="l00725" name="l00725"></a><span class="lineno">  725</span>  </div>
 <div class="line"><a id="l00726" name="l00726"></a><span class="lineno">  726</span> </div>
-<div class="line"><a id="l00727" name="l00727"></a><span class="lineno">  727</span><span class="preprocessor">#include &quot;load_and_store_uniform_overloads.h&quot;</span></div>
+<div class="line"><a id="l00727" name="l00727"></a><span class="lineno">  727</span><span class="preprocessor">#include &quot;load_and_store_uniform_overloads.inc&quot;</span></div>
 <div class="line"><a id="l00728" name="l00728"></a><span class="lineno">  728</span>  </div>
 <div class="line"><a id="l00729" name="l00729"></a><span class="lineno">  729</span>  <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span>... Ts&gt;</div>
 <div class="line"><a id="l00730" name="l00730"></a><span class="lineno">  730</span>  <span class="keyword">struct </span>ForEach</div>
@@ -880,23 +880,23 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00749" name="l00749"></a><span class="lineno">  749</span> </div>
 <div class="line"><a id="l00750" name="l00750"></a><span class="lineno">  750</span> </div>
 <div class="line"><a id="l00751" name="l00751"></a><span class="lineno">  751</span>  <span class="keyword">using </span>AcScalarTypes = ForEach&lt;</div>
-<div class="line"><a id="l00752" name="l00752"></a><span class="lineno">  752</span><span class="preprocessor">#include &quot;scalar_types.h&quot;</span></div>
+<div class="line"><a id="l00752" name="l00752"></a><span class="lineno">  752</span><span class="preprocessor">#include &quot;scalar_types.inc&quot;</span></div>
 <div class="line"><a id="l00753" name="l00753"></a><span class="lineno">  753</span>  AcIntParam</div>
 <div class="line"><a id="l00754" name="l00754"></a><span class="lineno">  754</span>  &gt;;</div>
 <div class="line"><a id="l00755" name="l00755"></a><span class="lineno">  755</span> </div>
 <div class="line"><a id="l00756" name="l00756"></a><span class="lineno">  756</span>  <span class="keyword">using </span>AcScalarCompTypes = ForEach&lt;</div>
-<div class="line"><a id="l00757" name="l00757"></a><span class="lineno">  757</span><span class="preprocessor">#include &quot;scalar_comp_types.h&quot;</span></div>
+<div class="line"><a id="l00757" name="l00757"></a><span class="lineno">  757</span><span class="preprocessor">#include &quot;scalar_comp_types.inc&quot;</span></div>
 <div class="line"><a id="l00758" name="l00758"></a><span class="lineno">  758</span>  AcIntCompParam</div>
 <div class="line"><a id="l00759" name="l00759"></a><span class="lineno">  759</span>  &gt;;</div>
 <div class="line"><a id="l00760" name="l00760"></a><span class="lineno">  760</span>  </div>
 <div class="line"><a id="l00761" name="l00761"></a><span class="lineno">  761</span> </div>
 <div class="line"><a id="l00762" name="l00762"></a><span class="lineno">  762</span>  <span class="keyword">using </span>AcArrayTypes = ForEach&lt;</div>
-<div class="line"><a id="l00763" name="l00763"></a><span class="lineno">  763</span><span class="preprocessor">#include &quot;array_types.h&quot;</span></div>
+<div class="line"><a id="l00763" name="l00763"></a><span class="lineno">  763</span><span class="preprocessor">#include &quot;array_types.inc&quot;</span></div>
 <div class="line"><a id="l00764" name="l00764"></a><span class="lineno">  764</span>  AcIntArrayParam</div>
 <div class="line"><a id="l00765" name="l00765"></a><span class="lineno">  765</span>  &gt;;</div>
 <div class="line"><a id="l00766" name="l00766"></a><span class="lineno">  766</span> </div>
 <div class="line"><a id="l00767" name="l00767"></a><span class="lineno">  767</span>  <span class="keyword">using </span>AcArrayCompTypes = ForEach&lt;</div>
-<div class="line"><a id="l00768" name="l00768"></a><span class="lineno">  768</span><span class="preprocessor">#include &quot;array_comp_types.h&quot;</span></div>
+<div class="line"><a id="l00768" name="l00768"></a><span class="lineno">  768</span><span class="preprocessor">#include &quot;array_comp_types.inc&quot;</span></div>
 <div class="line"><a id="l00769" name="l00769"></a><span class="lineno">  769</span>  AcIntCompArrayParam</div>
 <div class="line"><a id="l00770" name="l00770"></a><span class="lineno">  770</span>  &gt;;</div>
 <div class="line"><a id="l00771" name="l00771"></a><span class="lineno">  771</span> </div>
@@ -1030,7 +1030,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="ttc" id="astructAcAutotuneMeasurement_html_aa766bdc21a35a06a5ede906a379272ba"><div class="ttname"><a href="structAcAutotuneMeasurement.html#aa766bdc21a35a06a5ede906a379272ba">AcAutotuneMeasurement::tpb</a></div><div class="ttdeci">dim3 tpb</div><div class="ttdef"><b>Definition</b> acc_runtime.h:255</div></div>
 <div class="ttc" id="astructAcAutotuneMeasurement_html_afa596f4b367cd5ad741ea97b451b9907"><div class="ttname"><a href="structAcAutotuneMeasurement.html#afa596f4b367cd5ad741ea97b451b9907">AcAutotuneMeasurement::time</a></div><div class="ttdeci">float time</div><div class="ttdef"><b>Definition</b> acc_runtime.h:254</div></div>
 <div class="ttc" id="astructAcBuffer_html"><div class="ttname"><a href="structAcBuffer.html">AcBuffer</a></div><div class="ttdef"><b>Definition</b> ac_helpers.h:3</div></div>
-<div class="ttc" id="astructAcCommunicator_html"><div class="ttname"><a href="structAcCommunicator.html">AcCommunicator</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:58</div></div>
+<div class="ttc" id="astructAcCommunicator_html"><div class="ttname"><a href="structAcCommunicator.html">AcCommunicator</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:59</div></div>
 <div class="ttc" id="astructAcCompInfoConfig_html"><div class="ttname"><a href="structAcCompInfoConfig.html">AcCompInfoConfig</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:119</div></div>
 <div class="ttc" id="astructAcCompInfoHasDefaultValue_html"><div class="ttname"><a href="structAcCompInfoHasDefaultValue.html">AcCompInfoHasDefaultValue</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:112</div></div>
 <div class="ttc" id="astructAcCompInfoLoaded_html"><div class="ttname"><a href="structAcCompInfoLoaded.html">AcCompInfoLoaded</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:105</div></div>
@@ -1100,7 +1100,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="ttc" id="astructarray__info_html_a7f8e9b06d2df371ecbef389c3c4bb1f7"><div class="ttname"><a href="structarray__info.html#a7f8e9b06d2df371ecbef389c3c4bb1f7">array_info::is_alive</a></div><div class="ttdeci">bool is_alive</div><div class="ttdef"><b>Definition</b> codegen.c:976</div></div>
 <div class="ttc" id="astructint3_html"><div class="ttname"><a href="structint3.html">int3</a></div><div class="ttdef"><b>Definition</b> stencilgen.c:49</div></div>
 <div class="ttc" id="astructstate_html"><div class="ttname"><a href="structstate.html">state</a></div><div class="ttdef"><b>Definition</b> tinyexpr.c:70</div></div>
-<div class="ttc" id="astructvariable_html"><div class="ttname"><a href="structvariable.html">variable</a></div><div class="ttdef"><b>Definition</b> codegen.c:3797</div></div>
+<div class="ttc" id="astructvariable_html"><div class="ttname"><a href="structvariable.html">variable</a></div><div class="ttdef"><b>Definition</b> codegen.c:3796</div></div>
 <div class="ttc" id="atypedefs_8h_html_a6e5c882953eef46d1945543099571189"><div class="ttname"><a href="typedefs_8h.html#a6e5c882953eef46d1945543099571189">AcReductionPostProcessingOp</a></div><div class="ttdeci">AcReductionPostProcessingOp</div><div class="ttdef"><b>Definition</b> typedefs.h:211</div></div>
 <div class="ttc" id="avba_8cc_html_a3de99637474474de3bc4a043090a63a1"><div class="ttname"><a href="vba_8cc.html#a3de99637474474de3bc4a043090a63a1">acVBAReset</a></div><div class="ttdeci">AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray *vba)</div><div class="ttdef"><b>Definition</b> vba.cc:258</div></div>
 <div class="ttc" id="avba_8cc_html_a40c58b6c0487f0926eaded23976ea27f"><div class="ttname"><a href="vba_8cc.html#a40c58b6c0487f0926eaded23976ea27f">acVBASwapBuffers</a></div><div class="ttdeci">void acVBASwapBuffers(VertexBufferArray *vba)</div><div class="ttdef"><b>Definition</b> vba.cc:575</div></div>

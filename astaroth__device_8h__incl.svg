@@ -33,7 +33,7 @@
 <g id="a_Node000002"><a xlink:title=" ">
 <polygon fill="#e0e0e0" stroke="#999999" points="119,-30 0,-30 0,0 119,0 119,-30"/>
 <text text-anchor="start" x="8" y="-18" font-family="Helvetica,sans-Serif" font-size="10.00">device_load_uniform</text>
-<text text-anchor="middle" x="59.5" y="-7" font-family="Helvetica,sans-Serif" font-size="10.00">_decl.h</text>
+<text text-anchor="middle" x="59.5" y="-7" font-family="Helvetica,sans-Serif" font-size="10.00">_decl.inc</text>
 </a>
 </g>
 </g>
@@ -52,7 +52,7 @@
 <g id="a_Node000003"><a xlink:title=" ">
 <polygon fill="#e0e0e0" stroke="#999999" points="259.5,-30 137.5,-30 137.5,0 259.5,0 259.5,-30"/>
 <text text-anchor="start" x="145.5" y="-18" font-family="Helvetica,sans-Serif" font-size="10.00">device_store_uniform</text>
-<text text-anchor="middle" x="198.5" y="-7" font-family="Helvetica,sans-Serif" font-size="10.00">_decl.h</text>
+<text text-anchor="middle" x="198.5" y="-7" font-family="Helvetica,sans-Serif" font-size="10.00">_decl.inc</text>
 </a>
 </g>
 </g>
