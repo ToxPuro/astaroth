@@ -29,6 +29,7 @@ get_info()
 #include "taskgraph_kernels.inc"
 #include "taskgraph_bc_handles.inc"
 #include "taskgraph_kernel_bcs.inc"
+#include "user_constants.inc"
 
 static int ac_pid()
 {
@@ -1783,7 +1784,7 @@ acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 			to_volume(get_info()[AC_nmin]),
 			to_volume(get_info()[AC_nlocal_max]));
 }
-#include "user_constants.inc"
+
 static AcTaskDefinition
 gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream, const KernelAnalysisInfo info)
 {
