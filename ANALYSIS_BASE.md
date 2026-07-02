@@ -9,6 +9,14 @@
 # Purpose
 This document serves as a starting point for code analysis using Lehmus AI. The purpose of this project is to explore the limits of locally hosted LLM-based code analysis.
 
+# Analysis Documentation Map
+This section tracks all specialized analysis files created within the repository.
+
+| File Path | Description |
+| :--- | :--- |
+| `samples/ANALYSIS_SAMPLES.md` | Analysis templates and prompts for the `samples/` directory. |
+| `samples/ac-interpreter/ANALYSIS_AC-INTERPRETER.md` | Structural reference for the `ac-interpreter` tool. |
+
 # Compilation and Building
 To build Astaroth, follow these steps in the base directory:
 
