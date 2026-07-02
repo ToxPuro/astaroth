@@ -9,6 +9,9 @@
 # Purpose
 This document provides a collection of curated analysis tasks, prompts, and case studies specifically focused on exploring the variety, implementation, and patterns found within the `samples/` directory.
 
+# Note
+> **Note:** The `samples/standalone_mpi/` directory is the main standalone implementation. The `samples/standalone/` directory is considered deprecated.
+
 # Analysis Use Cases & Templates (Samples Focus)
 
 ## 1. DSL & Stencil Implementation Analysis
