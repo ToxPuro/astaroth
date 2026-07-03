@@ -75,19 +75,19 @@ set(DSL_SOURCES ${DSL_MODULE_SOURCES}
 		)
 
 if (NOT RUNTIME_COMPILATION)
-	set(DSL_HEADERS "user_kernels.inc"
-	                "user_defines.inc"
+	set(DSL_HEADERS "user_kernels.h"
+	                "user_defines.h"
 	                "user_declarations.h"
-	                "stencil_accesses.inc"
+	                "stencil_accesses.h"
 	                "user_taskgraphs.h"
-	                "user_loaders.inc"
+	                "user_loaders.h"
 	                "stencilgen.h"
-	                "coeffs.inc"
+			"coeffs.h"
 			)
 else()
 	set(DSL_HEADERS 
-			"user_kernels.inc"
-	                "user_defines.inc"
+			"user_kernels.h"
+	                "user_defines.h"
 	                "user_declarations.h"
 			)
 endif()

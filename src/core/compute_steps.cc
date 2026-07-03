@@ -27,9 +27,9 @@ get_info()
 
 
 #include "taskgraph_kernels.h"
-#include "taskgraph_bc_handles.inc"
-#include "taskgraph_kernel_bcs.inc"
-#include "user_constants.inc"
+#include "taskgraph_bc_handles.h"
+#include "taskgraph_kernel_bcs.h"
+#include "user_constants.h"
 
 static int ac_pid()
 {
@@ -281,7 +281,7 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs,const std::vector<Ker
 	return false;
 }
 
-#include "user_loader_impls.inc"
+#include "user_loader_impls.h"
 
 void
 AC_INTERNAL_empty_loader(ParamLoadingInfo){}
@@ -290,7 +290,7 @@ typedef void (*loader_ptr)(ParamLoadingInfo);
 static loader_ptr
 get_loader(const int graph, const int call_index)
 {
-	#include "user_loaders.inc"
+	#include "user_loaders.h"
 	ERRCHK_ALWAYS(call_index < (int)DSLTaskGraphKernelLoaders[graph].size());
 	return  DSLTaskGraphKernelLoaders[graph][call_index];
 }
@@ -299,7 +299,7 @@ get_loader(const int graph, const int call_index)
 void
 call_all_user_loaders(ParamLoadingInfo p)
 {
-	#include "call_all_user_loaders.inc"
+	#include "call_all_user_loaders.h"
 	AC_INTERNAL_empty_loader(p);
 }
 **/

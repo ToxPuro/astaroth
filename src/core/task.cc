@@ -348,7 +348,7 @@ acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume s
 }
 
 
-#include "kernel_input_param_str.inc"
+#include "kernel_input_param_str.h"
 
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo)> load_func)

@@ -16,5 +16,5 @@ acDeviceGetKernelInputParams(const Device device);
 AcReal**
 acDeviceGetStartOfProfiles(const Device device);
 
-#include "device_set_output_decl.inc"
-#include "device_set_output_overloads.inc"
+#include "device_set_output_decl.h"
+#include "device_set_output_overloads.h"

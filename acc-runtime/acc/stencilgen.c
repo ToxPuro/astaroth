@@ -52,12 +52,12 @@ typedef struct int3
 
 typedef double AcReal;
 #include "builtin_enums.h"
-#include "user_typedefs.inc"
-#include "user_defines.inc"
+#include "user_typedefs.h"
+#include "user_defines.h"
 
-#include "stencil_accesses.inc"
+#include "stencil_accesses.h"
 
-#include "stencilgen_calling_info.inc"
+#include "stencilgen_calling_info.h"
 
 static const int AC_STENCIL_CALL = (1 << 2);
 typedef enum ReduceOp
@@ -88,7 +88,7 @@ typedef enum {
 	PROFILE_ZX = (1 << 7) | TWO_DIMENSIONAL_PROFILE,
 	PROFILE_ZY = (1 << 8) | TWO_DIMENSIONAL_PROFILE,
 } AcProfileType;
-#include "profiles_info.inc"
+#include "profiles_info.h"
 
 #if AC_USE_HIP
 const char* ffs_string = "__ffsll";
@@ -169,7 +169,7 @@ gen_stencil_definitions(void)
       printf("},");
     }
     printf("};");
-  FILE* stencil_coeffs_file= fopen("coeffs.inc", "w");
+  FILE* stencil_coeffs_file= fopen("coeffs.h", "w");
   fprintf(stencil_coeffs_file,
       "AcReal "
       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
@@ -194,7 +194,7 @@ gen_stencil_definitions(void)
   fclose(stencil_coeffs_file);
 }
 
-#include "kernel_reduce_info.inc"
+#include "kernel_reduce_info.h"
 #include "mem_access_helper_funcs.h"
 
 bool
@@ -436,8 +436,8 @@ void
 gen_kernel_block_loops(const int curr_kernel)
 {
   printf(
-	"#include \"kernel_user_non_scalar_constants.inc\"\n"
-	"#include \"kernel_user_builtin_non_scalar_constants.inc\"\n"
+	"#include \"kernel_user_non_scalar_constants.h\"\n"
+	"#include \"kernel_user_builtin_non_scalar_constants.h\"\n"
 	 );
   if (AC_CPU_BUILD)
   {

@@ -1,6 +1,6 @@
 #include "astaroth.h"
 #include "math_utils.h"
-#include "is_comptime_param.inc"
+#include "is_comptime_param.h"
 #include "ac_helpers.h"
 
 AcResult
@@ -98,8 +98,8 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
     };
 
     {
-	#include "user_constants.inc"
-    	#include "user_config_loader.inc"
+	#include "user_constants.h"
+    	#include "user_config_loader.h"
     }
 
     //TP: for safety have to add the maximum possible tpb dims for the reduce scratchpads

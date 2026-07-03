@@ -32,7 +32,7 @@
 #define NUM_INTEGRATION_STEPS (100)
 
 #include "math_utils.h"
-#include "user_constants.inc"
+#include "user_constants.h"
 
 
 static bool finalized = false;

@@ -25,15 +25,14 @@
  *
  */
 #include "astaroth_utils.h"
-#include "user_builtin_non_scalar_constants.inc"
-#include "user_constants.inc"
+#include "user_builtin_non_scalar_constants.h"
+#include "user_constants.h"
 
 #include <math.h>
 #include <stdbool.h>
 
 #include "errchk.h"
 #include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
-
 
 #ifdef AC_INTEGRATION_ENABLED
 /*

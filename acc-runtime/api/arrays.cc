@@ -1,7 +1,7 @@
 #include "acc_runtime.h"
 #include "astaroth_cuda_wrappers.h"
-#include "memcpy_to_gmem_arrays_header.inc"
-#include "memcpy_from_gmem_arrays_header.inc"
+#include "memcpy_to_gmem_arrays_header.h"
+#include "memcpy_from_gmem_arrays_header.h"
 
 template <typename P>
 struct allocate_arrays

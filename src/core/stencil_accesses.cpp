@@ -28,7 +28,7 @@ bool should_reduce_int[1000] = {false};
 
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
-#include "user_defines.inc"
+#include "user_defines.h"
 #include <array>
 template <typename T>
 struct safe_array
@@ -557,10 +557,10 @@ extern "C"
 	KernelAnalysisInfo acAnalysisGetKernelInfoSingleWithInputParams(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params);
 	acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary);
 }
-//#include "user_constants.inc"
+//#include "user_constants.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define tid  ((int3){0,0,0})
-#include "user_kernel_declarations.inc"
+#include "user_kernel_declarations.h"
 
 constexpr AcMeshInfo
 get_d_mesh_info()
@@ -622,10 +622,10 @@ get_d_mesh_info()
 
 
 	{
-		#include "kernel_user_built-in_constants.inc"
-		#include "kernel_user_builtin_non_scalar_constants.inc"
-    		#include "kernel_user_constants.inc"
-    		#include "user_config_loader.inc"
+		#include "kernel_user_built-in_constants.h"
+		#include "kernel_user_builtin_non_scalar_constants.h"
+    		#include "kernel_user_constants.h"
+    		#include "user_config_loader.h"
 	}
 #endif
 }
@@ -636,10 +636,10 @@ AcResult
 acAnalysisLoadMeshInfo(const AcMeshInfo info) 
 {d_mesh_info = info ; return AC_SUCCESS;}
 
-#include "dconst_decl.inc"
-#include "rconst_decl.inc"
+#include "dconst_decl.h"
+#include "rconst_decl.h"
 
-#include "arrays_accessed_decl.inc"
+#include "arrays_accessed_decl.h"
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static DATATYPE ARR_NAME##return_var{}; \
 							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
 								                          DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
@@ -655,8 +655,8 @@ acAnalysisLoadMeshInfo(const AcMeshInfo info)
 								                          DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
 							    }; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
-#include "cpu_dconst_arrays_decl.inc"
-#include "cpu_gmem_arrays_decl.inc"
+#include "cpu_dconst_arrays_decl.h"
+#include "cpu_gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device
@@ -667,8 +667,7 @@ AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_READ      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_READ  = (1 << 1);
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
-#include "analysis_stencils.inc"
-
+#include "analysis_stencils.h"
 
 
 int3
@@ -935,7 +934,7 @@ fatal_error_message(const bool error, const char* message)
 	}
 }
 
-#include "user_cpu_kernels.inc"
+#include "user_cpu_kernels.h"
 #undef  constexpr
 #undef size
 
@@ -1420,7 +1419,7 @@ main(int argc, char* argv[])
   fclose(fp);
 
 
-#include "arrays_output_accesses.inc"
+#include "arrays_output_accesses.h"
   fprintf(stderr,"Generated stencil accesses\n");
   return EXIT_SUCCESS;
 }

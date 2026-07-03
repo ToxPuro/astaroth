@@ -97,12 +97,12 @@ FUNC_DEFINE(AcResult, acDeviceLoadMesh,(const Device device, const Stream stream
 #define DEVICE_LOAD_ARRAY_DECL(ENUM,DEF_NAME) \
 	FUNC_DEFINE(AcResult, acDeviceLoad##DEF_NAME##Array,(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array));
 
-#include "device_load_uniform_decl.inc"
+#include "device_load_uniform_decl.h"
 #define DECL_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
 	FUNC_DEFINE(AcResult,acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform,(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value));
 #define DECL_DEVICE_STORE_ARRAY(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
 	FUNC_DEFINE(AcResult,acDeviceStore##VAL_TYPE_UPPER_CASE##Array,(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value));
-#include "device_store_uniform_decl.inc"
+#include "device_store_uniform_decl.h"
 
 
 /** */

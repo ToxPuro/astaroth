@@ -22,7 +22,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
-#include "user_constants.inc"
+#include "user_constants.h"
 
 #if AC_MPI_ENABLED
 

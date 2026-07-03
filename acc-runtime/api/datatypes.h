@@ -63,7 +63,7 @@ typedef struct
 
 
 #include "builtin_enums.h"
-#include "user_typedefs.inc"
+#include "user_typedefs.h"
 #define VOLUME_DEFINED
 #define COMPLEX_DEFINED
 #define REAL3_DEFINED

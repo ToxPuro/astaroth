@@ -1,5 +1,5 @@
 #ifdef __cplusplus
-#include "user_builtin_non_scalar_constants.inc"
+#include "user_builtin_non_scalar_constants.h"
 #endif
 
 int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,

@@ -35,7 +35,7 @@
 #define DER2_2 (-3. / 20.)
 #define DER2_1 (3. / 2.)
 #define DER2_0 (-49. / 18.)
-#include "user_constants.inc"
+#include "user_constants.h"
 
 static bool finalized = false;
 

@@ -497,8 +497,8 @@ acGetLengths(const AcMeshInfo info)
 }
 
 
-#include "get_vtxbufs_funcs.inc"
-#include "stencil_accesses.inc"
+#include "get_vtxbufs_funcs.h"
+#include "stencil_accesses.h"
 #include "../config_helpers.h"
 void
 acStoreConfig(const AcMeshInfo info, const char* filename)

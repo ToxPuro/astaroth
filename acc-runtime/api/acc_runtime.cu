@@ -20,7 +20,7 @@
 #include "device_details.h"
 #include "acc_runtime.h"
 #include "kernels.h"
-#include "user_defines_runtime_lib.inc"
+#include "user_defines_runtime_lib.h"
 #include "static_analysis.h"
 
 #include "../acc/string_vec.h"
@@ -43,8 +43,8 @@ static int3    max_tpb_for_reduce_kernels{100,100,100};
 #include <unordered_map>
 #include <utility>
 #include <sys/stat.h>
-#include "user_kernel_declarations.inc"
-#include "kernel_reduce_info.inc"
+#include "user_kernel_declarations.h"
+#include "kernel_reduce_info.h"
 
 #define USE_COMPRESSIBLE_MEMORY (0)
 
@@ -164,7 +164,7 @@ acGetKernelReduceScratchPadMinSize()
 }
 
 
-#include "stencil_accesses.inc"
+#include "stencil_accesses.h"
 #include "../acc/mem_access_helper_funcs.h"
 
 static Volume
@@ -389,8 +389,8 @@ __device__ __constant__ AcMeshInfoScalars d_mesh_info;
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
 #define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
 #define DECLARE_DCONST_ARRAY(DATATYPE,DEFINE_NAME,ARR_NAME,LEN) static UNUSED __device__ __constant__ DATATYPE AC_INTERNAL_d_##DEFINE_NAME##_arrays_##ARR_NAME[LEN];
-#include "dconst_arrays_decl.inc"
-#include "gmem_arrays_decl.inc"
+#include "dconst_arrays_decl.h"
+#include "gmem_arrays_decl.h"
 
 typedef struct {
   AcKernel kernel;
@@ -407,7 +407,7 @@ __device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
 
 static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
 static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
-#include "reduce_helpers.inc"
+#include "reduce_helpers.h"
 
 void
 ac_resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
@@ -430,11 +430,11 @@ acGetRealScratchpadSize(const size_t i)
 // Astaroth 2.0 backwards compatibility START
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
 
-#include "dconst_decl.inc"
-#include "output_value_decl.inc"
-#include "get_address.inc"
-#include "load_dconst_arrays.inc"
-#include "store_dconst_arrays.inc"
+#include "dconst_decl.h"
+#include "output_value_decl.h"
+#include "get_address.h"
+#include "load_dconst_arrays.h"
+#include "store_dconst_arrays.h"
 
 #define PROFILE_X_Y_OR_Z_INDEX(i,j) \
   ((i) + (j)*VAL(AC_mlocal).x)
@@ -495,8 +495,8 @@ safe_access(const AcReal* arr, const int dims, const int index, const AcRealArra
 	return safe_access(arr,dims,index,real_array_names__device__[param]);
 }
 
-#include "device_fields_info.inc"
-#include "device_output_info.inc"
+#include "device_fields_info.h"
+#include "device_output_info.h"
 
 static __device__ UNUSED
 int3
@@ -525,12 +525,12 @@ ac_is_global(const AcRealOutputParam& param)
 
 #define postprocess_reduce_result(DST,OP)
 
-#include "user_kernels.inc"
+#include "user_kernels.h"
 #undef size
 #undef longlong
 
-#include "user_built-in_constants.inc"
-#include "user_builtin_non_scalar_constants.inc"
+#include "user_built-in_constants.h"
+#include "user_builtin_non_scalar_constants.h"
 
 bool
 acRuntimeIsInitialized() { return initialized; }
@@ -878,8 +878,8 @@ acLoadUniform(const P param, const V value)
   	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
-#include "memcpy_to_gmem_arrays.inc"
-#include "memcpy_from_gmem_arrays.inc"
+#include "memcpy_to_gmem_arrays.h"
+#include "memcpy_from_gmem_arrays.h"
 
 template <typename P, typename V>
 AcResult
@@ -953,7 +953,7 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 #endif
 	return AC_SUCCESS;
 }
-#include "load_and_store_uniform_funcs.inc"
+#include "load_and_store_uniform_funcs.h"
 
 //TP: best would be to use carriage return to have a single line that keeps growing but that seems not always to be supported in SLURM environments. 
 // Or at least requires actions from the user.
@@ -1017,7 +1017,7 @@ make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel)
 {
   //TP: have to set reduce offset zero since it might not be
   vba.on_device.reduce_offset = 0;
-//#include "safe_vtxbuf_input_params.inc"
+//#include "safe_vtxbuf_input_params.h"
 }
 
 static AcResult
@@ -1338,7 +1338,7 @@ acGetOptimTPB(const AcKernel kernel, const Volume start, const Volume end)
 AcKernel
 acGetOptimizedKernel(const AcKernel kernel_enum, const acKernelInputParams kernel_input_params)
 {
-	#include "user_kernels_ifs.inc"
+	#include "user_kernels_ifs.h"
 	(void)kernel_input_params;
 	return kernel_enum;
 	//return kernels[(int) kernel_enum];
@@ -1379,7 +1379,7 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t)
   return retval;
 }
 
-#include "load_ac_kernel_params.inc"
+#include "load_ac_kernel_params.h"
 
 int
 acVerifyMeshInfo(const AcMeshInfo info)

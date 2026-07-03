@@ -23,7 +23,7 @@
 #include "astaroth_utils.h"
 #include "math_utils.h"
 #include "errchk.h"
-#include "user_constants.inc"
+#include "user_constants.h"
 
 #include "../../stdlib/geometric_multigrid.h"
 

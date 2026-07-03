@@ -662,7 +662,7 @@ static void
 check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> info)
 {
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
-#include "stencil_accesses.inc"
+#include "stencil_accesses.h"
 	for(int k = 0; k < NUM_KERNELS; ++k)
 	{
 		for(int j= 0; j< NUM_ALL_FIELDS; ++j)

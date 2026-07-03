@@ -22,8 +22,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
-
-#include "user_builtin_non_scalar_constants.inc"
+#include "user_builtin_non_scalar_constants.h"
 
 #if AC_MPI_ENABLED
 
@@ -39,7 +38,7 @@
 #define NUM_INTEGRATION_STEPS (100)
 
 #include "math_utils.h"
-#include "user_constants.inc"
+#include "user_constants.h"
 
 const int npointsx_grid = 100;
 const int npointsy_grid = 100;

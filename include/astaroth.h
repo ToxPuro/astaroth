@@ -21,7 +21,7 @@
 #include "astaroth_base.h"
 
 #ifdef __cplusplus
-#include "user_builtin_non_scalar_constants.inc"
+#include "user_builtin_non_scalar_constants.h"
 #endif
 
 #ifdef __cplusplus
@@ -466,10 +466,10 @@ int
 acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
 
-#include "device_set_input_decls.inc"
-#include "device_get_output_decls.inc"
-#include "device_get_input_decls.inc"
-#include "get_vtxbufs_declares.inc"
+#include "device_set_input_decls.h"
+#include "device_get_output_decls.h"
+#include "device_get_input_decls.h"
+#include "get_vtxbufs_declares.h"
 
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
@@ -592,7 +592,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGetGridMaxNN,stream)
 	LOAD_DSYM(acGetLengths,stream)
 	LOAD_DSYM(acHostMeshCopyVertexBuffers,stream)
-#include "device_load_uniform_loads.inc"
+#include "device_load_uniform_loads.h"
 	LOAD_DSYM(acHostMeshCopy,stream)
 	LOAD_DSYM(acGetKernelId,stream)
 	LOAD_DSYM(acGetKernelIdByName,stream)
@@ -685,10 +685,10 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acDeviceLoadStencilsFromConfig,stream)
 	LOAD_DSYM(acDeviceStoreStencil,stream)
 	LOAD_DSYM(acDeviceVolumeCopy,stream)
-#include "device_set_input_loads.inc"
-#include "device_get_input_loads.inc"
-#include "device_get_output_loads.inc"
-#include "get_vtxbufs_loads.inc"
+#include "device_set_input_loads.h"
+#include "device_get_input_loads.h"
+#include "device_get_output_loads.h"
+#include "get_vtxbufs_loads.h"
 
 	*(void**)(&acDeviceGetIntOutput) = dlsym(handle,"acDeviceGetIntOutput");
 	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
@@ -951,11 +951,11 @@ acGridInit(const AcMesh mesh)
 #define OVERLOAD_DEVICE_LOAD_ARRAY(ENUM,DEF_NAME) \
 	static UNUSED AcResult acDeviceLoad(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array) { return acDeviceLoad##DEF_NAME##Array(device,stream,host_info,array);}
 
-#include "device_store_overloads.inc"
-#include "device_load_uniform_overloads.inc"
-#include "device_set_input_overloads.inc"
-#include "device_get_input_overloads.inc"
-#include "device_get_output_overloads.inc"
+#include "device_store_overloads.h"
+#include "device_load_uniform_overloads.h"
+#include "device_set_input_overloads.h"
+#include "device_get_input_overloads.h"
+#include "device_get_output_overloads.h"
 
 
 #if AC_MPI_ENABLED

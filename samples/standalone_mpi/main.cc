@@ -258,7 +258,7 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
                   int* found_nan)
 {
 
-    #include "user_constants.inc"
+    #include "user_constants.h"
     AcReal buf_rms, buf_max, buf_min;
     const int max_name_width = 16;
 

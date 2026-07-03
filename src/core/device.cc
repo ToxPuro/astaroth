@@ -286,7 +286,7 @@ acDeviceStoreUniform(const Device device, const Stream stream, const P param, V*
 	{ \
     		return acDeviceStoreUniform(device, stream, param, value);\
 	}
-#include "device_store_uniform.inc"
+#include "device_store_uniform.h"
 
 AcResult
 acDeviceUpdate(Device device, const AcMeshInfo config)
@@ -428,7 +428,7 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 	{
 		return device->local_config[param];
 	};
-	#include "coeffs.inc"
+	#include "coeffs.h"
 	for(int stencil=0;stencil<NUM_STENCILS;stencil++)
 	{
 	        for(int x = 0; x<STENCIL_WIDTH; ++x)
@@ -709,7 +709,7 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
 	}
 
 
-#include "device_load_uniform.inc"
+#include "device_load_uniform.h"
 
 AcResult
 acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh)
@@ -1136,9 +1136,9 @@ acDeviceGetKernelOutput(const Device device)
 	return device->output;
 }
 
-#include "device_set_input.inc"
-#include "device_get_input.inc"
-#include "device_get_output.inc"
+#include "device_set_input.h"
+#include "device_get_input.h"
+#include "device_get_output.h"
 
 
 //--------------------------------------
@@ -1420,7 +1420,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const AcReduction re
     return AC_SUCCESS;
 }
 
-#include "device_finalize_reduce.inc"
+#include "device_finalize_reduce.h"
 AcResult
 acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
                                  const AcReduction reduction, const VertexBufferHandle vtxbuf0,
@@ -1660,7 +1660,7 @@ acDeviceMemGetInfo(const Device device, size_t* free_mem, size_t* total_mem)
 
 
 
-#include "device_set_output.inc"
+#include "device_set_output.h"
 
 /*
  * Fourier transforms

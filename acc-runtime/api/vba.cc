@@ -1,9 +1,9 @@
 #include "acc_runtime.h"
 #include "math_utils.h"
 #include "astaroth_cuda_wrappers.h"
-#include "stencil_accesses.inc"
+#include "stencil_accesses.h"
 #include "static_analysis.h"
-#include "user_builtin_non_scalar_constants.inc"
+#include "user_builtin_non_scalar_constants.h"
 
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)
