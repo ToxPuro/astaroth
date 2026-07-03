@@ -1343,7 +1343,8 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 void
 gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 {
-
+	AccSourcesManager* sources_manager = acc_sources_manager_singleton();
+	AccSourceFunction* func = NULL;
 	const char* define_name = convert_to_define_name(datatype_scalar);
 	const char* uppr_name =       strupr(define_name);
 	const char* upper_case_name = to_upper_case(define_name);
@@ -1556,103 +1557,167 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				 ,upper_case_name,define_name,uppr_name
 				);
 
-		if(datatype_scalar != REAL_STR)
-		{
-		fprintf_filename("reduce_helpers.h",
-				"__device__  __constant__ %s* d_symbol_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
-				"static %s* d_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
-				"static size_t d_reduce_scratchpads_size_%s[NUM_%s_OUTPUTS+1];\n"
-				"__device__ __constant__ %s d_reduce_%s_res_symbol[NUM_%s_OUTPUTS+1];\n"
-				,datatype_scalar,define_name,uppr_name,datatype_scalar,define_name,uppr_name,define_name,uppr_name
-				,datatype_scalar,define_name,uppr_name
-				);
-		}
-		else
-		{
-		fprintf_filename("reduce_helpers.h",
-				"__device__ __constant__ AcReal* d_symbol_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];\n"
-				"__device__ __constant__ AcReal d_reduce_%s_res_symbol[NUM_%s_SCRATCHPADS];\n"
-				"static AcReal* d_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];\n"
-				"static size_t d_reduce_scratchpads_size_%s[NUM_%s_SCRATCHPADS];\n"
-				,define_name,uppr_name,define_name,uppr_name,define_name,uppr_name,define_name,uppr_name
-				);
-		}
-		fprintf_filename("reduce_helpers.h",
-				"%s** \n"
-				"ac_allocate_scratchpad_%s(const size_t i, const size_t bytes, const AcReduceOp state)\n"
-				"{\n"
-				"ERRCHK_CUDA_ALWAYS(acMalloc((void**)&d_reduce_scratchpads_%s[i],bytes));\n"
-				"ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
-				"d_reduce_scratchpads_size_%s[i] = bytes;\n"
-				"acKernelFlush(0,d_reduce_scratchpads_%s[i], bytes/sizeof(%s),get_reduce_state_flush_var_%s(state));\n"
-				"return &d_reduce_scratchpads_%s[i];\n"
-				"}\n\n"
-				,datatype_scalar
-				,define_name,define_name,define_name,define_name,datatype_scalar,datatype_scalar,define_name,define_name,datatype_scalar,define_name
-				,define_name
-				);
-		fprintf_filename("reduce_helpers.h",
-				"const size_t* \n"
-				"ac_get_scratchpad_size_%s(const size_t i)\n"
-				"{\n"
-				"return &d_reduce_scratchpads_size_%s[i];\n"
-				"}\n\n"
-				,define_name,define_name
-				);
-		fprintf_filename(
-				"reduce_helpers.h",
-				"void\n"
-				"ac_free_scratchpad_%s(const size_t i)\n"
-				"{\n"
-				"d_reduce_scratchpads_%s[i] = NULL;\n"
-				"ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
-				"d_reduce_scratchpads_size_%s[i] = 0;\n"
-				"}\n"
-				,define_name,define_name,define_name,define_name,datatype_scalar,datatype_scalar,define_name
-				);
-		fprintf_filename(
-				"reduce_helpers.h",
-				"void\n"
-				"ac_resize_scratchpad_%s(const size_t i, const size_t new_bytes, const AcReduceOp state)\n"
-				"{\n"
-				"if(d_reduce_scratchpads_size_%s[i] >= new_bytes) return;\n"
-				"ac_free_scratchpad_%s(i);\n"
-				"ac_allocate_scratchpad_%s(i,new_bytes,state);\n"
-				"}\n\n"
-				,define_name,define_name,define_name,define_name
-				);
+                AccSource* reduce_helpers = acc_sources_manager_get_source(
+                    sources_manager, "reduce_helpers", ACC_SRC_DEVICE);
+                acc_source_add_include(reduce_helpers, false, false, "func_define.h", NULL);
+                acc_source_add_include(reduce_helpers, false, false, "acc_runtime.h", NULL);
+                acc_source_add_include(reduce_helpers, false, false, "datatypes.h", NULL);
+                acc_source_add_include(reduce_helpers, true, false, "user_defines.h", NULL);
+                acc_source_add_include(reduce_helpers, true, false, "stencil_accesses.h", NULL);
 
-		fprintf_filename(
-				"reduce_helpers.h",
-				"void\n"
-				"ac_resize_%ss_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)\n"
-				"{\n"
-				"bool var_reduced = false;\n"
-				"for(int i = 0; i < NUM_%s_OUTPUTS; ++i) var_reduced |= reduced_%ss[kernel][i];\n"
-				"if(var_reduced)\n"
-				"{\n"
-				"	const size_t size = n_elems*sizeof(%s);\n"
-				"	for(int i = 0; i < NUM_%s_OUTPUTS; ++i)\n"
-				"	{\n"
-				"		if(!reduced_%ss[kernel][i]) continue;\n"
-				"		ac_resize_scratchpad_%s(i, size, vba.scratchpad_states->%ss[i]);\n"
-				"	}\n"
-				"}\n"
-				"}\n\n"
-				,define_name,uppr_name,define_name,datatype_scalar,uppr_name,define_name,define_name,define_name,define_name
-				);
+                if (datatype_scalar != REAL_STR) {
+                  // clang-format off
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_UNMANAGED,
+                      "__device__  __constant__ %s* d_symbol_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
+                      "static %s* d_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
+                      "static size_t d_reduce_scratchpads_size_%s[NUM_%s_OUTPUTS+1];",
+                      datatype_scalar, define_name, uppr_name,
+                      datatype_scalar, define_name, uppr_name,
+                      define_name, uppr_name);
+                  // clang-format on
 
-	}
+                  // clang-format off
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC | ACC_SRC_DECL_DEVICE | ACC_SRC_DECL_CONSTANT,
+                      "%s d_reduce_%s_res_symbol[NUM_%s_OUTPUTS+1];",
+                      datatype_scalar, define_name, uppr_name);
+                  // clang-format on
+                }
+                else {
+                  // clang-format off
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_UNMANAGED,
+                      "static AcReal* d_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];",
+                      define_name, uppr_name);
+                  // clang-format on
+
+                  // clang-format off
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC | ACC_SRC_DECL_DEVICE | ACC_SRC_DECL_CONSTANT,
+                      "AcReal* d_symbol_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];",
+                      define_name, uppr_name);
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC | ACC_SRC_DECL_DEVICE | ACC_SRC_DECL_CONSTANT,
+                      "AcReal d_reduce_%s_res_symbol[NUM_%s_SCRATCHPADS];",
+                      define_name, uppr_name);
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC,
+                      "size_t d_reduce_scratchpads_size_%s[NUM_%s_SCRATCHPADS];",
+                      define_name, uppr_name);
+                  // clang-format on
+                }
+
+                func = acc_source_get_function(
+                    reduce_helpers, 0, "ac_allocate_scratchpad_%s", define_name);
+                acc_source_function_set_qualifiers(func, "%s**",
+                                                   datatype_scalar);
+                acc_source_function_set_params(
+                    func,
+                    "(const size_t i, const size_t bytes, const AcReduceOp "
+                    "state)");
+                acc_source_function_add_impl(
+                    func,
+                    // clang-format off
+                    "ERRCHK_CUDA_ALWAYS(acMalloc((void**)&d_reduce_scratchpads_%s[i],bytes));\n"
+                    "ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*), sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
+                    "d_reduce_scratchpads_size_%s[i] = bytes;\n"
+                    "acKernelFlush(0,d_reduce_scratchpads_%s[i], bytes/sizeof(%s),get_reduce_state_flush_var_%s(state));\n"
+                    "return &d_reduce_scratchpads_%s[i];\n",
+                    // clang-format on
+                    define_name, define_name, define_name, datatype_scalar,
+                    datatype_scalar, define_name, define_name, datatype_scalar,
+                    define_name, define_name);
+
+                func = acc_source_get_function(reduce_helpers, 0,
+                                               "ac_get_scratchpad_size_%s",
+                                               define_name);
+                acc_source_function_set_qualifiers(func, "const size_t*");
+                acc_source_function_set_params(func, "(const size_t i)");
+                acc_source_function_add_impl(
+                    func, "return &d_reduce_scratchpads_size_%s[i];",
+                    define_name);
+
+                func = acc_source_get_function(reduce_helpers, 0,
+                                               "ac_free_scratchpad_%s",
+                                               define_name);
+                acc_source_function_set_qualifiers(func, "void");
+                acc_source_function_set_params(func, "(const size_t i)");
+                acc_source_function_add_impl(
+                    func,
+                    // clang-format off
+                    "d_reduce_scratchpads_%s[i] = NULL;\n"
+                    "ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*), sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
+                    "d_reduce_scratchpads_size_%s[i] = 0;\n",
+                    // clang-format on
+                    define_name, define_name, define_name, datatype_scalar,
+                    datatype_scalar, define_name);
+
+                func = acc_source_get_function(reduce_helpers, 0,
+                                               "ac_resize_scratchpad_%s",
+                                               define_name);
+                acc_source_function_set_qualifiers(func, "void");
+                acc_source_function_set_params(
+                    func,
+                    "(const size_t i, const size_t new_bytes, const AcReduceOp "
+                    "state)");
+                acc_source_function_add_impl(
+                    func,
+                    "if(d_reduce_scratchpads_size_%s[i] >= new_bytes) return;\n"
+                    "ac_free_scratchpad_%s(i);\n"
+                    "ac_allocate_scratchpad_%s(i,new_bytes,state);\n",
+                    define_name, define_name, define_name);
+
+                func = acc_source_get_function(reduce_helpers, 0,
+                                               "ac_resize_%ss_to_fit",
+                                               define_name);
+                acc_source_function_set_qualifiers(func, "void");
+                acc_source_function_set_params(
+                    func,
+                    "(const size_t n_elems, VertexBufferArray vba, const "
+                    "AcKernel kernel)");
+                acc_source_function_add_impl(
+                    func,
+                    // clang-format off
+                    "bool var_reduced = false;\n"
+                    "for(int i = 0; i < NUM_%s_OUTPUTS; ++i) var_reduced |= reduced_%ss[kernel][i];\n"
+                    "if(var_reduced)\n"
+                    "{\n"
+                    "	const size_t size = n_elems*sizeof(%s);\n"
+                    "	for(int i = 0; i < NUM_%s_OUTPUTS; ++i)\n"
+                    "	{\n"
+                    "		if(!reduced_%ss[kernel][i]) continue;\n"
+                    "		ac_resize_scratchpad_%s(i, size, vba.scratchpad_states->%ss[i]);\n"
+                    "	}\n"
+                    "}\n",
+                    uppr_name, define_name,
+                    datatype_scalar,
+                    uppr_name,
+                    define_name,
+                    define_name,
+                    define_name, define_name);
+                    // clang-format on
+        }
 
 	fprintf_filename("dconst_decl.h","%s static UNUSED DEVICE_INLINE  DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 
-	//TP: TODO: compare the performance of having this one level of indirection vs. simply loading the value to dconst and using it from there
-	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || (datatype_scalar == FLOAT_STR && AC_DOUBLE_PRECISION))
-	{
-		fprintf_filename("output_value_decl.h","%s static UNUSED DEVICE_INLINE  output_value(const %sOutputParam& param){return d_reduce_%s_res_symbol[(int)param];}\n"
-			,datatype_scalar, enum_name, define_name);
-	}
+        // TP: TODO: compare the performance of having this one level of
+        // indirection vs. simply loading the value to dconst and using it from
+        // there
+        if (datatype_scalar == REAL_STR || datatype_scalar == INT_STR ||
+            (datatype_scalar == FLOAT_STR && AC_DOUBLE_PRECISION)) {
+          AccSource* output_value_decl = acc_sources_manager_get_source(
+              sources_manager, "output_value_decl", ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+
+          func = acc_source_get_function(output_value_decl, 0, "output_value");
+          acc_source_function_set_qualifiers(
+              func, "static %s UNUSED DEVICE_INLINE", datatype_scalar);
+          acc_source_function_set_params(func, "(const %sOutputParam& param)",
+                                         enum_name);
+          acc_source_function_add_impl(
+              func, "return d_reduce_%s_res_symbol[(int)param];", define_name);
+        }
 
 	fprintf_filename("dconst_decl.h","%s static UNUSED DEVICE_INLINE VAL(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);

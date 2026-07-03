@@ -16,6 +16,7 @@
 #include "create_node.h"
 #include "create_node_decl.h"
 #include "expr.h"
+#include "source_manager.h"
 
 extern struct hashmap_s string_intern_hashmap;
 extern const char* binary_op_val;
@@ -733,7 +734,6 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	
         fclose(fp);
 
-
         // Stage 4: Format
         format_source("user_kernels.h.raw", "user_kernels.h");
 
@@ -884,7 +884,9 @@ main(int argc, char** argv)
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_INPUT_PARAMS, false,false);
-    
+
+    // Writes all the source files managed by the sources manager onto disk.
+    acc_sources_manager_flush(acc_sources_manager_singleton());
 
     return EXIT_SUCCESS;
 }
