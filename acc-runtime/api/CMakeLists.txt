@@ -103,6 +103,17 @@ else()
 			)
 endif()
 
+set(ACC_GENERATED_SOURCES
+    "reduce_helpers.cu")
+
+if (USE_HIP)
+	set_source_files_properties(${ACC_GENERATED_SOURCES} PROPERTIES LANGUAGE HIP)
+endif()
+
+if (CPU_BUILD)
+	set_source_files_properties(${ACC_GENERATED_SOURCES} PROPERTIES LANGUAGE CXX)
+endif()
+
 if (NOT DEFINED DSL_MODULE_FILE)
 	set(ACC_COMPILER_ARGS 
 		"${DSL_MODULE_DIR}/*.ac" 
@@ -125,8 +136,9 @@ endif()
       COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
       COMMAND  "${ACC_COMPILER}" ${ACC_COMPILER_ARGS}
       DEPENDS ${DSL_SOURCES} acc
-      OUTPUT ${DSL_HEADERS}
+      OUTPUT ${DSL_HEADERS} ${ACC_GENERATED_SOURCES}
   )
+
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 install(
     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/
@@ -146,8 +158,20 @@ target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMEN
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
 if(NOT RUNTIME_COMPILATION)
-	add_library(acc-runtime-driver OBJECT arrays.cc vba.cc common_kernels.cc static_analysis.cc)
-	set_property(TARGET acc-runtime-driver PROPERTY POSITION_INDEPENDENT_CODE ON)
+	add_library(acc-runtime-driver OBJECT
+		    arrays.cc
+		    vba.cc
+		    common_kernels.cc
+		    static_analysis.cc
+		    ${ACC_GENERATED_SOURCES}
+	)
+	set_target_properties(
+		acc-runtime-driver
+		PROPERTIES
+			POSITION_INDEPENDENT_CODE ON
+			CUDA_SEPARABLE_COMPILATION ON
+			CUDA_RESOLVE_DEVICE_SYMBOLS ON
+	)
 	target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers astaroth_helpers)
 	target_include_directories(acc-runtime-driver 
 		PUBLIC
