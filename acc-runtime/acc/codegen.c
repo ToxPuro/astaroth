@@ -1681,7 +1681,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("load_dconst_arrays.h","(void)values;(void)bytes;(void)arr;\nreturn cudaSuccess;\n}\n");
 
 
-	fprintf_filename("store_dconst_arrays.h","cudaError_t\n"
+	fprintf_filename("store_dconst_arrays.h","static cudaError_t\n"
 		  "store_array(%s* values, const size_t bytes, const %sArrayParam arr)\n"
 		    "{\n",
 	datatype_scalar, enum_name);
