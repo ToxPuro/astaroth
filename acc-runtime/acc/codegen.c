@@ -1659,7 +1659,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("rconst_decl.h","%s static UNUSED DEVICE_INLINE RCONST(const %sCompParam&){return d_mesh_info.%s_params[0];}\n"
 			,datatype_scalar, enum_name, define_name);
 
-	fprintf_filename("get_address.h","size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
+	fprintf_filename("get_address.h","static size_t get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
 			,enum_name, define_name);
 
 	//fprintf_filename("get_address.h","size_t  get_address(const %sOutputParam& param){ return (size_t)&d_output.%s_outputs[(int)param];}\n"
