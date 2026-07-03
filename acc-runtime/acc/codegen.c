@@ -1665,7 +1665,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	//fprintf_filename("get_address.h","size_t  get_address(const %sOutputParam& param){ return (size_t)&d_output.%s_outputs[(int)param];}\n"
 	//		,enum_name, define_name);
 
-	fprintf_filename("load_dconst_arrays.h","cudaError_t\n"
+	fprintf_filename("load_dconst_arrays.h","static cudaError_t\n"
 		   "load_array(const %s* values, const size_t bytes, const %sArrayParam arr)\n"
 		    "{\n",
 		     datatype_scalar, enum_name);
