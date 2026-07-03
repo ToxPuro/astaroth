@@ -107,13 +107,13 @@ Debugging</h1>
 <p>Intermediate files:</p>
 <ol type="1">
 <li><code>user_kernels.ac.pp_stage*</code>. The DSL file after a specific preprocessing stage.</li>
-<li><code>user_kernels.inc.raw</code>. The generated CUDA kernels without formatting applied.</li>
-<li><code>user_kernels_backup.inc</code>. The generated CUDA/CPU kernels with formatting applied.</li>
+<li><code>user_kernels.h.raw</code>. The generated CUDA kernels without formatting applied.</li>
+<li><code>user_kernels_backup.h.</code>. The generated CUDA/CPU kernels with formatting applied.</li>
 </ol>
 <p>Final files:</p>
 <ol type="1">
-<li><code>user_defines.inc</code>. The project-wide defines generated with the DSL.</li>
-<li><code>user_kernels.inc</code>. The generated CUDA kernels.</li>
+<li><code>user_defines.h</code>. The project-wide defines generated with the DSL.</li>
+<li><code>user_kernels.h</code>. The generated CUDA kernels.</li>
 </ol>
 <p>To make inspecting the code easier, we recommend using an autoformatting tool, for example, <code>clang-format</code> or GNU <code>indent</code>.</p>
 <h1><a class="anchor" id="autotoc_md24"></a>

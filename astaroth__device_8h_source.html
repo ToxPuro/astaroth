@@ -176,7 +176,7 @@ $(document).ready(function(){initNavTree('astaroth__device_8h_source.html',''); 
 <div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="preprocessor">    FUNC_DEFINE(AcResult, acDeviceLoad##DEF_NAME##Array,(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array));</span></div>
 </div>
 <div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span> </div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#include &quot;device_load_uniform_decl.inc&quot;</span></div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#include &quot;device_load_uniform_decl.h&quot;</span></div>
 <div class="foldopen" id="foldopen00101" data-start="" data-end="">
 <div class="line"><a id="l00101" name="l00101"></a><span class="lineno"><a class="line" href="astaroth__device_8h.html#a751b533fee6217d97b3f6aa66f4b0a89">  101</a></span><span class="preprocessor">#define DECL_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \</span></div>
 <div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="preprocessor">    FUNC_DEFINE(AcResult,acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform,(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value));</span></div>
@@ -185,7 +185,7 @@ $(document).ready(function(){initNavTree('astaroth__device_8h_source.html',''); 
 <div class="line"><a id="l00103" name="l00103"></a><span class="lineno"><a class="line" href="astaroth__device_8h.html#a4c5077b9a384ec91707d9dad7c0d9859">  103</a></span><span class="preprocessor">#define DECL_DEVICE_STORE_ARRAY(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \</span></div>
 <div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="preprocessor">    FUNC_DEFINE(AcResult,acDeviceStore##VAL_TYPE_UPPER_CASE##Array,(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value));</span></div>
 </div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="preprocessor">#include &quot;device_store_uniform_decl.inc&quot;</span></div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="preprocessor">#include &quot;device_store_uniform_decl.h&quot;</span></div>
 <div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span> </div>
 <div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span> </div>
 <div class="line"><a id="l00109" name="l00109"></a><span class="lineno"><a class="line" href="astaroth__device_8h.html#a9081ed69644f877d85465cda886fa94d">  109</a></span><a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="code hl_function" href="device_8cc.html#ac6c3c37bf5db17e7f52f35796711a024">acDeviceSetVertexBuffer</a>,(<span class="keyword">const</span> <a class="code hl_struct" href="structdevice__s.html">Device</a> device, <span class="keyword">const</span> <a class="code hl_enumeration" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream,</div>
@@ -340,7 +340,7 @@ $(document).ready(function(){initNavTree('astaroth__device_8h_source.html',''); 
 <div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span> </div>
 <div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> <a class="code hl_function" href="astaroth__device_8h.html#aee83bf0c26eb16f5277236aad07d8a00">acDeviceWriteMeshToDisk</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structdevice__s.html">Device</a> device, <span class="keyword">const</span> VertexBufferHandle vtxbuf,</div>
 <div class="line"><a id="l00312" name="l00312"></a><span class="lineno">  312</span>                                 <span class="keyword">const</span> <span class="keywordtype">char</span>* filepath);</div>
-<div class="ttc" id="aastaroth__base_8h_html_a0b8b584f5fb32277059bc4e6b9bcd6f0"><div class="ttname"><a href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a></div><div class="ttdeci">Stream</div><div class="ttdef"><b>Definition</b> astaroth_base.h:75</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a0b8b584f5fb32277059bc4e6b9bcd6f0"><div class="ttname"><a href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a></div><div class="ttdeci">Stream</div><div class="ttdef"><b>Definition</b> astaroth_base.h:74</div></div>
 <div class="ttc" id="aastaroth__device_8h_html_aee83bf0c26eb16f5277236aad07d8a00"><div class="ttname"><a href="astaroth__device_8h.html#aee83bf0c26eb16f5277236aad07d8a00">acDeviceWriteMeshToDisk</a></div><div class="ttdeci">AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf, const char *filepath)</div><div class="ttdef"><b>Definition</b> device.cc:1626</div></div>
 <div class="ttc" id="abwtest-benchmark_8cu_html_a4d3b1889098503be634fe5d0f5470134"><div class="ttname"><a href="bwtest-benchmark_8cu.html#a4d3b1889098503be634fe5d0f5470134">kernel</a></div><div class="ttdeci">__global__ void kernel(const size_t domain_length, const int radius, const size_t pad, const Array in, Array out)</div><div class="ttdef"><b>Definition</b> bwtest-benchmark.cu:98</div></div>
 <div class="ttc" id="adevice_8cc_html_a0059164ea6c96a2c1ac7c44e3cc9e5e0"><div class="ttname"><a href="device_8cc.html#a0059164ea6c96a2c1ac7c44e3cc9e5e0">acDeviceStoreMeshWithOffset</a></div><div class="ttdeci">AcResult acDeviceStoreMeshWithOffset(const Device device, const Stream stream, const int3 src, const int3 dst, const int num_vertices, AcMesh *host_mesh)</div><div class="ttdef"><b>Definition</b> device.cc:791</div></div>
@@ -430,13 +430,13 @@ $(document).ready(function(){initNavTree('astaroth__device_8h_source.html',''); 
 <div class="ttc" id="astructAcBuffer_html"><div class="ttname"><a href="structAcBuffer.html">AcBuffer</a></div><div class="ttdef"><b>Definition</b> ac_helpers.h:3</div></div>
 <div class="ttc" id="astructAcDeviceKernelOutput_html"><div class="ttname"><a href="structAcDeviceKernelOutput.html">AcDeviceKernelOutput</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:100</div></div>
 <div class="ttc" id="astructAcMeshInfo_html"><div class="ttname"><a href="structAcMeshInfo.html">AcMeshInfo</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:153</div></div>
-<div class="ttc" id="astructAcMesh_html"><div class="ttname"><a href="structAcMesh.html">AcMesh</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:69</div></div>
+<div class="ttc" id="astructAcMesh_html"><div class="ttname"><a href="structAcMesh.html">AcMesh</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:68</div></div>
 <div class="ttc" id="astructAcReal3_html"><div class="ttname"><a href="structAcReal3.html">AcReal3</a></div><div class="ttdef"><b>Definition</b> host_datatypes.h:38</div></div>
 <div class="ttc" id="astructAcReduction_html"><div class="ttname"><a href="structAcReduction.html">AcReduction</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:76</div></div>
 <div class="ttc" id="astructVolume_html"><div class="ttname"><a href="structVolume.html">Volume</a></div><div class="ttdef"><b>Definition</b> implementation.c:3</div></div>
 <div class="ttc" id="astructdevice__s_html"><div class="ttname"><a href="structdevice__s.html">device_s</a></div><div class="ttdef"><b>Definition</b> device.cc:40</div></div>
 <div class="ttc" id="astructint3_html"><div class="ttname"><a href="structint3.html">int3</a></div><div class="ttdef"><b>Definition</b> stencilgen.c:49</div></div>
-<div class="ttc" id="astructvariable_html"><div class="ttname"><a href="structvariable.html">variable</a></div><div class="ttdef"><b>Definition</b> codegen.c:3796</div></div>
+<div class="ttc" id="astructvariable_html"><div class="ttname"><a href="structvariable.html">variable</a></div><div class="ttdef"><b>Definition</b> codegen.c:3797</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

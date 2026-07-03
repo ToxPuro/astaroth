@@ -121,7 +121,7 @@ $(document).ready(function(){initNavTree('astaroth_8h_source.html',''); initResi
 <div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="preprocessor">#include &quot;<a class="code" href="astaroth__base_8h.html">astaroth_base.h</a>&quot;</span></div>
 <div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span> </div>
 <div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="preprocessor">#include &quot;user_builtin_non_scalar_constants.inc&quot;</span></div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="preprocessor">#include &quot;user_builtin_non_scalar_constants.h&quot;</span></div>
 <div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span> </div>
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span><span class="preprocessor">#ifdef __cplusplus</span></div>
@@ -528,10 +528,10 @@ $(document).ready(function(){initNavTree('astaroth_8h_source.html',''); initResi
 <div class="line"><a id="l00466" name="l00466"></a><span class="lineno">  466</span><a class="code hl_function" href="astaroth_8h.html#a3febae4b954afff54cdf691799db824f">acGetPid</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structint3.html">int3</a> pid, <span class="keyword">const</span> <a class="code hl_struct" href="structint3.html">int3</a> decomp, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info);</div>
 <div class="line"><a id="l00467" name="l00467"></a><span class="lineno">  467</span> </div>
 <div class="line"><a id="l00468" name="l00468"></a><span class="lineno">  468</span> </div>
-<div class="line"><a id="l00469" name="l00469"></a><span class="lineno">  469</span><span class="preprocessor">#include &quot;device_set_input_decls.inc&quot;</span></div>
-<div class="line"><a id="l00470" name="l00470"></a><span class="lineno">  470</span><span class="preprocessor">#include &quot;device_get_output_decls.inc&quot;</span></div>
-<div class="line"><a id="l00471" name="l00471"></a><span class="lineno">  471</span><span class="preprocessor">#include &quot;device_get_input_decls.inc&quot;</span></div>
-<div class="line"><a id="l00472" name="l00472"></a><span class="lineno">  472</span><span class="preprocessor">#include &quot;get_vtxbufs_declares.inc&quot;</span></div>
+<div class="line"><a id="l00469" name="l00469"></a><span class="lineno">  469</span><span class="preprocessor">#include &quot;device_set_input_decls.h&quot;</span></div>
+<div class="line"><a id="l00470" name="l00470"></a><span class="lineno">  470</span><span class="preprocessor">#include &quot;device_get_output_decls.h&quot;</span></div>
+<div class="line"><a id="l00471" name="l00471"></a><span class="lineno">  471</span><span class="preprocessor">#include &quot;device_get_input_decls.h&quot;</span></div>
+<div class="line"><a id="l00472" name="l00472"></a><span class="lineno">  472</span><span class="preprocessor">#include &quot;get_vtxbufs_declares.h&quot;</span></div>
 <div class="line"><a id="l00473" name="l00473"></a><span class="lineno">  473</span> </div>
 <div class="line"><a id="l00474" name="l00474"></a><span class="lineno">  474</span><span class="preprocessor">#if AC_RUNTIME_COMPILATION</span></div>
 <div class="line"><a id="l00475" name="l00475"></a><span class="lineno">  475</span><span class="preprocessor">#include &quot;<a class="code" href="astaroth__lib_8h.html">astaroth_lib.h</a>&quot;</span></div>
@@ -654,7 +654,7 @@ $(document).ready(function(){initNavTree('astaroth_8h_source.html',''); initResi
 <div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span>    LOAD_DSYM(<a class="code hl_function" href="astaroth_8cc.html#a9a0a4a3472a1d08bdc07972c173dc25e">acGetGridMaxNN</a>,stream)</div>
 <div class="line"><a id="l00593" name="l00593"></a><span class="lineno">  593</span>    LOAD_DSYM(<a class="code hl_function" href="astaroth_8cc.html#a964cef71882833673215572cd00759b5">acGetLengths</a>,stream)</div>
 <div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span>    LOAD_DSYM(<a class="code hl_function" href="astaroth_8cc.html#a2d31c3f7b53a0bcf6b3609656ec37f8c">acHostMeshCopyVertexBuffers</a>,stream)</div>
-<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span><span class="preprocessor">#include &quot;device_load_uniform_loads.inc&quot;</span></div>
+<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span><span class="preprocessor">#include &quot;device_load_uniform_loads.h&quot;</span></div>
 <div class="line"><a id="l00596" name="l00596"></a><span class="lineno">  596</span>    LOAD_DSYM(<a class="code hl_function" href="astaroth_8cc.html#a3e77ad1c1cd4391505f18f8543f996cc">acHostMeshCopy</a>,stream)</div>
 <div class="line"><a id="l00597" name="l00597"></a><span class="lineno">  597</span>    LOAD_DSYM(<a class="code hl_function" href="astaroth_8cc.html#a1d7688a01fe6b432b70d611c1170ebea">acGetKernelId</a>,stream)</div>
 <div class="line"><a id="l00598" name="l00598"></a><span class="lineno">  598</span>    LOAD_DSYM(<a class="code hl_function" href="astaroth_8cc.html#a816fb8bf9c3849f61813aee194f15cbd">acGetKernelIdByName</a>,stream)</div>
@@ -747,10 +747,10 @@ $(document).ready(function(){initNavTree('astaroth_8h_source.html',''); initResi
 <div class="line"><a id="l00685" name="l00685"></a><span class="lineno">  685</span>    LOAD_DSYM(<a class="code hl_function" href="device_8cc.html#ae467f6442627cf249f455b2bf06f16aa">acDeviceLoadStencilsFromConfig</a>,stream)</div>
 <div class="line"><a id="l00686" name="l00686"></a><span class="lineno">  686</span>    LOAD_DSYM(<a class="code hl_function" href="device_8cc.html#a48a9c9073c276e4a22595782b952aa4f">acDeviceStoreStencil</a>,stream)</div>
 <div class="line"><a id="l00687" name="l00687"></a><span class="lineno">  687</span>    LOAD_DSYM(<a class="code hl_function" href="device_8cc.html#aaf2f9cacc10332ed29cf70830885ff20">acDeviceVolumeCopy</a>,stream)</div>
-<div class="line"><a id="l00688" name="l00688"></a><span class="lineno">  688</span><span class="preprocessor">#include &quot;device_set_input_loads.inc&quot;</span></div>
-<div class="line"><a id="l00689" name="l00689"></a><span class="lineno">  689</span><span class="preprocessor">#include &quot;device_get_input_loads.inc&quot;</span></div>
-<div class="line"><a id="l00690" name="l00690"></a><span class="lineno">  690</span><span class="preprocessor">#include &quot;device_get_output_loads.inc&quot;</span></div>
-<div class="line"><a id="l00691" name="l00691"></a><span class="lineno">  691</span><span class="preprocessor">#include &quot;get_vtxbufs_loads.inc&quot;</span></div>
+<div class="line"><a id="l00688" name="l00688"></a><span class="lineno">  688</span><span class="preprocessor">#include &quot;device_set_input_loads.h&quot;</span></div>
+<div class="line"><a id="l00689" name="l00689"></a><span class="lineno">  689</span><span class="preprocessor">#include &quot;device_get_input_loads.h&quot;</span></div>
+<div class="line"><a id="l00690" name="l00690"></a><span class="lineno">  690</span><span class="preprocessor">#include &quot;device_get_output_loads.h&quot;</span></div>
+<div class="line"><a id="l00691" name="l00691"></a><span class="lineno">  691</span><span class="preprocessor">#include &quot;get_vtxbufs_loads.h&quot;</span></div>
 <div class="line"><a id="l00692" name="l00692"></a><span class="lineno">  692</span> </div>
 <div class="line"><a id="l00693" name="l00693"></a><span class="lineno">  693</span>    *(<span class="keywordtype">void</span>**)(&amp;acDeviceGetIntOutput) = dlsym(handle,<span class="stringliteral">&quot;acDeviceGetIntOutput&quot;</span>);</div>
 <div class="line"><a id="l00694" name="l00694"></a><span class="lineno">  694</span>    *(<span class="keywordtype">void</span>**)(&amp;acDeviceGetRealInput) = dlsym(handle,<span class="stringliteral">&quot;acDeviceGetRealInput&quot;</span>);</div>
@@ -1009,11 +1009,11 @@ $(document).ready(function(){initNavTree('astaroth_8h_source.html',''); initResi
 <div class="line"><a id="l00951" name="l00951"></a><span class="lineno">  951</span><span class="preprocessor">#define OVERLOAD_DEVICE_LOAD_ARRAY(ENUM,DEF_NAME) \</span></div>
 <div class="line"><a id="l00952" name="l00952"></a><span class="lineno">  952</span><span class="preprocessor">    static UNUSED AcResult acDeviceLoad(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array) { return acDeviceLoad##DEF_NAME##Array(device,stream,host_info,array);}</span></div>
 <div class="line"><a id="l00953" name="l00953"></a><span class="lineno">  953</span> </div>
-<div class="line"><a id="l00954" name="l00954"></a><span class="lineno">  954</span><span class="preprocessor">#include &quot;device_store_overloads.inc&quot;</span></div>
-<div class="line"><a id="l00955" name="l00955"></a><span class="lineno">  955</span><span class="preprocessor">#include &quot;device_load_uniform_overloads.inc&quot;</span></div>
-<div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span><span class="preprocessor">#include &quot;device_set_input_overloads.inc&quot;</span></div>
-<div class="line"><a id="l00957" name="l00957"></a><span class="lineno">  957</span><span class="preprocessor">#include &quot;device_get_input_overloads.inc&quot;</span></div>
-<div class="line"><a id="l00958" name="l00958"></a><span class="lineno">  958</span><span class="preprocessor">#include &quot;device_get_output_overloads.inc&quot;</span></div>
+<div class="line"><a id="l00954" name="l00954"></a><span class="lineno">  954</span><span class="preprocessor">#include &quot;device_store_overloads.h&quot;</span></div>
+<div class="line"><a id="l00955" name="l00955"></a><span class="lineno">  955</span><span class="preprocessor">#include &quot;device_load_uniform_overloads.h&quot;</span></div>
+<div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span><span class="preprocessor">#include &quot;device_set_input_overloads.h&quot;</span></div>
+<div class="line"><a id="l00957" name="l00957"></a><span class="lineno">  957</span><span class="preprocessor">#include &quot;device_get_input_overloads.h&quot;</span></div>
+<div class="line"><a id="l00958" name="l00958"></a><span class="lineno">  958</span><span class="preprocessor">#include &quot;device_get_output_overloads.h&quot;</span></div>
 <div class="line"><a id="l00959" name="l00959"></a><span class="lineno">  959</span> </div>
 <div class="line"><a id="l00960" name="l00960"></a><span class="lineno">  960</span> </div>
 <div class="line"><a id="l00961" name="l00961"></a><span class="lineno">  961</span><span class="preprocessor">#if AC_MPI_ENABLED</span></div>
@@ -1548,7 +1548,7 @@ $(document).ready(function(){initNavTree('astaroth_8h_source.html',''); initResi
 <div class="ttc" id="aastaroth_8h_html_af1b319d960a9784b3cb5197f3bb808c3"><div class="ttname"><a href="astaroth_8h.html#af1b319d960a9784b3cb5197f3bb808c3">acLogFromRootProc</a></div><div class="ttdeci">void acLogFromRootProc(const int pid, const char *msg,...)</div><div class="ttdef"><b>Definition</b> logging.c:26</div></div>
 <div class="ttc" id="aastaroth_8h_html_af7ae8f4b298756a542c2edefdc837c5c"><div class="ttname"><a href="astaroth_8h.html#af7ae8f4b298756a542c2edefdc837c5c">acSetLocalMeshDims</a></div><div class="ttdeci">AcResult acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo *info)</div><div class="ttdef"><b>Definition</b> update_params.cc:170</div></div>
 <div class="ttc" id="aastaroth__base_8h_html"><div class="ttname"><a href="astaroth__base_8h.html">astaroth_base.h</a></div></div>
-<div class="ttc" id="aastaroth__base_8h_html_a0b8b584f5fb32277059bc4e6b9bcd6f0"><div class="ttname"><a href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a></div><div class="ttdeci">Stream</div><div class="ttdef"><b>Definition</b> astaroth_base.h:75</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a0b8b584f5fb32277059bc4e6b9bcd6f0"><div class="ttname"><a href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a></div><div class="ttdeci">Stream</div><div class="ttdef"><b>Definition</b> astaroth_base.h:74</div></div>
 <div class="ttc" id="aastaroth__device_8h_html"><div class="ttname"><a href="astaroth__device_8h.html">astaroth_device.h</a></div></div>
 <div class="ttc" id="aastaroth__grid_8h_html"><div class="ttname"><a href="astaroth__grid_8h.html">astaroth_grid.h</a></div></div>
 <div class="ttc" id="aastaroth__legacy_8h_html"><div class="ttname"><a href="astaroth__legacy_8h.html">astaroth_legacy.h</a></div></div>
@@ -1666,7 +1666,7 @@ $(document).ready(function(){initNavTree('astaroth_8h_source.html',''); initResi
 <div class="ttc" id="astencilgen_8c_html_a46fb0bc56f0b52637b2f4b6cfa04fac3"><div class="ttname"><a href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a></div><div class="ttdeci">double AcReal</div><div class="ttdef"><b>Definition</b> stencilgen.c:53</div></div>
 <div class="ttc" id="astring__vec_8h_html_a7828c081e3540e4630d3462a4a4d4786"><div class="ttname"><a href="string__vec_8h.html#a7828c081e3540e4630d3462a4a4d4786">counter</a></div><div class="ttdeci">int counter</div><div class="ttdef"><b>Definition</b> string_vec.h:110</div></div>
 <div class="ttc" id="astructAcBuffer_html"><div class="ttname"><a href="structAcBuffer.html">AcBuffer</a></div><div class="ttdef"><b>Definition</b> ac_helpers.h:3</div></div>
-<div class="ttc" id="astructAcCommunicator_html"><div class="ttname"><a href="structAcCommunicator.html">AcCommunicator</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:59</div></div>
+<div class="ttc" id="astructAcCommunicator_html"><div class="ttname"><a href="structAcCommunicator.html">AcCommunicator</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:58</div></div>
 <div class="ttc" id="astructAcCommunicator_html_a35cbdd21df29a767ee8fa6900054c32a"><div class="ttname"><a href="structAcCommunicator.html#a35cbdd21df29a767ee8fa6900054c32a">AcCommunicator::handle</a></div><div class="ttdeci">MPI_Comm handle</div><div class="ttdef"><b>Definition</b> heffte.cc:13</div></div>
 <div class="ttc" id="astructAcCompInfo_html"><div class="ttname"><a href="structAcCompInfo.html">AcCompInfo</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:126</div></div>
 <div class="ttc" id="astructAcCompInfo_html_abda070c6a900af7006d05595f0ea4694"><div class="ttname"><a href="structAcCompInfo.html#abda070c6a900af7006d05595f0ea4694">AcCompInfo::config</a></div><div class="ttdeci">AcCompInfoConfig config</div><div class="ttdef"><b>Definition</b> acc_runtime.h:127</div></div>
@@ -1677,9 +1677,9 @@ $(document).ready(function(){initNavTree('astaroth_8h_source.html',''); initResi
 <div class="ttc" id="astructAcMeshInfo_html_a8411944366b0d3be19f2b469e4fb95c9"><div class="ttname"><a href="structAcMeshInfo.html#a8411944366b0d3be19f2b469e4fb95c9">AcMeshInfo::run_consts</a></div><div class="ttdeci">AcCompInfo run_consts</div><div class="ttdef"><b>Definition</b> acc_runtime.h:166</div></div>
 <div class="ttc" id="astructAcMeshInfo_html_a959603532564950b86e55db5df44c2d1"><div class="ttname"><a href="structAcMeshInfo.html#a959603532564950b86e55db5df44c2d1">AcMeshInfo::comm</a></div><div class="ttdeci">AcCommunicator * comm</div><div class="ttdef"><b>Definition</b> acc_runtime.h:165</div></div>
 <div class="ttc" id="astructAcMeshInfo_html_abd7fc33a74349fa320000f6a84740015"><div class="ttname"><a href="structAcMeshInfo.html#abd7fc33a74349fa320000f6a84740015">AcMeshInfo::is_loaded</a></div><div class="ttdeci">AcMeshInfoLoadedInfo is_loaded</div><div class="ttdef"><b>Definition</b> acc_runtime.h:158</div></div>
-<div class="ttc" id="astructAcMesh_html"><div class="ttname"><a href="structAcMesh.html">AcMesh</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:69</div></div>
-<div class="ttc" id="astructAcMesh_html_a8ad3200c879752e41d25b329bd81053d"><div class="ttname"><a href="structAcMesh.html#a8ad3200c879752e41d25b329bd81053d">AcMesh::vertex_buffer</a></div><div class="ttdeci">AcReal * vertex_buffer[NUM_ALL_FIELDS]</div><div class="ttdef"><b>Definition</b> astaroth_base.h:70</div></div>
-<div class="ttc" id="astructAcMesh_html_a9188ac0d8a5d2cfc227871600e0de92d"><div class="ttname"><a href="structAcMesh.html#a9188ac0d8a5d2cfc227871600e0de92d">AcMesh::info</a></div><div class="ttdeci">AcMeshInfo info</div><div class="ttdef"><b>Definition</b> astaroth_base.h:72</div></div>
+<div class="ttc" id="astructAcMesh_html"><div class="ttname"><a href="structAcMesh.html">AcMesh</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:68</div></div>
+<div class="ttc" id="astructAcMesh_html_a8ad3200c879752e41d25b329bd81053d"><div class="ttname"><a href="structAcMesh.html#a8ad3200c879752e41d25b329bd81053d">AcMesh::vertex_buffer</a></div><div class="ttdeci">AcReal * vertex_buffer[NUM_ALL_FIELDS]</div><div class="ttdef"><b>Definition</b> astaroth_base.h:69</div></div>
+<div class="ttc" id="astructAcMesh_html_a9188ac0d8a5d2cfc227871600e0de92d"><div class="ttname"><a href="structAcMesh.html#a9188ac0d8a5d2cfc227871600e0de92d">AcMesh::info</a></div><div class="ttdeci">AcMeshInfo info</div><div class="ttdef"><b>Definition</b> astaroth_base.h:71</div></div>
 <div class="ttc" id="astructAcReal3_html"><div class="ttname"><a href="structAcReal3.html">AcReal3</a></div><div class="ttdef"><b>Definition</b> host_datatypes.h:38</div></div>
 <div class="ttc" id="astructAcTaskGraph_html"><div class="ttname"><a href="structAcTaskGraph.html">AcTaskGraph</a></div><div class="ttdef"><b>Definition</b> task.h:451</div></div>
 <div class="ttc" id="astructKernelAnalysisInfo_html"><div class="ttname"><a href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a></div><div class="ttdef"><b>Definition</b> astaroth_analysis.h:3</div></div>
