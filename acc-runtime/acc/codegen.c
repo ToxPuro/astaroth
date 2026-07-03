@@ -32,6 +32,7 @@
 
 #include "create_node.h"
 #include "expr.h"
+#include "source_manager.h"
 #include "tab.h"
 #include "warp_reduce.h"
 
@@ -154,13 +155,6 @@ type_output(const char* type)
 		return PROFILE_STR;
 	return type;
 }
-
-void
-gen_dlsym(FILE* fp, const char* func_name)
-{
-	fprintf(fp,"LOAD_DSYM(%s,stream)\n",func_name);
-}
-
 
 void
 get_executed_nodes(const int round);
@@ -1501,17 +1495,17 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		char* func_name;
 		fp = fopen("device_set_input_loads.h","a");
 		my_asprintf(&func_name,"acDeviceSet%sInput",upper_case_name);
-		gen_dlsym(fp,func_name);
+		acc_gen_dlsym(fp,func_name);
 		fclose(fp);
 
 		fp = fopen("device_get_input_loads.h","a");
 		my_asprintf(&func_name,"acDeviceGet%sInput",upper_case_name);
-		gen_dlsym(fp,func_name);
+		acc_gen_dlsym(fp,func_name);
 		fclose(fp);
 
 		fp = fopen("device_get_output_loads.h","a");
 		my_asprintf(&func_name,"acDeviceGet%sOutput",upper_case_name);
-		gen_dlsym(fp,func_name);
+		acc_gen_dlsym(fp,func_name);
 		fclose(fp);
 
 		free(func_name);
@@ -6797,7 +6791,7 @@ gen_field_info(FILE* fp)
   {
 	char* func_name;
 	my_asprintf(&func_name,"acGet%s",field_names.data[i]);
-	gen_dlsym(fp,func_name);
+	acc_gen_dlsym(fp,func_name);
 	free(func_name);
   }
 }

@@ -46,7 +46,7 @@ else()
 	include_directories(${PROJECT_BINARY_DIR})
 	
 	## Executable
-	add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
+	add_executable(acc codegen.c source_manager.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
 	target_include_directories(acc PUBLIC "${AC_BASE_PATH}/acc-runtime/api")
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
