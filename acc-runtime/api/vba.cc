@@ -19,6 +19,7 @@
 
 // clang-format off
 #include "user_defines.h"
+#include "reduce_helpers_decls.h"
 // clang-format on
 
 static inline AcMeshDims

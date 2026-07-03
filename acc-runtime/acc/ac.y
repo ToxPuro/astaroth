@@ -17,6 +17,7 @@
 #include "create_node.h"
 #include "create_node_decl.h"
 #include "expr.h"
+#include "source_manager.h"
 
 extern struct hashmap_s string_intern_hashmap;
 extern const char* binary_op_val;
@@ -419,6 +420,21 @@ make_dir(const char* dirname)
 		exit(EXIT_FAILURE);
 	}
 }
+
+static void
+reset_sources_manager_source(const char* filename)
+{
+  char stripped_filename[BUFFER_SIZE] = {0};
+
+  strcpy(stripped_filename, filename);
+  // Find the first dot in the filename and end the string there.
+  char* dot_p = NULL;
+  if ((dot_p = strchr(stripped_filename, '.')) != NULL)
+    *dot_p = '\0';
+
+  acc_sources_manager_invalidate_source(acc_sources_manager_singleton(), stripped_filename);
+}
+
 void
 reset_diff_files()
 {
@@ -434,6 +450,8 @@ reset_diff_files()
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
     FILE* fp = fopen(files[i], "w");
     fclose(fp);
+
+    reset_sources_manager_source(files[i]);
   }
 }
 void
@@ -444,6 +462,8 @@ reset_extra_files()
     ACC_GEN_PATH "/extra_dfuncs.h",
   };
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
+    reset_sources_manager_source(files[i]);
+
     if (!file_exists(files[i]))
       continue;
     FILE* fp = fopen(files[i], "w");
@@ -577,6 +597,8 @@ reset_all_files()
     FILE* fp = fopen(files[i], "w");
     check_file(fp, "was not able to create file", files[i]);
     fclose(fp);
+
+    reset_sources_manager_source(files[i]);
   }
   reset_diff_files();
 }
@@ -738,7 +760,6 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	
         fclose(fp);
 
-
         // Stage 4: Format
         format_source("user_kernels.h.raw", "user_kernels.h");
 
@@ -896,7 +917,9 @@ main(int argc, char** argv)
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_INPUT_PARAMS, false,false);
-    
+
+    // Writes all the source files managed by the sources manager onto disk.
+    acc_sources_manager_flush(acc_sources_manager_singleton());
 
     return EXIT_SUCCESS;
 }

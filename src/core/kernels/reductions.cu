@@ -37,6 +37,7 @@
 // clang-format off
 #include "load_ac_kernel_params_def.h"
 #include "user_defines.h"
+#include "reduce_helpers_decls.h"
 // clang-format on
 
 #if AC_CPU_BUILD == 0
