@@ -382,7 +382,7 @@ static std::vector<TBConfig> tbconfigs;
 
 static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
 
-#include "reduce_helpers.h"
+#include "reduce_helpers_decls.h"
 
 void
 ac_resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)

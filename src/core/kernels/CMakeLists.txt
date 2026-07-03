@@ -22,7 +22,13 @@ if (RUNTIME_COMPILATION)
 	target_link_libraries(kernels PUBLIC static_kernels)
 else()
 	add_library(kernels_obj OBJECT kernels.cu reductions.cu)
-	set_property(TARGET kernels_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
+	set_target_properties(
+		kernels_obj
+		PROPERTIES
+			POSITION_INDEPENDENT_CODE ON
+			CUDA_SEPARABLE_COMPILATION ON
+			CUDA_RESOLVE_DEVICE_SYMBOLS ON
+	)
         target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
 	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
 	if(CPU_BUILD)
@@ -95,8 +101,18 @@ else()
 	target_link_libraries(kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
 endif()
 
-set_property(TARGET static_kernels PROPERTY POSITION_INDEPENDENT_CODE ON)
-set_property(TARGET kernels PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_target_properties(
+	static_kernels
+	PROPERTIES
+		POSITION_INDEPENDENT_CODE ON
+		CUDA_RESOLVE_DEVICE_SYMBOLS ON
+)
+set_target_properties(
+	kernels
+	PROPERTIES
+		POSITION_INDEPENDENT_CODE ON
+		CUDA_RESOLVE_DEVICE_SYMBOLS ON
+)
 
 if (USE_HIP)
     set_property(TARGET static_kernels PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})

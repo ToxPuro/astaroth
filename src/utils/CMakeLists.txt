@@ -25,4 +25,6 @@ else()
 	endif()
 endif()
 
-set_property(TARGET astaroth_utils PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_target_properties(astaroth_utils PROPERTIES
+	POSITION_INDEPENDENT_CODE ON
+	CUDA_RESOLVE_DEVICE_SYMBOLS ON)
