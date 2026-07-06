@@ -422,6 +422,8 @@ calc_timestep(const AcMeshInfo info)
 	const AcReal uumax = acDeviceGetOutput(acGridGetDevice(),UU_MAX_ADVEC);
 	const AcReal vAmax = acDeviceGetOutput(acGridGetDevice(),ALFVEN_SPEED_MAX);
 	const AcReal ad_onefluid = acDeviceGetOutput(acGridGetDevice(),AD_ONE_FLUID_MAX_ADVEC);
+
+	const AcReal ambipolar_diff_onefluid = acDeviceGetOutput(acGridGetDevice(),AD_MAX_AD);
 	const AcReal shock_max = acDeviceGetOutput(acGridGetDevice(),AC_MAX_SHOCK);
     	// New, closer to the actual Courant timestep
     	// See Pencil Code user manual p. 38 (timestep section)
@@ -433,7 +435,7 @@ calc_timestep(const AcMeshInfo info)
 
     	const long double diffus_dt  = cdtv * dsmin * dsmin /
     	                            (max(max(nu_visc, eta), gamma * chi) +
-    	                             nu_shock * (long double)shock_max);
+    	                             nu_shock * (long double)shock_max + ambipolar_diff_onefluid);
 
     	const long double dt = min(min(advec_dt, diffus_dt),diffus3_dt);
     	ERRCHK_ALWAYS(is_valid((AcReal)dt));
