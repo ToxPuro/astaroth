@@ -124,6 +124,66 @@ The `taskgraph_trace` is an MPI-based performance profiling utility that records
 
 The `tfm` directory is the most physics-rich sample in the suite, implementing a comprehensive Test Field Method (TFM) MHD simulator for studying small-scale dynamo and mean-field astrophysics. It provides four executables (`tfm`, `tfm_mpi`, `tfm_pipeline`, `tfm_standalone`), an 1116-line DSL physics file, INI configuration files, and Python visualization scripts. The TFM methodology solves for four pairs of magnetic vector potential test fields advected by a hydrodynamic velocity field, computing mean-field coefficients (alpha, beta/turbulent diffusivity) from correlations between fluctuating fields and mean profiles. Key features include configurable SOCA and magnetic Laplace diffusion variants, helical forcing based on Pencil Code, and a 3-substep RK3 integrator with 28 boundary condition calls per substep.
 
-## tfm-mpi
+# Summary of Sample Directories — A
 
-The `tfm-mpi` sample is the MPI-accelerated Test Field Method simulator with a hand-coded C++ pipeline (1920 lines in `tfm.cc`) instead of the DSL task graph builder. It implements the full simulation loop with segmented computation (halo vs inner domain), two independent halo exchange batches for hydro and TFM fields, LUMI topology-aware GPU mapping, and periodic test field resets. The sample includes extensive Python analysis scripts for computing alpha and eta tensors from EMF profiles, timeseries plotting, slice animation, and production run result archives. Notable implementation details include a dry-run initialization in the `rev::Grid` constructor, async profile writes, dual-buffer snapshot rotation for restart support, and Mahti compatibility workarounds for CUDA-aware MPI IO.
+This document summarizes all `ANALYSIS_*.md` files for sample directories whose names start with the letter **a**. Each entry is 2–4 sentences.
+
+## ac-interpreter
+
+The `ac-interpreter` is a command-line REPL utility for interactive testing and debugging of the Astaroth library, providing manual control over core library functions including mesh initialization, kernel execution, data I/O, and field reductions. It processes a set of interactive commands (`init`, `load_random`, `read`, `write`, `launch`, `reduce`, `reduce_all`, `exit`) via standard input, using `acDevice*` APIs for device management and `acHostMesh*` APIs for host-side mesh operations. The tool is designed for exploratory debugging and rapid prototyping, allowing developers to launch individual kernels and inspect field reductions without writing full simulation drivers.
+
+## advection-example
+
+The `advection-example` is Astaroth's "hello world" — the simplest end-to-end simulation that advects a scalar concentration field by a constant velocity vector using the Astaroth DSL and task graph system. It demonstrates the complete workflow: DSL kernel definition (Euler update and initial condition kernels with periodic boundaries), configuration-driven setup via `advec.conf`, mesh initialization, task graph optimization and execution in a time-stepping loop, and slice-based output rendering. With a minimal 256×8×8 grid and a CFL number of 0.05, it serves as the recommended starting point in Astaroth's own learning path, preceding more complex samples like `standalone_mpi` and the full MHD DSL.
+
+# Summary of Sample Directories — B
+
+This document summarizes all `ANALYSIS_*.md` files for sample directories whose names start with the letter **b**. Each entry is 2–4 sentences.
+
+## benchmark
+
+The `benchmark` sample is Astaroth's core performance benchmarking tool for measuring full integration step execution time across varying problem sizes and processor counts to evaluate strong and weak scaling characteristics. It supports both strong scaling (fixed total grid, decreasing per-process workload) and weak scaling (fixed per-process grid, growing total domain), running 5 warmup + 100 timed integration steps each consisting of 3 RK3 substeps. An optional CPU-vs-GPU verification path compares host-side `acHostIntegrateStep` results against GPU task graph execution with configurable ULP tolerance. Results are appended to `scaling-benchmark.csv` with percentile statistics (50th and 90th) and per-kernel sanity checks for boundary conditions, integration, and reductions.
+
+## benchmark-device
+
+The `benchmark-device` sample is a per-kernel-level GPU benchmarking tool that directly benchmarks individual Astaroth device kernels via `acDeviceLaunchKernel`, as opposed to the higher-level `samples/benchmark/` which measures full integration steps through task graphs. It measures `singlepass_solve` kernel launch performance, reports optimal thread block dimensions (TPB), and includes a three-stage CPU-vs-GPU verification path (load/store, boundary conditions, integration) with configurable grid dimensions and random seeds. A companion Python script (`mhd.py`) benchmarks a nonlinear MHD forward model across PyTorch, TensorFlow, and JAX against a NumPy/SciPy reference, providing an independent ML-framework comparison for convolution-based stencil computations.
+
+## benchmark-node
+
+The `benchmark-node` sample is a single-node, single-process GPU benchmarking tool that exercises Astaroth's Node API (`acNode*`), a higher-level wrapper encapsulating device management, stream operations, and kernel launches within a single-node context. Written entirely in C (unlike the C++ `benchmark` and `benchmark-device` samples), it benchmarks full 3-substep integration via `acNodeIntegrateSubstep`, reports percentile statistics (min, median, 90th percentile, max), and includes load/store and boundary condition verification stages. Unlike the other benchmarks, it passes explicit volume bounds (`n_min`, `n_max`) to substep calls rather than relying on implicit kernel launch dimensions.
+
+## benchmark-thrust
+
+The `benchmark-thrust` sample is a CUDA Thrust library performance benchmark that provides a dual-purpose comparison between raw `thrust::reduce` throughput and Astaroth's `acMapCrossReduce` operation over vertex and profile buffer arrays. Written in CUDA C++ (`.cu` file), it first benchmarks Thrust parallel reductions on `thrust::device_vector` arrays across multiple z-slices, then runs the same logical operation through Astaroth's VBA/PBA layer with explicit cross-section mapping and scratchpad buffers. The comparison isolates the overhead introduced by Astaroth's buffer array abstraction, including 2D cross-section extraction from 3D arrays and reduction into profile buffers.
+
+## blur
+
+The `blur` sample is Astaroth's minimal stencil-based image blurring example, demonstrating the DSL's `Stencil` construct — a named weighted convolution pattern applicable to any field. It includes three DSL implementations: a reference 7-point 3D cross stencil (`1/7` weight on center + 6 face neighbors), a completed 9-point 2D box blur (`1/9` on 3×3 x-y cross), and an incomplete student exercise with only 3 of 9 coefficients filled. The C host program creates a uniform mesh (all cells set to `1.0`), loads it to GPU, launches the blur kernel, and prints the resulting grid to verify that constant fields are preserved (stencil weights sum to `1.0`).
+
+## boundcond_test
+
+The `boundcond_test` is Astaroth's comprehensive boundary condition correctness validation suite, testing all ghost-zone BC implementations (periodic, symmetric, antisymmetric, relative antisymmetry, prescribed derivative) by decomposing the 3D mesh boundary into 26 regions (6 faces, 12 edges, 8 corners). For each region and every vertex buffer field, it executes a task graph (halo exchange followed by directional BC applications) and compares device-computed ghost values against analytical kernel expectations with double-precision tolerance (`epsilon = 1e-14`). The test also includes a periodic boundary query test that validates `acGridTaskGraphHasPeriodicBoundcondsX/Y/Z()` across all 8 periodicity combinations, and provides detailed per-field error reporting for failed regions.
+
+## bwtest-mpi
+
+The `bwtest-mpi` is a standalone MPI/CUDA bandwidth benchmark measuring communication and data transfer performance across different memory allocation strategies (standard `malloc`, `cudaMalloc`, pinned device/host memory) and send/recv patterns (blocking, non-blocking, `MPI_Sendrecv`, all-to-all multiple). It uses a ring topology with a 12 MiB block size and runs 10 warmup + 100 timed iterations, reporting bandwidth in GiB/s for host-host, device-device, and device-host transfers in both unidirectional and bidirectional modes. The tool documents key performance findings: pinned memory is essential for RDMA (40 GiB/s internode vs 5–6 GiB/s standard device memory), and both sender and receiver buffers must be pinned for internode optimization.
+
+# Summary of Sample Directories — C
+
+This document summarizes all `ANALYSIS_*.md` files for sample directories whose names start with the letter **c**. Each entry is 2–4 sentences.
+
+## convection_kramers
+
+The `convection_kramers` sample is a boundary condition verification test structurally nearly identical to `boundcond_test` but with two distinguishing additions: a simplified kernel function signature (drops the `int3 normal` parameter) and a pilot MHD BCs test that exercises `acSpecialMHDBoundaryCondition` for entropy blackbody radiation and entropy prescribed heat flux. It tests the same four standard BC types (symmetric, antisymmetric, prescribed derivative with value 6.0, relative antisymmetry) across all 26 ghost zone regions, using only `AC_dsx` (isotropic grid assumption) instead of direction-specific grid spacings. The pilot MHD task graph is constructed but not executed, serving as a development draft for special MHD boundary condition testing.
+
+## cpptest
+
+The `cpptest` is Astaroth's simplest integration test — a single-functionality C++ executable that validates the `AC_SINGLEPASS_INTEGRATION` mode by creating a host mesh, randomizing it, applying periodic boundaries, loading to the device, performing one integration step with `dt = FLT_EPSILON`, and printing min/max ranges for all vertex buffers. It uses the legacy `acInit`/`acQuit` API (not the modern `acGrid*` task-graph API) and requires no MPI, making it a single-processor smoke test for the single-pass integration infrastructure. The program includes a load/store round-trip verification and prints "cpptest complete." on success.
+
+## ctest
+
+The `ctest` is the C-language counterpart to the C++ `cpptest`, functionally identical but with an added startup GPU device availability check via `acCheckDeviceAvailability()` and a hardcoded error message bug (still references "cpptest" instead of "ctest"). It compiles `main.c` as pure C with `errchk.h` included, uses `POSITION_INDEPENDENT_CODE`, and follows the same single-pass integration validation flow: device check → config → mesh creation → randomize → load → store → integrate → print vertex buffer ranges → cleanup. Like `cpptest`, it requires no MPI and is a single-processor test.
+
+## cubtest
+
+The `cubtest` is a standalone CUDA C++ benchmark/utility for NVIDIA CUB and AMD HIP/CUB segmented reduction operations, containing two programs: `cubtest.cu` (a large-scale 256³ × 32 double benchmark allocating ~4.3 GiB with 8,192 segments) and `cubtest-basic-working.cu` (a small 10-element correctness test with hardcoded values). Both test `cub::DeviceSegmentedReduce::Sum` using CUB's two-pass pattern (query workspace size, then execute with allocated temporary storage), with the large benchmark running 10 iterations for performance measurement and assertion-based verification. The code supports cross-platform compilation via `USE_HIP` preprocessor flag, targeting AMD MI200 (`gfx90a`) through `hipcc`, and uses only the standalone `timer_hires.h` utility from Astaroth without linking the core library.
