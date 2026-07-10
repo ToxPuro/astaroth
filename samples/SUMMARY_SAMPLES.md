@@ -124,6 +124,10 @@ The `taskgraph_trace` is an MPI-based performance profiling utility that records
 
 The `tfm` directory is the most physics-rich sample in the suite, implementing a comprehensive Test Field Method (TFM) MHD simulator for studying small-scale dynamo and mean-field astrophysics. It provides four executables (`tfm`, `tfm_mpi`, `tfm_pipeline`, `tfm_standalone`), an 1116-line DSL physics file, INI configuration files, and Python visualization scripts. The TFM methodology solves for four pairs of magnetic vector potential test fields advected by a hydrodynamic velocity field, computing mean-field coefficients (alpha, beta/turbulent diffusivity) from correlations between fluctuating fields and mean profiles. Key features include configurable SOCA and magnetic Laplace diffusion variants, helical forcing based on Pencil Code, and a 3-substep RK3 integrator with 28 boundary condition calls per substep.
 
+## tfm-mpi
+
+The `tfm-mpi` sample is the MPI-accelerated Test Field Method simulator with a hand-coded C++ pipeline (1920 lines in `tfm.cc`) instead of the DSL task graph builder. It implements the full simulation loop with segmented computation (halo vs inner domain), two independent halo exchange batches for hydro and TFM fields, LUMI topology-aware GPU mapping, and periodic test field resets. The sample includes extensive Python analysis scripts for computing alpha and eta tensors from EMF profiles, timeseries plotting, slice animation, and production run result archives. Notable implementation details include a dry-run initialization in the `rev::Grid` constructor, async profile writes, dual-buffer snapshot rotation for restart support, and Mahti compatibility workarounds for CUDA-aware MPI IO.
+
 # Summary of Sample Directories — A
 
 This document summarizes all `ANALYSIS_*.md` files for sample directories whose names start with the letter **a**. Each entry is 2–4 sentences.
