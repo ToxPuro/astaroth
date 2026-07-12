@@ -208,3 +208,7 @@ I have issues with IBM Power PCs
 How do I contribute?
 
 > See [Contributing](CONTRIBUTING.md).
+
+Reporting issues and seeking help
+
+> This section is to be expanded, but for reporting issues and for seeking help you can always contact one of the main developers: touko.puro@aalto.fi.
