@@ -175,3 +175,41 @@ The `taskgraph_test` is an MPI-based diagnostic utility nearly identical in stru
 ## taskgraph_trace
 
 The `taskgraph_trace` is an MPI-based performance profiling utility that records per-kernel execution timing data from Astaroth's task graph execution. It creates two randomized meshes but loads only one to GPU, runs 100 warm-up iterations to trigger JIT compilation and auto-optimizations, then enables tracing and executes one measured iteration with results written to per-process trace files. The 100 warm-up iterations ensure all kernel compilation, auto-tuning, and memory allocation overhead is excluded from the measured trace data, and the per-process file naming enables correlation with the corresponding dependency structure files.
+
+# Deprecated and Legacy Subdirectories
+
+## samples/standalone
+
+**Status: Explicitly deprecated** — superseded by `samples/standalone_mpi`. The `ANALYSIS_STANDALONE.md` file begins with a `⚠️ DEPRECATED` banner stating this directory is deprecated and `standalone_mpi` is the up-to-date version. The directory still contains a functional CPU-based reference implementation and multi-tool executable (`ac_run`), plus a deprecated function `DEPRECATED_acForcingVec()` in `host_forcing.h` that is superseded by the `ForcingParams` struct. The `ANALYSIS_SAMPLES.md` root file also marks this directory as deprecated. Should be removed once all users have migrated to `standalone_mpi`.
+
+## samples/pyastaroth
+
+**Status: Empty / abandoned** — the directory exists but contains no source files, only an empty listing. The last modification timestamp is from March 2026, suggesting it was created and then abandoned. Not documented in `SUMMARY_SAMPLES.md`.
+
+## samples/pyastaroth_generated
+
+**Status: Empty / abandoned** — contains only a Python `__pycache__` directory with no actual generated source files. The last modification timestamp is from March 2026. Not documented in `SUMMARY_SAMPLES.md`.
+
+## samples/cpptest
+
+**Status: Legacy API** — uses the pre-`acGrid*` legacy API (`acInit`/`acQuit`/`acLoad`/`acStore`/`acIntegrate`), predating the task-graph-based design. Tests the older synchronous single-pass integration model (`AC_SINGLEPASS_INTEGRATION`). No documented modern equivalent using the `acGrid*` API. Simple smoke test requiring no MPI.
+
+## samples/ctest
+
+**Status: Legacy API** — C-language counterpart to `cpptest`, functionally identical but adds a GPU device availability check. Uses the same legacy `acInit`/`acQuit` API. The analysis file explicitly notes it is the C-language counterpart to `cpptest` and "Both samples use the pre-`acGrid*` API". Contains a hardcoded bug (error message still references "cpptest" instead of "ctest").
+
+## samples/devicetest
+
+**Status: Legacy API** — comprehensive GPU device correctness validator but uses the legacy `acDevice*` API (not the modern `acGrid*` API). Has two identified bugs in vector and Alfvén reduction minimum calculations. Runs via `mpirun` but assumes rank 0.
+
+## samples/mpitest
+
+**Status: Partially legacy** — `mpitest` tests integration via both the legacy `acGridIntegrate` API and the newer DSL task graph API, with the analysis noting "the DSL path is intended to supersede the legacy path." The dual verification paths suggest the legacy path is being phased out but is still maintained for backward compatibility.
+
+## samples/convection_kramers
+
+**Status: Development draft** — structurally nearly identical to `boundcond_test` with a "pilot MHD BCs test" that is constructed but not executed. The analysis describes it as "a development draft for special MHD boundary condition testing." The pilot MHD task graph code exists but is never called from the main simulation loop.
+
+## samples/tfm-mpi (partial deprecations)
+
+**Status: Contains deprecated code paths** — while not itself deprecated, the directory contains multiple deprecated features: commented-out `get_local_mesh_info()` (deprecated domain decomposition), old timestep calculation, old IALLREDUCE with device buffers, `write_slices_to_disk()` (deprecated slice I/O not called from main simulation), and various commented-out profiling sections. These represent old patterns that are no longer active but still present in the codebase.
