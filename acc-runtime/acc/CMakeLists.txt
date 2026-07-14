@@ -6,8 +6,8 @@ project(acc C)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Options
-option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time, runtime compilation lessens this" OFF)
-option(OPTIMIZE_INPUT_PARAMS "Generates optimized kernels for each possible combination of kernel input parameters (taking only those into account that can have a finite number of different values), works well with OPTIMIZE_MEM_ACCESSES since reduces the amount of conditional control-flow in kernels" OFF)
+option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time, runtime compilation lessens this" ON)
+option(OPTIMIZE_INPUT_PARAMS "Generates optimized kernels for each possible combination of kernel input parameters (taking only those into account that can have a finite number of different values), works well with OPTIMIZE_MEM_ACCESSES since reduces the amount of conditional control-flow in kernels" ON)
 option(USE_ONLY_OPTIMIZED_KERNELS "For kernels for which optimized versions exist because of optimization depending on input params make the original kernel empty" OFF)
 option(OPTIMIZE_FIELDS       "Optimizes fields to be auxiliary,(non-)communicated and if allowed dead based on writes, reads and stencil accesses in kernels. Pitfalls are conditional accesses and writes, which runtime compilation can lessen" OFF)
 option(ALLOW_DEAD_VARIABLES  "Must be on to allow the program to have dead i.e. not allocated fields or arrays" OFF)

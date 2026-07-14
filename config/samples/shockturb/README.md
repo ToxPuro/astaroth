@@ -49,7 +49,7 @@ and tiara.sinica.edu.tw
 
 # Running the simulation.
 
-Run e.g. `mpirun -np 4 ./ac_run_mpi --config astaroth.conf --init-condition ShockTurb`
+Run e.g. `mpirun -np 4 ./ac_run_mpi --config astaroth.conf --init-condition ShockTurb --run-init-kernel randomize`
 or however your particular system runs MPI.
 
 # Troubleshooting
