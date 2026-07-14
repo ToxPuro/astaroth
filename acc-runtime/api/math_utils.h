@@ -225,9 +225,9 @@ max(const AcReal3& v, const AcReal& s)
 {
 	return (AcReal3)
 	{
-		max(v.x,s),
-		max(v.y,s),
-		max(v.z,s)
+		v.x > s ? v.x : s,
+		v.y > s ? v.y : s,
+		v.z > s ? v.z : s
 	};
 }
 
@@ -236,9 +236,9 @@ max(const AcReal& s, const AcReal3& v)
 {
 	return (AcReal3)
 	{
-		max(v.x,s),
-		max(v.y,s),
-		max(v.z,s)
+		v.x > s ? v.x : s,
+		v.y > s ? v.y : s,
+		v.z > s ? v.z : s
 	};
 }
 
