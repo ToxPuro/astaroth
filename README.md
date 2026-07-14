@@ -8,7 +8,7 @@ Astaroth is licenced under the terms of the GNU General Public Licence, version 
 (see [LICENCE.txt](LICENCE.md)). For contributing guidelines,
 see [Contributing](CONTRIBUTING.md).
 
-Astaroth is tested against its test suite after every commit. You can find the success of the latest test suite [here](https://github.com/ToxPuro/astaroth/actions).
+Astaroth is tested against its test suite after every commit. You can find the success of the latest test suite [here](https://github.com/ToxPuro/astaroth/actions). You can the test suite yourself locally by first sourcing Astaroth with `. ./sourceme.sh` and then `./test/run_all_tests.sh`
 
 ## Getting started
 * For a hello world example for physical simulations see `samples/advection-example`
@@ -53,6 +53,7 @@ In the base directory, run
 If you need a functioning and documented example of how to run Astaroth in standalone more out of the box,
 
 [please see this shock turbulence run example](config/samples/shockturb/README.md) in the directory `config/samples/shockturb/`.
+Or for a simpler setup see the hello world setup in `samples/advection-example`.
 
 ## Running on clusters (Slurm)
 
@@ -208,3 +209,7 @@ I have issues with IBM Power PCs
 How do I contribute?
 
 > See [Contributing](CONTRIBUTING.md).
+
+Reporting issues and seeking help
+
+> This section is to be expanded, but for reporting issues and for seeking help you can always contact one of the main developers: touko.puro@aalto.fi.

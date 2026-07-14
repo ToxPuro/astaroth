@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This is a sample script. Please copy it to the directory you want to run the
-# code in and customize occordingly.
+# code in and customize accordingly.
 
 # The following write the commit indentifier corresponding to the simulation
 # run  into a file. This is to help keep track what version of the code was

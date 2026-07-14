@@ -1,0 +1,67 @@
+hostdefine STENCIL_ORDER (0)
+
+#include "$AC_HOME/acc-runtime/stdlib/grid"
+#
+dead Field F
+
+run_const int AC_nlocal_w = 10
+//gmem real DATA[AC_nlocal.x][AC_nlocal.y][AC_nlocal.z][AC_nlocal_w]
+global output real AC_integral_res
+//run_const real AC_ds_w = 1.0/(AC_nlocal_w)
+run_const real AC_len_w = 1.0
+run_const real AC_ds_w = AC_nlocal_w == 1 ? 1.0 : AC_len_w/(AC_nlocal_w-1)
+run_const real AC_first_gridpoint_w = 0.0
+
+
+integrand()
+{
+	k=1
+	v=1.0/3.0
+ 	t1 = grid_position().x 
+ 	t2 = grid_position().y
+	return exp(-0.5*k*k*(t1-t2)*(t1-t2)*v*v)*cos(k*(t1-t2))/(t1*t2)
+}
+
+Kernel
+//Trapezoidal rule
+calc_integral_kernel()
+{
+	local_res = 0.0
+	weight = AC_ds.x*AC_ds.y*AC_ds.z*AC_ds_w
+	for w in 0:AC_nlocal_w
+	{
+		local_weight = weight
+		if(vertexIdx.x == 0 || vertexIdx.x == AC_nlocal.x-1)
+		{
+			local_weight *= 0.5
+		}
+		if(vertexIdx.y == 0 || vertexIdx.y == AC_nlocal.y-1)
+		{
+			local_weight *= 0.5
+		}
+		
+		if(AC_nlocal.z > 1 && (vertexIdx.z == 0 || vertexIdx.z == AC_nlocal.z-1))
+		{
+			local_weight *= 0.5
+		}
+		if(AC_nlocal_w > 1 && (w == 0 || AC_nlocal_w-1))
+		{
+		  local_weight *= 0.5
+		}
+		//local_res += local_weight*DATA[vertexIdx.x][vertexIdx.y][vertexIdx.z][w]
+		local_res += local_weight*integrand()
+	}
+	reduce_sum(local_res,AC_integral_res)
+}
+
+BoundConds
+bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps
+calc_integral(bcs)
+{
+	calc_integral_kernel()
+}
