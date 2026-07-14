@@ -55,8 +55,6 @@ Field VTXBUF_UU_DOT_OO
 
 #define LTFM_HANDWRITTEN (1) // Note: SOCA not supported if this is off
 
-hostdefine AC_TFM_ENABLED (1)
-hostdefine NO_TFM_REDUCTIONS (1)
 
 real AC_eta_tfm
 real AC_profile_amplitude, AC_profile_wavenumber
@@ -373,7 +371,7 @@ rk3_step2(s0, s1, roc) {
 }
 
 #if LTFM && LTFM_HANDWRITTEN
-roc_tf(Field3 aa_handle, ProfileZ3 bmean_handle, Profile<Z> uxbmean_handle) {
+roc_tf(Field3 aa_handle, ProfileZ3 bmean_handle, ProfileZ3 uxbmean_handle) {
     bb = curl(aa_handle)
     Umean = value(PROFILE_Umean)
     Bmean = value(bmean_handle)
@@ -445,7 +443,7 @@ Kernel singlepass_solve_step0() {
 #endif
 }
 
-singlepass_solve_step0_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, Profile<Z> uxbmean_handle) {
+singlepass_solve_step0_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, ProfileZ3 uxbmean_handle) {
 
     aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
 
@@ -455,11 +453,11 @@ singlepass_solve_step0_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, Profile<Z> 
 
     uu = value(UU)
     bb = curl(aa_handle)
-    uxb = cross(uu, bb)
+    real3 uxb = cross(uu, bb)
     
-    reduce_sum(uxbmean_handle.x, uxb.x)
-    reduce_sum(uxbmean_handle.y, uxb.y)
-    reduce_sum(uxbmean_handle.z, uxb.z)
+    reduce_sum(uxb.x,uxbmean_handle.x)
+    reduce_sum(uxb.y,uxbmean_handle.y)
+    reduce_sum(uxb.z,uxbmean_handle.z)
 }
 
 Kernel singlepass_solve_step0_tfm_b11() {
@@ -494,7 +492,7 @@ Kernel singlepass_solve_step0_tfm_b22() {
     singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxbmean_handle)
 }
 
-singlepass_solve_step1_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, Profile<Z> uxbmean_handle) {
+singlepass_solve_step1_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, ProfileZ3 uxbmean_handle) {
 
     aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
 
@@ -504,10 +502,10 @@ singlepass_solve_step1_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, Profile<Z> 
 
     uu = value(UU)
     bb = curl(aa_handle)
-    uxb = cross(uu, bb)
-    reduce_sum(uxbmean_handle.x, uxb.x)
-    reduce_sum(uxbmean_handle.y, uxb.y)
-    reduce_sum(uxbmean_handle.z, uxb.z)
+    real3 uxb = cross(uu, bb)
+    reduce_sum(uxb.x,uxbmean_handle.x)
+    reduce_sum(uxb.y,uxbmean_handle.y)
+    reduce_sum(uxb.z,uxbmean_handle.z)
 }
 
 Kernel singlepass_solve_step1_tfm_b11() {
@@ -542,7 +540,7 @@ Kernel singlepass_solve_step1_tfm_b22() {
     singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxbmean_handle)
 }
 
-singlepass_solve_step2_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, Profile<Z> uxbmean_handle, Field3 bb_handle) {
+singlepass_solve_step2_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, ProfileZ3 uxbmean_handle, Field3 bb_handle) {
 
     aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
 
@@ -552,11 +550,11 @@ singlepass_solve_step2_tfm(Field3 aa_handle, ProfileZ3 bmean_handle, Profile<Z> 
 
     uu = value(UU)
     bb = curl(aa_handle)
-    uxb = cross(uu, bb)
+    real3 uxb = cross(uu, bb)
 
-    reduce_sum(uxbmean_handle.x, uxb.x)
-    reduce_sum(uxbmean_handle.y, uxb.y)
-    reduce_sum(uxbmean_handle.z, uxb.z)
+    reduce_sum(uxb.x,uxbmean_handle.x)
+    reduce_sum(uxb.y,uxbmean_handle.y)
+    reduce_sum(uxb.z,uxbmean_handle.z)
 
     write(bb_handle.x, bb.x)
     write(bb_handle.y, bb.y)
@@ -738,11 +736,11 @@ Kernel singlepass_solve_step2() {
 
 BoundConds bcs
 {
-  periodic(BOUNDARY_XY)
+  periodic(BOUNDARY_XYZ)
 }
 
 ComputeSteps
-AC_tfm_update(boundconds)
+AC_tfm_update(bcs)
 {
   singlepass_solve_step0()
   singlepass_solve_step0_tfm_b11()

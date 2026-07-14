@@ -25,6 +25,17 @@ value(Profile<Z> profile)
 	return value_profile_z(profile)
 }
 
+value(ProfileZ3 profile)
+{
+	return
+	(real3)
+	{
+		value(profile.x),
+		value(profile.y),
+		value(profile.z)
+	}
+}
+
 value(Profile<XY> profile)
 {
 	return value_profile_xy(profile)
