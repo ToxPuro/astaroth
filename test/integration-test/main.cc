@@ -135,8 +135,11 @@ main(int argc, char* argv[])
 
     free(data_arr);
     const int retval = AC_SUCCESS;
+    acGridQuit();
+    MPI_Finalize();
+    finalized = true;
     if (pid == 0)
-        fprintf(stderr, "REDUCTION_TEST complete: %s\n",
+        fprintf(stderr, "Integration test complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;
