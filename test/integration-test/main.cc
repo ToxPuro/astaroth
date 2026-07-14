@@ -86,25 +86,33 @@ main(int argc, char* argv[])
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    AcReal* data_arr = (AcReal*)malloc(sizeof(AcReal)*10*10*10*10);
+    const size_t size = (size_t)info[AC_nlocal].x*info[AC_nlocal].y*info[AC_nlocal].z*info[AC_nlocal_w];
+    AcReal* data_arr = (AcReal*)malloc(sizeof(AcReal)*size);
+    memset(data_arr,0.0,size*sizeof(AcReal));
     if(data_arr == NULL)
     {
 	    fprintf(stderr,"Was not able top allocate!\n");
 	    fflush(stderr);
+	    exit(EXIT_FAILURE);
     }
-    for(int x = 0; x < 10; ++x)
+    const int nx = info[AC_nlocal].x;
+    const int ny = info[AC_nlocal].y;
+    const int nz = info[AC_nlocal].z;
+    const AcReal k = 1.0;
+    const AcReal v = 1.0/3.0;
+    for(int x = 0; x < info[AC_nlocal].x; ++x)
     {
-      AcReal pos_x = info[AC_ds].x*x + info[AC_first_gridpoint].x;
-      for(int y = 0; y < 10; ++y)
+      AcReal t1 = info[AC_ds].x*x + info[AC_first_gridpoint].x;
+      for(int y = 0; y < info[AC_nlocal].y; ++y)
       {
-        AcReal pos_y = info[AC_ds].y*y+ info[AC_first_gridpoint].y;
-        for(int z = 0; z < 10; ++z)
+        AcReal t2 = info[AC_ds].y*y+ info[AC_first_gridpoint].y;
+        for(int z = 0; z < info[AC_nlocal].z; ++z)
         {
-          AcReal pos_z = info[AC_ds].z*z+ info[AC_first_gridpoint].z;
-          for(int w = 0; w < 10; ++w)
+          for(int w = 0; w < info[AC_nlocal_w]; ++w)
           {
-		  AcReal pos_w = info[AC_ds_w]*w + 0.5*info[AC_ds_w];
-		  data_arr[x + 10*(y + 10*(z + 10*(w)))] = pos_x*pos_y*pos_z*pos_w;
+		  const AcReal val = exp(-0.5*k*k*(t1-t2)*(t1-t2)*v*v)*cos(k*(t1-t2))/(t1*t2);
+		  const size_t idx = x + nx*(y + ny*(z + nz*(w)));
+		  data_arr[idx] = val;
           }
         }
       }
@@ -112,7 +120,12 @@ main(int argc, char* argv[])
     info[DATA] = data_arr;
     // GPU alloc & compute
     acGridInit(info);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(calc_integral),1);
+
+    const auto graph = acGetOptimizedDSLTaskGraph(calc_integral);
+    const auto start = MPI_Wtime();
+    acGridExecuteTaskGraph(graph,1);
+    const auto end = MPI_Wtime();
+    fprintf(stderr,"Integral took: %.14e\n",end-start);
 
     const AcReal res = acDeviceGetOutput(acGridGetDevice(),AC_integral_res);
     fprintf(stderr,"Integral is: %.14e\n",res);
