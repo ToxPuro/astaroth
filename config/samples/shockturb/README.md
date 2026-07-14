@@ -26,6 +26,7 @@ The provided my_cmake.sh will then copy the files from
 $AC_HOME/acc-runtime/samples/mhd_modular/
 to a new directory ../DSL relative to the run directory and edit the default
 settings in mhdsolver.ac to the following as required for the shocktest.
+As a starting point you can use this directory as the run directory.
 
 ```
 LDENSITY (1)
