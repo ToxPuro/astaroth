@@ -8,7 +8,7 @@ Astaroth is licenced under the terms of the GNU General Public Licence, version 
 (see [LICENCE.txt](LICENCE.md)). For contributing guidelines,
 see [Contributing](CONTRIBUTING.md).
 
-Astaroth is tested against its test suite after every commit. You can find the success of the latest test suite [here](https://github.com/ToxPuro/astaroth/actions).
+Astaroth is tested against its test suite after every commit. You can find the success of the latest test suite [here](https://github.com/ToxPuro/astaroth/actions). You can the test suite yourself locally by first sourcing Astaroth with `. ./sourceme.sh` and then `./test/run_all_tests.sh`
 
 ## Getting started
 * For a hello world example for physical simulations see `samples/advection-example`
