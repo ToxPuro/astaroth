@@ -53,6 +53,7 @@ In the base directory, run
 If you need a functioning and documented example of how to run Astaroth in standalone more out of the box,
 
 [please see this shock turbulence run example](config/samples/shockturb/README.md) in the directory `config/samples/shockturb/`.
+Or for a simpler setup see the hello world setup in `samples/advection-example`.
 
 ## Running on clusters (Slurm)
 
