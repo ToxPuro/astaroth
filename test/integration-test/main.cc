@@ -92,18 +92,18 @@ main(int argc, char* argv[])
 	    fprintf(stderr,"Was not able top allocate!\n");
 	    fflush(stderr);
     }
-    for(int x = 0; x <= 10; ++x)
+    for(int x = 0; x < 10; ++x)
     {
-      for(int y = 0; y <= 10; ++y)
+      AcReal pos_x = info[AC_ds].x*x + info[AC_first_gridpoint].x;
+      for(int y = 0; y < 10; ++y)
       {
-        for(int z = 0; z <= 10; ++z)
+        AcReal pos_y = info[AC_ds].y*y+ info[AC_first_gridpoint].y;
+        for(int z = 0; z < 10; ++z)
         {
-          for(int w = 0; w <= 10; ++w)
+          AcReal pos_z = info[AC_ds].z*z+ info[AC_first_gridpoint].z;
+          for(int w = 0; w < 10; ++w)
           {
-		  AcReal pos_x = info[AC_ds].x*x;
-		  AcReal pos_y = info[AC_ds].y*y;
-		  AcReal pos_z = info[AC_ds].z*z;
-		  AcReal pos_w = info[AC_ds_w]*w;
+		  AcReal pos_w = info[AC_ds_w]*w + 0.5*info[AC_ds_w];
 		  data_arr[x + 10*(y + 10*(z + 10*(w)))] = pos_x*pos_y*pos_z*pos_w;
           }
         }

@@ -7,7 +7,7 @@ Field F
 run_const int AC_nlocal_w = 10
 gmem real DATA[AC_nlocal.x][AC_nlocal.y][AC_nlocal.z][AC_nlocal_w]
 global output real AC_integral_res
-run_const real AC_ds_w = 1.0/(AC_nlocal_w-1)
+run_const real AC_ds_w = 1.0/(AC_nlocal_w)
 
 Kernel
 calc_integral_kernel()
