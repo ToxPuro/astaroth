@@ -1,0 +1,34 @@
+hostdefine STENCIL_ORDER (0)
+
+#include "$AC_HOME/acc-runtime/stdlib/grid"
+#
+Field F
+
+run_const int AC_nlocal_w = 10
+gmem real DATA[AC_nlocal.x][AC_nlocal.y][AC_nlocal.z][AC_nlocal_w]
+global output real AC_integral_res
+run_const real AC_ds_w = 1.0/(AC_nlocal_w-1)
+
+Kernel
+calc_integral_kernel()
+{
+	local_res = 0.0
+	for w in 0:AC_nlocal_w
+	{
+		local_res += DATA[vertexIdx.x][vertexIdx.y][vertexIdx.z][w]
+	}
+	weight = AC_ds.x*AC_ds.y*AC_ds.z*AC_ds_w
+	reduce_sum(local_res*weight,AC_integral_res)
+}
+
+BoundConds
+bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps
+calc_integral(bcs)
+{
+	calc_integral_kernel()
+}

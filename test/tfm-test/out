@@ -1,0 +1,1154 @@
+acCompile: No changes in input; running make in case DSL code has changed;
+[  2%] Built target ac_cuda_wrappers
+[ 15%] Built target acc
+[ 15%] Built target astaroth_helpers
+[ 17%] Built target ac_reindex
+[ 20%] Built target ac_transpose
+[ 22%] [34m[1mBuilding ACC objects: /home/touko/astaroth/test/tfm-test/DSL[0m
+[ 24%] Built target ac_fft
+Building AC object /home/touko/astaroth/acc-runtime/built-in/typedefs.h
+Building AC object /home/touko/astaroth/test/tfm-test/build/runtime_build/overrides.h
+Building AC object /home/touko/astaroth/acc-runtime/built-in/intrinsics.h
+Building AC object /home/touko/astaroth/acc-runtime/built-in/variables.h
+Building AC object /home/touko/astaroth/acc-runtime/built-in/functions.h
+Building AC object /home/touko/astaroth/test/tfm-test/build/ac_dynamic/extra_dfuncs.h
+Building AC object /home/touko/astaroth/test/tfm-test/DSL/solver.ac
+Building AC object /home/touko/astaroth/test/tfm-test/build/ac_dynamic/boundcond_kernels.h
+Building AC object /home/touko/astaroth/acc-runtime/built-in/kernels.h
+Compiling /home/touko/astaroth/src/core/stencil_accesses.cpp...
+--- USE_HIP not defined
+--- ACC_RUNTIME_API_DIR: `/home/touko/astaroth/acc-runtime/acc/../api`
+--- GPU_API_INCLUDES: ``
+Compile command: g++ -I. -I /home/touko/astaroth/acc-runtime/acc/../api -I /home/touko/astaroth/acc-runtime/acc/../../include  -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=1 -DAC_USE_HIP=0 -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 /home/touko/astaroth/src/core/stencil_accesses.cpp -lm  -std=c++1z -o acc_stencil_accesses.o 
+In file included from /home/touko/astaroth/src/core/stencil_accesses.cpp:937:
+./user_cpu_kernels.h: In lambda function:
+./user_cpu_kernels.h:847:16: error: expected primary-expression before ‘)’ token
+  847 | return (AcReal3){
+      |                ^
+./user_cpu_kernels.h:847:17: error: expected ‘;’ before ‘{’ token
+  847 | return (AcReal3){
+      |                 ^
+      |                 ;
+./user_cpu_kernels.h:848:20: error: expected primary-expression before ‘auto’
+  848 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      |                    ^~~~
+./user_cpu_kernels.h:848:20: error: expected ‘)’ before ‘auto’
+  848 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      | ~                  ^~~~
+      |                    )
+/home/touko/astaroth/src/core/stencil_accesses.cpp:88:71: error: expected primary-expression before ‘)’ token
+   88 | #define globalVertexIdx ((int3){vertexIdx.x, vertexIdx.y, vertexIdx.z})
+      |                                                                       ^
+./user_cpu_kernels.h:848:199: note: in expansion of macro ‘globalVertexIdx’
+  848 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      |                                                                                                                                                                                                       ^~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:8&)> [with auto:8 = Field3]’:
+./user_cpu_kernels.h:868:54:   required from here
+./user_cpu_kernels.h:802:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+  802 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:802:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+  802 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:802:6: note: ‘value’ declared here, later in the translation unit
+  802 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:802:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+  802 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:802:6: note: ‘value’ declared here, later in the translation unit
+  802 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:9&)> [with auto:9 = Field3]’:
+./user_cpu_kernels.h:868:147:   required from here
+./user_cpu_kernels.h:806:11: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+  806 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+      |      val
+./user_cpu_kernels.h:806:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+  806 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:806:11: note: ‘value’ declared here, later in the translation unit
+  806 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+./user_cpu_kernels.h:806:45: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+  806 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |                                        ~~~~~^~~~~
+./user_cpu_kernels.h:806:11: note: ‘value’ declared here, later in the translation unit
+  806 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:21&)> [with auto:21 = ProfileZ3]’:
+./user_cpu_kernels.h:979:23:   required from here
+./user_cpu_kernels.h:953:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+  953 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:953:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+  953 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:953:6: note: ‘value’ declared here, later in the translation unit
+  953 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:953:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+  953 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:953:6: note: ‘value’ declared here, later in the translation unit
+  953 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:21&)> [with auto:21 = Field3]’:
+./user_cpu_kernels.h:982:20:   required from here
+./user_cpu_kernels.h:953:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+  953 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:953:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+  953 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:953:6: note: ‘value’ declared here, later in the translation unit
+  953 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:953:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+  953 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:953:6: note: ‘value’ declared here, later in the translation unit
+  953 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:32&, const auto:33&, const auto:34&)> [with auto:32 = Field3; auto:33 = ProfileZ3; auto:34 = ProfileZ3]’:
+./user_cpu_kernels.h:1019:27:   required from here
+./user_cpu_kernels.h:1005:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1005 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1006:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1006 | write(aa_handle.y,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1005:6: note: ‘write’ declared here, later in the translation unit
+ 1005 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1007:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1007 | write(aa_handle.z,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1005:6: note: ‘write’ declared here, later in the translation unit
+ 1005 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1011:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 1011 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:1012:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1012 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1011:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1011 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1013:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1013 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1011:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1011 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:35&)> [with auto:35 = ProfileZ3]’:
+./user_cpu_kernels.h:1103:23:   required from here
+./user_cpu_kernels.h:1077:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1077:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1077:6: note: ‘value’ declared here, later in the translation unit
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1077:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1077:6: note: ‘value’ declared here, later in the translation unit
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:35&)> [with auto:35 = Field3]’:
+./user_cpu_kernels.h:1106:20:   required from here
+./user_cpu_kernels.h:1077:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1077:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1077:6: note: ‘value’ declared here, later in the translation unit
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1077:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1077:6: note: ‘value’ declared here, later in the translation unit
+ 1077 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:46&, const auto:47&, const auto:48&)> [with auto:46 = Field3; auto:47 = ProfileZ3; auto:48 = ProfileZ3]’:
+./user_cpu_kernels.h:1143:27:   required from here
+./user_cpu_kernels.h:1129:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1129 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1130:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1130 | write(aa_handle.y,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1129:6: note: ‘write’ declared here, later in the translation unit
+ 1129 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1131:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1131 | write(aa_handle.z,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1129:6: note: ‘write’ declared here, later in the translation unit
+ 1129 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1135:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 1135 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:1136:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1136 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1135:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1135 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1137:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1137 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1135:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1135 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:49&)> [with auto:49 = ProfileZ3]’:
+./user_cpu_kernels.h:1227:23:   required from here
+./user_cpu_kernels.h:1201:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1201:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1201:6: note: ‘value’ declared here, later in the translation unit
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1201:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1201:6: note: ‘value’ declared here, later in the translation unit
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:49&)> [with auto:49 = Field3]’:
+./user_cpu_kernels.h:1230:20:   required from here
+./user_cpu_kernels.h:1201:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1201:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1201:6: note: ‘value’ declared here, later in the translation unit
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1201:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1201:6: note: ‘value’ declared here, later in the translation unit
+ 1201 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:60&, const auto:61&, const auto:62&)> [with auto:60 = Field3; auto:61 = ProfileZ3; auto:62 = ProfileZ3]’:
+./user_cpu_kernels.h:1267:27:   required from here
+./user_cpu_kernels.h:1253:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1253 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1254:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1254 | write(aa_handle.y,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1253:6: note: ‘write’ declared here, later in the translation unit
+ 1253 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1255:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1255 | write(aa_handle.z,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1253:6: note: ‘write’ declared here, later in the translation unit
+ 1253 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1259:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 1259 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:1260:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1260 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1259:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1259 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1261:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1261 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1259:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1259 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:63&)> [with auto:63 = ProfileZ3]’:
+./user_cpu_kernels.h:1351:23:   required from here
+./user_cpu_kernels.h:1325:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1325:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1325:6: note: ‘value’ declared here, later in the translation unit
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1325:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1325:6: note: ‘value’ declared here, later in the translation unit
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:63&)> [with auto:63 = Field3]’:
+./user_cpu_kernels.h:1354:20:   required from here
+./user_cpu_kernels.h:1325:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1325:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1325:6: note: ‘value’ declared here, later in the translation unit
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1325:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1325:6: note: ‘value’ declared here, later in the translation unit
+ 1325 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step0_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:74&, const auto:75&, const auto:76&)> [with auto:74 = Field3; auto:75 = ProfileZ3; auto:76 = ProfileZ3]’:
+./user_cpu_kernels.h:1391:27:   required from here
+./user_cpu_kernels.h:1377:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1377 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1378:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1378 | write(aa_handle.y,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1377:6: note: ‘write’ declared here, later in the translation unit
+ 1377 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1379:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1379 | write(aa_handle.z,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1377:6: note: ‘write’ declared here, later in the translation unit
+ 1377 | write(aa_handle.x,rk3_step0(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1383:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 1383 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:1384:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1384 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1383:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1383 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1385:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1385 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1383:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1383 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:77&)> [with auto:77 = ProfileZ3]’:
+./user_cpu_kernels.h:1475:23:   required from here
+./user_cpu_kernels.h:1449:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1449:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1449:6: note: ‘value’ declared here, later in the translation unit
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1449:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1449:6: note: ‘value’ declared here, later in the translation unit
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:77&)> [with auto:77 = Field3]’:
+./user_cpu_kernels.h:1478:20:   required from here
+./user_cpu_kernels.h:1449:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1449:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1449:6: note: ‘value’ declared here, later in the translation unit
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1449:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1449:6: note: ‘value’ declared here, later in the translation unit
+ 1449 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:88&, const auto:89&, const auto:90&)> [with auto:88 = Field3; auto:89 = ProfileZ3; auto:90 = ProfileZ3]’:
+./user_cpu_kernels.h:1515:27:   required from here
+./user_cpu_kernels.h:1501:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1501 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1502:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1502 | write(aa_handle.y,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1501:6: note: ‘write’ declared here, later in the translation unit
+ 1501 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1503:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1503 | write(aa_handle.z,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1501:6: note: ‘write’ declared here, later in the translation unit
+ 1501 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1507:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 1507 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:1508:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1508 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1507:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1507 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1509:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1509 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1507:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1507 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:91&)> [with auto:91 = ProfileZ3]’:
+./user_cpu_kernels.h:1599:23:   required from here
+./user_cpu_kernels.h:1573:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1573:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1573:6: note: ‘value’ declared here, later in the translation unit
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1573:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1573:6: note: ‘value’ declared here, later in the translation unit
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:91&)> [with auto:91 = Field3]’:
+./user_cpu_kernels.h:1602:20:   required from here
+./user_cpu_kernels.h:1573:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1573:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1573:6: note: ‘value’ declared here, later in the translation unit
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1573:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1573:6: note: ‘value’ declared here, later in the translation unit
+ 1573 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:102&, const auto:103&, const auto:104&)> [with auto:102 = Field3; auto:103 = ProfileZ3; auto:104 = ProfileZ3]’:
+./user_cpu_kernels.h:1639:27:   required from here
+./user_cpu_kernels.h:1625:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1625 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1626:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1626 | write(aa_handle.y,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1625:6: note: ‘write’ declared here, later in the translation unit
+ 1625 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1627:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1627 | write(aa_handle.z,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1625:6: note: ‘write’ declared here, later in the translation unit
+ 1625 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1631:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 1631 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:1632:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1632 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1631:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1631 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1633:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1633 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1631:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1631 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:105&)> [with auto:105 = ProfileZ3]’:
+./user_cpu_kernels.h:1723:23:   required from here
+./user_cpu_kernels.h:1697:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1697:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1697:6: note: ‘value’ declared here, later in the translation unit
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1697:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1697:6: note: ‘value’ declared here, later in the translation unit
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:105&)> [with auto:105 = Field3]’:
+./user_cpu_kernels.h:1726:20:   required from here
+./user_cpu_kernels.h:1697:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1697:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1697:6: note: ‘value’ declared here, later in the translation unit
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1697:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1697:6: note: ‘value’ declared here, later in the translation unit
+ 1697 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:116&, const auto:117&, const auto:118&)> [with auto:116 = Field3; auto:117 = ProfileZ3; auto:118 = ProfileZ3]’:
+./user_cpu_kernels.h:1763:27:   required from here
+./user_cpu_kernels.h:1749:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1749 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1750:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1750 | write(aa_handle.y,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1749:6: note: ‘write’ declared here, later in the translation unit
+ 1749 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1751:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1751 | write(aa_handle.z,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1749:6: note: ‘write’ declared here, later in the translation unit
+ 1749 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1755:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 1755 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:1756:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1756 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1755:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1755 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1757:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1757 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1755:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1755 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:119&)> [with auto:119 = ProfileZ3]’:
+./user_cpu_kernels.h:1847:23:   required from here
+./user_cpu_kernels.h:1821:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1821:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1821:6: note: ‘value’ declared here, later in the translation unit
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1821:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1821:6: note: ‘value’ declared here, later in the translation unit
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:119&)> [with auto:119 = Field3]’:
+./user_cpu_kernels.h:1850:20:   required from here
+./user_cpu_kernels.h:1821:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1821:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1821:6: note: ‘value’ declared here, later in the translation unit
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1821:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1821:6: note: ‘value’ declared here, later in the translation unit
+ 1821 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:130&, const auto:131&, const auto:132&)> [with auto:130 = Field3; auto:131 = ProfileZ3; auto:132 = ProfileZ3]’:
+./user_cpu_kernels.h:1887:27:   required from here
+./user_cpu_kernels.h:1873:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1873 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1874:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1874 | write(aa_handle.y,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1873:6: note: ‘write’ declared here, later in the translation unit
+ 1873 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1875:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1875 | write(aa_handle.z,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1873:6: note: ‘write’ declared here, later in the translation unit
+ 1873 | write(aa_handle.x,rk3_step1(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1879:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 1879 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:1880:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1880 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1879:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1879 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1881:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1881 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1879:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 1879 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:133&)> [with auto:133 = ProfileZ3]’:
+./user_cpu_kernels.h:1971:23:   required from here
+./user_cpu_kernels.h:1945:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1945:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1945:6: note: ‘value’ declared here, later in the translation unit
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1945:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1945:6: note: ‘value’ declared here, later in the translation unit
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:133&)> [with auto:133 = Field3]’:
+./user_cpu_kernels.h:1974:20:   required from here
+./user_cpu_kernels.h:1945:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:1945:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:1945:6: note: ‘value’ declared here, later in the translation unit
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:1945:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:1945:6: note: ‘value’ declared here, later in the translation unit
+ 1945 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b11(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:144&, const auto:145&, const auto:146&, const auto:147&)> [with auto:144 = Field3; auto:145 = ProfileZ3; auto:146 = ProfileZ3; auto:147 = Field3]’:
+./user_cpu_kernels.h:2016:27:   required from here
+./user_cpu_kernels.h:1997:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 1997 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:1998:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1998 | write(aa_handle.y,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1997:6: note: ‘write’ declared here, later in the translation unit
+ 1997 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1999:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 1999 | write(aa_handle.z,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1997:6: note: ‘write’ declared here, later in the translation unit
+ 1997 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2003:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 2003 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:2004:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2004 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2003:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 2003 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2005:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2005 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2003:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 2003 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2006:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2006 | write(bb_handle.x,bb.x);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1997:6: note: ‘write’ declared here, later in the translation unit
+ 1997 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2007:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2007 | write(bb_handle.y,bb.y);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1997:6: note: ‘write’ declared here, later in the translation unit
+ 1997 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2008:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2008 | write(bb_handle.z,bb.z);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:1997:6: note: ‘write’ declared here, later in the translation unit
+ 1997 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:148&)> [with auto:148 = ProfileZ3]’:
+./user_cpu_kernels.h:2100:23:   required from here
+./user_cpu_kernels.h:2074:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:2074:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:2074:6: note: ‘value’ declared here, later in the translation unit
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:2074:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2074:6: note: ‘value’ declared here, later in the translation unit
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:148&)> [with auto:148 = Field3]’:
+./user_cpu_kernels.h:2103:20:   required from here
+./user_cpu_kernels.h:2074:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:2074:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:2074:6: note: ‘value’ declared here, later in the translation unit
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:2074:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2074:6: note: ‘value’ declared here, later in the translation unit
+ 2074 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b12(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:159&, const auto:160&, const auto:161&, const auto:162&)> [with auto:159 = Field3; auto:160 = ProfileZ3; auto:161 = ProfileZ3; auto:162 = Field3]’:
+./user_cpu_kernels.h:2145:27:   required from here
+./user_cpu_kernels.h:2126:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 2126 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:2127:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2127 | write(aa_handle.y,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2126:6: note: ‘write’ declared here, later in the translation unit
+ 2126 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2128:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2128 | write(aa_handle.z,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2126:6: note: ‘write’ declared here, later in the translation unit
+ 2126 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2132:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 2132 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:2133:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2133 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2132:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 2132 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2134:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2134 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2132:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 2132 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2135:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2135 | write(bb_handle.x,bb.x);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2126:6: note: ‘write’ declared here, later in the translation unit
+ 2126 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2136:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2136 | write(bb_handle.y,bb.y);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2126:6: note: ‘write’ declared here, later in the translation unit
+ 2126 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2137:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2137 | write(bb_handle.z,bb.z);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2126:6: note: ‘write’ declared here, later in the translation unit
+ 2126 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:163&)> [with auto:163 = ProfileZ3]’:
+./user_cpu_kernels.h:2229:23:   required from here
+./user_cpu_kernels.h:2203:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:2203:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:2203:6: note: ‘value’ declared here, later in the translation unit
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:2203:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2203:6: note: ‘value’ declared here, later in the translation unit
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:163&)> [with auto:163 = Field3]’:
+./user_cpu_kernels.h:2232:20:   required from here
+./user_cpu_kernels.h:2203:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:2203:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:2203:6: note: ‘value’ declared here, later in the translation unit
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:2203:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2203:6: note: ‘value’ declared here, later in the translation unit
+ 2203 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b21(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:174&, const auto:175&, const auto:176&, const auto:177&)> [with auto:174 = Field3; auto:175 = ProfileZ3; auto:176 = ProfileZ3; auto:177 = Field3]’:
+./user_cpu_kernels.h:2274:27:   required from here
+./user_cpu_kernels.h:2255:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 2255 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:2256:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2256 | write(aa_handle.y,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2255:6: note: ‘write’ declared here, later in the translation unit
+ 2255 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2257:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2257 | write(aa_handle.z,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2255:6: note: ‘write’ declared here, later in the translation unit
+ 2255 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2261:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 2261 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:2262:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2262 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2261:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 2261 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2263:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2263 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2261:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 2261 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2264:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2264 | write(bb_handle.x,bb.x);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2255:6: note: ‘write’ declared here, later in the translation unit
+ 2255 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2265:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2265 | write(bb_handle.y,bb.y);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2255:6: note: ‘write’ declared here, later in the translation unit
+ 2255 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2266:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2266 | write(bb_handle.z,bb.z);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2255:6: note: ‘write’ declared here, later in the translation unit
+ 2255 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:178&)> [with auto:178 = ProfileZ3]’:
+./user_cpu_kernels.h:2358:23:   required from here
+./user_cpu_kernels.h:2332:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:2332:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:2332:6: note: ‘value’ declared here, later in the translation unit
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:2332:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2332:6: note: ‘value’ declared here, later in the translation unit
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:178&)> [with auto:178 = Field3]’:
+./user_cpu_kernels.h:2361:20:   required from here
+./user_cpu_kernels.h:2332:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:2332:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:2332:6: note: ‘value’ declared here, later in the translation unit
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:2332:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2332:6: note: ‘value’ declared here, later in the translation unit
+ 2332 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2_tfm_b22(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:189&, const auto:190&, const auto:191&, const auto:192&)> [with auto:189 = Field3; auto:190 = ProfileZ3; auto:191 = ProfileZ3; auto:192 = Field3]’:
+./user_cpu_kernels.h:2403:27:   required from here
+./user_cpu_kernels.h:2384:6: error: ‘write’ was not declared in this scope; did you mean ‘fwrite’?
+ 2384 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | fwrite
+./user_cpu_kernels.h:2385:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2385 | write(aa_handle.y,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.y)),value_AC_MANGLED_NAME__Field(Field (aa_handle.y)),aa_roc.y));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2384:6: note: ‘write’ declared here, later in the translation unit
+ 2384 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2386:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2386 | write(aa_handle.z,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.z)),value_AC_MANGLED_NAME__Field(Field (aa_handle.z)),aa_roc.z));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2384:6: note: ‘write’ declared here, later in the translation unit
+ 2384 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2390:11: error: ‘reduce_sum’ was not declared in this scope; did you mean ‘reduce_sum_int’?
+ 2390 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+      | reduce_sum_int
+./user_cpu_kernels.h:2391:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2391 | reduce_sum(uxbmean_handle.y,uxb.y);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2390:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 2390 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2392:11: error: ‘reduce_sum’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2392 | reduce_sum(uxbmean_handle.z,uxb.z);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2390:11: note: ‘reduce_sum’ declared here, later in the translation unit
+ 2390 | reduce_sum(uxbmean_handle.x,uxb.x);
+      | ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2393:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2393 | write(bb_handle.x,bb.x);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2384:6: note: ‘write’ declared here, later in the translation unit
+ 2384 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2394:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2394 | write(bb_handle.y,bb.y);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2384:6: note: ‘write’ declared here, later in the translation unit
+ 2384 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2395:6: error: ‘write’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2395 | write(bb_handle.z,bb.z);
+      | ~~~~~^~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h:2384:6: note: ‘write’ declared here, later in the translation unit
+ 2384 | write(aa_handle.x,rk3_step2(previous_AC_MANGLED_NAME__Field(Field (aa_handle.x)),value_AC_MANGLED_NAME__Field(Field (aa_handle.x)),aa_roc.x));
+      | ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In lambda function:
+./user_cpu_kernels.h:2509:16: error: expected primary-expression before ‘)’ token
+ 2509 | return (AcReal3){
+      |                ^
+./user_cpu_kernels.h:2509:17: error: expected ‘;’ before ‘{’ token
+ 2509 | return (AcReal3){
+      |                 ^
+      |                 ;
+./user_cpu_kernels.h:2510:20: error: expected primary-expression before ‘auto’
+ 2510 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      |                    ^~~~
+./user_cpu_kernels.h:2510:20: error: expected ‘)’ before ‘auto’
+ 2510 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      | ~                  ^~~~
+      |                    )
+/home/touko/astaroth/src/core/stencil_accesses.cpp:88:71: error: expected primary-expression before ‘)’ token
+   88 | #define globalVertexIdx ((int3){vertexIdx.x, vertexIdx.y, vertexIdx.z})
+      |                                                                       ^
+./user_cpu_kernels.h:2510:199: note: in expansion of macro ‘globalVertexIdx’
+ 2510 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      |                                                                                                                                                                                                       ^~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:193&)> [with auto:193 = Field3]’:
+./user_cpu_kernels.h:2530:54:   required from here
+./user_cpu_kernels.h:2464:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2464 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:2464:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2464 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:2464:6: note: ‘value’ declared here, later in the translation unit
+ 2464 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:2464:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2464 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2464:6: note: ‘value’ declared here, later in the translation unit
+ 2464 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step1(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:194&)> [with auto:194 = Field3]’:
+./user_cpu_kernels.h:2530:147:   required from here
+./user_cpu_kernels.h:2468:11: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2468 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+      |      val
+./user_cpu_kernels.h:2468:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2468 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2468:11: note: ‘value’ declared here, later in the translation unit
+ 2468 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+./user_cpu_kernels.h:2468:45: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2468 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |                                        ~~~~~^~~~~
+./user_cpu_kernels.h:2468:11: note: ‘value’ declared here, later in the translation unit
+ 2468 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+./user_cpu_kernels.h: In lambda function:
+./user_cpu_kernels.h:2667:16: error: expected primary-expression before ‘)’ token
+ 2667 | return (AcReal3){
+      |                ^
+./user_cpu_kernels.h:2667:17: error: expected ‘;’ before ‘{’ token
+ 2667 | return (AcReal3){
+      |                 ^
+      |                 ;
+./user_cpu_kernels.h:2668:20: error: expected primary-expression before ‘auto’
+ 2668 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      |                    ^~~~
+./user_cpu_kernels.h:2668:20: error: expected ‘)’ before ‘auto’
+ 2668 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      | ~                  ^~~~
+      |                    )
+/home/touko/astaroth/src/core/stencil_accesses.cpp:88:71: error: expected primary-expression before ‘)’ token
+   88 | #define globalVertexIdx ((int3){vertexIdx.x, vertexIdx.y, vertexIdx.z})
+      |                                                                       ^
+./user_cpu_kernels.h:2668:199: note: in expansion of macro ‘globalVertexIdx’
+ 2668 | (globalVertexIdx.x-auto config[DCONST(AC_nmin)].x+AcReal(0.5))*DCONST(AC_dsx)-DCONST(AC_global_sx)/2,(globalVertexIdx.y-config[DCONST(AC_nmin)].y+AcReal(0.5))*DCONST(AC_dsy)-DCONST(AC_global_sy)/2,(globalVertexIdx.z-config[DCONST(AC_nmin)].z+AcReal(0.5))*DCONST(AC_dsz)-DCONST(AC_global_sz)/2};
+      |                                                                                                                                                                                                       ^~~~~~~~~~~~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:206&)> [with auto:206 = Field3]’:
+./user_cpu_kernels.h:2688:54:   required from here
+./user_cpu_kernels.h:2618:6: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2618 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+      | val
+./user_cpu_kernels.h:2618:17: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2618 | value(v.x),value(v.y),value(v.z)};
+      |            ~~~~~^~~~~
+./user_cpu_kernels.h:2618:6: note: ‘value’ declared here, later in the translation unit
+ 2618 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h:2618:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2618 | value(v.x),value(v.y),value(v.z)};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2618:6: note: ‘value’ declared here, later in the translation unit
+ 2618 | value(v.x),value(v.y),value(v.z)};
+      | ~~~~~^~~~~
+./user_cpu_kernels.h: In instantiation of ‘KERNEL_singlepass_solve_step2(int3, int3, DeviceVertexBufferArray)::<lambda(const auto:207&)> [with auto:207 = Field3]’:
+./user_cpu_kernels.h:2688:147:   required from here
+./user_cpu_kernels.h:2622:11: error: ‘value’ was not declared in this scope; did you mean ‘val’?
+ 2622 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+      |      val
+./user_cpu_kernels.h:2622:28: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2622 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |                       ~~~~~^~~~~
+./user_cpu_kernels.h:2622:11: note: ‘value’ declared here, later in the translation unit
+ 2622 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+./user_cpu_kernels.h:2622:45: error: ‘value’ was not declared in this scope, and no declarations were found by argument-dependent lookup at the point of instantiation
+ 2622 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |                                        ~~~~~^~~~~
+./user_cpu_kernels.h:2622:11: note: ‘value’ declared here, later in the translation unit
+ 2622 | fabs(value(v.x)),fabs(value(v.y)),fabs(value(v.z))};
+      |      ~~~~~^~~~~
+Catastrophic error: could not compile the stencil access generator.
+Compiler error code: 256
+make[2]: *** [acc-runtime/api/CMakeFiles/acc-runtime-headers.dir/build.make:76: acc-runtime/api/user_kernels.h] Error 1
+make[2]: *** Deleting file 'acc-runtime/api/user_kernels.h'
+make[1]: *** [CMakeFiles/Makefile2:423: acc-runtime/api/CMakeFiles/acc-runtime-headers.dir/all] Error 2
+make: *** [Makefile:91: all] Error 2
+Fatal was not able to compile
+Fatal error was not able to load Astaroth runtime
+Error message: /home/touko/astaroth/test/tfm-test/build/runtime_build/src/core/kernels/libkernels.so: cannot open shared object file: No such file or directory
+This function needs Astaroth to be loaded via acLoadLibrary before calling it!
+
+
+
+
+                          ERROR                             
+
+Tue Jul 14 14:01:45 2026
+Error in file /home/touko/astaroth/acc-runtime/api/./acc_runtime.h line 54: false was false
+
+                          ERROR                             
+
+
+
+[puro-surface-book:28457] *** Process received signal ***
+[puro-surface-book:28457] Signal: Aborted (6)
+[puro-surface-book:28457] Signal code:  (-6)
+[puro-surface-book:28457] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x45330)[0x749963445330]
+[puro-surface-book:28457] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x11c)[0x74996349eb2c]
+[puro-surface-book:28457] [ 2] /lib/x86_64-linux-gnu/libc.so.6(gsignal+0x1e)[0x74996344527e]
+[puro-surface-book:28457] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xdf)[0x7499634288ff]
+[puro-surface-book:28457] [ 4] build/tfm-test(+0x49f9)[0x6230524909f9]
+[puro-surface-book:28457] [ 5] build/tfm-test(+0x4a0e)[0x623052490a0e]
+[puro-surface-book:28457] [ 6] /lib/x86_64-linux-gnu/libc.so.6(+0x47a76)[0x749963447a76]
+[puro-surface-book:28457] [ 7] /lib/x86_64-linux-gnu/libc.so.6(+0x47bbe)[0x749963447bbe]
+[puro-surface-book:28457] [ 8] build/tfm-test(+0x6526)[0x623052492526]
+[puro-surface-book:28457] [ 9] build/tfm-test(+0x65b0)[0x6230524925b0]
+[puro-surface-book:28457] [10] build/tfm-test(+0x4199)[0x623052490199]
+[puro-surface-book:28457] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x2a1ca)[0x74996342a1ca]
+[puro-surface-book:28457] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x8b)[0x74996342a28b]
+[puro-surface-book:28457] [13] build/tfm-test(+0x4855)[0x623052490855]
+[puro-surface-book:28457] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpiexec noticed that process rank 0 with PID 0 on node puro-surface-book exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
