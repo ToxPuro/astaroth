@@ -100,6 +100,7 @@ main(int argc, char* argv[])
     const int nz = info[AC_nlocal].z;
     const AcReal k = 1.0;
     const AcReal v = 1.0/3.0;
+    /**
     for(int x = 0; x < info[AC_nlocal].x; ++x)
     {
       AcReal t1 = info[AC_ds].x*x + info[AC_first_gridpoint].x;
@@ -110,14 +111,16 @@ main(int argc, char* argv[])
         {
           for(int w = 0; w < info[AC_nlocal_w]; ++w)
           {
-		  const AcReal val = exp(-0.5*k*k*(t1-t2)*(t1-t2)*v*v)*cos(k*(t1-t2))/(t1*t2);
-		  const size_t idx = x + nx*(y + ny*(z + nz*(w)));
-		  data_arr[idx] = val;
+	    const AcReal val = exp(-0.5*k*k*(t1-t2)*(t1-t2)*v*v)*cos(k*(t1-t2))/(t1*t2);
+	    const size_t idx = x + nx*(y + ny*(z + nz*(w)));
+	    data_arr[idx] = val;
           }
         }
       }
     }
+
     info[DATA] = data_arr;
+    **/
     // GPU alloc & compute
     acGridInit(info);
 

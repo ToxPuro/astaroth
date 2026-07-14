@@ -380,7 +380,7 @@ acVBACreate(const AcMeshInfo config)
   const size_t out_bytes = real_out_bytes + single_out_bytes + half_out_bytes;
   acDeviceMalloc((void**)&vba_in_buff,in_bytes);
   acDeviceMalloc((void**)&vba_out_buff,out_bytes);
-  if(vba_in_buff == NULL || (vba_out_buff == NULL && out_bytes != 0))
+  if((vba_in_buff == NULL && in_bytes != 0) || (vba_out_buff == NULL && out_bytes != 0))
   {
     fprintf(stderr,"AC ERROR: Was not able to allocate VertexBufferArray!\n");
     fprintf(stderr,"AC ERROR: Most likely out of memory!\n");
