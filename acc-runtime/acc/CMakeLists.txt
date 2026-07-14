@@ -32,7 +32,7 @@ if(DEFINED ACC_COMPILER_PATH)
 	add_executable(acc empty.c)
 else()
 	## Find dependencies
-	find_package(BISON)
+	find_package(BISON 3.0 REQUIRED)
 	find_package(FLEX)
 	add_library(tinyexpr STATIC tinyexpr.c)
 	target_link_libraries(tinyexpr PUBLIC m)
