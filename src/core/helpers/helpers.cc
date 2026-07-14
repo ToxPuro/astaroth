@@ -21,14 +21,20 @@ static int original_excepts{};
 void
 ac_unset_floating_point_exceptions()
 {
+#ifdef __APPLE__
+#else
         original_excepts = fegetexcept();
         fedisableexcept(FE_ALL_EXCEPT);
+#endif
 }
 
 void
 ac_restore_floating_point_exceptions()
 {
+#ifdef __APPLE__
+#else
         feenableexcept(original_excepts);
+#endif
 }
 
 const char*
