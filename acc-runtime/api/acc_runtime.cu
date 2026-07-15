@@ -35,6 +35,7 @@ static int  x_ray_shared_mem_block_size{};
 static int  z_ray_shared_mem_block_size{};
 static bool sparse_autotuning=false;
 static int3    max_tpb_for_reduce_kernels{100,100,100};
+static int3 set_tpb{0,0,0};
 #include <math.h> 
 #include <vector> // tbconfig
 
@@ -588,6 +589,7 @@ acRuntimeInit(const AcMeshInfo config)
   x_ray_shared_mem_block_size = config[AC_x_ray_shared_mem_block_size];
   z_ray_shared_mem_block_size = config[AC_z_ray_shared_mem_block_size];
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
+  set_tpb = config[AC_set_tpb];
   acAllocateArrays(config);
   acReadOptimTBConfigs(to_volume(config[AC_thread_block_loop_factors]));
   uneven_grid_decomp = config[AC_allow_non_divisible_grid];
@@ -1036,6 +1038,14 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
 	  {
 		  (float)1.0,
 	          (dim3){1,1,1}
+	  };
+  }
+  if(set_tpb != (int3){0,0,0})
+  {
+	  return (AcAutotuneMeasurement)
+	  {
+		  (float)1.0,
+	          (dim3){(uint32_t)set_tpb.x,(uint32_t)set_tpb.y,(uint32_t)set_tpb.z}
 	  };
   }
   const int3 dims = get_kernel_dims(kernel,start,end);

@@ -457,3 +457,4 @@ run_const bool AC_allow_non_divisible_grid = false
  */
 dconst int3 AC_no_mantle_below_this_size = (int3){0,0,0}
 
+dconst int3 AC_set_tpb = (int3){0,0,0}
