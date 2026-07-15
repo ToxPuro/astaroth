@@ -23,6 +23,7 @@
 #include "astaroth_utils.h"
 #include "user_constants.h"
 #include "errchk.h"
+#include <gsl/gsl_integration.h>
 
 #if AC_MPI_ENABLED
 
@@ -64,6 +65,16 @@ main(int argc, char* argv[])
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig("integration.conf", &info);
+
+    if(argc > 1) 
+    {
+	    info[AC_ngrid].x = atoi(argv[1]);
+    }
+    if(argc > 2) 
+    {
+	    info[AC_ngrid].y = atoi(argv[2]);
+    }
+
     acHostUpdateParams(&info); 
 
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
@@ -86,6 +97,7 @@ main(int argc, char* argv[])
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
+    /**
     const size_t size = (size_t)info[AC_nlocal].x*info[AC_nlocal].y*info[AC_nlocal].z*info[AC_nlocal_w];
     AcReal* data_arr = (AcReal*)malloc(sizeof(AcReal)*size);
     memset(data_arr,0.0,size*sizeof(AcReal));
@@ -100,7 +112,6 @@ main(int argc, char* argv[])
     const int nz = info[AC_nlocal].z;
     const AcReal k = 1.0;
     const AcReal v = 1.0/3.0;
-    /**
     for(int x = 0; x < info[AC_nlocal].x; ++x)
     {
       AcReal t1 = info[AC_ds].x*x + info[AC_first_gridpoint].x;
@@ -122,6 +133,24 @@ main(int argc, char* argv[])
     info[DATA] = data_arr;
     **/
     // GPU alloc & compute
+    const auto update_arr = [&](const int N, const auto& arr, const auto& weights, const AcReal& start, const AcReal& len)
+    {
+      gsl_integration_glfixed_table *table = gsl_integration_glfixed_table_alloc(N);
+      AcReal* x   = (AcReal*)malloc(sizeof(AcReal)*N);
+      AcReal* xw  = (AcReal*)malloc(sizeof(AcReal)*N);
+      for(int i = 0; i  < N; ++i)
+      {
+        gsl_integration_glfixed_point(start, start+len, i, &x[i], &xw[i], table);
+      }
+      info[arr] = x;
+      info[weights] = xw;
+      gsl_integration_glfixed_table_free(table);
+    };
+
+    update_arr(info[AC_nlocal].x,X,X_W,info[AC_first_gridpoint].x,info[AC_len].x);
+    update_arr(info[AC_nlocal].y,Y,Y_W,info[AC_first_gridpoint].y,info[AC_len].y);
+    update_arr(info[AC_nlocal].z,Z,Z_W,info[AC_first_gridpoint].z,info[AC_len].z);
+    update_arr(info[AC_nlocal_w],W,W_W,info[AC_first_gridpoint_w],info[AC_len_w]);
     acGridInit(info);
 
     const auto graph = acGetOptimizedDSLTaskGraph(calc_integral);
@@ -130,10 +159,26 @@ main(int argc, char* argv[])
     const auto end = MPI_Wtime();
     fprintf(stderr,"Integral took: %.14e\n",end-start);
 
-    const AcReal res = acDeviceGetOutput(acGridGetDevice(),AC_integral_res);
-    fprintf(stderr,"Integral is: %.14e\n",res);
+    AcReal res = acDeviceGetOutput(acGridGetDevice(),AC_integral_res);
+    fprintf(stderr,"Trapezoidal integral is: %.14e\n",res);
 
-    free(data_arr);
+    FILE* fp = fopen("trapz.dat","a");
+    fprintf(fp,"%.14e,",res);
+    fclose(fp);
+
+    res = acDeviceGetOutput(acGridGetDevice(),AC_gauss_legendre_res);
+    fprintf(stderr,"Gauss Legendre integral is: %.14e\n",res);
+
+    fp = fopen("gauss.dat","a");
+    fprintf(fp,"%.14e,",res);
+    fclose(fp);
+
+    fp = fopen("N.dat","a");
+    fprintf(fp,"%d,",info[AC_nlocal].x);
+    fclose(fp);
+
+
+    //free(data_arr);
     const int retval = AC_SUCCESS;
     acGridQuit();
     MPI_Finalize();

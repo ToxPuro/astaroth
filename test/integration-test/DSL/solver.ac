@@ -6,25 +6,43 @@ dead Field F
 
 run_const int AC_nlocal_w = 10
 //gmem real DATA[AC_nlocal.x][AC_nlocal.y][AC_nlocal.z][AC_nlocal_w]
+
+gmem real X[AC_nlocal.x]
+gmem real Y[AC_nlocal.y]
+gmem real Z[AC_nlocal.z]
+gmem real W[AC_nlocal_w]
+
+gmem real X_W[AC_nlocal.x]
+gmem real Y_W[AC_nlocal.y]
+gmem real Z_W[AC_nlocal.z]
+gmem real W_W[AC_nlocal_w]
+
 global output real AC_integral_res
+global output real AC_gauss_legendre_res
 //run_const real AC_ds_w = 1.0/(AC_nlocal_w)
 run_const real AC_len_w = 1.0
-run_const real AC_ds_w = AC_nlocal_w == 1 ? 1.0 : AC_len_w/(AC_nlocal_w-1)
+run_const real AC_ds_w = AC_nlocal_w == 1 ? 1.0 : AC_len_w/(AC_nlocal_w)
 run_const real AC_first_gridpoint_w = 0.0
 
 
 integrand()
 {
+	pos = grid_position()
+	return integrand(pos.x,pos.y,pos.z,1.0)
+}
+
+integrand(real x, real y, real z, real w)
+{
 	k=1
 	v=1.0/3.0
- 	t1 = grid_position().x 
- 	t2 = grid_position().y
+ 	t1 = x
+ 	t2 = y
 	return exp(-0.5*k*k*(t1-t2)*(t1-t2)*v*v)*cos(k*(t1-t2))/(t1*t2)
+	//return x*y
 }
 
 Kernel
-//Trapezoidal rule
-calc_integral_kernel()
+calc_integral_trapezoidal()
 {
 	local_res = 0.0
 	weight = AC_ds.x*AC_ds.y*AC_ds.z*AC_ds_w
@@ -53,6 +71,17 @@ calc_integral_kernel()
 	}
 	reduce_sum(local_res,AC_integral_res)
 }
+Kernel
+calc_integral_gauss_legendre()
+{
+	local_res = 0.0
+	for w in 0:AC_nlocal_w
+	{
+		weight = X_W[vertexIdx.x]*Y_W[vertexIdx.y]*Z_W[vertexIdx.z]*W_W[w]	
+		local_res += weight*integrand(X[vertexIdx.x],Y[vertexIdx.y],Z[vertexIdx.z],W[w])
+	}
+	reduce_sum(local_res,AC_gauss_legendre_res)
+}
 
 BoundConds
 bcs
@@ -63,5 +92,6 @@ bcs
 ComputeSteps
 calc_integral(bcs)
 {
-	calc_integral_kernel()
+	calc_integral_trapezoidal()
+	calc_integral_gauss_legendre()
 }
