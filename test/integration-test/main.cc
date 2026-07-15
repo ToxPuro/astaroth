@@ -72,7 +72,19 @@ main(int argc, char* argv[])
     }
     if(argc > 2) 
     {
-	    info[AC_integration_points_y] = atoi(argv[1]);
+	    info[AC_integration_points_y] = atoi(argv[2]);
+    }
+    if(argc > 3) 
+    {
+	    info[AC_integration_points_z] = atoi(argv[3]);
+    }
+    if(argc > 4) 
+    {
+	    info[AC_integration_points_w] = atoi(argv[4]);
+    }
+    if(argc > 5) 
+    {
+	    info[AC_k] = atof(argv[5]);
     }
 
     if(info[AC_logspace])
@@ -106,7 +118,7 @@ main(int argc, char* argv[])
     acPushToConfig(info,AC_first_gridpoint_w,info[AC_integration_start_w]);
 
     acPushToConfig(info,AC_len,(AcReal3){info[AC_integration_end_x]-info[AC_integration_start_x],info[AC_integration_end_y]-info[AC_integration_start_y],info[AC_integration_end_z]-info[AC_integration_start_z]});
-    acPushToConfig(info,AC_len_w,info[AC_integration_end_z]-info[AC_integration_start_w]);
+    acPushToConfig(info,AC_len_w,info[AC_integration_end_w]-info[AC_integration_start_w]);
 
     acHostUpdateParams(&info); 
 
@@ -194,30 +206,72 @@ main(int argc, char* argv[])
     update_arr(info[AC_nlocal_w],W,W_W,info[AC_first_gridpoint_w],info[AC_len_w]);
     acGridInit(info);
 
-    const auto graph = acGetOptimizedDSLTaskGraph(calc_integral);
-    const auto start = MPI_Wtime();
-    acGridExecuteTaskGraph(graph,1);
-    const auto end = MPI_Wtime();
-    fprintf(stderr,"Integral took: %.14e\n",end-start);
+    const auto integrate = [&](bool test_convergence)
+    {
 
-    AcReal res = acDeviceGetOutput(acGridGetDevice(),AC_integral_res);
-    fprintf(stderr,"Trapezoidal integral is: %.14e\n",res);
+      AcReal res = 0.0;
+      if(info[AC_trapezoidal])
+      {
+        acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(calc_integral_trap),1);
+        res = acDeviceGetOutput(acGridGetDevice(),AC_integral_res);
+        if(test_convergence)
+        {
+          fprintf(stderr,"Trapezoidal integral is: %.14e\n",res);
+          FILE* fp = fopen("trapz.dat","a");
+          fprintf(fp,"%.14e,",res);
+          fclose(fp);
+	}
+      }
 
-    FILE* fp = fopen("trapz.dat","a");
-    fprintf(fp,"%.14e,",res);
-    fclose(fp);
+      if(info[AC_gauss_legendre])
+      {
+        const auto graph = acGetOptimizedDSLTaskGraph(calc_integral_gauss);
+        const auto start = MPI_Wtime();
+        acGridExecuteTaskGraph(graph,1);
+        const auto end = MPI_Wtime();
+        res = acDeviceGetOutput(acGridGetDevice(),AC_gauss_legendre_res);
+        if(test_convergence)
+        {
+          fprintf(stderr,"Integral took: %.14e\n",end-start);
+          fprintf(stderr,"Gauss Legendre integral is: %.14e\n",res);
 
-    res = acDeviceGetOutput(acGridGetDevice(),AC_gauss_legendre_res);
-    fprintf(stderr,"Gauss Legendre integral is: %.14e\n",res);
+          FILE* fp = fopen("gauss.dat","a");
+          fprintf(fp,"%.14e,",res);
+          fclose(fp);
 
-    fp = fopen("gauss.dat","a");
-    fprintf(fp,"%.14e,",res);
-    fclose(fp);
+          fp = fopen("N.dat","a");
+          fprintf(fp,"%d,",info[AC_nlocal].x);
+          fclose(fp);
+        }
+      }
+      
+      return res;
+    };
 
-    fp = fopen("N.dat","a");
-    fprintf(fp,"%d,",info[AC_nlocal].x);
-    fclose(fp);
 
+    FILE *fp = fopen("k.dat", "r");
+    bool first = true;
+    if (fp != NULL) {
+      FILE* fp_res = fopen("res.dat","w");
+      AcReal k;
+      while (fscanf(fp, "%lf,", &k) == 1)
+      {
+          acDeviceLoadScalarUniform(acGridGetDevice(),STREAM_DEFAULT,AC_k,k);
+	  const auto res = integrate(false);
+	  if(!first)
+	  {
+	    fprintf(fp_res,",");
+	  }
+	  first = false;
+	  fprintf(fp_res,"%.14e",res);
+      }
+      fclose(fp);
+      fclose(fp_res);
+    }
+    else
+    {
+	    integrate(true);
+    }
 
     //free(data_arr);
     const int retval = AC_SUCCESS;
