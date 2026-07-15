@@ -68,12 +68,45 @@ main(int argc, char* argv[])
 
     if(argc > 1) 
     {
-	    info[AC_ngrid].x = atoi(argv[1]);
+	    info[AC_integration_points_x] = atoi(argv[1]);
     }
     if(argc > 2) 
     {
-	    info[AC_ngrid].y = atoi(argv[2]);
+	    info[AC_integration_points_y] = atoi(argv[1]);
     }
+
+    if(info[AC_logspace])
+    {
+	    if(info[AC_integration_points_x] > 1)
+	    {
+	      info[AC_integration_start_x] = log(info[AC_integration_start_x]);
+	      info[AC_integration_end_x] = log(info[AC_integration_end_x]);
+	    }
+	    if(info[AC_integration_points_y] > 1)
+	    {
+	      info[AC_integration_start_y] = log(info[AC_integration_start_y]);
+	      info[AC_integration_end_y] = log(info[AC_integration_end_y]);
+	    }
+	    if(info[AC_integration_points_z] > 1)
+	    {
+	      info[AC_integration_start_z] = log(info[AC_integration_start_z]);
+	      info[AC_integration_end_z] = log(info[AC_integration_end_z]);
+	    }
+	    if(info[AC_integration_points_w] > 1)
+	    {
+	      info[AC_integration_start_w] = log(info[AC_integration_start_w]);
+	      info[AC_integration_end_w] = log(info[AC_integration_end_w]);
+	    }
+    }
+
+    acPushToConfig(info,AC_ngrid,(int3){info[AC_integration_points_x],info[AC_integration_points_y],info[AC_integration_points_z]});
+    acPushToConfig(info,AC_nlocal_w,info[AC_integration_points_w]);
+    
+    acPushToConfig(info,AC_first_gridpoint,(AcReal3){info[AC_integration_start_x],info[AC_integration_start_y],info[AC_integration_start_z]});
+    acPushToConfig(info,AC_first_gridpoint_w,info[AC_integration_start_w]);
+
+    acPushToConfig(info,AC_len,(AcReal3){info[AC_integration_end_x]-info[AC_integration_start_x],info[AC_integration_end_y]-info[AC_integration_start_y],info[AC_integration_end_z]-info[AC_integration_start_z]});
+    acPushToConfig(info,AC_len_w,info[AC_integration_end_z]-info[AC_integration_start_w]);
 
     acHostUpdateParams(&info); 
 
@@ -141,6 +174,14 @@ main(int argc, char* argv[])
       for(int i = 0; i  < N; ++i)
       {
         gsl_integration_glfixed_point(start, start+len, i, &x[i], &xw[i], table);
+	if(std::isnan(x[i]) || std::isnan(xw[i]))
+	{
+		fprintf(stderr,"Got nan in generation Gauss-Legendre points for %s!\n",get_name(arr));
+		fprintf(stderr,"Start is: %.14e\n",start);
+		fprintf(stderr,"End is: %.14e\n",start+len);
+		fflush(stderr);
+		exit(EXIT_FAILURE);
+	}
       }
       info[arr] = x;
       info[weights] = xw;

@@ -7,6 +7,24 @@ dead Field F
 run_const int AC_nlocal_w = 10
 //gmem real DATA[AC_nlocal.x][AC_nlocal.y][AC_nlocal.z][AC_nlocal_w]
 
+real AC_integration_start_x = 0.0
+real AC_integration_start_y = 0.0
+real AC_integration_start_z = 0.0
+real AC_integration_start_w = 0.0
+
+real AC_integration_end_x = 1.0
+real AC_integration_end_y = 1.0
+real AC_integration_end_z = 1.0
+real AC_integration_end_w = 1.0
+
+int AC_integration_points_x = 1
+int AC_integration_points_y = 1
+int AC_integration_points_z = 1
+int AC_integration_points_w = 1
+
+bool AC_logspace = false
+
+
 gmem real X[AC_nlocal.x]
 gmem real Y[AC_nlocal.y]
 gmem real Z[AC_nlocal.z]
@@ -25,10 +43,29 @@ run_const real AC_ds_w = AC_nlocal_w == 1 ? 1.0 : AC_len_w/(AC_nlocal_w)
 run_const real AC_first_gridpoint_w = 0.0
 
 
-integrand()
+integrand_wrapper()
 {
 	pos = grid_position()
-	return integrand(pos.x,pos.y,pos.z,1.0)
+	return integrand_wrapper(pos.x,pos.y,pos.z,1.0)
+}
+
+integrand_wrapper(real x_, real y_, real z_ , real w_)
+{
+	x = (AC_integration_points_x > 1 && AC_logspace) ? exp(x_) : x_
+	y = (AC_integration_points_y > 1 && AC_logspace) ? exp(y_) : y_
+	z = (AC_integration_points_z > 1 && AC_logspace) ? exp(z_) : z_
+	w = (AC_integration_points_w > 1 && AC_logspace) ? exp(w_) : w_
+
+	res = integrand(x,y,z,w)
+	if(AC_integration_points_x > 1 && AC_logspace)
+	{
+		res *= x
+	}
+	if(AC_integration_points_y > 1 && AC_logspace)
+	{
+		res *= y
+	}
+        return res
 }
 
 integrand(real x, real y, real z, real w)
@@ -38,7 +75,6 @@ integrand(real x, real y, real z, real w)
  	t1 = x
  	t2 = y
 	return exp(-0.5*k*k*(t1-t2)*(t1-t2)*v*v)*cos(k*(t1-t2))/(t1*t2)
-	//return x*y
 }
 
 Kernel
@@ -67,7 +103,7 @@ calc_integral_trapezoidal()
 		  local_weight *= 0.5
 		}
 		//local_res += local_weight*DATA[vertexIdx.x][vertexIdx.y][vertexIdx.z][w]
-		local_res += local_weight*integrand()
+		local_res += local_weight*integrand_wrapper()
 	}
 	reduce_sum(local_res,AC_integral_res)
 }
@@ -78,7 +114,7 @@ calc_integral_gauss_legendre()
 	for w in 0:AC_nlocal_w
 	{
 		weight = X_W[vertexIdx.x]*Y_W[vertexIdx.y]*Z_W[vertexIdx.z]*W_W[w]	
-		local_res += weight*integrand(X[vertexIdx.x],Y[vertexIdx.y],Z[vertexIdx.z],W[w])
+		local_res += weight*integrand_wrapper(X[vertexIdx.x],Y[vertexIdx.y],Z[vertexIdx.z],W[w])
 	}
 	reduce_sum(local_res,AC_gauss_legendre_res)
 }

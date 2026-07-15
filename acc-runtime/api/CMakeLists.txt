@@ -66,14 +66,27 @@ endif()
 aux_source_directory(DSL_MODULE_DIR DSL_MODULE_SOURCES)
 
 ## Generate acc-runtime-headers
-set(DSL_SOURCES ${DSL_MODULE_SOURCES}
-                "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-		${DSL_BUILTIN_SOURCES}
-		${DSL_STDLIB_SOURCES}
-		${DSL_EXT_SOURCES}
-		)
+set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
 
+if (NOT DEFINED DSL_MODULE_FILE)
+  set(DSL_SOURCES ${DSL_MODULE_SOURCES}
+                  "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
+                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
+  		${DSL_BUILTIN_SOURCES}
+  		${DSL_STDLIB_SOURCES}
+  		${DSL_EXT_SOURCES}
+  		)
+else()
+  set(DSL_SOURCES ${DSL_MODULE_SOURCES}
+                  "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
+                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
+  		${DSL_BUILTIN_SOURCES}
+		${DSL_MODULE_DIR}/${DSL_MODULE_FILE}
+  		${DSL_STDLIB_SOURCES}
+  		${DSL_EXT_SOURCES}
+  		)
+endif()
+  
 if (NOT RUNTIME_COMPILATION)
 	set(DSL_HEADERS "user_kernels.h"
 	                "user_defines.h"
@@ -92,7 +105,6 @@ else()
 			)
 endif()
 
-set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
 if (NOT DEFINED DSL_MODULE_FILE)
 	set(ACC_COMPILER_ARGS 
 		"${DSL_MODULE_DIR}/*.ac" 
