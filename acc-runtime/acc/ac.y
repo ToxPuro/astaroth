@@ -594,6 +594,10 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
     	  if (AC_HOME_PATH != NULL) {
 	  	fprintf(out,"#define AC_HOME %s\n",AC_HOME_PATH);
     	  }
+	  if(AC_CPU_BUILD)
+	  {
+	  	fprintf(out,"#define AC_CPU_BUILD\n");
+	  }
 	  if(AC_STENCIL_ORDER != -1)
           {
 	  	fprintf(out,"hostdefine STENCIL_ORDER (%d)\n",AC_STENCIL_ORDER);
