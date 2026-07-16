@@ -47,6 +47,32 @@ drand()
 	return (double)(rand()) / (double)(rand());
 }
 
+void
+read_data_to_arr(AcMeshInfo& info, const AcRealArrayParam arr, const char* filename, const AcIntParam N_param)
+{
+    std::vector<AcReal> data{};
+    FILE *fp = fopen(filename, "r");
+    if (fp != NULL) {
+      AcReal entry;
+      while (fscanf(fp, "%lf,", &entry) == 1)
+      {
+	  data.push_back(entry);
+      }
+      acPushToConfig(info,N_param,(int)data.size());
+      AcReal* res = (AcReal*)malloc(sizeof(AcReal)*info[N_param]);
+      for(int i = 0; i < info[N_param]; ++i) res[i] = data[i];
+      info[arr] = res;
+      fclose(fp);
+    }
+}
+
+AcReal
+linear_interpol(const AcReal& x0, const AcReal& x1, const AcReal& y0, const AcReal& y1, const AcReal& x) 
+{
+	return (y0*(x1-x) + y1*(x-x0))/(x1-x0);
+}
+
+
 int
 main(int argc, char* argv[])
 {
@@ -87,23 +113,32 @@ main(int argc, char* argv[])
 	    info[AC_k] = atof(argv[5]);
     }
 
-    if(info[AC_logspace])
+    if(info[AC_logspace_x])
     {
 	    if(info[AC_integration_points_x] > 1)
 	    {
 	      info[AC_integration_start_x] = log(info[AC_integration_start_x]);
 	      info[AC_integration_end_x] = log(info[AC_integration_end_x]);
 	    }
+    }
+    if(info[AC_logspace_y])
+    {
 	    if(info[AC_integration_points_y] > 1)
 	    {
 	      info[AC_integration_start_y] = log(info[AC_integration_start_y]);
 	      info[AC_integration_end_y] = log(info[AC_integration_end_y]);
 	    }
+    }
+    if(info[AC_logspace_z])
+    {
 	    if(info[AC_integration_points_z] > 1)
 	    {
 	      info[AC_integration_start_z] = log(info[AC_integration_start_z]);
 	      info[AC_integration_end_z] = log(info[AC_integration_end_z]);
 	    }
+    }
+    if(info[AC_logspace_w])
+    {
 	    if(info[AC_integration_points_w] > 1)
 	    {
 	      info[AC_integration_start_w] = log(info[AC_integration_start_w]);
@@ -199,6 +234,70 @@ main(int argc, char* argv[])
       info[weights] = xw;
       gsl_integration_glfixed_table_free(table);
     };
+
+    read_data_to_arr(info, E_P_TABULATED, "e.dat", AC_N_tabulated);
+    read_data_to_arr(info, P_TABULATED, "p.dat", AC_N_tabulated);
+    if(info[E_P_TABULATED] != NULL && info[P_TABULATED] != NULL)
+    {
+	    AcReal* res = (AcReal*)malloc(sizeof(AcReal)*info[AC_integration_points_x]);
+	    {
+	      int i_right = 1;
+	      AcReal val_left  = info[E_P_TABULATED][i_right-1];
+	      AcReal val_right = info[E_P_TABULATED][i_right];
+	      AcReal pos_left  = info[P_TABULATED][i_right-1];
+	      AcReal pos_right = info[P_TABULATED][i_right];
+	      for(int p = 0; p < info[AC_integration_points_x]; ++p)
+	      {
+	          AcReal p_pos = info[AC_integration_start_x] + info[AC_ds].x*p;
+	          if(info[AC_logspace_x]) p_pos = exp(p_pos);
+	          while(p_pos > pos_right)
+	          {
+	          	pos_left = pos_right;
+	          	val_left = val_right;
+	          	i_right++;
+	          	pos_right = info[P_TABULATED][i_right];
+	          	val_right = info[E_P_TABULATED][i_right];
+	          }
+	          res[p] = linear_interpol(pos_left,pos_right,val_left,val_right,p_pos);
+	      }
+	    }
+	    info[E_P] = res;
+
+	    const int n_x = info[AC_integration_points_x];
+	    const int n_y = info[AC_integration_points_y];
+
+	    res = (AcReal*)malloc(sizeof(AcReal)*n_x*n_y);
+	    for(int p = 0; p < n_x; ++p)
+	    {
+	      for(int z = 0; z < n_y; ++z)
+	      {
+
+	        int i_right = info[AC_N_tabulated]-1;
+	        AcReal val_left  = info[E_P_TABULATED][i_right-1];
+	        AcReal val_right = info[E_P_TABULATED][i_right];
+	        AcReal pos_left  = info[P_TABULATED][i_right-1];
+	        AcReal pos_right = info[P_TABULATED][i_right];
+
+	        AcReal p_pos = info[AC_integration_start_x] + info[AC_ds].x*p;
+		if(info[AC_logspace_x]) p_pos = exp(p_pos);
+
+	        AcReal z_pos = info[AC_integration_start_y] + info[AC_ds].y*z;
+		if(info[AC_logspace_y]) z_pos = exp(z_pos);
+
+		AcReal ptilde = sqrt(p*p + info[AC_k]*info[AC_k] - 2*p*info[AC_k]*z_pos);
+		while(ptilde < pos_left)
+		{
+			pos_right = pos_left;
+			val_right = val_left;
+			i_right--;
+			pos_left = info[P_TABULATED][i_right-1];
+			val_left = info[E_P_TABULATED][i_right-1];
+		}
+		res[p + n_x*z] = linear_interpol(pos_left,pos_right,val_left,val_right,ptilde);
+	      }
+	    }
+	    info[E_PTILDE] = res;
+    }
 
     update_arr(info[AC_nlocal].x,X,X_W,info[AC_first_gridpoint].x,info[AC_len].x);
     update_arr(info[AC_nlocal].y,Y,Y_W,info[AC_first_gridpoint].y,info[AC_len].y);

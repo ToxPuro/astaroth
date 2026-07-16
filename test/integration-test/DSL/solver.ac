@@ -22,7 +22,10 @@ int AC_integration_points_y = 1
 int AC_integration_points_z = 1
 int AC_integration_points_w = 1
 
-bool AC_logspace = false
+bool AC_logspace_x = false
+bool AC_logspace_y = false
+bool AC_logspace_z = false
+bool AC_logspace_w = false
 
 real AC_k = 1.0
 real AC_v = 1.0
@@ -37,6 +40,13 @@ gmem real X_W[AC_nlocal.x]
 gmem real Y_W[AC_nlocal.y]
 gmem real Z_W[AC_nlocal.z]
 gmem real W_W[AC_nlocal_w]
+
+gmem real E_P[AC_nlocal.x]
+gmem real E_PTILDE[AC_nlocal.x][AC_nlocal.y]
+
+run_const int AC_N_tabulated = 0
+gmem real E_P_TABULATED[AC_N_tabulated]
+gmem real P_TABULATED[AC_N_tabulated]
 
 global output real AC_integral_res
 global output real AC_gauss_legendre_res
@@ -56,25 +66,25 @@ integrand_wrapper(real w)
 
 integrand_wrapper(real x_, real y_, real z_ , real w_)
 {
-	x = (AC_integration_points_x > 1 && AC_logspace) ? exp(x_) : x_
-	y = (AC_integration_points_y > 1 && AC_logspace) ? exp(y_) : y_
-	z = (AC_integration_points_z > 1 && AC_logspace) ? exp(z_) : z_
-	w = (AC_integration_points_w > 1 && AC_logspace) ? exp(w_) : w_
+	x = (AC_integration_points_x > 1 && AC_logspace_x) ? exp(x_) : x_
+	y = (AC_integration_points_y > 1 && AC_logspace_y) ? exp(y_) : y_
+	z = (AC_integration_points_z > 1 && AC_logspace_z) ? exp(z_) : z_
+	w = (AC_integration_points_w > 1 && AC_logspace_w) ? exp(w_) : w_
 
 	res = integrand(x,y,z,w)
-	if(AC_integration_points_x > 1 && AC_logspace)
+	if(AC_integration_points_x > 1 && AC_logspace_x)
 	{
 		res *= x
 	}
-	if(AC_integration_points_y > 1 && AC_logspace)
+	if(AC_integration_points_y > 1 && AC_logspace_y)
 	{
 		res *= y
 	}
-	if(AC_integration_points_z > 1 && AC_logspace)
+	if(AC_integration_points_z > 1 && AC_logspace_y)
 	{
 		res *= z
 	}
-	if(AC_integration_points_w > 1 && AC_logspace)
+	if(AC_integration_points_w > 1 && AC_logspace_z)
 	{
 		res *= w
 	}
@@ -90,6 +100,16 @@ integrand(real x, real y, real z, real w)
 	return exp(-0.5*k*k*(t1-t2)*(t1-t2)*v*v)*cos(k*(t1-t2))/(t1*t2)
 	//return x*y*z*w
 }
+
+
+/**
+integrand(real x, real y, real z_, real w_)
+{
+	E_p = E_P[vertexIdx.x]
+	E_ptilde = E_PTILDE[vertexIdx.x][vertexIdx.y]
+	return E_p*E_ptilde
+}
+**/
 
 Kernel
 calc_integral_trapezoidal()
