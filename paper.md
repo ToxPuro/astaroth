@@ -80,22 +80,28 @@ convolutions, are stencil operations and stencil operations are widely used in n
 
 # State of the field
 
-Methods to achieve performance portability in stencil computations have been widely studied.
-Domain-specific languages for image processing include `Halide` [@ragan2013halide] and `Polymage` [@mullapudi2015polymage].
-Autotuning code-generation frameworks include `Patus` [@christen_patuscode_2011] and `PARTANS` [@lutz_partansautotuning_2013].
+Several approaches have been proposed to improve the performance, portability, and productivity dimensions of stencil computations.
+Single-process approaches include domain-specific languages (DSLs), e.g., `Halide` [@ragan2013halide], `PolyMage` [@mullapudi2015polymage], `Delite` [@sujeeth_delitecompiler_2014], and `Lift` [@steuwer_liftfunctional_2017], and general parallel processing abstractions, e.g., `Kokkos` [@trott2021kokkos] and `RAJA` [@beckingsale2019raja].
+The primary benefit of a DSL is that assumptions about the structure of computations can be made to improve the performance of generated code while maintaining a high-level representation for the user.
+Performance-portability is typically augmented with automated tuning and algorithm selection (e.g., `PATUS` [@christen_patuscode_2011], `PARTANS` [@lutz_partansautotuning_2013]).
+These approaches are also adopted in `Astaroth`, which introduces a DSL, a code generator, and implements automated tile-size optimization.
+A distinctive feature of Astaroth is its algorithmic specialization for cache-constrained use cases in multiphysics, where the working set required to update interdependent physical fields is too large to fit into on-chip caches.
+This is addressed by rearranging the computations into linear and nonlinear stages on-chip [@pekkila2025stencil].
+`Astaroth` not only consider stencils in isolation, but also their combinations with other operations inside the same kernel, such as the automatic fusion of distributed reductions with other computations.
 
-More generalized software that provides the building blocks for domain-specialized libraries also exist:
-`Delite` [@sujeeth_delitecompiler_2014] and `Lift` [@steuwer_liftfunctional_2017] provide intermediate languages as targets for domain-specific languages; <!--% JP (can be left out if no room) -->
-`Kokkos` [@trott2021kokkos] and `RAJA` [@beckingsale2019raja] provide abstraction layers for parallel computational patterns but focus on single-node computations;
-`Chapel` [@callahan_cascadehigh_2004] and `Charm++` [@kale_charmportable_1993] provide programming models for parallel and distributed computations;
-In a more specialized approach, the `Cactus` framework [@goodale_cactusframework_2003] provides a collection of functionalities shared between computational tasks.
-We refer the reader to [@pekkila_graphicsprocessors_2026] for more details.
+Methods to improve the performance-portability-productivity dimensions in multiprocess applications include topology-aware workload distribution and abstractions for distributed operations.
+`Chapel` [@callahan_cascadehigh_2004], `Charm++` [@kale_charmportable_1993] improve the performance-portability-productivity dimensions by providing general-purpose distributed programming models, whereas `Cactus` [@goodale_cactusframework_2003], `PETSc` [@mills_towardperformance_2021] implement scientific computation toolkits.
+Further productivity advances can be gained with domain-specialized frameworks, which provide ready-made solutions for specific use cases and a simplified application programming interface.
+`Astaroth` also belongs to this class of frameworks.
+Examples closest to `Astaroth` are `Parthenon` [@grete_parthenonperformance_2023] and `AMReX` [@zhang_amrexframework_2019].
+Both are frameworks for distributed adaptive mesh refinement (AMR), where `Parthenon` uses `Kokkos` as the compute backend and `AMReX` provides compute features with parallel function wrappers and user-written C++ lambdas.
+In contrast to these projects, `Astaroth`'s distributed abstraction layer focuses on structured grid computations without mesh refinement, and can thus make simplifying assumptions about the underlying data-movement patterns to better address on-chip data movement, batching, and data-processing pipelines.
+Similar to `Parthenon` and others [@pearson_movementplacement_2021], `Astaroth` implements its modification of topology-aware domain decomposition and rank reordering for improved portability across systems, and performs fused packing to alleviate communication overheads.
+Furthermore, Astaroth implements a task scheduler for compute and communication tasks [@lappi2021task].
 
-Closest to `Astaroth` is `Parthenon` [@grete_parthenonperformance_2023], a distributed framework for adaptive mesh refinement using `Kokkos` as the backend for intra-node computations.
-In contrast, `Astaroth` provides a DSL and an optimizing code generator for implementing the computations akin to `Halide`, `Polymage`, and `Patus`.
+In the field, `Astaroth` stands out as a CUDA/HIP stencil-computing framework focused on addressing the performance-productivity trade-off in cache-heavy multiphysics applications with a domain-specific language, automated tile-size optimization, and topology handling, taking ownership of data structures and movement throughout the computational science pipeline.
+This enables holistic optimizations of full scientific workflows and offers a lower barrier of entry to experimentation with optimization techniques spanning traditionally decoupled tasks (e.g., extensive kernel fusion of operations across the stack), which would not be practical with libraries utilizing opaque submodules for compute and communication.
 
-A distinctive feature of `Astaroth` is its specialization for cache-constrained use cases, especially in multiphysics simulations where the values of interdependent fields need to be held in working memory at the same time. Additionally, `Astaroth` does not only consider stencils in isolation, but also their combinations with other operations inside the same kernel, such as distributed reductions.
-`Astaroth` also supports multiple different physics cases.
 
 # Software design
 
