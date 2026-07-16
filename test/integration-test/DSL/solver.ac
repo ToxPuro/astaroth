@@ -119,16 +119,16 @@ calc_integral_trapezoidal()
 	for w in 0:AC_nlocal_w
 	{
 		local_weight = weight
-		if(vertexIdx.x == 0 || vertexIdx.x == AC_nlocal.x-1)
+		if(globalVertexIdx.x == 0 || globalVertexIdx.x == AC_ngrid.x-1)
 		{
 			local_weight *= 0.5
 		}
-		if(vertexIdx.y == 0 || vertexIdx.y == AC_nlocal.y-1)
+		if(globalVertexIdx.y == 0 || globalVertexIdx.y == AC_ngrid.y-1)
 		{
 			local_weight *= 0.5
 		}
 		
-		if(AC_nlocal.z > 1 && (vertexIdx.z == 0 || vertexIdx.z == AC_nlocal.z-1))
+		if(AC_ngrid.z > 1 && (globalVertexIdx.z == 0 || globalVertexIdx.z == AC_ngrid.z-1))
 		{
 			local_weight *= 0.5
 		}

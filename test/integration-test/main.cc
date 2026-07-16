@@ -76,7 +76,6 @@ linear_interpol(const AcReal& x0, const AcReal& x1, const AcReal& y0, const AcRe
 int
 main(int argc, char* argv[])
 {
-    atexit(acAbort);
 
 
     int nprocs, pid;
@@ -154,12 +153,15 @@ main(int argc, char* argv[])
 
     acPushToConfig(info,AC_len,(AcReal3){info[AC_integration_end_x]-info[AC_integration_start_x],info[AC_integration_end_y]-info[AC_integration_start_y],info[AC_integration_end_z]-info[AC_integration_start_z]});
     acPushToConfig(info,AC_len_w,info[AC_integration_end_w]-info[AC_integration_start_w]);
-
+    acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
+    acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_LINEAR);
+    const int3 decomp = (int3){nprocs,1,1};
+    acPushToConfig(info,AC_domain_decomposition,decomp);
+    const int3 pid3d = acGetPid3D(pid,decomp,info);
+    acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_EXTERNAL);
+    acPushToConfig(info,AC_domain_coordinates,pid3d);
     acHostUpdateParams(&info); 
 
-    acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
-    acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
-    acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
     info.comm->handle = MPI_COMM_WORLD;
 
     #if AC_RUNTIME_COMPILATION
@@ -169,14 +171,6 @@ main(int argc, char* argv[])
     acLoadUtils(stdout,info);
     #endif
 
-    const int max_devices = 1;
-    if (nprocs > max_devices) {
-        fprintf(stderr,
-                "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
-                nprocs, max_devices);
-        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
-        return EXIT_FAILURE;
-    }
     /**
     const size_t size = (size_t)info[AC_nlocal].x*info[AC_nlocal].y*info[AC_nlocal].z*info[AC_nlocal_w];
     AcReal* data_arr = (AcReal*)malloc(sizeof(AcReal)*size);
@@ -213,14 +207,20 @@ main(int argc, char* argv[])
     info[DATA] = data_arr;
     **/
     // GPU alloc & compute
-    const auto update_arr = [&](const int N, const auto& arr, const auto& weights, const AcReal& start, const AcReal& len)
+    const auto update_arr = [&](const int offset, const int Ngrid, const int N, const auto& arr, const auto& weights, const AcReal& start, const AcReal& len)
     {
-      gsl_integration_glfixed_table *table = gsl_integration_glfixed_table_alloc(N);
+      gsl_integration_glfixed_table *table = gsl_integration_glfixed_table_alloc(Ngrid);
       AcReal* x   = (AcReal*)malloc(sizeof(AcReal)*N);
       AcReal* xw  = (AcReal*)malloc(sizeof(AcReal)*N);
       for(int i = 0; i  < N; ++i)
       {
-        gsl_integration_glfixed_point(start, start+len, i, &x[i], &xw[i], table);
+	if(i+offset >= Ngrid)
+	{
+		fprintf(stderr,"Something went wrong %d %d %d %d!\n",i,N,Ngrid,offset);
+		fflush(stderr);
+		exit(EXIT_FAILURE);
+	}
+        gsl_integration_glfixed_point(start, start+len, i+offset, &x[i], &xw[i], table);
 	if(std::isnan(x[i]) || std::isnan(xw[i]))
 	{
 		fprintf(stderr,"Got nan in generation Gauss-Legendre points for %s!\n",get_name(arr));
@@ -239,6 +239,8 @@ main(int argc, char* argv[])
     read_data_to_arr(info, P_TABULATED, "p.dat", AC_N_tabulated);
     if(info[E_P_TABULATED] != NULL && info[P_TABULATED] != NULL)
     {
+            FILE* fp_p = fopen("p_res.dat","w");
+            FILE* fp_e = fopen("e_res.dat","w");
 	    AcReal* res = (AcReal*)malloc(sizeof(AcReal)*info[AC_integration_points_x]);
 	    {
 	      int i_right = 1;
@@ -259,8 +261,13 @@ main(int argc, char* argv[])
 	          	val_right = info[E_P_TABULATED][i_right];
 	          }
 	          res[p] = linear_interpol(pos_left,pos_right,val_left,val_right,p_pos);
+		  fprintf(fp_p,"%.14e,",p_pos);
+		  fprintf(fp_e,"%.14e,",res[p]);
 	      }
 	    }
+	    fclose(fp_p);
+	    fclose(fp_e);
+
 	    info[E_P] = res;
 
 	    const int n_x = info[AC_integration_points_x];
@@ -299,10 +306,10 @@ main(int argc, char* argv[])
 	    info[E_PTILDE] = res;
     }
 
-    update_arr(info[AC_nlocal].x,X,X_W,info[AC_first_gridpoint].x,info[AC_len].x);
-    update_arr(info[AC_nlocal].y,Y,Y_W,info[AC_first_gridpoint].y,info[AC_len].y);
-    update_arr(info[AC_nlocal].z,Z,Z_W,info[AC_first_gridpoint].z,info[AC_len].z);
-    update_arr(info[AC_nlocal_w],W,W_W,info[AC_first_gridpoint_w],info[AC_len_w]);
+    update_arr(info[AC_multigpu_offset].x,info[AC_ngrid].x,info[AC_nlocal].x,X,X_W,info[AC_first_gridpoint].x,info[AC_len].x);
+    update_arr(info[AC_multigpu_offset].y,info[AC_ngrid].y,info[AC_nlocal].y,Y,Y_W,info[AC_first_gridpoint].y,info[AC_len].y);
+    update_arr(info[AC_multigpu_offset].z,info[AC_ngrid].z,info[AC_nlocal].z,Z,Z_W,info[AC_first_gridpoint].z,info[AC_len].z);
+    update_arr(0,info[AC_nlocal_w],info[AC_nlocal_w],W,W_W,info[AC_first_gridpoint_w],info[AC_len_w]);
     acGridInit(info);
 
     const auto integrate = [&](bool test_convergence)
