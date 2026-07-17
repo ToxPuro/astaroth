@@ -176,6 +176,7 @@ var NAVTREE =
       [ "Manual workflow without scripts (see <tt>scripts/gen_rundir.sh</tt> for automating parts of this)", "md_pilot_2README.html#autotoc_md175", null ],
       [ "Helper scripts", "md_pilot_2README.html#autotoc_md176", null ]
     ] ],
+    [ "README", "md_test_2integration-test_2README.html", null ],
     [ "contrib/", "md_test_2walker-test_2matplotlib-cpp_2contrib_2README.html", [
       [ "Windows support", "md_test_2walker-test_2matplotlib-cpp_2contrib_2README.html#autotoc_md194", [
         [ "Configuring and Building Samples", "md_test_2walker-test_2matplotlib-cpp_2contrib_2README.html#autotoc_md195", null ]
@@ -236,19 +237,19 @@ var NAVTREEINDEX =
 "codegen_8c.html#abd4803c506739bb785be3a7a06f6ddaa",
 "cpu_8cc.html#a32c8faeefd4219c2a60e92c28d5f85ff",
 "device_8cc.html#a921ca0005d7c6d00343cf6c8d2c82040",
-"functions_vars_z.html",
-"globals_func_r.html",
-"hip_8h.html#ab388c814820adbc9e98137a50885f8ea",
-"math__utils_8h.html#aeb10c6e3cff2806eb0d09509d652bffa",
-"memory_8cc.html#a90ea8d5a74a0fced46a8ceb1ad996381",
-"pc__derivs_8h.html#a361195a4dc650ad7554f0b1f4f35cb87",
-"smooth__max_8h.html#a1cf7427ac345d6ecc63a426e7f08be5f",
-"smooth__max_8h.html#acd2521d64d0677e92a30f7366db628e5",
-"stencilgen_8c.html#ac2b00e3633ccc1a0e7b9106a928a54df",
-"structHaloMessage.html#a8dc24f3072ab6f764a45289ef2dd9114",
-"structkiss__fftnd__state.html",
-"structte__expr.html",
-"variables_8h.html#a1ceced0c5c88cf7524974628429810cb"
+"functions_vars_x.html",
+"globals_func_p.html",
+"hip_8h.html#aac0caa599f4aea6c7163fae8c3d90a2e",
+"math__utils_8h.html#aca273f174ea9231067434d7760f3e351",
+"memory_8cc.html",
+"pc__derivs_8h.html#a278d7078742df25af30cc9aef0f14320",
+"smooth__max_8h.html#a194ab324c58b092266aeee116486c693",
+"smooth__max_8h.html#ac22a7303f2d9598ec62ae05625e79e5e",
+"stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88ab5deb5ccef445a25ea74605b121bf78d",
+"structHaloMessage.html#a62dbc46ce56a28d5466ef14a4bbac177",
+"structkiss__fft__state.html",
+"structstring__vec.html#aec09d69eba5353ab27801d2f72089d86",
+"variables_8h.html#a094181b89984fe7476ca04318c56b339"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

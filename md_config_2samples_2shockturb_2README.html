@@ -103,7 +103,7 @@ What is a successful test</h1>
 <h1><a class="anchor" id="autotoc_md75"></a>
 Required LSWITCHES</h1>
 <p>It is convenient to identify the Astaroth parent directory for running the code externally to the source files in a local run directory by executing the following command, which could also be added to your .bashrc export AC_HOME=/path/to/astaroth/parent/directory/ or by using <code>source sourceme.sh</code> in the Astaroth parent directory.</p>
-<p>The provided my_cmake.sh will then copy the files from $AC_HOME/acc-runtime/samples/mhd_modular/ to a new directory ../DSL relative to the run directory and edit the default settings in mhdsolver.ac to the following as required for the shocktest.</p>
+<p>The provided my_cmake.sh will then copy the files from $AC_HOME/acc-runtime/samples/mhd_modular/ to a new directory ../DSL relative to the run directory and edit the default settings in mhdsolver.ac to the following as required for the shocktest. As a starting point you can use this directory as the run directory.</p>
 <div class="fragment"><div class="line">LDENSITY (1)</div>
 <div class="line">LHYDRO (1)</div>
 <div class="line">LMAGNETIC (1)</div>
@@ -119,7 +119,7 @@ Setting up and compiling.</h1>
 <p>Run <code>./my_cmake.sh</code> Cases of successful application of the samples are included for puhti.csc.fi and tiara.sinica.edu.tw</p>
 <h1><a class="anchor" id="autotoc_md77"></a>
 Running the simulation.</h1>
-<p>Run e.g. <code>mpirun -np 4 ./ac_run_mpi --config astaroth.conf --init-condition ShockTurb</code> or however your particular system runs MPI.</p>
+<p>Run e.g. <code>mpirun -np 4 ./ac_run_mpi --config astaroth.conf --init-condition ShockTurb --run-init-kernel randomize</code> or however your particular system runs MPI.</p>
 <h1><a class="anchor" id="autotoc_md78"></a>
 Troubleshooting</h1>
 <p>On PUHTI currently working with</p>

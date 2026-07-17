@@ -96,7 +96,7 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <div class="textblock"><p><a class="anchor" id="mainpage"></a> <a href="https://toxpuro.github.io/astaroth">Docs</a> | <a class="el" href="md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html">API specification</a> | <a class="el" href="md_acc-runtime_2README.html">Astaroth DSL</a> | <a class="el" href="md_CONTRIBUTING.html">Contributing</a> | <a class="el" href="md_LICENCE.html">Licence</a> | <a href="https://bitbucket.org/jpekkila/astaroth">Repository</a> | <a href="https://bitbucket.org/jpekkila/astaroth/issues?status=new&amp;status=open">Issue Tracker</a> | <a href="https://bitbucket.org/jpekkila/astaroth/wiki/Home">Wiki</a></p>
 <p>Astaroth is a multi-GPU library designed for high-order stencil computations with a special focus on the requirements of multiphysics applications on modern HPC systems. It provides a multi-GPU and single-GPU APIs, a domain-specific language for expressing stencil codes in a high-level syntax, and an optimizing compiler that translates DSL sources into CUDA/HIP subroutines that exhibit near handtuned performance.</p>
 <p>Astaroth is licenced under the terms of the GNU General Public Licence, version 3, or later (see <a class="el" href="md_LICENCE.html">LICENCE.txt</a>). For contributing guidelines, see <a class="el" href="md_CONTRIBUTING.html">Contributing</a>.</p>
-<p>Astaroth is tested against its test suite after every commit. You can find the success of the latest test suite <a href="https://github.com/ToxPuro/astaroth/actions">here</a>.</p>
+<p>Astaroth is tested against its test suite after every commit. You can find the success of the latest test suite <a href="https://github.com/ToxPuro/astaroth/actions">here</a>. You can the test suite yourself locally by first sourcing Astaroth with <code>. ./sourceme.sh</code> and then <code>./test/run_all_tests.sh</code></p>
 <h1><a class="anchor" id="autotoc_md177"></a>
 Getting started</h1>
 <ul>
@@ -141,7 +141,7 @@ Building</h1>
 <h1><a class="anchor" id="autotoc_md182"></a>
 Simple example template</h1>
 <p>If you need a functioning and documented example of how to run Astaroth in standalone more out of the box,</p>
-<p><a class="el" href="md_config_2samples_2shockturb_2README.html">please see this shock turbulence run example</a> in the directory <code>config/samples/shockturb/</code>.</p>
+<p><a class="el" href="md_config_2samples_2shockturb_2README.html">please see this shock turbulence run example</a> in the directory <code>config/samples/shockturb/</code>. Or for a simpler setup see the hello world setup in <code>samples/advection-example</code>.</p>
 <h1><a class="anchor" id="autotoc_md183"></a>
 Running on clusters (Slurm)</h1>
 <ol type="1">
@@ -298,6 +298,10 @@ FAQ</h1>
 <p>How do I contribute?</p>
 <blockquote class="doxtable">
 <p>&zwj;See <a class="el" href="md_CONTRIBUTING.html">Contributing</a>. </p>
+</blockquote>
+<p>Reporting issues and seeking help</p>
+<blockquote class="doxtable">
+<p>&zwj;This section is to be expanded, but for reporting issues and for seeking help you can always contact one of the main developers: <a href="#" onclick="location.href='mai'+'lto:'+'tou'+'ko'+'.pu'+'ro'+'@aa'+'lt'+'o.f'+'i'; return false;">touko<span class="obfuscator">.nosp@m.</span>.pur<span class="obfuscator">.nosp@m.</span>o@aal<span class="obfuscator">.nosp@m.</span>to.f<span class="obfuscator">.nosp@m.</span>i</a>. </p>
 </blockquote>
 </div></div><!-- PageDoc -->
 </div><!-- contents -->
