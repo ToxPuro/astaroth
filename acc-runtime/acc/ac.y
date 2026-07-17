@@ -292,7 +292,12 @@ get_preprocessed_file(const char* filename, char* file_buf)
 	fclose(in);
         fclose(out);
 	free(buf);
-        return fmemopen(file_buf,strlen(file_buf),"r");
+        FILE* res = fmemopen(file_buf,strlen(file_buf),"r");
+	if(res == NULL && strlen(file_buf) == 0)
+	{
+		res = (FILE*)(1);
+	}	
+	return res;
 }
 
 
@@ -323,6 +328,10 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
   if(log) printf("Building AC object %s\n", file);
   char* file_buf = NULL;
   FILE* in = get_preprocessed_file(file,file_buf);
+  if(in == (FILE*)(1))
+  {
+	return;
+  } 
   if (!in) {
     fprintf(out,"AC_FATAL_ERROR: could not open include file %s\n",file);
     return;
@@ -585,6 +594,10 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
     	  if (AC_HOME_PATH != NULL) {
 	  	fprintf(out,"#define AC_HOME %s\n",AC_HOME_PATH);
     	  }
+	  if(AC_CPU_BUILD)
+	  {
+	  	fprintf(out,"#define AC_CPU_BUILD\n");
+	  }
 	  if(AC_STENCIL_ORDER != -1)
           {
 	  	fprintf(out,"hostdefine STENCIL_ORDER (%d)\n",AC_STENCIL_ORDER);

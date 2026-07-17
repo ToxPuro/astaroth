@@ -220,6 +220,28 @@ sum(const T& a, const T& b)
 
 #include "math_utils_base.h"
 
+static HOST_DEVICE_INLINE const AcReal3
+max(const AcReal3& v, const AcReal& s)
+{
+	return (AcReal3)
+	{
+		v.x > s ? v.x : s,
+		v.y > s ? v.y : s,
+		v.z > s ? v.z : s
+	};
+}
+
+static HOST_DEVICE_INLINE const AcReal3
+max(const AcReal& s, const AcReal3& v)
+{
+	return (AcReal3)
+	{
+		v.x > s ? v.x : s,
+		v.y > s ? v.y : s,
+		v.z > s ? v.z : s
+	};
+}
+
 
 template <class T>
 static HOST_DEVICE_INLINE const T

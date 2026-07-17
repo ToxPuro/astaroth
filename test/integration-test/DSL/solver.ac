@@ -1,0 +1,171 @@
+hostdefine STENCIL_ORDER (0)
+
+#include "$AC_HOME/acc-runtime/stdlib/grid"
+#
+dead Field F
+
+run_const int AC_nlocal_w = 10
+//gmem real DATA[AC_nlocal.x][AC_nlocal.y][AC_nlocal.z][AC_nlocal_w]
+
+real AC_integration_start_x = 0.0
+real AC_integration_start_y = 0.0
+real AC_integration_start_z = 0.0
+real AC_integration_start_w = 0.0
+
+real AC_integration_end_x = 1.0
+real AC_integration_end_y = 1.0
+real AC_integration_end_z = 1.0
+real AC_integration_end_w = 1.0
+
+int AC_integration_points_x = 1
+int AC_integration_points_y = 1
+int AC_integration_points_z = 1
+int AC_integration_points_w = 1
+
+bool AC_logspace_x = false
+bool AC_logspace_y = false
+bool AC_logspace_z = false
+bool AC_logspace_w = false
+
+real AC_k = 1.0
+real AC_v = 1.0
+
+
+gmem real X[AC_nlocal.x]
+gmem real Y[AC_nlocal.y]
+gmem real Z[AC_nlocal.z]
+gmem real W[AC_nlocal_w]
+
+gmem real X_W[AC_nlocal.x]
+gmem real Y_W[AC_nlocal.y]
+gmem real Z_W[AC_nlocal.z]
+gmem real W_W[AC_nlocal_w]
+
+gmem real E_P[AC_nlocal.x]
+gmem real E_PTILDE[AC_nlocal.x][AC_nlocal.y]
+
+run_const int AC_N_tabulated = 0
+gmem real E_P_TABULATED[AC_N_tabulated]
+gmem real P_TABULATED[AC_N_tabulated]
+
+global output real AC_integral_res
+global output real AC_gauss_legendre_res
+//run_const real AC_ds_w = 1.0/(AC_nlocal_w)
+run_const real AC_len_w = 1.0
+run_const real AC_ds_w = AC_nlocal_w == 1 ? 1.0 : AC_len_w/(AC_nlocal_w-1)
+run_const real AC_first_gridpoint_w = 0.0
+bool AC_trapezoidal = false
+bool AC_gauss_legendre = true
+
+
+integrand_wrapper(real w)
+{
+	pos = grid_position()
+	return integrand_wrapper(pos.x,pos.y,pos.z,w)
+}
+
+integrand_wrapper(real x_, real y_, real z_ , real w_)
+{
+	x = (AC_integration_points_x > 1 && AC_logspace_x) ? exp(x_) : x_
+	y = (AC_integration_points_y > 1 && AC_logspace_y) ? exp(y_) : y_
+	z = (AC_integration_points_z > 1 && AC_logspace_z) ? exp(z_) : z_
+	w = (AC_integration_points_w > 1 && AC_logspace_w) ? exp(w_) : w_
+
+	res = integrand(x,y,z,w)
+	if(AC_integration_points_x > 1 && AC_logspace_x)
+	{
+		res *= x
+	}
+	if(AC_integration_points_y > 1 && AC_logspace_y)
+	{
+		res *= y
+	}
+	if(AC_integration_points_z > 1 && AC_logspace_y)
+	{
+		res *= z
+	}
+	if(AC_integration_points_w > 1 && AC_logspace_z)
+	{
+		res *= w
+	}
+        return res
+}
+
+integrand(real x, real y, real z, real w)
+{
+	k = AC_k
+	v = AC_v
+ 	t1 = x
+ 	t2 = y
+	return exp(-0.5*k*k*(t1-t2)*(t1-t2)*v*v)*cos(k*(t1-t2))/(t1*t2)
+	//return x*y*z*w
+}
+
+
+/**
+integrand(real x, real y, real z_, real w_)
+{
+	E_p = E_P[vertexIdx.x]
+	E_ptilde = E_PTILDE[vertexIdx.x][vertexIdx.y]
+	return E_p*E_ptilde
+}
+**/
+
+Kernel
+calc_integral_trapezoidal()
+{
+	local_res = 0.0
+	weight = AC_ds.x*AC_ds.y*AC_ds.z*AC_ds_w
+	for w in 0:AC_nlocal_w
+	{
+		local_weight = weight
+		if(globalVertexIdx.x == 0 || globalVertexIdx.x == AC_ngrid.x-1)
+		{
+			local_weight *= 0.5
+		}
+		if(globalVertexIdx.y == 0 || globalVertexIdx.y == AC_ngrid.y-1)
+		{
+			local_weight *= 0.5
+		}
+		
+		if(AC_ngrid.z > 1 && (globalVertexIdx.z == 0 || globalVertexIdx.z == AC_ngrid.z-1))
+		{
+			local_weight *= 0.5
+		}
+		if(AC_nlocal_w > 1 && (w == 0 || w == AC_nlocal_w-1))
+		{
+		  local_weight *= 0.5
+		}
+		//local_res += local_weight*DATA[vertexIdx.x][vertexIdx.y][vertexIdx.z][w]
+		local_res += local_weight*integrand_wrapper(w*AC_ds_w +AC_first_gridpoint_w)
+	}
+	reduce_sum(local_res,AC_integral_res)
+}
+Kernel
+calc_integral_gauss_legendre()
+{
+	local_res = 0.0
+	for w in 0:AC_nlocal_w
+	{
+		weight = X_W[vertexIdx.x]*Y_W[vertexIdx.y]*Z_W[vertexIdx.z]*W_W[w]	
+		local_res += weight*integrand_wrapper(X[vertexIdx.x],Y[vertexIdx.y],Z[vertexIdx.z],W[w])
+	}
+	reduce_sum(local_res,AC_gauss_legendre_res)
+}
+
+BoundConds
+bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps
+calc_integral_gauss(bcs)
+{
+	calc_integral_gauss_legendre()
+}
+ComputeSteps
+calc_integral_trap(bcs)
+{
+	calc_integral_trapezoidal()
+}

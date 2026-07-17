@@ -1,0 +1,3 @@
+#!/bin/bash
+#
+mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DRUNTIME_COMPILATION=OFF -DALLOW_DEAD_VARIABLES=ON -DBUILD_TESTS=ON -DDSL_MODULE_DIR=../DSL -DDSL_MODULE_FILE=solver.ac $AC_HOME && make integration-test -j

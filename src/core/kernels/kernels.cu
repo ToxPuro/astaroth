@@ -39,6 +39,7 @@ acKernelDummy(void)
     #if AC_CPU_BUILD
     dummy_kernel();
     #else
+    ERRCHK_CUDA_KERNEL_ALWAYS();
     dummy_kernel<<<1, 1>>>();
     ERRCHK_CUDA_KERNEL_ALWAYS();
     #endif

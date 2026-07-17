@@ -103,7 +103,11 @@ FUNC_DEFINE(AcResult, acHostReduceXYAverage,(const AcReal* in, const AcMeshDims 
 static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMeshInfo info)
 {
 	char original_runtime_astaroth_utils_path[40000];
+#ifdef __APPLE__
+	sprintf(original_runtime_astaroth_utils_path,"%s/runtime_build/src/utils/libastaroth_utils.dylib",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+#else
 	sprintf(original_runtime_astaroth_utils_path,"%s/runtime_build/src/utils/libastaroth_utils.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+#endif
 
 	static int counter = 0;
 	const char* runtime_astaroth_utils_path = acLibraryVersion(original_runtime_astaroth_utils_path,counter,info.comm);

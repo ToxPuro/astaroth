@@ -145,7 +145,9 @@ run_const real3 AC_ds = ac_is_loaded(AC_len) && ac_is_loaded(AC_periodic_grid) &
 						real3(
 							AC_periodic_grid.x ? AC_len.x/AC_ngrid.x : AC_len.x/(AC_ngrid.x-1),	
 							AC_periodic_grid.y ? AC_len.y/AC_ngrid.y : AC_len.y/(AC_ngrid.y-1),	
-							AC_periodic_grid.z ? AC_len.z/AC_ngrid.z : AC_len.z/(AC_ngrid.z-1)
+							AC_periodic_grid.z ? AC_len.z/AC_ngrid.z : 
+							  AC_ngrid.z == 1 ? 1.0 :
+							  AC_len.z/(AC_ngrid.z-1)
 						) : 
 						real3(1.0,1.0,1.0);
 
@@ -455,3 +457,4 @@ run_const bool AC_allow_non_divisible_grid = false
  */
 dconst int3 AC_no_mantle_below_this_size = (int3){0,0,0}
 
+dconst int3 AC_set_tpb = (int3){0,0,0}
