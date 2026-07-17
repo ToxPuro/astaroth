@@ -6,7 +6,7 @@ brew install gsl
 Build the code using `./build.sh`
 Run it using either `./run.sh` or `mpirun -n 1 ./build/integrate-test NXPOINTS NYPOINTS`
 or see `batch.sh` for SLURM usage.
-For multiple processes NXPOINTS needs to be divisible by the number of processes.
+For multiple processes points in the first non-unity direction needs to be divisible by the number of processes.
 
 Integration bounds given in `integrate.conf`
 If you want to integrate in log-space set AC_logspace = T in `integrate.conf`.
