@@ -44,37 +44,32 @@
  * The nitty gritty of the MPI communication and the Task interface is defined in task.h/task.cc
  */
 
-#include <mpi.h>
-
-#include <algorithm>
-#include <cstring>  //memcpy
-#include <queue>
-#include <stack>
-#include <vector>
-
-#include "ac_fft.h"
-#include "ac_helpers.h"
 #include "astaroth.h"
 #include "astaroth_analysis_helpers.h"
-#include "astaroth_cuda_wrappers.h"
-#include "decomposition/decomposition.h"  //getPid3D, morton3D
-#include "errchk.h"
-#include "internal_device_funcs.h"
-#include "math_utils.h"
 #include "task.h"
+#include "ac_helpers.h"
+
+#include <algorithm>
+#include <cstring> //memcpy
+#include <mpi.h>
+#include <queue>
+#include <vector>
+#include <stack>
+
+#include "decomposition/decomposition.h" //getPid3D, morton3D
+#include "errchk.h"
+#include "math_utils.h"
 #include "timer_hires.h"
+#include "astaroth_cuda_wrappers.h"
+#include "ac_fft.h"
+
+
+AcResult acAnalysisLoadMeshInfo(const AcMeshInfo info);
 
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
 #include "perfstubs_api/timer.h"
 #endif
-
-#if USE_CPP_THREADS
-#include <thread>
-#include <vector>
-#endif
-
-AcResult acAnalysisLoadMeshInfo(const AcMeshInfo info);
 
 #define fatal(MESSAGE, ...) \
         { \
@@ -98,6 +93,9 @@ typedef struct Grid {
     bool vertex_buffer_copied_from_user[NUM_VTXBUF_HANDLES]{};
     std::vector<KernelAnalysisInfo> kernel_analysis_info{};
 } Grid;
+
+
+#include "internal_device_funcs.h"
 
 static Grid grid = {};
 
@@ -3580,6 +3578,9 @@ acGridDiskAccessLaunch(const AccessType type)
 
 #define USE_CPP_THREADS (1)
 #if USE_CPP_THREADS
+#include <thread>
+#include <vector>
+
 static std::vector<std::thread> threads;
 static bool running = false;
 

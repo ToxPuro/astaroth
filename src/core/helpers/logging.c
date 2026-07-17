@@ -1,6 +1,6 @@
 #include <stdarg.h>
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 #include <time.h>
 
 // Logging utils

@@ -1,25 +1,9 @@
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "ac_helpers.h"
 #include "acc_runtime.h"
-#include "acreal.h"
-#include "astaroth_cuda_wrappers.h"
-#include "builtin_enums.h"
-#include "common_kernels.h"
-#include "device_headers.h"
-#include "errchk.h"
-#include "func_attributes.h"
-#include "host_datatypes.h"
 #include "math_utils.h"
-#include "math_utils_base.h"
+#include "astaroth_cuda_wrappers.h"
+#include "stencil_accesses.h"
 #include "static_analysis.h"
-
-// clang-format off
-#include "user_defines.h"
-// clang-format on
+#include "user_builtin_non_scalar_constants.h"
 
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)

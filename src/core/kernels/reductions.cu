@@ -16,38 +16,14 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <math.h>
-
-#include <cstdio>
-#include <unordered_map>
-
-#include "ac_helpers.h"
 #include "acc_runtime.h"
-#include "acreal.h"
-#include "astaroth_cuda_wrappers.h"
-#include "builtin_enums.h"
-#include "device_headers.h"
-#include "errchk.h"
-#include "func_attributes.h"
-#include "host_datatypes.h"
+#include "device_details.h"
 #include "kernels.h"
-#include "math_utils_base.h"
-#include "transpose.h"
+#include "astaroth_cuda_wrappers.h"
+#include "math_utils.h"
 
-// clang-format off
-#include "load_ac_kernel_params_def.h"
-#include "user_defines.h"
-// clang-format on
-
-#if AC_CPU_BUILD == 0
-#if AC_USE_HIP
-#include <hipcub/hipcub.hpp>
-
-#define cub hipcub
-#else
-#include <cub/cub.cuh>
-#endif
-#endif
+#include <assert.h>
+#include <unordered_map>
 
 typedef struct
 {
@@ -265,6 +241,13 @@ acReduceBase(const cudaStream_t, const AcReduceOp reduce_op, T buffer, const siz
 }
 
 #else
+
+#if AC_USE_HIP
+#include <hipcub/hipcub.hpp>
+#define cub hipcub
+#else
+#include <cub/cub.cuh>
+#endif
 
 //TP: will return a cached allocation if one is found
 size_t*

@@ -17,59 +17,39 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <math.h>
-#include <sys/stat.h>
-
-#include <unordered_map>
-#include <utility>
-#include <vector>  // tbconfig
-
-// clang-format off
-#include "user_defines.h"
-#include "stencil_accesses.h" // Required by mem_access_helper_funcs.h
-// clang-format on
-
-#include "acc/implementation.h"
-#include "acc/mem_access_helper_funcs.h"
-#include "acc/string_vec.h"
-#include "acc_runtime.h"
-#include "astaroth_cuda_wrappers.h"
 #include "device_details.h"
-#include "errchk.h"
+#include "acc_runtime.h"
 #include "kernels.h"
-#include "math_utils.h"
-#include "random.cuh"
+#include "user_defines_runtime_lib.h"
 #include "static_analysis.h"
 
-// clang-format off
-#include "kernel_reduce_info.h"
-#include "user_defines_runtime_lib.h"
-// clang-format on
-
+#include "../acc/string_vec.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
-
-// clang-format off
-#include "user_kernel_declarations.h"
-// clang-format on
-
-#define AcReal3(x, y, z) \
-  (AcReal3) { x, y, z }
-#define AcComplex(x, y) \
-  (AcComplex) { x, y }
+#define AcReal3(x,y,z)   (AcReal3){x,y,z}
+#define AcComplex(x,y)   (AcComplex){x,y}
 static bool initialized = false;
 static AcBool3 dimension_inactive{};
 static bool uneven_grid_decomp{};
 static int3 raytracing_subblock{};
-static int x_ray_shared_mem_block_size{};
-static int z_ray_shared_mem_block_size{};
-static bool sparse_autotuning = false;
-static int3 max_tpb_for_reduce_kernels{100, 100, 100};
-static int3 set_tpb{0, 0, 0};
+static int  x_ray_shared_mem_block_size{};
+static int  z_ray_shared_mem_block_size{};
+static bool sparse_autotuning=false;
+static int3    max_tpb_for_reduce_kernels{100,100,100};
+static int3 set_tpb{0,0,0};
+#include <math.h> 
+#include <vector> // tbconfig
+
+#include "errchk.h"
+#include "math_utils.h"
+#include <unordered_map>
+#include <utility>
+#include <sys/stat.h>
+#include "user_kernel_declarations.h"
+#include "kernel_reduce_info.h"
 
 #define USE_COMPRESSIBLE_MEMORY (0)
 
-// TP: unfortunately cannot use color output since it might not be supported in
-// each env
+//TP: unfortunately cannot use color output since it might not be supported in each env
 const bool useColor = false;
 
 #define GREEN "\033[1;32m"
@@ -136,6 +116,8 @@ acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offs
 
 #endif
 
+#include "acc/implementation.h"
+
 static dim3 last_tpb = (dim3){0, 0, 0};
 struct Int3Hash {
     std::size_t operator()(const int3& v) const {
@@ -181,6 +163,10 @@ acGetKernelReduceScratchPadMinSize()
 		res = (res < kernel_running_reduce_offsets[i]) ? kernel_running_reduce_offsets[i] : res;
 	return res;
 }
+
+
+#include "stencil_accesses.h"
+#include "../acc/mem_access_helper_funcs.h"
 
 static Volume
 get_bpg(Volume dims, const AcKernel kernel, const int3 block_factors, const Volume tpb)
@@ -473,6 +459,8 @@ acGetRealScratchpadSize(const size_t i)
 // passes an array into a device function and then calls len (need to modify
 // the compiler to always pass arrays to functions as references before
 // re-enabling)
+
+#include "random.cuh"
 
 #define suppress_unused_warning(X) (void)X
 #define longlong long long

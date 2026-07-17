@@ -1,11 +1,45 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "acreal.h"
-#include "builtin_enums.h"
-#include "device_headers.h"
+#include <stddef.h>
+#ifndef VOLUME_DEFINED
+
+typedef struct
+{ 
+	size_t x,y,z;
+} Volume;
+
+enum AcPrecision
+{
+	AC_REAL_PRECISION,
+	AC_SINGLE_PRECISION,
+	AC_HALF_PRECISION
+};
+#define VOLUME_DEFINED
+#endif
+
+#ifndef COMPLEX_DEFINED
+
+typedef struct
+{ 
+	AcReal x,y;
+} AcComplex;
+
+typedef struct
+{ 
+	float x,y;
+} AcComplexFloat;
+#define COMPLEX_DEFINED
+#endif
+
+#ifndef REAL3_DEFINED
+
+typedef struct
+{ 
+	AcReal x,y,z;
+} AcReal3;
+#define REAL3_DEFINED
+#endif
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 
@@ -52,8 +86,17 @@ typedef struct {
 
 typedef AcShape AcIndex;
 
+typedef Volume size3_t;
+
 //TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm
 typedef struct AcCommunicator AcCommunicator;
+
+typedef struct {
+    size3_t n0, n1;
+    size3_t m0, m1;
+    size3_t nn;
+    size3_t reduction_tile;
+} AcMeshDims;
 
 #if AC_CPU_BUILD
 
@@ -79,14 +122,3 @@ typedef struct
     unsigned int x, y, z;
 } uint3;
 #endif
-
-#include "user_typedefs.h"
-
-typedef Volume size3_t;
-
-typedef struct {
-    size3_t n0, n1;
-    size3_t m0, m1;
-    size3_t nn;
-    size3_t reduction_tile;
-} AcMeshDims;

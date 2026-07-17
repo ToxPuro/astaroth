@@ -3,19 +3,8 @@
  */
 #if AC_CPU_BUILD
 #include <stdlib.h>
-#else
-#if AC_USE_HIP
-#include <hip/hip_fp16.h>            // Workaround: required by hiprand
-#include <hiprand/hiprand.h>         // Random numbers
-#include <hiprand/hiprand_kernel.h>  // Random numbers (device)
-#else
-#include <curand.h>         // Random numbers
-#include <curand_kernel.h>  // Random numbers (device)
-#endif
-#endif
-
-#if AC_CPU_BUILD
-__device__ __forceinline__ AcReal
+__device__ __forceinline__
+AcReal
 rand_uniform()
 {
 	return (AcReal)(rand() / (RAND_MAX + 1.));
@@ -26,10 +15,18 @@ acRandInitAlt(const uint64_t, const size_t, const size_t)
 	return AC_SUCCESS;
 }
 void
-acRandQuit(void)
-{
-}
+acRandQuit(void){}
 #else
+
+#if AC_USE_HIP
+#include <hip/hip_fp16.h>           // Workaround: required by hiprand
+#include <hiprand/hiprand.h>        // Random numbers
+#include <hiprand/hiprand_kernel.h> // Random numbers (device)
+#else
+#include <curand.h>        // Random numbers
+#include <curand_kernel.h> // Random numbers (device)
+#endif
+
 typedef curandStateXORWOW_t acRandState;
 static __device__ __constant__ acRandState* rand_states;
 

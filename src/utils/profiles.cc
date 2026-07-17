@@ -24,17 +24,10 @@
  * Detailed info.
  *
  */
-#include <math.h>
-#include <stdio.h>
-
-#include "acreal.h"
 #include "astaroth.h"
 #include "errchk.h"
-#include "host_datatypes.h"
 
-// clang-format off
-#include "user_defines.h"
-// clang-format on
+#include <math.h>
 
 typedef long double Scalar;
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))

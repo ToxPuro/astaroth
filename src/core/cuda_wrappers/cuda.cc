@@ -1,24 +1,23 @@
+#if AC_USE_HIP
+#include "hip.h"
+#include <hip/hip_runtime_api.h> // Streams
+#if PROFILING_ENABLED
+#include <roctracer/roctracer_ext.h>       // Profiling
+#endif
+
+#else 
+#if PROFILING_ENABLED
+#include <cuda_profiler_api.h> // Profiling
+#endif
+#include <cuda_runtime_api.h>  // Streams
+#endif
+
+#include "acreal.h"
+#include "astaroth_cuda_wrappers.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
-#include "acreal.h"
-#include "astaroth_cuda_wrappers.h"
-
-#if AC_USE_HIP
-#include <hip/hip_runtime_api.h>  // Streams
-
-#include "hip.h"
-#if PROFILING_ENABLED
-#include <roctracer/roctracer_ext.h>  // Profiling
-#endif
-#else
-#if PROFILING_ENABLED
-#include <cuda_profiler_api.h>  // Profiling
-#endif
-#include <cuda_runtime_api.h>  // Streams
-#endif
 
 static inline void __attribute__((unused))
 cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)

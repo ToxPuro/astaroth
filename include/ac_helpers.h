@@ -1,9 +1,4 @@
-#pragma once
-
-#include "acreal.h"
-#include "device_headers.h"
-#include "host_datatypes.h"
-
+#pragma once 
 typedef struct device_s* Device;
   typedef struct AcBuffer{
       AcReal* data;

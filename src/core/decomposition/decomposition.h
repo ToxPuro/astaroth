@@ -17,12 +17,15 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include <stddef.h>
-#include <stdint.h>  //uint64_t
-
-#include "acc_runtime.h"
-#include "host_datatypes.h"
-#include "math_utils.h"  //uint64_t, uint3_64
+#include <stdint.h> //uint64_t
+#include "math_utils.h" //uint64_t, uint3_64
+#include "datatypes.h"
+#include "errchk.h"
+#include "astaroth_base.h"
+extern "C"
+{
+	#include "astaroth_grid.h"
+}
 
 typedef struct {
     size_t ndims;

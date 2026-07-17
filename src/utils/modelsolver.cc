@@ -17,22 +17,22 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stddef.h>
-
-#include <cmath>
-
-#include "acc_runtime.h"
-#include "acreal.h"
-#include "astaroth.h"
-#include "astaroth_base.h"
+/**
+ * @file
+ * \brief Brief info.
+ *
+ * Detailed info.
+ *
+ */
 #include "astaroth_utils.h"
-#include "builtin_enums.h"
-#include "errchk.h"
-#include "host_datatypes.h"
+#include "user_builtin_non_scalar_constants.h"
+#include "user_constants.h"
 
-// clang-format off
-#include "user_defines.h"
-// clang-format on
+#include <math.h>
+#include <stdbool.h>
+
+#include "errchk.h"
+#include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
 #ifdef AC_INTEGRATION_ENABLED
 /*

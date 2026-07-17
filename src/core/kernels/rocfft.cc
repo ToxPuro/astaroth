@@ -1,21 +1,18 @@
-#include <rocfft/rocfft.h>
-#include <stdio.h>
-
-#include <cstdlib>
-#include <unordered_map>
-
-#include "ac_fft.h"
-#include "ac_helpers.h"
-#include "astaroth_cuda_wrappers.h"
-#include "common_kernels.h"
-#include "errchk.h"
 #include "host_datatypes.h"
+#include "ac_fft.h"
+#include "astaroth_cuda_wrappers.h"
+#include "errchk.h"
+#include "ac_helpers.h"
+#include "common_kernels.h"
+#include <stdio.h>
+#include <cstdlib>
 
 #if AC_DOUBLE_PRECISION
 #define AC_FFT_PRECISION rocfft_precision_double
 #else
 #define AC_FFT_PRECISION rocfft_precision_single
 #endif
+#include <rocfft/rocfft.h>
 
 #if AC_MPI_ENABLED
 #include <mpi.h>
@@ -33,6 +30,7 @@ operator==(const Volume& a, const Volume& b)
   return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
+#include <unordered_map>
 struct VolumeHash {
     std::size_t operator()(const Volume& v) const {
         return std::hash<size_t>()(v.x) ^ std::hash<size_t>()(v.y) << 1 ^ std::hash<size_t>()(v.z) << 2;

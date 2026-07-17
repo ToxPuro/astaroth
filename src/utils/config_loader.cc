@@ -17,25 +17,22 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdint.h>  // uint8_t, uint32_t
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <cmath>
-#include <string>
-#include <vector>
-
-#include "acc_runtime.h"
-#include "acreal.h"
-#include "astaroth.h"
+/**
+ * @file
+ * \brief Brief info.
+ *
+ * Detailed info.
+ *
+ */
 #include "astaroth_utils.h"
-#include "errchk.h"
-#include "host_datatypes.h"
+#include "acc_runtime.h"
 
-// clang-format off
-#include "user_defines.h"
-// clang-format on
+#include <stdint.h> // uint8_t, uint32_t
+#include <string>
+#include <math.h>
+#include <ctype.h>
+#include <vector>
+#include "errchk.h"
 
 /**
  \brief Find the index of the keyword in names

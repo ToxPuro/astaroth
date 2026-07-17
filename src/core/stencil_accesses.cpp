@@ -1,36 +1,35 @@
 #define AC_RUNTIME_SOURCE
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include <algorithm>
-#include <initializer_list>
-#include <vector>
 
-#include "acc_runtime.h"
-#include "acreal.h"
-#include "astaroth_analysis.h"
-#include "builtin_enums.h"
-#include "func_attributes.h"
-#include "host_datatypes.h"
-#include "math_utils.h"
+bool should_reduce_real[1000] = {false};
+bool should_reduce_int[1000] = {false};
 
-// clang-format off
-#include "user_defines.h"
-// clang-format on
+
 
 #define rocprim__warpSize() (64)
 #define rocprim__warpId()   (0)
 #define rocprim__warp_shuffle(mask,val)  (val)
 #define rocprim__warp_shuffle_down(val,offset)  (val)
+
+#include <algorithm>
+
 #ifndef AC_IN_AC_LIBRARY
 #define AC_IN_AC_LIBRARY
 #endif
 #define longlong long long
+#include "func_attributes.h"
+#include <assert.h>
 
+#include <string.h>
+#include <vector>
+#include "device_headers.h"
+#include "datatypes.h"
+
+#define AcReal3(x,y,z)   (AcReal3){x,y,z}
+#define AcComplex(x,y)   (AcComplex){x,y}
+#include "user_defines.h"
+#include <array>
 template <typename T>
 struct safe_array
 {
@@ -175,6 +174,12 @@ __ffs(unsigned long)
 
 #endif
 #define idx  ((int)IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z))
+
+#include "math_utils.h"
+ 
+#define constexpr
+#include "acc_runtime.h"
+#undef constexpr
 
 static int stencils_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]{{}};
 static int previous_accessed[NUM_ALL_FIELDS+NUM_PROFILES]{};

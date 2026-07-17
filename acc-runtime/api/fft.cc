@@ -2,21 +2,14 @@
 
 
 #if AC_USE_HIP
-#include <rocfft/rocfft.h>
-
 #if AC_DOUBLE_PRECISION
 #define AC_FFT_PRECISION rocfft_precision_double
 #else
 #define AC_FFT_PRECISION rocfft_precision_single
 #endif
 
-#else
-#include <cuComplex.h>
-#include <cufftXt.h>
-#endif
-
-#if AC_USE_HIP
-static rocfft_plan_description
+#include <rocfft/rocfft.h>
+static rocfft_plan_description 
 get_data_layout(const Volume domain_size)
 {
     //TP: not sure are the offsets for rocfft in bytes or in number of elements so prefer to do the offseting via pointer arithmetic myself
@@ -142,6 +135,9 @@ acFFTBackwardTransformSymmetricC2R(const AcComplex*,const Volume, const Volume,c
 }
 
 #else
+#include <cufftXt.h>
+#include <cuComplex.h>
+
 // cufft API error chekcing
 #ifndef CUFFT_CALL
 #define CUFFT_CALL( call )                                                                                             \

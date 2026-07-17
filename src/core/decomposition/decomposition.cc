@@ -16,24 +16,13 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "device_headers.h"
 #include "decomposition.h"
-
-#include <limits.h>  // INT_MAX
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>  // memcpy
-
-#include <memory>  // unique_ptr
-#include <vector>
-
 #include "astaroth.h"
-#include "astaroth_cuda_wrappers.h"
-#include "datatypes.h"
-#include "errchk.h"
 
-// clang-format off
-#include "user_defines.h"
-// clang-format on
+#include <limits.h> // INT_MAX
+#include <string.h> // memcpy
+#include <memory>   // unique_ptr
 
 #define DECOMPOSITION_TYPE_ZORDER (1)
 #define DECOMPOSITION_TYPE_HIERARCHICAL (2)

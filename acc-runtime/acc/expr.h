@@ -1,7 +1,4 @@
-#pragma once
-
 #include "tinyexpr.h"
-
 static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
 {
 	//TP: do not replace const int on lhs of assignment to avoid replacing the initial assignment
