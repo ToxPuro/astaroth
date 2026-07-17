@@ -27,39 +27,15 @@
   #include <dlfcn.h>
 #endif
 
+#include "ac_mpi.h"
 #include "acc_runtime.h"
 #include "func_define.h"
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"
 
-#if AC_MPI_ENABLED
-#include <mpi.h>
-struct AcCommunicator
-{
-	MPI_Comm handle;
-};
-
-typedef struct AcSubCommunicators {
-	MPI_Comm all;
-	MPI_Comm x;
-	MPI_Comm y;
-	MPI_Comm z;
-
-	MPI_Comm reverse_x;
-	MPI_Comm reverse_y;
-	MPI_Comm reverse_z;
-
-	MPI_Comm xy;
-	MPI_Comm xz;
-	MPI_Comm yz;
-} AcSubCommunicators;
-#else
-struct AcCommunicator
-{
-};
+#ifdef __cplusplus
+#include <functional>
 #endif
-
-
 
 #define UNUSED __attribute__((unused)) // Does not give a warning if unused
 

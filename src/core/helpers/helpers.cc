@@ -1,18 +1,12 @@
 #include "host_datatypes.h"
 #include "device_headers.h"
 #include "ac_helpers.h"
+#include "ac_mpi.h"
 #include <sys/resource.h>
 #include "astaroth_cuda_wrappers.h"
 #include <stdio.h>
 #include <math.h>
 #include "errchk.h"
-#if AC_MPI_ENABLED
-#include <mpi.h>
-struct AcCommunicator
-{
-	MPI_Comm handle;
-};
-#endif
 #include <cfloat>
 
 #include <fenv.h>

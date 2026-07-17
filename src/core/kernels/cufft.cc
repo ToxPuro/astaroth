@@ -1,5 +1,6 @@
 #include "host_datatypes.h"
 #include "ac_fft.h"
+#include "ac_mpi.h"
 #include "astaroth_cuda_wrappers.h"
 #include "errchk.h"
 #include "ac_helpers.h"
@@ -18,11 +19,6 @@ using  cuFFTPrecision = cuFloatComplex;
 #endif
 
 #if AC_MPI_ENABLED
-#include <mpi.h>
-struct AcCommunicator
-{
-	MPI_Comm handle;
-};
 static MPI_Comm communicator{};
 #endif
 
