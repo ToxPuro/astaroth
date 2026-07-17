@@ -1,4 +1,15 @@
 hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
+#ifndef AC_HOME
+#include "../../stdlib/integrators.h"
+#include "../../stdlib/math"
+#include "../../stdlib/grid"
+#include "../../stdlib/derivs.h"
+#include "../../stdlib/operators.h"
+#include "../../standalone_params.h"
+#include "../../stdlib/units.h"
+#include "../../stdlib/map.h"
+#include "../../stdlib/utils/kernels.h"
+#else
 #include "$AC_HOME/acc-runtime/stdlib/integrators.h"
 #include "$AC_HOME/acc-runtime/stdlib/math"
 #include "$AC_HOME/acc-runtime/stdlib/grid"
@@ -8,6 +19,7 @@ hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic
 #include "$AC_HOME/acc-runtime/stdlib/units.h"
 #include "$AC_HOME/acc-runtime/stdlib/map.h"
 #include "$AC_HOME/acc-runtime/stdlib/utils/kernels.h"
+#endif
 const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
 const int AC_const_ints_len = 3
@@ -1162,4 +1174,8 @@ Kernel compute_bfield()
 ComputeSteps get_bfield(boundconds) {compute_bfield()}
 
 
+#ifndef AC_HOME
+#include "../../stdlib/bc.h"
+#else
 #include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#endif
