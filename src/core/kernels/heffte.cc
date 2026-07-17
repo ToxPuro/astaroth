@@ -1,5 +1,6 @@
 #include "host_datatypes.h"
 #include "ac_fft.h"
+#include "ac_mpi.h"
 #include "astaroth_cuda_wrappers.h"
 #include "errchk.h"
 #include "ac_helpers.h"
@@ -7,11 +8,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include "heffte.h"
-#include <mpi.h>
-struct AcCommunicator
-{
-	MPI_Comm handle;
-};
+
 static MPI_Comm communicator{};
 [[maybe_unused]] static Volume global_offset = (Volume){0,0,0};
 

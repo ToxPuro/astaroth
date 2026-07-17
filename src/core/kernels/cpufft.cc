@@ -1,5 +1,6 @@
 #include "host_datatypes.h"
 #include "ac_fft.h"
+#include "ac_mpi.h"
 #include <stdio.h>
 #include <cstdlib>
 #include "kissfft/kiss_fft.h"
@@ -9,11 +10,6 @@
 #include "common_kernels.h"
 
 #if AC_MPI_ENABLED
-#include <mpi.h>
-struct AcCommunicator
-{
-	MPI_Comm handle;
-};
 static MPI_Comm communicator{};
 #endif
 
