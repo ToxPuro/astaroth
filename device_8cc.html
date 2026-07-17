@@ -97,30 +97,13 @@ $(document).ready(function(){initNavTree('device_8cc.html',''); initResizable();
   <div class="headertitle"><div class="title">device.cc File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;stdio.h&gt;</code><br />
-<code>#include &lt;stdlib.h&gt;</code><br />
-<code>#include &lt;string.h&gt;</code><br />
-<code>#include &lt;cmath&gt;</code><br />
-<code>#include &lt;vector&gt;</code><br />
-<code>#include &quot;<a class="el" href="ac__fft_8h_source.html">ac_fft.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="ac__helpers_8h_source.html">ac_helpers.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="acc__runtime_8h_source.html">acc_runtime.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="acreal_8h_source.html">acreal.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth_8h_source.html">astaroth.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__base_8h_source.html">astaroth_base.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__cuda__wrappers_8h_source.html">astaroth_cuda_wrappers.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__device_8h_source.html">astaroth_device.h</a>&quot;</code><br />
-<code>#include &quot;builtin_enums.h&quot;</code><br />
-<code>#include &quot;<a class="el" href="common__kernels_8h_source.html">common_kernels.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="device__headers_8h_source.html">device_headers.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
+<div class="textblock"><code>#include &quot;<a class="el" href="astaroth_8h_source.html">astaroth.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="math__utils_8h_source.html">../../acc-runtime/api/math_utils.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="src_2core_2kernels_2kernels_8h_source.html">kernels/kernels.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="math__utils_8h_source.html">math_utils.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="transpose_8h_source.html">transpose.h</a>&quot;</code><br />
-<code>#include &quot;load_ac_kernel_params_def.h&quot;</code><br />
-<code>#include &quot;load_and_store_uniform_header.h&quot;</code><br />
-<code>#include &quot;user_defines.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="ac__helpers_8h_source.html">ac_helpers.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__cuda__wrappers_8h_source.html">astaroth_cuda_wrappers.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="ac__fft_8h_source.html">ac_fft.h</a>&quot;</code><br />
+<code>#include &lt;math.h&gt;</code><br />
 <code>#include &quot;device_store_uniform.h&quot;</code><br />
 <code>#include &quot;coeffs.h&quot;</code><br />
 <code>#include &quot;device_load_uniform.h&quot;</code><br />
@@ -169,13 +152,13 @@ Functions</h2></td></tr>
 <tr class="separator:a4d2c66750df9f337365fbdc6f2eb6248"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6cae36dcbde01f56a666d67eeddfe2ab" id="r_a6cae36dcbde01f56a666d67eeddfe2ab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a6cae36dcbde01f56a666d67eeddfe2ab">acDeviceGetId</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, int *id)</td></tr>
 <tr class="separator:a6cae36dcbde01f56a666d67eeddfe2ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac8b592b7625728481233116382548951" id="r_ac8b592b7625728481233116382548951"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ac8b592b7625728481233116382548951">acDeviceLoadScalarUniform</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealParam param, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="memitem:ac8b592b7625728481233116382548951" id="r_ac8b592b7625728481233116382548951"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ac8b592b7625728481233116382548951">acDeviceLoadScalarUniform</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealParam param, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
 <tr class="separator:ac8b592b7625728481233116382548951"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa09349453a4d2f09ef086f29645be5fa" id="r_aa09349453a4d2f09ef086f29645be5fa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aa09349453a4d2f09ef086f29645be5fa">acDeviceLoadVectorUniform</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcReal3Param param, const <a class="el" href="acc__runtime_8cu.html#a409d4a5ac9fcaadc7f5c3f15eb869cf5">AcReal3</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="memitem:aa09349453a4d2f09ef086f29645be5fa" id="r_aa09349453a4d2f09ef086f29645be5fa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aa09349453a4d2f09ef086f29645be5fa">acDeviceLoadVectorUniform</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcReal3Param param, const <a class="el" href="structAcReal3.html">AcReal3</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
 <tr class="separator:aa09349453a4d2f09ef086f29645be5fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a48a499952e928f8a7a1714fa9a6bf676" id="r_a48a499952e928f8a7a1714fa9a6bf676"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a48a499952e928f8a7a1714fa9a6bf676">acDeviceStoreScalarUniform</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealParam param, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *<a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="memitem:a48a499952e928f8a7a1714fa9a6bf676" id="r_a48a499952e928f8a7a1714fa9a6bf676"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a48a499952e928f8a7a1714fa9a6bf676">acDeviceStoreScalarUniform</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealParam param, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *<a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
 <tr class="separator:a48a499952e928f8a7a1714fa9a6bf676"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4b39a43d50dfe1b1c5339451724a1c05" id="r_a4b39a43d50dfe1b1c5339451724a1c05"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a4b39a43d50dfe1b1c5339451724a1c05">acDeviceStoreVectorUniform</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcReal3Param param, <a class="el" href="acc__runtime_8cu.html#a409d4a5ac9fcaadc7f5c3f15eb869cf5">AcReal3</a> *<a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="memitem:a4b39a43d50dfe1b1c5339451724a1c05" id="r_a4b39a43d50dfe1b1c5339451724a1c05"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a4b39a43d50dfe1b1c5339451724a1c05">acDeviceStoreVectorUniform</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcReal3Param param, <a class="el" href="structAcReal3.html">AcReal3</a> *<a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
 <tr class="separator:a4b39a43d50dfe1b1c5339451724a1c05"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad3638bc514110d4f4e3106201f002c9f" id="r_ad3638bc514110d4f4e3106201f002c9f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ad3638bc514110d4f4e3106201f002c9f">generateIndicesHelper</a> (const std::vector&lt; size_t &gt; &amp;dimensions, std::vector&lt; int &gt; &amp;currentIndex, std::vector&lt; std::vector&lt; int &gt; &gt; &amp;result, size_t depth)</td></tr>
 <tr class="separator:ad3638bc514110d4f4e3106201f002c9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -183,7 +166,7 @@ Functions</h2></td></tr>
 <tr class="separator:a477308d715587d95c81c4c411c951e7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a60c3c22d242d585a4ef0d74dbc3a32ed" id="r_a60c3c22d242d585a4ef0d74dbc3a32ed"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a60c3c22d242d585a4ef0d74dbc3a32ed">acDeviceUpdate</a> (<a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> config)</td></tr>
 <tr class="separator:a60c3c22d242d585a4ef0d74dbc3a32ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a51b0a1473236b8a06cd55113146a764a" id="r_a51b0a1473236b8a06cd55113146a764a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a51b0a1473236b8a06cd55113146a764a">acDeviceLoadRealReduceRes</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealOutputParam param, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="memitem:a51b0a1473236b8a06cd55113146a764a" id="r_a51b0a1473236b8a06cd55113146a764a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a51b0a1473236b8a06cd55113146a764a">acDeviceLoadRealReduceRes</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealOutputParam param, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
 <tr class="separator:a51b0a1473236b8a06cd55113146a764a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6a47b0dcaafe8a81a9b7c144665c432d" id="r_a6a47b0dcaafe8a81a9b7c144665c432d"><td class="memTemplParams" colspan="2">template&lt;typename P &gt; </td></tr>
 <tr class="memitem:a6a47b0dcaafe8a81a9b7c144665c432d"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="device_8cc.html#a6a47b0dcaafe8a81a9b7c144665c432d">acDeviceLoadArray</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> host_info, const P array)</td></tr>
@@ -192,9 +175,9 @@ Functions</h2></td></tr>
 <tr class="separator:ad78b99bd9fee6fa26f3a6cd29ae4cf15"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3ff5b123836747620d6ab561dda3747c" id="r_a3ff5b123836747620d6ab561dda3747c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a3ff5b123836747620d6ab561dda3747c">acDeviceSynchronizeStream</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream)</td></tr>
 <tr class="separator:a3ff5b123836747620d6ab561dda3747c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4896684b19fd5828e833bad3c374b356" id="r_a4896684b19fd5828e833bad3c374b356"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a4896684b19fd5828e833bad3c374b356">acDeviceLoadStencil</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const Stencil stencil, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])</td></tr>
+<tr class="memitem:a4896684b19fd5828e833bad3c374b356" id="r_a4896684b19fd5828e833bad3c374b356"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a4896684b19fd5828e833bad3c374b356">acDeviceLoadStencil</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const Stencil stencil, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])</td></tr>
 <tr class="separator:a4896684b19fd5828e833bad3c374b356"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a87f250c16a2915b843f0ceb952e45c82" id="r_a87f250c16a2915b843f0ceb952e45c82"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a87f250c16a2915b843f0ceb952e45c82">acDeviceLoadStencils</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])</td></tr>
+<tr class="memitem:a87f250c16a2915b843f0ceb952e45c82" id="r_a87f250c16a2915b843f0ceb952e45c82"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a87f250c16a2915b843f0ceb952e45c82">acDeviceLoadStencils</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])</td></tr>
 <tr class="separator:a87f250c16a2915b843f0ceb952e45c82"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae467f6442627cf249f455b2bf06f16aa" id="r_ae467f6442627cf249f455b2bf06f16aa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ae467f6442627cf249f455b2bf06f16aa">acDeviceLoadStencilsFromConfig</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream)</td></tr>
 <tr class="separator:ae467f6442627cf249f455b2bf06f16aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -204,7 +187,7 @@ Functions</h2></td></tr>
 <tr class="separator:ad487df15fe663acf1d5cb3b68ccd9324"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aea660f13ce7342a1e6b8f3f4575c0f3b" id="r_aea660f13ce7342a1e6b8f3f4575c0f3b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aea660f13ce7342a1e6b8f3f4575c0f3b">acDeviceCreate</a> (const int id, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> device_config, <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> *device_handle)</td></tr>
 <tr class="separator:aea660f13ce7342a1e6b8f3f4575c0f3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1fa71bfd648d2f56b4ee58d0046b8b3e" id="r_a1fa71bfd648d2f56b4ee58d0046b8b3e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a1fa71bfd648d2f56b4ee58d0046b8b3e">acDeviceGetVertexBufferPtrs</a> (<a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const VertexBufferHandle vtxbuf, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> **in, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> **out)</td></tr>
+<tr class="memitem:a1fa71bfd648d2f56b4ee58d0046b8b3e" id="r_a1fa71bfd648d2f56b4ee58d0046b8b3e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a1fa71bfd648d2f56b4ee58d0046b8b3e">acDeviceGetVertexBufferPtrs</a> (<a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const VertexBufferHandle vtxbuf, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> **in, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> **out)</td></tr>
 <tr class="separator:a1fa71bfd648d2f56b4ee58d0046b8b3e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa77564256cfd9da95dc7726f9addd352" id="r_aa77564256cfd9da95dc7726f9addd352"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aa77564256cfd9da95dc7726f9addd352">acDeviceDestroy</a> (<a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> *device_ptr)</td></tr>
 <tr class="separator:aa77564256cfd9da95dc7726f9addd352"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -220,7 +203,7 @@ Functions</h2></td></tr>
 <tr class="separator:a9c442bd703db372d43a511aab672f9c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a354929878d9957ee323dacb17154abdf" id="r_a354929878d9957ee323dacb17154abdf"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a354929878d9957ee323dacb17154abdf">acDeviceLoadMesh</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcMesh.html">AcMesh</a> host_mesh)</td></tr>
 <tr class="separator:a354929878d9957ee323dacb17154abdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac6c3c37bf5db17e7f52f35796711a024" id="r_ac6c3c37bf5db17e7f52f35796711a024"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ac6c3c37bf5db17e7f52f35796711a024">acDeviceSetVertexBuffer</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const VertexBufferHandle handle, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="memitem:ac6c3c37bf5db17e7f52f35796711a024" id="r_ac6c3c37bf5db17e7f52f35796711a024"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ac6c3c37bf5db17e7f52f35796711a024">acDeviceSetVertexBuffer</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const VertexBufferHandle handle, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
 <tr class="separator:ac6c3c37bf5db17e7f52f35796711a024"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2c195aac4a5841ad5e2a094ff1137bdd" id="r_a2c195aac4a5841ad5e2a094ff1137bdd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a2c195aac4a5841ad5e2a094ff1137bdd">acDeviceFlushOutputBuffers</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream)</td></tr>
 <tr class="separator:a2c195aac4a5841ad5e2a094ff1137bdd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -246,9 +229,9 @@ Functions</h2></td></tr>
 <tr class="separator:acb2e963826cb26202acd8f047ec1903f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aff3caab89cb357f9da73b93d508f829d" id="r_aff3caab89cb357f9da73b93d508f829d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aff3caab89cb357f9da73b93d508f829d">acDeviceBenchmarkKernel</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const AcKernel <a class="el" href="bwtest-benchmark_8cu.html#a4d3b1889098503be634fe5d0f5470134">kernel</a>, const <a class="el" href="structint3.html">int3</a> start, const <a class="el" href="structint3.html">int3</a> end)</td></tr>
 <tr class="separator:aff3caab89cb357f9da73b93d508f829d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a48a9c9073c276e4a22595782b952aa4f" id="r_a48a9c9073c276e4a22595782b952aa4f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a48a9c9073c276e4a22595782b952aa4f">acDeviceStoreStencil</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const Stencil stencil, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])</td></tr>
+<tr class="memitem:a48a9c9073c276e4a22595782b952aa4f" id="r_a48a9c9073c276e4a22595782b952aa4f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a48a9c9073c276e4a22595782b952aa4f">acDeviceStoreStencil</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const Stencil stencil, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])</td></tr>
 <tr class="separator:a48a9c9073c276e4a22595782b952aa4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a39d0d82508fc7f2c4a2a0e428303c132" id="r_a39d0d82508fc7f2c4a2a0e428303c132"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a39d0d82508fc7f2c4a2a0e428303c132">acDeviceIntegrateSubstep</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const int step_number, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> dt)</td></tr>
+<tr class="memitem:a39d0d82508fc7f2c4a2a0e428303c132" id="r_a39d0d82508fc7f2c4a2a0e428303c132"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a39d0d82508fc7f2c4a2a0e428303c132">acDeviceIntegrateSubstep</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const int step_number, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> dt)</td></tr>
 <tr class="separator:a39d0d82508fc7f2c4a2a0e428303c132"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae352176141d040a32cac35a033ec27a" id="r_aae352176141d040a32cac35a033ec27a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aae352176141d040a32cac35a033ec27a">acDevicePeriodicBoundcondStep</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const VertexBufferHandle vtxbuf_handle, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end)</td></tr>
 <tr class="separator:aae352176141d040a32cac35a033ec27a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -264,13 +247,13 @@ Functions</h2></td></tr>
 <tr class="separator:a7b4138128d09faf1f4c7f32baf131810"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5761ce3916d031a083d5e1686caa3da6" id="r_a5761ce3916d031a083d5e1686caa3da6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a5761ce3916d031a083d5e1686caa3da6">acDeviceSwapAllProfileBuffers</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device)</td></tr>
 <tr class="separator:a5761ce3916d031a083d5e1686caa3da6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7cc14f0dfe9270447a28db716c1029cf" id="r_a7cc14f0dfe9270447a28db716c1029cf"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a7cc14f0dfe9270447a28db716c1029cf">acDeviceLoadProfile</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *hostprofile, const size_t hostprofile_count, const Profile profile)</td></tr>
+<tr class="memitem:a7cc14f0dfe9270447a28db716c1029cf" id="r_a7cc14f0dfe9270447a28db716c1029cf"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a7cc14f0dfe9270447a28db716c1029cf">acDeviceLoadProfile</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *hostprofile, const size_t hostprofile_count, const Profile profile)</td></tr>
 <tr class="separator:a7cc14f0dfe9270447a28db716c1029cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a80cbfa7d3f4e2527b6fa370f62b0a68a" id="r_a80cbfa7d3f4e2527b6fa370f62b0a68a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a80cbfa7d3f4e2527b6fa370f62b0a68a">acDeviceStoreProfile</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const Profile profile, <a class="el" href="structAcMesh.html">AcMesh</a> *host_mesh)</td></tr>
 <tr class="separator:a80cbfa7d3f4e2527b6fa370f62b0a68a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7ad307a052a65bc71a3ae170628e3f3" id="r_ab7ad307a052a65bc71a3ae170628e3f3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ab7ad307a052a65bc71a3ae170628e3f3">acDevicePrintProfiles</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device)</td></tr>
 <tr class="separator:ab7ad307a052a65bc71a3ae170628e3f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaf2f9cacc10332ed29cf70830885ff20" id="r_aaf2f9cacc10332ed29cf70830885ff20"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aaf2f9cacc10332ed29cf70830885ff20">acDeviceVolumeCopy</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *in, const <a class="el" href="structVolume.html">Volume</a> in_offset, const <a class="el" href="structVolume.html">Volume</a> in_volume, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *out, const <a class="el" href="structVolume.html">Volume</a> out_offset, const <a class="el" href="structVolume.html">Volume</a> out_volume)</td></tr>
+<tr class="memitem:aaf2f9cacc10332ed29cf70830885ff20" id="r_aaf2f9cacc10332ed29cf70830885ff20"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aaf2f9cacc10332ed29cf70830885ff20">acDeviceVolumeCopy</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *in, const <a class="el" href="structVolume.html">Volume</a> in_offset, const <a class="el" href="structVolume.html">Volume</a> in_volume, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *out, const <a class="el" href="structVolume.html">Volume</a> out_offset, const <a class="el" href="structVolume.html">Volume</a> out_volume)</td></tr>
 <tr class="separator:aaf2f9cacc10332ed29cf70830885ff20"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acf88d16d2b13ca0d4403c28b62332625" id="r_acf88d16d2b13ca0d4403c28b62332625"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#acf88d16d2b13ca0d4403c28b62332625">acDeviceResetMesh</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream)</td></tr>
 <tr class="separator:acf88d16d2b13ca0d4403c28b62332625"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -280,17 +263,17 @@ Functions</h2></td></tr>
 <tr class="separator:a3fcb61ec57c3e1cf070e65a95b26f50f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4c8f0d22aa3cdb462eed532c60a509e9" id="r_a4c8f0d22aa3cdb462eed532c60a509e9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcDeviceKernelOutput.html">AcDeviceKernelOutput</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a4c8f0d22aa3cdb462eed532c60a509e9">acDeviceGetKernelOutput</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device)</td></tr>
 <tr class="separator:a4c8f0d22aa3cdb462eed532c60a509e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afc00c4b325244c749d5ad7f180607d3d" id="r_afc00c4b325244c749d5ad7f180607d3d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#afc00c4b325244c749d5ad7f180607d3d">acDeviceReduceScalNoPostProcessing</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf_handle, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:afc00c4b325244c749d5ad7f180607d3d" id="r_afc00c4b325244c749d5ad7f180607d3d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#afc00c4b325244c749d5ad7f180607d3d">acDeviceReduceScalNoPostProcessing</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf_handle, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:afc00c4b325244c749d5ad7f180607d3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a128cdf094e609c14efd373acc0229375" id="r_a128cdf094e609c14efd373acc0229375"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a128cdf094e609c14efd373acc0229375">acDeviceReduceScal</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf_handle, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:a128cdf094e609c14efd373acc0229375" id="r_a128cdf094e609c14efd373acc0229375"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a128cdf094e609c14efd373acc0229375">acDeviceReduceScal</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf_handle, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:a128cdf094e609c14efd373acc0229375"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d4226338c344d9d426884bf549fdeec" id="r_a0d4226338c344d9d426884bf549fdeec"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a0d4226338c344d9d426884bf549fdeec">acDeviceReduceVecNoPostProcessing</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:a0d4226338c344d9d426884bf549fdeec" id="r_a0d4226338c344d9d426884bf549fdeec"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a0d4226338c344d9d426884bf549fdeec">acDeviceReduceVecNoPostProcessing</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:a0d4226338c344d9d426884bf549fdeec"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac2b72cffdc48c4bb0e75beb4600aa15f" id="r_ac2b72cffdc48c4bb0e75beb4600aa15f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ac2b72cffdc48c4bb0e75beb4600aa15f">acDeviceReduceVec</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:ac2b72cffdc48c4bb0e75beb4600aa15f" id="r_ac2b72cffdc48c4bb0e75beb4600aa15f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ac2b72cffdc48c4bb0e75beb4600aa15f">acDeviceReduceVec</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:ac2b72cffdc48c4bb0e75beb4600aa15f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aff010db2ba7101bb7f3bf2d89bb4b798" id="r_aff010db2ba7101bb7f3bf2d89bb4b798"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aff010db2ba7101bb7f3bf2d89bb4b798">acDeviceReduceVecScalNoPostProcessing</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:aff010db2ba7101bb7f3bf2d89bb4b798" id="r_aff010db2ba7101bb7f3bf2d89bb4b798"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aff010db2ba7101bb7f3bf2d89bb4b798">acDeviceReduceVecScalNoPostProcessing</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:aff010db2ba7101bb7f3bf2d89bb4b798"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab7f03364405548fe3ebb9e00299b0d2a" id="r_ab7f03364405548fe3ebb9e00299b0d2a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ab7f03364405548fe3ebb9e00299b0d2a">acDeviceReduceVecScal</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:ab7f03364405548fe3ebb9e00299b0d2a" id="r_ab7f03364405548fe3ebb9e00299b0d2a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#ab7f03364405548fe3ebb9e00299b0d2a">acDeviceReduceVecScal</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:ab7f03364405548fe3ebb9e00299b0d2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7565bf039dd3fcea1a354e5c09ab6e83" id="r_a7565bf039dd3fcea1a354e5c09ab6e83"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a7565bf039dd3fcea1a354e5c09ab6e83">acDeviceReduceXY</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const Field field, const Profile profile, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction)</td></tr>
 <tr class="separator:a7565bf039dd3fcea1a354e5c09ab6e83"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -300,7 +283,7 @@ Functions</h2></td></tr>
 <tr class="separator:ac46e93d02dc53671b354b7ea985cfbc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a375e6f1ea2c7c2c12e99893e5a764af5" id="r_a375e6f1ea2c7c2c12e99893e5a764af5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcBuffer.html">AcBuffer</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a375e6f1ea2c7c2c12e99893e5a764af5">acDeviceTransposeVertexBuffer</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const VertexBufferHandle vtxbuf)</td></tr>
 <tr class="separator:a375e6f1ea2c7c2c12e99893e5a764af5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a67d380d657b21626d7161a692a408706" id="r_a67d380d657b21626d7161a692a408706"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcBuffer.html">AcBuffer</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a67d380d657b21626d7161a692a408706">acDeviceTransposeBase</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src)</td></tr>
+<tr class="memitem:a67d380d657b21626d7161a692a408706" id="r_a67d380d657b21626d7161a692a408706"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcBuffer.html">AcBuffer</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a67d380d657b21626d7161a692a408706">acDeviceTransposeBase</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *src)</td></tr>
 <tr class="separator:a67d380d657b21626d7161a692a408706"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aee83bf0c26eb16f5277236aad07d8a00" id="r_aee83bf0c26eb16f5277236aad07d8a00"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#aee83bf0c26eb16f5277236aad07d8a00">acDeviceWriteMeshToDisk</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const VertexBufferHandle vtxbuf, const char *filepath)</td></tr>
 <tr class="separator:aee83bf0c26eb16f5277236aad07d8a00"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -340,9 +323,9 @@ Functions</h2></td></tr>
 <tr class="separator:a7d2bde9f1ed7fd88084f7a028b340f3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a898827f83ac417b8822d4e3079ecc168" id="r_a898827f83ac417b8822d4e3079ecc168"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcReduceBuffer.html">AcReduceBuffer</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a898827f83ac417b8822d4e3079ecc168">acDeviceGetProfileReduceBuffer</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const Profile prof)</td></tr>
 <tr class="separator:a898827f83ac417b8822d4e3079ecc168"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0cbc642b2b5808026446117a8f3ab7f1" id="r_a0cbc642b2b5808026446117a8f3ab7f1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a0cbc642b2b5808026446117a8f3ab7f1">acDeviceGetProfileBuffer</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const Profile prof)</td></tr>
+<tr class="memitem:a0cbc642b2b5808026446117a8f3ab7f1" id="r_a0cbc642b2b5808026446117a8f3ab7f1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a0cbc642b2b5808026446117a8f3ab7f1">acDeviceGetProfileBuffer</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device, const Profile prof)</td></tr>
 <tr class="separator:a0cbc642b2b5808026446117a8f3ab7f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2751ebfa76be0bbab88445984a4c37dd" id="r_a2751ebfa76be0bbab88445984a4c37dd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> **&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a2751ebfa76be0bbab88445984a4c37dd">acDeviceGetStartOfProfiles</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device)</td></tr>
+<tr class="memitem:a2751ebfa76be0bbab88445984a4c37dd" id="r_a2751ebfa76be0bbab88445984a4c37dd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> **&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="device_8cc.html#a2751ebfa76be0bbab88445984a4c37dd">acDeviceGetStartOfProfiles</a> (const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> device)</td></tr>
 <tr class="separator:a2751ebfa76be0bbab88445984a4c37dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
@@ -386,11 +369,11 @@ Functions</h2></td></tr>
 <div class="line">        <span class="keywordflow">return</span> acKernel_##ID(<a class="code hl_struct" href="structKernelParameters.html">KernelParameters</a>{device-&gt;streams[stream], 0, start, end},             \</div>
 <div class="line">                             device-&gt;vba);                                                         \</div>
 <div class="line">    }</div>
-<div class="ttc" id="aastaroth__base_8h_html_a0b8b584f5fb32277059bc4e6b9bcd6f0"><div class="ttname"><a href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a></div><div class="ttdeci">Stream</div><div class="ttdef"><b>Definition</b> astaroth_base.h:78</div></div>
-<div class="ttc" id="ahost__datatypes_8h_html_a601254ccb5bcc54c209aeea4ac24e43d"><div class="ttname"><a href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div><div class="ttdeci">AcResult</div><div class="ttdef"><b>Definition</b> host_datatypes.h:10</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a0b8b584f5fb32277059bc4e6b9bcd6f0"><div class="ttname"><a href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a></div><div class="ttdeci">Stream</div><div class="ttdef"><b>Definition</b> astaroth_base.h:50</div></div>
+<div class="ttc" id="ahost__datatypes_8h_html_a601254ccb5bcc54c209aeea4ac24e43d"><div class="ttname"><a href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div><div class="ttdeci">AcResult</div><div class="ttdef"><b>Definition</b> host_datatypes.h:44</div></div>
 <div class="ttc" id="astructKernelParameters_html"><div class="ttname"><a href="structKernelParameters.html">KernelParameters</a></div><div class="ttdef"><b>Definition</b> task.h:38</div></div>
-<div class="ttc" id="astructdevice__s_html"><div class="ttname"><a href="structdevice__s.html">device_s</a></div><div class="ttdef"><b>Definition</b> device.cc:63</div></div>
-<div class="ttc" id="astructint3_html"><div class="ttname"><a href="structint3.html">int3</a></div><div class="ttdef"><b>Definition</b> stencilgen.c:59</div></div>
+<div class="ttc" id="astructdevice__s_html"><div class="ttname"><a href="structdevice__s.html">device_s</a></div><div class="ttdef"><b>Definition</b> device.cc:40</div></div>
+<div class="ttc" id="astructint3_html"><div class="ttname"><a href="structint3.html">int3</a></div><div class="ttdef"><b>Definition</b> stencilgen.c:49</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -430,8 +413,8 @@ Functions</h2></td></tr>
 <div class="line">    { \</div>
 <div class="line">        <span class="keywordflow">return</span> <a class="code hl_function" href="device_8cc.html#a6a47b0dcaafe8a81a9b7c144665c432d">acDeviceLoadArray</a>(device,stream,host_info,array); \</div>
 <div class="line">    }</div>
-<div class="ttc" id="adevice_8cc_html_a6a47b0dcaafe8a81a9b7c144665c432d"><div class="ttname"><a href="device_8cc.html#a6a47b0dcaafe8a81a9b7c144665c432d">acDeviceLoadArray</a></div><div class="ttdeci">AcResult acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info, const P array)</div><div class="ttdef"><b>Definition</b> device.cc:334</div></div>
-<div class="ttc" id="astructAcMeshInfo_html"><div class="ttname"><a href="structAcMeshInfo.html">AcMeshInfo</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:164</div></div>
+<div class="ttc" id="adevice_8cc_html_a6a47b0dcaafe8a81a9b7c144665c432d"><div class="ttname"><a href="device_8cc.html#a6a47b0dcaafe8a81a9b7c144665c432d">acDeviceLoadArray</a></div><div class="ttdeci">AcResult acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info, const P array)</div><div class="ttdef"><b>Definition</b> device.cc:313</div></div>
+<div class="ttc" id="astructAcMeshInfo_html"><div class="ttname"><a href="structAcMeshInfo.html">AcMeshInfo</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:153</div></div>
 <div class="ttc" id="astructArray_html"><div class="ttname"><a href="structArray.html">Array</a></div><div class="ttdef"><b>Definition</b> bwtest-stencil.cu:22</div></div>
 </div><!-- fragment -->
 </div>
@@ -1518,7 +1501,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> * acDeviceGetProfileBuffer </td>
+          <td class="memname"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> * acDeviceGetProfileBuffer </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a>&#160;</td>
           <td class="paramname"><em>device</em>, </td>
@@ -1574,7 +1557,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> ** acDeviceGetStartOfProfiles </td>
+          <td class="memname"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> ** acDeviceGetStartOfProfiles </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a>&#160;</td>
           <td class="paramname"><em>device</em></td><td>)</td>
@@ -1624,13 +1607,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> **&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> **&#160;</td>
           <td class="paramname"><em>in</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> **&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> **&#160;</td>
           <td class="paramname"><em>out</em>&#160;</td>
         </tr>
         <tr>
@@ -1682,7 +1665,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>dt</em>&#160;</td>
         </tr>
         <tr>
@@ -1912,7 +1895,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>hostprofile</em>, </td>
         </tr>
         <tr>
@@ -1964,7 +1947,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>
@@ -2004,7 +1987,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>
@@ -2044,7 +2027,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>data</em>[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]&#160;</td>
         </tr>
         <tr>
@@ -2078,7 +2061,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>data</em>[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]&#160;</td>
         </tr>
         <tr>
@@ -2146,7 +2129,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acc__runtime_8cu.html#a409d4a5ac9fcaadc7f5c3f15eb869cf5">AcReal3</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="structAcReal3.html">AcReal3</a>&#160;</td>
           <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>
@@ -2521,7 +2504,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -2567,7 +2550,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -2625,7 +2608,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -2683,7 +2666,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -2747,7 +2730,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -2811,7 +2794,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -2993,7 +2976,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>
@@ -3153,7 +3136,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>
@@ -3193,7 +3176,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>data</em>[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]&#160;</td>
         </tr>
         <tr>
@@ -3233,7 +3216,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#a409d4a5ac9fcaadc7f5c3f15eb869cf5">AcReal3</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="structAcReal3.html">AcReal3</a> *&#160;</td>
           <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>
@@ -3709,7 +3692,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>src</em>&#160;</td>
         </tr>
         <tr>
@@ -3811,7 +3794,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>in</em>, </td>
         </tr>
         <tr>
@@ -3829,7 +3812,7 @@ template&lt;typename P &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>out</em>, </td>
         </tr>
         <tr>

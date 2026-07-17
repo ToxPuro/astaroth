@@ -99,22 +99,9 @@ $(document).ready(function(){initNavTree('node_8cc.html',''); initResizable(); }
 
 <p>Multi-GPU implementation.  
 <a href="#details">More...</a></p>
-<div class="textblock"><code>#include &lt;math.h&gt;</code><br />
-<code>#include &lt;stdio.h&gt;</code><br />
-<code>#include &lt;stdlib.h&gt;</code><br />
-<code>#include &quot;<a class="el" href="acc__runtime_8h_source.html">acc_runtime.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="acreal_8h_source.html">acreal.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth_8h_source.html">astaroth.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__base_8h_source.html">astaroth_base.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__cuda__wrappers_8h_source.html">astaroth_cuda_wrappers.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__device_8h_source.html">astaroth_device.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__node_8h_source.html">astaroth_node.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="datatypes_8h_source.html">datatypes.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
+<div class="textblock"><code>#include &quot;<a class="el" href="astaroth_8h_source.html">astaroth.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="math__utils_8h_source.html">math_utils.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="math__utils__base_8h_source.html">math_utils_base.h</a>&quot;</code><br />
-<code>#include &quot;user_defines.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__cuda__wrappers_8h_source.html">astaroth_cuda_wrappers.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for node.cc:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
@@ -150,7 +137,7 @@ Functions</h2></td></tr>
 <tr class="separator:ab54ba4d1d2d92986c511eebab189c569"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ada8543466aa30f521cb3c71cd72160bd" id="r_ada8543466aa30f521cb3c71cd72160bd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#ada8543466aa30f521cb3c71cd72160bd">acNodeSwapBuffers</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node)</td></tr>
 <tr class="separator:ada8543466aa30f521cb3c71cd72160bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a45fb87967172f6400e465127b854e3ab" id="r_a45fb87967172f6400e465127b854e3ab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#a45fb87967172f6400e465127b854e3ab">acNodeLoadConstant</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealParam param, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="memitem:a45fb87967172f6400e465127b854e3ab" id="r_a45fb87967172f6400e465127b854e3ab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#a45fb87967172f6400e465127b854e3ab">acNodeLoadConstant</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const AcRealParam param, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
 <tr class="separator:a45fb87967172f6400e465127b854e3ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f8cd7e1707cb52389951412d36d0501" id="r_a1f8cd7e1707cb52389951412d36d0501"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#a1f8cd7e1707cb52389951412d36d0501">acNodeLoadVertexBufferWithOffset</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcMesh.html">AcMesh</a> host_mesh, const VertexBufferHandle vtxbuf_handle, const <a class="el" href="structint3.html">int3</a> src, const <a class="el" href="structint3.html">int3</a> dst, const int num_vertices)</td></tr>
 <tr class="separator:a1f8cd7e1707cb52389951412d36d0501"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -160,7 +147,7 @@ Functions</h2></td></tr>
 <tr class="separator:a4dd6eac75ca7cca44db9a761aaf3bfc4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4b4c3d6a010dad9ca7c5dfff0baf8785" id="r_a4b4c3d6a010dad9ca7c5dfff0baf8785"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#a4b4c3d6a010dad9ca7c5dfff0baf8785">acNodeLoadMesh</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcMesh.html">AcMesh</a> host_mesh)</td></tr>
 <tr class="separator:a4b4c3d6a010dad9ca7c5dfff0baf8785"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acc9beb0449cce16b4e8172919aa0d470" id="r_acc9beb0449cce16b4e8172919aa0d470"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#acc9beb0449cce16b4e8172919aa0d470">acNodeSetVertexBuffer</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const VertexBufferHandle handle, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
+<tr class="memitem:acc9beb0449cce16b4e8172919aa0d470" id="r_acc9beb0449cce16b4e8172919aa0d470"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#acc9beb0449cce16b4e8172919aa0d470">acNodeSetVertexBuffer</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const VertexBufferHandle handle, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)</td></tr>
 <tr class="separator:acc9beb0449cce16b4e8172919aa0d470"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7f91bac2e18771e153ea84aee3b9b4eb" id="r_a7f91bac2e18771e153ea84aee3b9b4eb"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#a7f91bac2e18771e153ea84aee3b9b4eb">acNodeStoreVertexBufferWithOffset</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const VertexBufferHandle vtxbuf_handle, const <a class="el" href="structint3.html">int3</a> src, const <a class="el" href="structint3.html">int3</a> dst, const int num_vertices, <a class="el" href="structAcMesh.html">AcMesh</a> *host_mesh)</td></tr>
 <tr class="separator:a7f91bac2e18771e153ea84aee3b9b4eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -170,11 +157,11 @@ Functions</h2></td></tr>
 <tr class="separator:ac0dcb7dde731c93c2912f1e116ded1f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afdd62fc17d2f6822b66e7b29c3000016" id="r_afdd62fc17d2f6822b66e7b29c3000016"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#afdd62fc17d2f6822b66e7b29c3000016">acNodeStoreMesh</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, <a class="el" href="structAcMesh.html">AcMesh</a> *host_mesh)</td></tr>
 <tr class="separator:afdd62fc17d2f6822b66e7b29c3000016"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae28cb9078f6ea1c56d1c83444d02bdfe" id="r_ae28cb9078f6ea1c56d1c83444d02bdfe"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#ae28cb9078f6ea1c56d1c83444d02bdfe">acNodeIntegrateSubstep</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const int isubstep, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> dt)</td></tr>
+<tr class="memitem:ae28cb9078f6ea1c56d1c83444d02bdfe" id="r_ae28cb9078f6ea1c56d1c83444d02bdfe"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#ae28cb9078f6ea1c56d1c83444d02bdfe">acNodeIntegrateSubstep</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const int isubstep, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> dt)</td></tr>
 <tr class="separator:ae28cb9078f6ea1c56d1c83444d02bdfe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a00537b3cbf4917ea19c6d7e25027077c" id="r_a00537b3cbf4917ea19c6d7e25027077c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#a00537b3cbf4917ea19c6d7e25027077c">acNodeIntegrate</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> dt)</td></tr>
+<tr class="memitem:a00537b3cbf4917ea19c6d7e25027077c" id="r_a00537b3cbf4917ea19c6d7e25027077c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#a00537b3cbf4917ea19c6d7e25027077c">acNodeIntegrate</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> dt)</td></tr>
 <tr class="separator:a00537b3cbf4917ea19c6d7e25027077c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adcf98fd76d4c09df0b0a2642961c58a7" id="r_adcf98fd76d4c09df0b0a2642961c58a7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#adcf98fd76d4c09df0b0a2642961c58a7">acNodeIntegrateGBC</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> config, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> dt)</td></tr>
+<tr class="memitem:adcf98fd76d4c09df0b0a2642961c58a7" id="r_adcf98fd76d4c09df0b0a2642961c58a7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#adcf98fd76d4c09df0b0a2642961c58a7">acNodeIntegrateGBC</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> config, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> dt)</td></tr>
 <tr class="separator:adcf98fd76d4c09df0b0a2642961c58a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa25188706a269341aab4e5b45b446446" id="r_aa25188706a269341aab4e5b45b446446"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#aa25188706a269341aab4e5b45b446446">acNodePeriodicBoundcondStep</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const VertexBufferHandle vtxbuf_handle)</td></tr>
 <tr class="separator:aa25188706a269341aab4e5b45b446446"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -184,11 +171,11 @@ Functions</h2></td></tr>
 <tr class="separator:ae6c87ee2df857186dc7dbb6df46c27e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeed42829c552d31bf07f5b852dc3db44" id="r_aeed42829c552d31bf07f5b852dc3db44"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#aeed42829c552d31bf07f5b852dc3db44">acNodeGeneralBoundconds</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> config)</td></tr>
 <tr class="separator:aeed42829c552d31bf07f5b852dc3db44"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa01060c5d85071266b1154f9e6d0b21c" id="r_aa01060c5d85071266b1154f9e6d0b21c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#aa01060c5d85071266b1154f9e6d0b21c">acNodeReduceScal</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf_handle, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:aa01060c5d85071266b1154f9e6d0b21c" id="r_aa01060c5d85071266b1154f9e6d0b21c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#aa01060c5d85071266b1154f9e6d0b21c">acNodeReduceScal</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle vtxbuf_handle, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:aa01060c5d85071266b1154f9e6d0b21c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaa2d9271606abfd5a1d5bd96efd03883" id="r_aaa2d9271606abfd5a1d5bd96efd03883"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#aaa2d9271606abfd5a1d5bd96efd03883">acNodeReduceVec</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle a, const VertexBufferHandle <a class="el" href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>, const VertexBufferHandle c, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:aaa2d9271606abfd5a1d5bd96efd03883" id="r_aaa2d9271606abfd5a1d5bd96efd03883"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#aaa2d9271606abfd5a1d5bd96efd03883">acNodeReduceVec</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle a, const VertexBufferHandle <a class="el" href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>, const VertexBufferHandle c, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:aaa2d9271606abfd5a1d5bd96efd03883"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac6d180c7f3645f3e2d5fc91810423b6d" id="r_ac6d180c7f3645f3e2d5fc91810423b6d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#ac6d180c7f3645f3e2d5fc91810423b6d">acNodeReduceVecScal</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle a, const VertexBufferHandle <a class="el" href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>, const VertexBufferHandle c, const VertexBufferHandle d, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *result)</td></tr>
+<tr class="memitem:ac6d180c7f3645f3e2d5fc91810423b6d" id="r_ac6d180c7f3645f3e2d5fc91810423b6d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="node_8cc.html#ac6d180c7f3645f3e2d5fc91810423b6d">acNodeReduceVecScal</a> (const <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> node, const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream, const <a class="el" href="structAcReduction.html">AcReduction</a> reduction, const VertexBufferHandle a, const VertexBufferHandle <a class="el" href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>, const VertexBufferHandle c, const VertexBufferHandle d, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *result)</td></tr>
 <tr class="separator:ac6d180c7f3645f3e2d5fc91810423b6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -435,7 +422,7 @@ acSynchronizeHalos()
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>dt</em>&#160;</td>
         </tr>
         <tr>
@@ -469,7 +456,7 @@ acSynchronizeHalos()
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>dt</em>&#160;</td>
         </tr>
         <tr>
@@ -521,7 +508,7 @@ acSynchronizeHalos()
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>dt</em>&#160;</td>
         </tr>
         <tr>
@@ -561,7 +548,7 @@ acSynchronizeHalos()
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>
@@ -899,7 +886,7 @@ acSynchronizeHalos()
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -957,7 +944,7 @@ acSynchronizeHalos()
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -1021,7 +1008,7 @@ acSynchronizeHalos()
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>result</em>&#160;</td>
         </tr>
         <tr>
@@ -1061,7 +1048,7 @@ acSynchronizeHalos()
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>value</em>&#160;</td>
         </tr>
         <tr>

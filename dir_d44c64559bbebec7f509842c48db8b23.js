@@ -2,7 +2,7 @@ var dir_d44c64559bbebec7f509842c48db8b23 =
 [
     [ "ac_fft.h", "ac__fft_8h.html", "ac__fft_8h" ],
     [ "ac_helpers.h", "ac__helpers_8h.html", "ac__helpers_8h" ],
-    [ "ac_mpi.h", "ac__mpi_8h.html", null ],
+    [ "ac_mpi.h", "ac__mpi_8h.html", "ac__mpi_8h" ],
     [ "astaroth.h", "astaroth_8h.html", "astaroth_8h" ],
     [ "astaroth_analysis_helpers.h", "astaroth__analysis__helpers_8h.html", "astaroth__analysis__helpers_8h" ],
     [ "astaroth_base.h", "astaroth__base_8h.html", "astaroth__base_8h" ],

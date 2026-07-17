@@ -98,21 +98,21 @@ $(document).ready(function(){initNavTree('codegen_8c.html',''); initResizable();
   <div class="headertitle"><div class="title">codegen.c File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;<a class="el" href="codegen_8h_source.html">codegen.h</a>&quot;</code><br />
-<code>#include &lt;ctype.h&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="hashtable_8h_source.html">hashtable.h</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="hash_8h_source.html">hash.h</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="hashtable_8h_source.html">hashtable.h</a>&gt;</code><br />
-<code>#include &lt;limits.h&gt;</code><br />
-<code>#include &lt;math.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="codegen_8h_source.html">codegen.h</a>&quot;</code><br />
 <code>#include &lt;stdbool.h&gt;</code><br />
 <code>#include &lt;stdio.h&gt;</code><br />
 <code>#include &lt;stdlib.h&gt;</code><br />
-<code>#include &lt;string.h&gt;</code><br />
 <code>#include &lt;unistd.h&gt;</code><br />
+<code>#include &lt;math.h&gt;</code><br />
+<code>#include &lt;limits.h&gt;</code><br />
 <code>#include &quot;<a class="el" href="acc-runtime_2acc_2ast_8h_source.html">ast.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="create__node_8h_source.html">create_node.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="expr_8h_source.html">expr.h</a>&quot;</code><br />
 <code>#include &quot;tab.h&quot;</code><br />
+<code>#include &lt;string.h&gt;</code><br />
+<code>#include &lt;ctype.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="expr_8h_source.html">expr.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="create__node_8h_source.html">create_node.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="warp__reduce_8h_source.html">warp_reduce.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for codegen.c:</div>
@@ -472,7 +472,7 @@ Functions</h2></td></tr>
 <tr class="separator:aab44439d112464ff8aaafb65d1ba1e0f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a669b4bd4e6996c093fcf16a90e09c28d" id="r_a669b4bd4e6996c093fcf16a90e09c28d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="codegen_8c.html#a669b4bd4e6996c093fcf16a90e09c28d">get_stencil_calling_info_in_func</a> (const <a class="el" href="acc-runtime_2acc_2ast_8h.html#a58b6658d22dcc357b57be73b62c80b91">ASTNode</a> *node, <a class="el" href="structstring__vec.html">string_vec</a> *src)</td></tr>
 <tr class="separator:a669b4bd4e6996c093fcf16a90e09c28d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6cbdd37a30929f40dc39bacf43049d71" id="r_a6cbdd37a30929f40dc39bacf43049d71"><td class="memItemLeft" align="right" valign="top"><a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="codegen_8c.html#a6cbdd37a30929f40dc39bacf43049d71">get_reduce_type</a> (const <a class="el" href="acc-runtime_2acc_2ast_8h.html#a58b6658d22dcc357b57be73b62c80b91">ASTNode</a> *node)</td></tr>
+<tr class="memitem:a6cbdd37a30929f40dc39bacf43049d71" id="r_a6cbdd37a30929f40dc39bacf43049d71"><td class="memItemLeft" align="right" valign="top"><a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="codegen_8c.html#a6cbdd37a30929f40dc39bacf43049d71">get_reduce_type</a> (const <a class="el" href="acc-runtime_2acc_2ast_8h.html#a58b6658d22dcc357b57be73b62c80b91">ASTNode</a> *node)</td></tr>
 <tr class="separator:a6cbdd37a30929f40dc39bacf43049d71"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a90c0be90391c96557ad91693e7e8b7d8" id="r_a90c0be90391c96557ad91693e7e8b7d8"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="codegen_8c.html#a90c0be90391c96557ad91693e7e8b7d8">get_reduce_dst</a> (const <a class="el" href="acc-runtime_2acc_2ast_8h.html#a58b6658d22dcc357b57be73b62c80b91">ASTNode</a> *node)</td></tr>
 <tr class="separator:a90c0be90391c96557ad91693e7e8b7d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -967,6 +967,8 @@ Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
+<tr class="memitem:a52813ca89bffb1ddd2ead123025be77d" id="r_a52813ca89bffb1ddd2ead123025be77d"><td class="memItemLeft" align="right" valign="top">struct <a class="el" href="structhashmap__s.html">hashmap_s</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="codegen_8c.html#a52813ca89bffb1ddd2ead123025be77d">string_intern_hashmap</a></td></tr>
+<tr class="separator:a52813ca89bffb1ddd2ead123025be77d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae2a7c45b7db53b382ffb8fd06399d3b" id="r_aae2a7c45b7db53b382ffb8fd06399d3b"><td class="memItemLeft" align="right" valign="top">const bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="codegen_8c.html#aae2a7c45b7db53b382ffb8fd06399d3b">HIP_ON</a> = false</td></tr>
 <tr class="separator:aae2a7c45b7db53b382ffb8fd06399d3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0f427dd2fac63ec05dfac01ab9a110f4" id="r_a0f427dd2fac63ec05dfac01ab9a110f4"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="codegen_8c.html#a0f427dd2fac63ec05dfac01ab9a110f4">ZERO_STR</a></td></tr>
@@ -7634,7 +7636,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> get_reduce_type </td>
+          <td class="memname"><a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> get_reduce_type </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="acc-runtime_2acc_2ast_8h.html#a58b6658d22dcc357b57be73b62c80b91">ASTNode</a> *&#160;</td>
           <td class="paramname"><em>node</em></td><td>)</td>
@@ -12805,6 +12807,28 @@ Variables</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">const char* STENCIL_STR</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">extern</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a52813ca89bffb1ddd2ead123025be77d" name="a52813ca89bffb1ddd2ead123025be77d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a52813ca89bffb1ddd2ead123025be77d">&#9670;&#160;</a></span>string_intern_hashmap</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">struct <a class="el" href="structhashmap__s.html">hashmap_s</a> string_intern_hashmap</td>
         </tr>
       </table>
   </td>

@@ -1,7 +1,7 @@
 var searchData=
 [
   ['rand_5funiform_0',['rand_uniform',['../random_8cuh.html#a4113356a2e4968780156d946abcdbb59',1,'random.cuh']]],
-  ['real3_5fdefined_1',['REAL3_DEFINED',['../datatypes_8h.html#af0597c7716852ab732b72661915bf088',1,'datatypes.h']]],
+  ['real3_5fdefined_1',['real3_defined',['../datatypes_8h.html#af0597c7716852ab732b72661915bf088',1,'REAL3_DEFINED:&#160;datatypes.h'],['../host__datatypes_8h.html#af0597c7716852ab732b72661915bf088',1,'REAL3_DEFINED:&#160;host_datatypes.h']]],
   ['real3_5fspecifier_2',['REAL3_SPECIFIER',['../codegen_8c.html#add5bb67c0c673565c5393e4e41ab5fdd',1,'codegen.c']]],
   ['real4_5fspecifier_3',['REAL4_SPECIFIER',['../codegen_8c.html#a3cb5856096228dfb9d4b14ab8e263935',1,'codegen.c']]],
   ['real_5fspecifier_4',['REAL_SPECIFIER',['../codegen_8c.html#a0beb9c8d1371ad6e01e032b67ff848c0',1,'codegen.c']]],

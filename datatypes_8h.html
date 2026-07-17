@@ -97,18 +97,19 @@ $(document).ready(function(){initNavTree('datatypes_8h.html',''); initResizable(
 <div class="contents">
 <div class="textblock"><code>#include &lt;float.h&gt;</code><br />
 <code>#include &lt;math.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="device__headers_8h_source.html">device_headers.h</a>&quot;</code><br />
+<code>#include &lt;vector_types.h&gt;</code><br />
+<code>#include &lt;cuda_runtime_api.h&gt;</code><br />
 <code>#include &quot;<a class="el" href="acreal_8h_source.html">acreal.h</a>&quot;</code><br />
 <code>#include &quot;builtin_enums.h&quot;</code><br />
-<code>#include &quot;<a class="el" href="device__headers_8h_source.html">device_headers.h</a>&quot;</code><br />
+<code>#include &quot;user_typedefs.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
-<code>#include &lt;cuda_runtime_api.h&gt;</code><br />
-<code>#include &lt;vector_types.h&gt;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for datatypes.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="datatypes_8h__incl.svg" width="100%" height="492"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="datatypes_8h__incl.svg" width="100%" height="437"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 </div><div class="textblock"><div id="dynsection-1" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-1-trigger" src="closed.png" alt="+"/> This graph shows which files directly or indirectly include this file:</div>
@@ -122,18 +123,18 @@ $(document).ready(function(){initNavTree('datatypes_8h.html',''); initResizable(
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
+<tr class="memitem:a66841bc43d248b2fd5293f96984fa61b" id="r_a66841bc43d248b2fd5293f96984fa61b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#a66841bc43d248b2fd5293f96984fa61b">TOVEC3</a>(type,  arr)&#160;&#160;&#160;((type){arr[0],arr[1],arr[2]})</td></tr>
+<tr class="separator:a66841bc43d248b2fd5293f96984fa61b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adc1475159505564d2ee18588b967a9c7" id="r_adc1475159505564d2ee18588b967a9c7"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#adc1475159505564d2ee18588b967a9c7">TOACREAL3</a>(arr)&#160;&#160;&#160;<a class="el" href="datatypes_8h.html#a66841bc43d248b2fd5293f96984fa61b">TOVEC3</a>(<a class="el" href="structAcReal3.html">AcReal3</a>,arr)</td></tr>
+<tr class="separator:adc1475159505564d2ee18588b967a9c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5206ca9d538cb2e5992b03885df18bd0" id="r_a5206ca9d538cb2e5992b03885df18bd0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#a5206ca9d538cb2e5992b03885df18bd0">AcVector</a>&#160;&#160;&#160;<a class="el" href="structAcReal3.html">AcReal3</a></td></tr>
+<tr class="separator:a5206ca9d538cb2e5992b03885df18bd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af83b88b5eae0c194cde898b7f8d5927a" id="r_af83b88b5eae0c194cde898b7f8d5927a"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#af83b88b5eae0c194cde898b7f8d5927a">VOLUME_DEFINED</a></td></tr>
 <tr class="separator:af83b88b5eae0c194cde898b7f8d5927a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1851ad014f38dea6872af4197d919431" id="r_a1851ad014f38dea6872af4197d919431"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#a1851ad014f38dea6872af4197d919431">COMPLEX_DEFINED</a></td></tr>
 <tr class="separator:a1851ad014f38dea6872af4197d919431"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af0597c7716852ab732b72661915bf088" id="r_af0597c7716852ab732b72661915bf088"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#af0597c7716852ab732b72661915bf088">REAL3_DEFINED</a></td></tr>
 <tr class="separator:af0597c7716852ab732b72661915bf088"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a66841bc43d248b2fd5293f96984fa61b" id="r_a66841bc43d248b2fd5293f96984fa61b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#a66841bc43d248b2fd5293f96984fa61b">TOVEC3</a>(type,  arr)&#160;&#160;&#160;((type){arr[0],arr[1],arr[2]})</td></tr>
-<tr class="separator:a66841bc43d248b2fd5293f96984fa61b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adc1475159505564d2ee18588b967a9c7" id="r_adc1475159505564d2ee18588b967a9c7"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#adc1475159505564d2ee18588b967a9c7">TOACREAL3</a>(arr)&#160;&#160;&#160;<a class="el" href="datatypes_8h.html#a66841bc43d248b2fd5293f96984fa61b">TOVEC3</a>(<a class="el" href="acc__runtime_8cu.html#a409d4a5ac9fcaadc7f5c3f15eb869cf5">AcReal3</a>,arr)</td></tr>
-<tr class="separator:adc1475159505564d2ee18588b967a9c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5206ca9d538cb2e5992b03885df18bd0" id="r_a5206ca9d538cb2e5992b03885df18bd0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="datatypes_8h.html#a5206ca9d538cb2e5992b03885df18bd0">AcVector</a>&#160;&#160;&#160;<a class="el" href="acc__runtime_8cu.html#a409d4a5ac9fcaadc7f5c3f15eb869cf5">AcReal3</a></td></tr>
-<tr class="separator:a5206ca9d538cb2e5992b03885df18bd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
 <a id="a5206ca9d538cb2e5992b03885df18bd0" name="a5206ca9d538cb2e5992b03885df18bd0"></a>
@@ -143,7 +144,7 @@ Macros</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AcVector&#160;&#160;&#160;<a class="el" href="acc__runtime_8cu.html#a409d4a5ac9fcaadc7f5c3f15eb869cf5">AcReal3</a></td>
+          <td class="memname">#define AcVector&#160;&#160;&#160;<a class="el" href="structAcReal3.html">AcReal3</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -189,7 +190,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">arr</td><td>)</td>
-          <td>&#160;&#160;&#160;<a class="el" href="datatypes_8h.html#a66841bc43d248b2fd5293f96984fa61b">TOVEC3</a>(<a class="el" href="acc__runtime_8cu.html#a409d4a5ac9fcaadc7f5c3f15eb869cf5">AcReal3</a>,arr)</td>
+          <td>&#160;&#160;&#160;<a class="el" href="datatypes_8h.html#a66841bc43d248b2fd5293f96984fa61b">TOVEC3</a>(<a class="el" href="structAcReal3.html">AcReal3</a>,arr)</td>
         </tr>
       </table>
 </div><div class="memdoc">

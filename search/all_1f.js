@@ -29,7 +29,7 @@ var searchData=
   ['vertex_5fbuffer_26',['vertex_buffer',['../structAcMesh.html#a8ad3200c879752e41d25b329bd81053d',1,'AcMesh']]],
   ['vertexbufferarray_27',['VertexBufferArray',['../structVertexBufferArray.html',1,'']]],
   ['volume_28',['volume',['../structRegion.html#a6b889c6aec620a52457876658492b75b',1,'Region::volume'],['../structVolume.html',1,'Volume']]],
-  ['volume_5fdefined_29',['VOLUME_DEFINED',['../datatypes_8h.html#af83b88b5eae0c194cde898b7f8d5927a',1,'datatypes.h']]],
+  ['volume_5fdefined_29',['volume_defined',['../host__datatypes_8h.html#af83b88b5eae0c194cde898b7f8d5927a',1,'VOLUME_DEFINED:&#160;host_datatypes.h'],['../datatypes_8h.html#af83b88b5eae0c194cde898b7f8d5927a',1,'VOLUME_DEFINED:&#160;datatypes.h']]],
   ['volumehash_30',['VolumeHash',['../structVolumeHash.html',1,'']]],
   ['vtxbuf_5fptr_5fstr_31',['VTXBUF_PTR_STR',['../codegen_8c.html#a4e855b2e7f51a84e15f61ebe22abe420',1,'codegen.c']]]
 ];

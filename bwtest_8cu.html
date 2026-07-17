@@ -118,13 +118,13 @@ Functions</h2></td></tr>
 <tr class="separator:ae74b05f872ff12f427756ca80f5b12ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af782c962325c99fade5a81a558d7efd3" id="r_af782c962325c99fade5a81a558d7efd3"><td class="memItemLeft" align="right" valign="top">__global__ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bwtest_8cu.html#af782c962325c99fade5a81a558d7efd3">array_set_to_tid</a> (<a class="el" href="structArray.html">Array</a> out)</td></tr>
 <tr class="separator:af782c962325c99fade5a81a558d7efd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a10e5c0f8a4e0f6b3d84e13a2a946267b" id="r_a10e5c0f8a4e0f6b3d84e13a2a946267b"><td class="memItemLeft" align="right" valign="top">__global__ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bwtest_8cu.html#a10e5c0f8a4e0f6b3d84e13a2a946267b">array_set</a> (const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>, <a class="el" href="structArray.html">Array</a> out)</td></tr>
+<tr class="memitem:a10e5c0f8a4e0f6b3d84e13a2a946267b" id="r_a10e5c0f8a4e0f6b3d84e13a2a946267b"><td class="memItemLeft" align="right" valign="top">__global__ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bwtest_8cu.html#a10e5c0f8a4e0f6b3d84e13a2a946267b">array_set</a> (const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>, <a class="el" href="structArray.html">Array</a> out)</td></tr>
 <tr class="separator:a10e5c0f8a4e0f6b3d84e13a2a946267b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a43b268a2983852dce3d0f95a36ff483c" id="r_a43b268a2983852dce3d0f95a36ff483c"><td class="memItemLeft" align="right" valign="top">__global__ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bwtest_8cu.html#a43b268a2983852dce3d0f95a36ff483c">kernel</a> (const <a class="el" href="structArray.html">Array</a> in, <a class="el" href="structArray.html">Array</a> out)</td></tr>
 <tr class="separator:a43b268a2983852dce3d0f95a36ff483c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3ef2d3eb5ad7b75b43868e52ee988d86" id="r_a3ef2d3eb5ad7b75b43868e52ee988d86"><td class="memItemLeft" align="right" valign="top">__global__ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bwtest_8cu.html#a3ef2d3eb5ad7b75b43868e52ee988d86">kernel_vectorized</a> (const <a class="el" href="structArray.html">Array</a> in, <a class="el" href="structArray.html">Array</a> out)</td></tr>
 <tr class="separator:a3ef2d3eb5ad7b75b43868e52ee988d86"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad1bc1550b49a42a2db103f67bf8baa72" id="r_ad1bc1550b49a42a2db103f67bf8baa72"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bwtest_8cu.html#ad1bc1550b49a42a2db103f67bf8baa72">validate</a> (const <a class="el" href="structArray.html">Array</a> darr, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> mult)</td></tr>
+<tr class="memitem:ad1bc1550b49a42a2db103f67bf8baa72" id="r_ad1bc1550b49a42a2db103f67bf8baa72"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bwtest_8cu.html#ad1bc1550b49a42a2db103f67bf8baa72">validate</a> (const <a class="el" href="structArray.html">Array</a> darr, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> mult)</td></tr>
 <tr class="separator:ad1bc1550b49a42a2db103f67bf8baa72"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a007009f8f02fbce2ed57afeba4d7794d" id="r_a007009f8f02fbce2ed57afeba4d7794d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="bwtest_8cu.html#a007009f8f02fbce2ed57afeba4d7794d">benchmark</a> (const size_t count)</td></tr>
 <tr class="separator:a007009f8f02fbce2ed57afeba4d7794d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -207,7 +207,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">__global__ void array_set </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>value</em>, </td>
         </tr>
         <tr>
@@ -370,7 +370,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>mult</em>&#160;</td>
         </tr>
         <tr>

@@ -117,9 +117,9 @@ Functions</h2></td></tr>
 <tr class="separator:a5f05dc32303b853c6458142e7c4cc85a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a20e1d1774d29253a6721c98488cbe98e" id="r_a20e1d1774d29253a6721c98488cbe98e"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mapreduce_8cuh.html#a20e1d1774d29253a6721c98488cbe98e">acMapCross</a> (const <a class="el" href="structVertexBufferArray.html">VertexBufferArray</a> vba, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, const <a class="el" href="structint3.html">int3</a> start, const <a class="el" href="structint3.html">int3</a> end, AcBufferArray scratchpad)</td></tr>
 <tr class="separator:a20e1d1774d29253a6721c98488cbe98e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab446ce2ed92307958d150217f04b8b56" id="r_ab446ce2ed92307958d150217f04b8b56"><td class="memItemLeft" align="right" valign="top">__global__ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mapreduce_8cuh.html#ab446ce2ed92307958d150217f04b8b56">greduce</a> (const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *in, const size_t count, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *out)</td></tr>
+<tr class="memitem:ab446ce2ed92307958d150217f04b8b56" id="r_ab446ce2ed92307958d150217f04b8b56"><td class="memItemLeft" align="right" valign="top">__global__ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mapreduce_8cuh.html#ab446ce2ed92307958d150217f04b8b56">greduce</a> (const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *in, const size_t count, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *out)</td></tr>
 <tr class="separator:ab446ce2ed92307958d150217f04b8b56"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a060a5fef75f7366f4d92292d4cb5b4c1" id="r_a060a5fef75f7366f4d92292d4cb5b4c1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mapreduce_8cuh.html#a060a5fef75f7366f4d92292d4cb5b4c1">acKernelReduceScal</a> (const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *input, const size_t initial_count, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *scratchpad0, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *scratchpad1)</td></tr>
+<tr class="memitem:a060a5fef75f7366f4d92292d4cb5b4c1" id="r_a060a5fef75f7366f4d92292d4cb5b4c1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mapreduce_8cuh.html#a060a5fef75f7366f4d92292d4cb5b4c1">acKernelReduceScal</a> (const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *input, const size_t initial_count, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *scratchpad0, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *scratchpad1)</td></tr>
 <tr class="separator:a060a5fef75f7366f4d92292d4cb5b4c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a64a97f365d05c9ec522cfde183e969b3" id="r_a64a97f365d05c9ec522cfde183e969b3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mapreduce_8cuh.html#a64a97f365d05c9ec522cfde183e969b3">acMapCrossReduce</a> (const <a class="el" href="structVertexBufferArray.html">VertexBufferArray</a> vba, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, AcBufferArray scratchpad, <a class="el" href="structProfileBufferArray.html">ProfileBufferArray</a> pba)</td></tr>
 <tr class="separator:a64a97f365d05c9ec522cfde183e969b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -178,7 +178,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> * acKernelReduceScal </td>
+          <td class="memname"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> * acKernelReduceScal </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a>&#160;</td>
           <td class="paramname"><em>stream</em>, </td>
@@ -186,7 +186,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>input</em>, </td>
         </tr>
         <tr>
@@ -198,13 +198,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>scratchpad0</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>scratchpad1</em>&#160;</td>
         </tr>
         <tr>
@@ -312,7 +312,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">__global__ void greduce </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>in</em>, </td>
         </tr>
         <tr>
@@ -324,7 +324,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
           <td class="paramname"><em>out</em>&#160;</td>
         </tr>
         <tr>

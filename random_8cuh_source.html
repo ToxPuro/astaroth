@@ -103,230 +103,226 @@ $(document).ready(function(){initNavTree('random_8cuh_source.html',''); initResi
 <div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="comment"> */</span></div>
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#if AC_CPU_BUILD</span></div>
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &lt;stdlib.h&gt;</span></div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#if AC_USE_HIP</span></div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="preprocessor">#include &lt;hip/hip_fp16.h&gt;</span>            <span class="comment">// Workaround: required by hiprand</span></div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="preprocessor">#include &lt;hiprand/hiprand.h&gt;</span>         <span class="comment">// Random numbers</span></div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="preprocessor">#include &lt;hiprand/hiprand_kernel.h&gt;</span>  <span class="comment">// Random numbers (device)</span></div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="preprocessor">#include &lt;curand.h&gt;</span>         <span class="comment">// Random numbers</span></div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="preprocessor">#include &lt;curand_kernel.h&gt;</span>  <span class="comment">// Random numbers (device)</span></div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span> </div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="preprocessor">#if AC_CPU_BUILD</span></div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>__device__ __forceinline__ <a class="code hl_typedef" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a></div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><a class="code hl_define" href="random_8cuh.html#a4113356a2e4968780156d946abcdbb59">rand_uniform</a>()</div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>{</div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>    <span class="keywordflow">return</span> (<a class="code hl_typedef" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>)(rand() / (RAND_MAX + 1.));</div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>}</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><a class="code hl_function" href="random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4">acRandInitAlt</a>(<span class="keyword">const</span> uint64_t, <span class="keyword">const</span> <span class="keywordtype">size_t</span>, <span class="keyword">const</span> <span class="keywordtype">size_t</span>)</div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>{</div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>    <span class="keywordflow">return</span> <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a>;</div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>}</div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="keywordtype">void</span></div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><a class="code hl_function" href="random_8cuh.html#a22cf856d289b680a38aecef937f1f61c">acRandQuit</a>(<span class="keywordtype">void</span>)</div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>{</div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>}</div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno"><a class="line" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">   33</a></span><span class="keyword">typedef</span> <a class="code hl_define" href="hip_8h.html#a574d56297809b764cee61bb99df8e543">curandStateXORWOW_t</a> <a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>;</div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="keyword">static</span> __device__ __constant__ <a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>* rand_states;</div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span> </div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>__global__ <span class="keywordtype">void</span></div>
-<div class="foldopen" id="foldopen00037" data-start="{" data-end="}">
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno"><a class="line" href="random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f">   37</a></span><a class="code hl_function" href="random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f">rand_init</a>(<span class="keyword">const</span> uint64_t seed, <span class="keyword">const</span> <span class="keywordtype">size_t</span> count, <span class="keyword">const</span> <span class="keywordtype">size_t</span> rank)</div>
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>{</div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> tid = threadIdx.x + blockIdx.x * blockDim.x;</div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>  <span class="keywordflow">if</span> (tid &gt;= count)</div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>    <span class="keywordflow">return</span>;</div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span> </div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> gtid = tid + rank * count;</div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>  <a class="code hl_define" href="hip_8h.html#a264587f877ab9707aa5a4cc6edb396d5">curand_init</a>(seed, gtid, 0, &amp;rand_states[tid]);</div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>}</div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span>__device__ __forceinline__</div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><a class="code hl_typedef" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a></div>
+<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><a class="code hl_define" href="random_8cuh.html#a4113356a2e4968780156d946abcdbb59">rand_uniform</a>()</div>
+<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span>{</div>
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span>    <span class="keywordflow">return</span> (<a class="code hl_typedef" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>)(rand() / (RAND_MAX + 1.));</div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span>}</div>
+<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><a class="code hl_function" href="random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4">acRandInitAlt</a>(<span class="keyword">const</span> uint64_t, <span class="keyword">const</span> <span class="keywordtype">size_t</span>, <span class="keyword">const</span> <span class="keywordtype">size_t</span>)</div>
+<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span>{</div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span>    <span class="keywordflow">return</span> <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a>;</div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span>}</div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="keywordtype">void</span></div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><a class="code hl_function" href="random_8cuh.html#a22cf856d289b680a38aecef937f1f61c">acRandQuit</a>(<span class="keywordtype">void</span>){}</div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span> </div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="preprocessor">#if AC_USE_HIP</span></div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span><span class="preprocessor">#include &lt;hip/hip_fp16.h&gt;</span>           <span class="comment">// Workaround: required by hiprand</span></div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="preprocessor">#include &lt;hiprand/hiprand.h&gt;</span>        <span class="comment">// Random numbers</span></div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="preprocessor">#include &lt;hiprand/hiprand_kernel.h&gt;</span> <span class="comment">// Random numbers (device)</span></div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#include &lt;curand.h&gt;</span>        <span class="comment">// Random numbers</span></div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span><span class="preprocessor">#include &lt;curand_kernel.h&gt;</span> <span class="comment">// Random numbers (device)</span></div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span> </div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno"><a class="line" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">   30</a></span><span class="keyword">typedef</span> <a class="code hl_define" href="hip_8h.html#a574d56297809b764cee61bb99df8e543">curandStateXORWOW_t</a> <a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>;</div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="keyword">static</span> __device__ __constant__ <a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>* rand_states;</div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span> </div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>__global__ <span class="keywordtype">void</span></div>
+<div class="foldopen" id="foldopen00034" data-start="{" data-end="}">
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno"><a class="line" href="random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f">   34</a></span><a class="code hl_function" href="random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f">rand_init</a>(<span class="keyword">const</span> uint64_t seed, <span class="keyword">const</span> <span class="keywordtype">size_t</span> count, <span class="keyword">const</span> <span class="keywordtype">size_t</span> rank)</div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>{</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> tid = threadIdx.x + blockIdx.x * blockDim.x;</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>  <span class="keywordflow">if</span> (tid &gt;= count)</div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>    <span class="keywordflow">return</span>;</div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span> </div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> gtid = tid + rank * count;</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>  <a class="code hl_define" href="hip_8h.html#a264587f877ab9707aa5a4cc6edb396d5">curand_init</a>(seed, gtid, 0, &amp;rand_states[tid]);</div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>}</div>
 </div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span> </div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div>
-<div class="foldopen" id="foldopen00048" data-start="{" data-end="}">
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno"><a class="line" href="random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4">   48</a></span><a class="code hl_function" href="random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4">acRandInitAlt</a>(<span class="keyword">const</span> uint64_t seed, <span class="keyword">const</span> <span class="keywordtype">size_t</span> count, <span class="keyword">const</span> <span class="keywordtype">size_t</span> rank)</div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>{</div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>  <a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>* h_rand_states = NULL;</div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#ad6daf0f08e51860d93bed23baaaab6e7">cudaMalloc</a>((<span class="keywordtype">void</span>**)&amp;h_rand_states, count * <span class="keyword">sizeof</span>(<a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>)));</div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c">cudaMemcpyToSymbol</a>(rand_states,&amp;h_rand_states, <span class="keyword">sizeof</span>(h_rand_states), 0, <a class="code hl_define" href="hip_8h.html#a436143bca81d671a11aa0f481a4274b0">cudaMemcpyHostToDevice</a>));</div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span> </div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> tpb = 256;</div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> bpg = <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(<a class="code hl_function" href="helpers_8cc.html#a3204f9ae82e8fce4799e39edab39c770">ceil</a>(1. * count / tpb));</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>  rand_init&lt;&lt;&lt;bpg, tpb&gt;&gt;&gt;(seed, count, rank);</div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#a535823a44047329e1610f371fa7d660d">cudaDeviceSynchronize</a>());</div>
+<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span> </div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div>
+<div class="foldopen" id="foldopen00045" data-start="{" data-end="}">
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno"><a class="line" href="random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4">   45</a></span><a class="code hl_function" href="random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4">acRandInitAlt</a>(<span class="keyword">const</span> uint64_t seed, <span class="keyword">const</span> <span class="keywordtype">size_t</span> count, <span class="keyword">const</span> <span class="keywordtype">size_t</span> rank)</div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>{</div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>  <a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>* h_rand_states = NULL;</div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#ad6daf0f08e51860d93bed23baaaab6e7">cudaMalloc</a>((<span class="keywordtype">void</span>**)&amp;h_rand_states, count * <span class="keyword">sizeof</span>(<a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>)));</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c">cudaMemcpyToSymbol</a>(rand_states,&amp;h_rand_states, <span class="keyword">sizeof</span>(h_rand_states), 0, <a class="code hl_define" href="hip_8h.html#a436143bca81d671a11aa0f481a4274b0">cudaMemcpyHostToDevice</a>));</div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span> </div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span> </div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> tpb = 256;</div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> bpg = <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(<a class="code hl_function" href="helpers_8cc.html#a3204f9ae82e8fce4799e39edab39c770">ceil</a>(1. * count / tpb));</div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>  rand_init&lt;&lt;&lt;bpg, tpb&gt;&gt;&gt;(seed, count, rank);</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#a535823a44047329e1610f371fa7d660d">cudaDeviceSynchronize</a>());</div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span> </div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>  <span class="keywordflow">return</span> <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a>;</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>}</div>
+</div>
 <div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span> </div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>  <span class="keywordflow">return</span> <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a>;</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>}</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span><span class="keywordtype">void</span></div>
+<div class="foldopen" id="foldopen00061" data-start="{" data-end="}">
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno"><a class="line" href="random_8cuh.html#a22cf856d289b680a38aecef937f1f61c">   61</a></span><a class="code hl_function" href="random_8cuh.html#a22cf856d289b680a38aecef937f1f61c">acRandQuit</a>(<span class="keywordtype">void</span>)</div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>{</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#a535823a44047329e1610f371fa7d660d">cudaDeviceSynchronize</a>());</div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>  <a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>* h_rand_states = NULL;</div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#a51ebbfacd73f5f9aa8cdd60e040c635d">cudaMemcpyFromSymbol</a>(&amp;h_rand_states, rand_states, <span class="keyword">sizeof</span>(h_rand_states), 0, <a class="code hl_define" href="hip_8h.html#a0bb4ca0bbde27cb7a543afe5f79e8091">cudaMemcpyDeviceToHost</a>));</div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#a0a87c1d891812c773254b2c73cb42da2">cudaFree</a>(h_rand_states));</div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>  h_rand_states = NULL;</div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c">cudaMemcpyToSymbol</a>(rand_states,&amp;h_rand_states, <span class="keyword">sizeof</span>(h_rand_states), 0, <a class="code hl_define" href="hip_8h.html#a436143bca81d671a11aa0f481a4274b0">cudaMemcpyHostToDevice</a>));</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span> </div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>}</div>
 </div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span> </div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span><span class="keywordtype">void</span></div>
-<div class="foldopen" id="foldopen00064" data-start="{" data-end="}">
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno"><a class="line" href="random_8cuh.html#a22cf856d289b680a38aecef937f1f61c">   64</a></span><a class="code hl_function" href="random_8cuh.html#a22cf856d289b680a38aecef937f1f61c">acRandQuit</a>(<span class="keywordtype">void</span>)</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>{</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#a535823a44047329e1610f371fa7d660d">cudaDeviceSynchronize</a>());</div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>  <a class="code hl_typedef" href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>* h_rand_states = NULL;</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#a51ebbfacd73f5f9aa8cdd60e040c635d">cudaMemcpyFromSymbol</a>(&amp;h_rand_states, rand_states, <span class="keyword">sizeof</span>(h_rand_states), 0, <a class="code hl_define" href="hip_8h.html#a0bb4ca0bbde27cb7a543afe5f79e8091">cudaMemcpyDeviceToHost</a>));</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#a0a87c1d891812c773254b2c73cb42da2">cudaFree</a>(h_rand_states));</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>  h_rand_states = NULL;</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c">cudaMemcpyToSymbol</a>(rand_states,&amp;h_rand_states, <span class="keyword">sizeof</span>(h_rand_states), 0, <a class="code hl_define" href="hip_8h.html#a436143bca81d671a11aa0f481a4274b0">cudaMemcpyHostToDevice</a>));</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span> </div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>}</div>
-</div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span> </div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span><span class="comment">/*</span></div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span><span class="comment">// Not working</span></div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span><span class="comment">__global__ void</span></div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span><span class="comment">rand_init(const uint64_t seed, const Volume m_local, const Volume m_global,</span></div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span><span class="comment">          const Volume global_offset)</span></div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span><span class="comment">{</span></div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span><span class="comment">  const Volume tid = (Volume){</span></div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span><span class="comment">      threadIdx.x * blockIdx.x * blockDim.x,</span></div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span><span class="comment">      threadIdx.y * blockIdx.y * blockDim.y,</span></div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span><span class="comment">      threadIdx.z * blockIdx.z * blockDim.z,</span></div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span><span class="comment">  };</span></div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span><span class="comment">  if (tid.x &gt;= m_local.x)</span></div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span><span class="comment">    return;</span></div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span><span class="comment">  if (tid.y &gt;= m_local.y)</span></div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span><span class="comment">    return;</span></div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span><span class="comment">  if (tid.z &gt;= m_local.z)</span></div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span><span class="comment">    return;</span></div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span><span class="comment"></span> </div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span><span class="comment">  const size_t local_idx = tid.x               //</span></div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span><span class="comment">                           + tid.y * m_local.x //</span></div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span><span class="comment">                           + tid.z * m_local.x * m_local.y;</span></div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span><span class="comment"></span> </div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span><span class="comment">  const Volume gtid = (Volume){</span></div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="comment">      tid.x + global_offset.x,</span></div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="comment">      tid.y + global_offset.y,</span></div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="comment">      tid.z + global_offset.z,</span></div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="comment">  };</span></div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="comment">  const size_t global_idx = gtid.x                //</span></div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span><span class="comment">                            + gtid.y * m_global.x //</span></div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="comment">                            + gtid.z * m_global.x * m_global.y;</span></div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span> </div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span><span class="comment">/*</span></div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span><span class="comment">// Not working</span></div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span><span class="comment">__global__ void</span></div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span><span class="comment">rand_init(const uint64_t seed, const Volume m_local, const Volume m_global,</span></div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span><span class="comment">          const Volume global_offset)</span></div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span><span class="comment">{</span></div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span><span class="comment">  const Volume tid = (Volume){</span></div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span><span class="comment">      threadIdx.x * blockIdx.x * blockDim.x,</span></div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span><span class="comment">      threadIdx.y * blockIdx.y * blockDim.y,</span></div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span><span class="comment">      threadIdx.z * blockIdx.z * blockDim.z,</span></div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span><span class="comment">  };</span></div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span><span class="comment">  if (tid.x &gt;= m_local.x)</span></div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span><span class="comment">    return;</span></div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span><span class="comment">  if (tid.y &gt;= m_local.y)</span></div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span><span class="comment">    return;</span></div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span><span class="comment">  if (tid.z &gt;= m_local.z)</span></div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span><span class="comment">    return;</span></div>
+<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span><span class="comment"></span> </div>
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span><span class="comment">  const size_t local_idx = tid.x               //</span></div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span><span class="comment">                           + tid.y * m_local.x //</span></div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span><span class="comment">                           + tid.z * m_local.x * m_local.y;</span></div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span><span class="comment"></span> </div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span><span class="comment">  const Volume gtid = (Volume){</span></div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span><span class="comment">      tid.x + global_offset.x,</span></div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span><span class="comment">      tid.y + global_offset.y,</span></div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span><span class="comment">      tid.z + global_offset.z,</span></div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="comment">  };</span></div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="comment">  const size_t global_idx = gtid.x                //</span></div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="comment">                            + gtid.y * m_global.x //</span></div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="comment">                            + gtid.z * m_global.x * m_global.y;</span></div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="comment"></span> </div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span><span class="comment">  curand_init(seed, global_idx, 0, &amp;rand_states[local_idx]);</span></div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="comment">}</span></div>
 <div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="comment"></span> </div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="comment">  curand_init(seed, global_idx, 0, &amp;rand_states[local_idx]);</span></div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span><span class="comment">}</span></div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span><span class="comment"></span> </div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span><span class="comment">AcResult</span></div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span><span class="comment">acRandInit(const uint64_t seed, const Volume m_local, const Volume m_global,</span></div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span><span class="comment">           const Volume global_offset)</span></div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span><span class="comment">{</span></div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span><span class="comment">  const Volume tpb   = (Volume){256, 4, 1};</span></div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span><span class="comment">  const Volume bpg   = get_bpg(m_local, tpb);</span></div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span><span class="comment">  const size_t count = m_local.x * m_local.y * m_local.z;</span></div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span><span class="comment">  // const size_t count = (tpb.x * bpg.x) * (tpb.y * bpg.y) * (tpb.z * bpg.z);</span></div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span><span class="comment">  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&amp;rand_states, count * sizeof(rand_states[0])));</span></div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span><span class="comment">  ERRCHK_ALWAYS(rand_states);</span></div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span><span class="comment"></span> </div>
-<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span><span class="comment">  rand_init&lt;&lt;&lt;to_dim3(bpg), to_dim3(tpb)&gt;&gt;&gt;(seed, m_local, m_global,</span></div>
-<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span><span class="comment">                                            global_offset);</span></div>
-<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span><span class="comment">  ERRCHK_CUDA_KERNEL_ALWAYS();</span></div>
-<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span><span class="comment">  cudaDeviceSynchronize();</span></div>
-<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span><span class="comment"></span> </div>
-<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span><span class="comment">  return AC_SUCCESS;</span></div>
-<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span><span class="comment">}*/</span></div>
-<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span> </div>
-<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span><span class="preprocessor">#if 0</span></div>
-<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span><span class="comment">// WORKING</span></div>
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span><span class="comment">/*</span></div>
-<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span><span class="comment">__global__ void</span></div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span><span class="comment">rand_init(const uint64_t seed, const Volume m_local, const Volume m_global,</span></div>
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span><span class="comment">          const Volume global_offset)</span></div>
-<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span><span class="comment">{</span></div>
-<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span><span class="comment">  const Volume tid = (Volume){</span></div>
-<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span><span class="comment">      threadIdx.x * blockIdx.x * blockDim.x,</span></div>
-<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span><span class="comment">      threadIdx.y * blockIdx.y * blockDim.y,</span></div>
-<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span><span class="comment">      threadIdx.z * blockIdx.z * blockDim.z,</span></div>
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span><span class="comment">  };</span></div>
-<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span><span class="comment">  if (tid.x &gt;= m_local.x)</span></div>
-<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span><span class="comment">    return;</span></div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span><span class="comment">  if (tid.y &gt;= m_local.y)</span></div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span><span class="comment">    return;</span></div>
-<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span><span class="comment">  if (tid.z &gt;= m_local.z)</span></div>
-<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span><span class="comment">    return;</span></div>
-<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span><span class="comment"></span> </div>
-<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span><span class="comment">  const size_t local_idx = tid.x               //</span></div>
-<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span><span class="comment">                           + tid.y * m_local.x //</span></div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span><span class="comment">                           + tid.z * m_local.x * m_local.y;</span></div>
-<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span><span class="comment"></span> </div>
-<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span><span class="comment">  const Volume gtid = (Volume){</span></div>
-<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span><span class="comment">      tid.x + global_offset.x,</span></div>
-<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span><span class="comment">      tid.y + global_offset.y,</span></div>
-<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span><span class="comment">      tid.z + global_offset.z,</span></div>
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span><span class="comment">  };</span></div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span><span class="comment">  const size_t global_idx = gtid.x                //</span></div>
-<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span><span class="comment">                            + gtid.y * m_global.x //</span></div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span><span class="comment">                            + gtid.z * m_global.x * m_global.y;</span></div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span><span class="comment">  curand_init(seed, local_idx, 0, &amp;rand_states[local_idx]);</span></div>
-<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span><span class="comment">}</span></div>
-<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span><span class="comment">*/</span></div>
-<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span> </div>
-<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>__global__ <span class="keywordtype">void</span></div>
-<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span><a class="code hl_function" href="random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f">rand_init</a>(<span class="keyword">const</span> uint64_t seed, <span class="keyword">const</span> <span class="keywordtype">size_t</span> count)</div>
-<div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>{</div>
-<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> tid = threadIdx.x + blockIdx.x * blockDim.x;</div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>  <span class="keywordflow">if</span> (tid &lt; count)</div>
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>    <a class="code hl_define" href="hip_8h.html#a264587f877ab9707aa5a4cc6edb396d5">curand_init</a>(seed, tid, 0, &amp;rand_states[tid]);</div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>}</div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span> </div>
-<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div>
-<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>acRandInit(<span class="keyword">const</span> uint64_t seed, <span class="keyword">const</span> <a class="code hl_struct" href="structVolume.html">Volume</a> m_local, <span class="keyword">const</span> <a class="code hl_struct" href="structVolume.html">Volume</a> m_global,</div>
-<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>           <span class="keyword">const</span> <a class="code hl_struct" href="structVolume.html">Volume</a> global_offset)</div>
-<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>{</div>
-<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>  <span class="comment">/*</span></div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span><span class="comment">  const Volume tpb   = (Volume){128, 4, 2};</span></div>
-<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span><span class="comment">  const Volume bpg   = get_bpg(m_local, tpb);</span></div>
-<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span><span class="comment">  const size_t count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;</span></div>
-<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span><span class="comment">  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&amp;rand_states, count * sizeof(rand_states[0])));</span></div>
-<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span><span class="comment">  ERRCHK_ALWAYS(rand_states);</span></div>
-<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span><span class="comment"></span> </div>
-<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span><span class="comment">  rand_init&lt;&lt;&lt;to_dim3(bpg), to_dim3(tpb)&gt;&gt;&gt;(seed, m_local, m_global,</span></div>
-<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span><span class="comment">                                            global_offset);</span></div>
-<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span><span class="comment">  cudaDeviceSynchronize();</span></div>
-<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span><span class="comment">  ERRCHK_CUDA_KERNEL_ALWAYS();</span></div>
-<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span><span class="comment">  */</span></div>
-<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> count = m_local.<a class="code hl_variable" href="structVolume.html#ac28a2e7065235a30502238898e5f22a7">x</a> * m_local.<a class="code hl_variable" href="structVolume.html#a453d4413dce94f7dcd1aaa41072ae0c4">y</a> * m_local.<a class="code hl_variable" href="structVolume.html#ab38e2269b5373375c31a004c4d571013">z</a>;</div>
-<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#ad6daf0f08e51860d93bed23baaaab6e7">cudaMalloc</a>((<span class="keywordtype">void</span>**)&amp;rand_states, count * <span class="keyword">sizeof</span>(rand_states[0])));</div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="comment">AcResult</span></div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span><span class="comment">acRandInit(const uint64_t seed, const Volume m_local, const Volume m_global,</span></div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span><span class="comment">           const Volume global_offset)</span></div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span><span class="comment">{</span></div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span><span class="comment">  const Volume tpb   = (Volume){256, 4, 1};</span></div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span><span class="comment">  const Volume bpg   = get_bpg(m_local, tpb);</span></div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span><span class="comment">  const size_t count = m_local.x * m_local.y * m_local.z;</span></div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span><span class="comment">  // const size_t count = (tpb.x * bpg.x) * (tpb.y * bpg.y) * (tpb.z * bpg.z);</span></div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span><span class="comment">  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&amp;rand_states, count * sizeof(rand_states[0])));</span></div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span><span class="comment">  ERRCHK_ALWAYS(rand_states);</span></div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span><span class="comment"></span> </div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span><span class="comment">  rand_init&lt;&lt;&lt;to_dim3(bpg), to_dim3(tpb)&gt;&gt;&gt;(seed, m_local, m_global,</span></div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span><span class="comment">                                            global_offset);</span></div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span><span class="comment">  ERRCHK_CUDA_KERNEL_ALWAYS();</span></div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span><span class="comment">  cudaDeviceSynchronize();</span></div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span><span class="comment"></span> </div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span><span class="comment">  return AC_SUCCESS;</span></div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span><span class="comment">}*/</span></div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span> </div>
+<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span><span class="preprocessor">#if 0</span></div>
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span><span class="comment">// WORKING</span></div>
+<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span><span class="comment">/*</span></div>
+<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span><span class="comment">__global__ void</span></div>
+<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span><span class="comment">rand_init(const uint64_t seed, const Volume m_local, const Volume m_global,</span></div>
+<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span><span class="comment">          const Volume global_offset)</span></div>
+<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span><span class="comment">{</span></div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span><span class="comment">  const Volume tid = (Volume){</span></div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span><span class="comment">      threadIdx.x * blockIdx.x * blockDim.x,</span></div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span><span class="comment">      threadIdx.y * blockIdx.y * blockDim.y,</span></div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span><span class="comment">      threadIdx.z * blockIdx.z * blockDim.z,</span></div>
+<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span><span class="comment">  };</span></div>
+<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span><span class="comment">  if (tid.x &gt;= m_local.x)</span></div>
+<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span><span class="comment">    return;</span></div>
+<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span><span class="comment">  if (tid.y &gt;= m_local.y)</span></div>
+<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span><span class="comment">    return;</span></div>
+<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span><span class="comment">  if (tid.z &gt;= m_local.z)</span></div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span><span class="comment">    return;</span></div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span><span class="comment"></span> </div>
+<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span><span class="comment">  const size_t local_idx = tid.x               //</span></div>
+<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span><span class="comment">                           + tid.y * m_local.x //</span></div>
+<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span><span class="comment">                           + tid.z * m_local.x * m_local.y;</span></div>
+<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span><span class="comment"></span> </div>
+<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span><span class="comment">  const Volume gtid = (Volume){</span></div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span><span class="comment">      tid.x + global_offset.x,</span></div>
+<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span><span class="comment">      tid.y + global_offset.y,</span></div>
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span><span class="comment">      tid.z + global_offset.z,</span></div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span><span class="comment">  };</span></div>
+<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span><span class="comment">  const size_t global_idx = gtid.x                //</span></div>
+<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span><span class="comment">                            + gtid.y * m_global.x //</span></div>
+<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span><span class="comment">                            + gtid.z * m_global.x * m_global.y;</span></div>
+<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span><span class="comment">  curand_init(seed, local_idx, 0, &amp;rand_states[local_idx]);</span></div>
+<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span><span class="comment">}</span></div>
+<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span><span class="comment">*/</span></div>
+<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span> </div>
+<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>__global__ <span class="keywordtype">void</span></div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span><a class="code hl_function" href="random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f">rand_init</a>(<span class="keyword">const</span> uint64_t seed, <span class="keyword">const</span> <span class="keywordtype">size_t</span> count)</div>
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>{</div>
+<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> tid = threadIdx.x + blockIdx.x * blockDim.x;</div>
+<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>  <span class="keywordflow">if</span> (tid &lt; count)</div>
+<div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>    <a class="code hl_define" href="hip_8h.html#a264587f877ab9707aa5a4cc6edb396d5">curand_init</a>(seed, tid, 0, &amp;rand_states[tid]);</div>
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>}</div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span> </div>
+<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div>
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>acRandInit(<span class="keyword">const</span> uint64_t seed, <span class="keyword">const</span> <a class="code hl_struct" href="structVolume.html">Volume</a> m_local, <span class="keyword">const</span> <a class="code hl_struct" href="structVolume.html">Volume</a> m_global,</div>
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>           <span class="keyword">const</span> <a class="code hl_struct" href="structVolume.html">Volume</a> global_offset)</div>
+<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>{</div>
+<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>  <span class="comment">/*</span></div>
+<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span><span class="comment">  const Volume tpb   = (Volume){128, 4, 2};</span></div>
+<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span><span class="comment">  const Volume bpg   = get_bpg(m_local, tpb);</span></div>
+<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span><span class="comment">  const size_t count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;</span></div>
+<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span><span class="comment">  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&amp;rand_states, count * sizeof(rand_states[0])));</span></div>
+<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span><span class="comment">  ERRCHK_ALWAYS(rand_states);</span></div>
+<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span><span class="comment"></span> </div>
+<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span><span class="comment">  rand_init&lt;&lt;&lt;to_dim3(bpg), to_dim3(tpb)&gt;&gt;&gt;(seed, m_local, m_global,</span></div>
+<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span><span class="comment">                                            global_offset);</span></div>
+<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span><span class="comment">  cudaDeviceSynchronize();</span></div>
+<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span><span class="comment">  ERRCHK_CUDA_KERNEL_ALWAYS();</span></div>
+<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span><span class="comment">  */</span></div>
+<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> count = m_local.<a class="code hl_variable" href="structVolume.html#ac28a2e7065235a30502238898e5f22a7">x</a> * m_local.<a class="code hl_variable" href="structVolume.html#a453d4413dce94f7dcd1aaa41072ae0c4">y</a> * m_local.<a class="code hl_variable" href="structVolume.html#ab38e2269b5373375c31a004c4d571013">z</a>;</div>
+<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span>  <a class="code hl_define" href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a>(<a class="code hl_define" href="hip_8h.html#ad6daf0f08e51860d93bed23baaaab6e7">cudaMalloc</a>((<span class="keywordtype">void</span>**)&amp;rand_states, count * <span class="keyword">sizeof</span>(rand_states[0])));</div>
+<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span> </div>
+<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> tpb = 1024;</div>
+<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> bpg = <a class="code hl_function" href="helpers_8cc.html#a3204f9ae82e8fce4799e39edab39c770">ceil</a>(1. * count / tpb);</div>
 <div class="line"><a id="l00189" name="l00189"></a><span class="lineno">  189</span> </div>
-<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> tpb = 1024;</div>
-<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span>  <span class="keyword">const</span> <span class="keywordtype">size_t</span> bpg = <a class="code hl_function" href="helpers_8cc.html#a3204f9ae82e8fce4799e39edab39c770">ceil</a>(1. * count / tpb);</div>
+<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span>  rand_init&lt;&lt;&lt;bpg, tpb&gt;&gt;&gt;(seed, count);</div>
+<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span>  <a class="code hl_define" href="hip_8h.html#a535823a44047329e1610f371fa7d660d">cudaDeviceSynchronize</a>();</div>
 <div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span> </div>
-<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span>  rand_init&lt;&lt;&lt;bpg, tpb&gt;&gt;&gt;(seed, count);</div>
-<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span>  <a class="code hl_define" href="hip_8h.html#a535823a44047329e1610f371fa7d660d">cudaDeviceSynchronize</a>();</div>
-<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span> </div>
-<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span>  <span class="keywordflow">return</span> <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a>;</div>
-<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>}</div>
-<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span> </div>
-<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span> </div>
-<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span><span class="preprocessor">#if AC_DOUBLE_PRECISION</span></div>
-<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span><span class="preprocessor">#define rand_uniform() curand_uniform_double(&amp;rand_states[local_compdomain_idx])</span></div>
-<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00204" name="l00204"></a><span class="lineno"><a class="line" href="random_8cuh.html#a4113356a2e4968780156d946abcdbb59">  204</a></span><span class="preprocessor">#define rand_uniform() curand_uniform(&amp;rand_states[local_compdomain_idx])</span></div>
-<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span>__device__ __forceinline__</div>
-<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span><a class="code hl_typedef" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a></div>
-<div class="foldopen" id="foldopen00208" data-start="{" data-end="}">
-<div class="line"><a id="l00208" name="l00208"></a><span class="lineno"><a class="line" href="random_8cuh.html#a6acc73ce0204c1e21b3e1fd3e9f0e688">  208</a></span><a class="code hl_function" href="random_8cuh.html#a6acc73ce0204c1e21b3e1fd3e9f0e688">random_uniform</a>(<span class="keyword">const</span> <span class="keywordtype">size_t</span> idx)</div>
-<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>{</div>
-<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span><span class="preprocessor">#if AC_DOUBLE_PRECISION</span></div>
-<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>        <span class="keywordflow">return</span> <a class="code hl_define" href="hip_8h.html#a2020919a6a92bc8e3195060acf5f12f4">curand_uniform_double</a>(&amp;rand_states[idx]);</div>
-<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span>        <span class="keywordflow">return</span> <a class="code hl_define" href="hip_8h.html#a81997ae07d427e6164daf439b17cae32">curand_uniform</a>(&amp;rand_states[idx]);</div>
-<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span>}</div>
+<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span>  <span class="keywordflow">return</span> <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a>;</div>
+<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span>}</div>
+<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span> </div>
+<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span> </div>
+<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span><span class="preprocessor">#if AC_DOUBLE_PRECISION</span></div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span><span class="preprocessor">#define rand_uniform() curand_uniform_double(&amp;rand_states[local_compdomain_idx])</span></div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00201" name="l00201"></a><span class="lineno"><a class="line" href="random_8cuh.html#a4113356a2e4968780156d946abcdbb59">  201</a></span><span class="preprocessor">#define rand_uniform() curand_uniform(&amp;rand_states[local_compdomain_idx])</span></div>
+<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>__device__ __forceinline__</div>
+<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span><a class="code hl_typedef" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a></div>
+<div class="foldopen" id="foldopen00205" data-start="{" data-end="}">
+<div class="line"><a id="l00205" name="l00205"></a><span class="lineno"><a class="line" href="random_8cuh.html#a6acc73ce0204c1e21b3e1fd3e9f0e688">  205</a></span><a class="code hl_function" href="random_8cuh.html#a6acc73ce0204c1e21b3e1fd3e9f0e688">random_uniform</a>(<span class="keyword">const</span> <span class="keywordtype">size_t</span> idx)</div>
+<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span>{</div>
+<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span><span class="preprocessor">#if AC_DOUBLE_PRECISION</span></div>
+<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span>        <span class="keywordflow">return</span> <a class="code hl_define" href="hip_8h.html#a2020919a6a92bc8e3195060acf5f12f4">curand_uniform_double</a>(&amp;rand_states[idx]);</div>
+<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>        <span class="keywordflow">return</span> <a class="code hl_define" href="hip_8h.html#a81997ae07d427e6164daf439b17cae32">curand_uniform</a>(&amp;rand_states[idx]);</div>
+<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>}</div>
 </div>
-<div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span> </div>
-<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span><span class="preprocessor">#endif </span><span class="comment">//AC_CPU_BUILD</span></div>
-<div class="ttc" id="aacreal_8h_html_a682ddafb17af19aa8f6e413da6625de0"><div class="ttname"><a href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a></div><div class="ttdeci">float AcReal</div><div class="ttdef"><b>Definition</b> acreal.h:11</div></div>
-<div class="ttc" id="aerrchk_8h_html_a94cbb8b694eb6da3257aaace5fe4f55e"><div class="ttname"><a href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a></div><div class="ttdeci">#define as_size_t(i)</div><div class="ttdef"><b>Definition</b> errchk.h:92</div></div>
-<div class="ttc" id="aerrchk_8h_html_aacc2999a0b262af663f89af1c50bd9ee"><div class="ttname"><a href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a></div><div class="ttdeci">#define ERRCHK_CUDA_ALWAYS(params)</div><div class="ttdef"><b>Definition</b> errchk.h:160</div></div>
-<div class="ttc" id="ahelpers_8cc_html_a3204f9ae82e8fce4799e39edab39c770"><div class="ttname"><a href="helpers_8cc.html#a3204f9ae82e8fce4799e39edab39c770">ceil</a></div><div class="ttdeci">int3 ceil(AcReal3 a)</div><div class="ttdef"><b>Definition</b> helpers.cc:110</div></div>
+<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span> </div>
+<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span><span class="preprocessor">#endif </span><span class="comment">//AC_CPU_BUILD</span></div>
+<div class="ttc" id="aerrchk_8h_html_a94cbb8b694eb6da3257aaace5fe4f55e"><div class="ttname"><a href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a></div><div class="ttdeci">#define as_size_t(i)</div><div class="ttdef"><b>Definition</b> errchk.h:91</div></div>
+<div class="ttc" id="aerrchk_8h_html_aacc2999a0b262af663f89af1c50bd9ee"><div class="ttname"><a href="errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee">ERRCHK_CUDA_ALWAYS</a></div><div class="ttdeci">#define ERRCHK_CUDA_ALWAYS(params)</div><div class="ttdef"><b>Definition</b> errchk.h:159</div></div>
+<div class="ttc" id="ahelpers_8cc_html_a3204f9ae82e8fce4799e39edab39c770"><div class="ttname"><a href="helpers_8cc.html#a3204f9ae82e8fce4799e39edab39c770">ceil</a></div><div class="ttdeci">int3 ceil(AcReal3 a)</div><div class="ttdef"><b>Definition</b> helpers.cc:97</div></div>
 <div class="ttc" id="ahip_8h_html_a0a87c1d891812c773254b2c73cb42da2"><div class="ttname"><a href="hip_8h.html#a0a87c1d891812c773254b2c73cb42da2">cudaFree</a></div><div class="ttdeci">#define cudaFree</div><div class="ttdef"><b>Definition</b> hip.h:70</div></div>
 <div class="ttc" id="ahip_8h_html_a0bb4ca0bbde27cb7a543afe5f79e8091"><div class="ttname"><a href="hip_8h.html#a0bb4ca0bbde27cb7a543afe5f79e8091">cudaMemcpyDeviceToHost</a></div><div class="ttdeci">#define cudaMemcpyDeviceToHost</div><div class="ttdef"><b>Definition</b> hip.h:54</div></div>
 <div class="ttc" id="ahip_8h_html_a2020919a6a92bc8e3195060acf5f12f4"><div class="ttname"><a href="hip_8h.html#a2020919a6a92bc8e3195060acf5f12f4">curand_uniform_double</a></div><div class="ttdeci">#define curand_uniform_double</div><div class="ttdef"><b>Definition</b> hip.h:112</div></div>
@@ -338,14 +334,15 @@ $(document).ready(function(){initNavTree('random_8cuh_source.html',''); initResi
 <div class="ttc" id="ahip_8h_html_a81997ae07d427e6164daf439b17cae32"><div class="ttname"><a href="hip_8h.html#a81997ae07d427e6164daf439b17cae32">curand_uniform</a></div><div class="ttdeci">#define curand_uniform</div><div class="ttdef"><b>Definition</b> hip.h:111</div></div>
 <div class="ttc" id="ahip_8h_html_ad6daf0f08e51860d93bed23baaaab6e7"><div class="ttname"><a href="hip_8h.html#ad6daf0f08e51860d93bed23baaaab6e7">cudaMalloc</a></div><div class="ttdeci">#define cudaMalloc</div><div class="ttdef"><b>Definition</b> hip.h:67</div></div>
 <div class="ttc" id="ahip_8h_html_ada7138d224fa0521c84ffa6f5420e42c"><div class="ttname"><a href="hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c">cudaMemcpyToSymbol</a></div><div class="ttdeci">#define cudaMemcpyToSymbol</div><div class="ttdef"><b>Definition</b> hip.h:60</div></div>
-<div class="ttc" id="ahost__datatypes_8h_html_a601254ccb5bcc54c209aeea4ac24e43d"><div class="ttname"><a href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div><div class="ttdeci">AcResult</div><div class="ttdef"><b>Definition</b> host_datatypes.h:10</div></div>
-<div class="ttc" id="ahost__datatypes_8h_html_a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf"><div class="ttname"><a href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a></div><div class="ttdeci">@ AC_SUCCESS</div><div class="ttdef"><b>Definition</b> host_datatypes.h:10</div></div>
-<div class="ttc" id="arandom_8cuh_html_a22cf856d289b680a38aecef937f1f61c"><div class="ttname"><a href="random_8cuh.html#a22cf856d289b680a38aecef937f1f61c">acRandQuit</a></div><div class="ttdeci">void acRandQuit(void)</div><div class="ttdef"><b>Definition</b> random.cuh:64</div></div>
-<div class="ttc" id="arandom_8cuh_html_a4113356a2e4968780156d946abcdbb59"><div class="ttname"><a href="random_8cuh.html#a4113356a2e4968780156d946abcdbb59">rand_uniform</a></div><div class="ttdeci">#define rand_uniform()</div><div class="ttdef"><b>Definition</b> random.cuh:204</div></div>
-<div class="ttc" id="arandom_8cuh_html_a6acc73ce0204c1e21b3e1fd3e9f0e688"><div class="ttname"><a href="random_8cuh.html#a6acc73ce0204c1e21b3e1fd3e9f0e688">random_uniform</a></div><div class="ttdeci">__device__ __forceinline__ AcReal random_uniform(const size_t idx)</div><div class="ttdef"><b>Definition</b> random.cuh:208</div></div>
-<div class="ttc" id="arandom_8cuh_html_ace5609ed6aebe903ac7194104906cb2f"><div class="ttname"><a href="random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f">rand_init</a></div><div class="ttdeci">__global__ void rand_init(const uint64_t seed, const size_t count, const size_t rank)</div><div class="ttdef"><b>Definition</b> random.cuh:37</div></div>
-<div class="ttc" id="arandom_8cuh_html_ad6ea2fd2e242ee00b407f244e8d00ee4"><div class="ttname"><a href="random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4">acRandInitAlt</a></div><div class="ttdeci">AcResult acRandInitAlt(const uint64_t seed, const size_t count, const size_t rank)</div><div class="ttdef"><b>Definition</b> random.cuh:48</div></div>
-<div class="ttc" id="arandom_8cuh_html_ae68bf4d330b6693422b11ef68767a65f"><div class="ttname"><a href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a></div><div class="ttdeci">curandStateXORWOW_t acRandState</div><div class="ttdef"><b>Definition</b> random.cuh:33</div></div>
+<div class="ttc" id="ahost__datatypes_8h_html_a601254ccb5bcc54c209aeea4ac24e43d"><div class="ttname"><a href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div><div class="ttdeci">AcResult</div><div class="ttdef"><b>Definition</b> host_datatypes.h:44</div></div>
+<div class="ttc" id="ahost__datatypes_8h_html_a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf"><div class="ttname"><a href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a></div><div class="ttdeci">@ AC_SUCCESS</div><div class="ttdef"><b>Definition</b> host_datatypes.h:44</div></div>
+<div class="ttc" id="arandom_8cuh_html_a22cf856d289b680a38aecef937f1f61c"><div class="ttname"><a href="random_8cuh.html#a22cf856d289b680a38aecef937f1f61c">acRandQuit</a></div><div class="ttdeci">void acRandQuit(void)</div><div class="ttdef"><b>Definition</b> random.cuh:61</div></div>
+<div class="ttc" id="arandom_8cuh_html_a4113356a2e4968780156d946abcdbb59"><div class="ttname"><a href="random_8cuh.html#a4113356a2e4968780156d946abcdbb59">rand_uniform</a></div><div class="ttdeci">#define rand_uniform()</div><div class="ttdef"><b>Definition</b> random.cuh:201</div></div>
+<div class="ttc" id="arandom_8cuh_html_a6acc73ce0204c1e21b3e1fd3e9f0e688"><div class="ttname"><a href="random_8cuh.html#a6acc73ce0204c1e21b3e1fd3e9f0e688">random_uniform</a></div><div class="ttdeci">__device__ __forceinline__ AcReal random_uniform(const size_t idx)</div><div class="ttdef"><b>Definition</b> random.cuh:205</div></div>
+<div class="ttc" id="arandom_8cuh_html_ace5609ed6aebe903ac7194104906cb2f"><div class="ttname"><a href="random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f">rand_init</a></div><div class="ttdeci">__global__ void rand_init(const uint64_t seed, const size_t count, const size_t rank)</div><div class="ttdef"><b>Definition</b> random.cuh:34</div></div>
+<div class="ttc" id="arandom_8cuh_html_ad6ea2fd2e242ee00b407f244e8d00ee4"><div class="ttname"><a href="random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4">acRandInitAlt</a></div><div class="ttdeci">AcResult acRandInitAlt(const uint64_t seed, const size_t count, const size_t rank)</div><div class="ttdef"><b>Definition</b> random.cuh:45</div></div>
+<div class="ttc" id="arandom_8cuh_html_ae68bf4d330b6693422b11ef68767a65f"><div class="ttname"><a href="random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f">acRandState</a></div><div class="ttdeci">curandStateXORWOW_t acRandState</div><div class="ttdef"><b>Definition</b> random.cuh:30</div></div>
+<div class="ttc" id="astencilgen_8c_html_a46fb0bc56f0b52637b2f4b6cfa04fac3"><div class="ttname"><a href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a></div><div class="ttdeci">double AcReal</div><div class="ttdef"><b>Definition</b> stencilgen.c:53</div></div>
 <div class="ttc" id="astructVolume_html"><div class="ttname"><a href="structVolume.html">Volume</a></div><div class="ttdef"><b>Definition</b> implementation.c:3</div></div>
 <div class="ttc" id="astructVolume_html_a453d4413dce94f7dcd1aaa41072ae0c4"><div class="ttname"><a href="structVolume.html#a453d4413dce94f7dcd1aaa41072ae0c4">Volume::y</a></div><div class="ttdeci">size_t y</div><div class="ttdef"><b>Definition</b> implementation.c:4</div></div>
 <div class="ttc" id="astructVolume_html_ab38e2269b5373375c31a004c4d571013"><div class="ttname"><a href="structVolume.html#ab38e2269b5373375c31a004c4d571013">Volume::z</a></div><div class="ttdeci">size_t z</div><div class="ttdef"><b>Definition</b> implementation.c:4</div></div>

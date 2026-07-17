@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['no_5freduce_0',['NO_REDUCE',['../vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38',1,'vecs.h']]],
+  ['no_5freduce_0',['no_reduce',['../vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38',1,'NO_REDUCE:&#160;vecs.h'],['../stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38',1,'NO_REDUCE:&#160;stencilgen.c']]],
   ['node_5fany_1',['NODE_ANY',['../acc-runtime_2acc_2ast_8h.html#acac9cbaeea226ed297804c012dc12b16a155db094c2b0cb6b106fb8559f2e8203',1,'ast.h']]],
   ['node_5farray_5faccess_2',['NODE_ARRAY_ACCESS',['../acc-runtime_2acc_2ast_8h.html#acac9cbaeea226ed297804c012dc12b16a79ce28e5949d39185e5772610b699341',1,'ast.h']]],
   ['node_5farray_5finitializer_3',['NODE_ARRAY_INITIALIZER',['../acc-runtime_2acc_2ast_8h.html#acac9cbaeea226ed297804c012dc12b16a6ab518e84e191d90e453a5393508aa76',1,'ast.h']]],

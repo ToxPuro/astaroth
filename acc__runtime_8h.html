@@ -98,21 +98,17 @@ $(document).ready(function(){initNavTree('acc__runtime_8h.html',''); initResizab
   <div class="headertitle"><div class="title">acc_runtime.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;stdbool.h&gt;</code><br />
-<code>#include &lt;stdio.h&gt;</code><br />
-<code>#include &quot;<a class="el" href="ac__helpers_8h_source.html">ac_helpers.h</a>&quot;</code><br />
-<code>#include &quot;builtin_enums.h&quot;</code><br />
-<code>#include &quot;<a class="el" href="common__kernels_8h_source.html">common_kernels.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="datatypes_8h_source.html">datatypes.h</a>&quot;</code><br />
+<div class="textblock"><code>#include &lt;stdio.h&gt;</code><br />
+<code>#include &lt;stdbool.h&gt;</code><br />
 <code>#include &quot;<a class="el" href="device__headers_8h_source.html">device_headers.h</a>&quot;</code><br />
+<code>#include &quot;builtin_enums.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="datatypes_8h_source.html">datatypes.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
-<code>#include &quot;profiles_info.h&quot;</code><br />
-<code>#include &quot;scalar_reduce_buffer_defs.h&quot;</code><br />
-<code>#include &quot;user_built-in_constants.h&quot;</code><br />
 <code>#include &quot;user_defines.h&quot;</code><br />
+<code>#include &quot;profiles_info.h&quot;</code><br />
+<code>#include &quot;user_built-in_constants.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="func__attributes_8h_source.html">func_attributes.h</a>&quot;</code><br />
 <code>#include &quot;user_input_typedefs.h&quot;</code><br />
-<code>#include &lt;string.h&gt;</code><br />
 <code>#include &quot;output_decl.h&quot;</code><br />
 <code>#include &quot;comp_loaded_decl.h&quot;</code><br />
 <code>#include &quot;comp_decl.h&quot;</code><br />
@@ -120,14 +116,19 @@ $(document).ready(function(){initNavTree('acc__runtime_8h.html',''); initResizab
 <code>#include &quot;device_mesh_info_decl.h&quot;</code><br />
 <code>#include &quot;array_decl.h&quot;</code><br />
 <code>#include &quot;input_decl.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="ac__helpers_8h_source.html">ac_helpers.h</a>&quot;</code><br />
+<code>#include &quot;scalar_reduce_buffer_defs.h&quot;</code><br />
 <code>#include &quot;scalar_reduce_buffers_in_vba.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__analysis_8h_source.html">astaroth_analysis.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="common__kernels_8h_source.html">common_kernels.h</a>&quot;</code><br />
 <code>#include &quot;load_and_store_uniform_header.h&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for acc_runtime.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="acc__runtime_8h__incl.svg" width="100%" height="569"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="acc__runtime_8h__incl.svg" width="100%" height="514"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 </div><div class="textblock"><div id="dynsection-1" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-1-trigger" src="closed.png" alt="+"/> This graph shows which files directly or indirectly include this file:</div>
@@ -216,13 +217,13 @@ Typedefs</h2></td></tr>
 Functions</h2></td></tr>
 <tr class="memitem:a982b41f96a3073dc14cabaa6f42ef545" id="r_a982b41f96a3073dc14cabaa6f42ef545"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a982b41f96a3073dc14cabaa6f42ef545">FUNC_DEFINE</a> (const AcKernel *, <a class="el" href="acc__runtime_8cu.html#a1a39cd75e368b1abe128a101c9e32618">acGetKernels</a>,())</td></tr>
 <tr class="separator:a982b41f96a3073dc14cabaa6f42ef545"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9d24794061cbef41fd6a250af96ef3fe" id="r_a9d24794061cbef41fd6a250af96ef3fe"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a9d24794061cbef41fd6a250af96ef3fe">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="common__kernels_8cc.html#a76ca6f022d3e8ade4bb6e0abba130d85">acKernelFlush</a>,(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *arr, const size_t n, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>))</td></tr>
+<tr class="memitem:a9d24794061cbef41fd6a250af96ef3fe" id="r_a9d24794061cbef41fd6a250af96ef3fe"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a9d24794061cbef41fd6a250af96ef3fe">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="common__kernels_8cc.html#a76ca6f022d3e8ade4bb6e0abba130d85">acKernelFlush</a>,(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *arr, const size_t n, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>))</td></tr>
 <tr class="separator:a9d24794061cbef41fd6a250af96ef3fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f3c2ddd7fa2592719107d94ec5e77d9" id="r_a1f3c2ddd7fa2592719107d94ec5e77d9"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a1f3c2ddd7fa2592719107d94ec5e77d9">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="common__kernels_8cc.html#ac024758333421cbfecb639bbd3862a78">acKernelFlushInt</a>,(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, int *arr, const size_t n, const int <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>))</td></tr>
 <tr class="separator:a1f3c2ddd7fa2592719107d94ec5e77d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa9682c8bad59d3fe7a1bdcbcaf7b4067" id="r_aa9682c8bad59d3fe7a1bdcbcaf7b4067"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#aa9682c8bad59d3fe7a1bdcbcaf7b4067">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="common__kernels_8cc.html#ac2a5f60c4307342b5a67b6c47103ece2">acKernelFlushReal</a>,(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *arr, const size_t n, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>))</td></tr>
+<tr class="memitem:aa9682c8bad59d3fe7a1bdcbcaf7b4067" id="r_aa9682c8bad59d3fe7a1bdcbcaf7b4067"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#aa9682c8bad59d3fe7a1bdcbcaf7b4067">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="common__kernels_8cc.html#ac2a5f60c4307342b5a67b6c47103ece2">acKernelFlushReal</a>,(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *arr, const size_t n, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>))</td></tr>
 <tr class="separator:aa9682c8bad59d3fe7a1bdcbcaf7b4067"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0e07de9bd7225dcd2e2202450076e54e" id="r_a0e07de9bd7225dcd2e2202450076e54e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a0e07de9bd7225dcd2e2202450076e54e">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="common__kernels_8cc.html#a32995a39817ab4509d97ec90f7383ec4">acKernelFlushComplex</a>,(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="acc__runtime_8cu.html#a093ce2c4ce550e56f60cba1f43039dc8">AcComplex</a> *arr, const size_t n, const <a class="el" href="acc__runtime_8cu.html#a093ce2c4ce550e56f60cba1f43039dc8">AcComplex</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>))</td></tr>
+<tr class="memitem:a0e07de9bd7225dcd2e2202450076e54e" id="r_a0e07de9bd7225dcd2e2202450076e54e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a0e07de9bd7225dcd2e2202450076e54e">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="common__kernels_8cc.html#a32995a39817ab4509d97ec90f7383ec4">acKernelFlushComplex</a>,(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="structAcComplex.html">AcComplex</a> *arr, const size_t n, const <a class="el" href="structAcComplex.html">AcComplex</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>))</td></tr>
 <tr class="separator:a0e07de9bd7225dcd2e2202450076e54e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab6764ae5415957da3ac81c82fa5b930a" id="r_ab6764ae5415957da3ac81c82fa5b930a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#ab6764ae5415957da3ac81c82fa5b930a">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="common__kernels_8cc.html#a14ee3fcc50280e5248d98f529dbb2c5c">acKernelFlushFloat</a>,(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, float *arr, const size_t n, const float <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>))</td></tr>
 <tr class="separator:ab6764ae5415957da3ac81c82fa5b930a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -260,9 +261,9 @@ Functions</h2></td></tr>
 <tr class="separator:ae232a3e3d8fb652b60e43b7a040f5bc8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a68aa75eb5204d66671e976eb1d565af5" id="r_a68aa75eb5204d66671e976eb1d565af5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a68aa75eb5204d66671e976eb1d565af5">FUNC_DEFINE</a> (<a class="el" href="structint3.html">int3</a>, <a class="el" href="acc__runtime_8cu.html#aac3b233a2124137f1e9805c2366b298d">acGetOptimTPB</a>,(const AcKernel, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end))</td></tr>
 <tr class="separator:a68aa75eb5204d66671e976eb1d565af5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab96a07826128fb081de31f869e53b976" id="r_ab96a07826128fb081de31f869e53b976"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#ab96a07826128fb081de31f869e53b976">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="acc__runtime_8cu.html#ab9c9de13722260fdb73dc2e303d5a83a">acLoadStencil</a>,(const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]))</td></tr>
+<tr class="memitem:ab96a07826128fb081de31f869e53b976" id="r_ab96a07826128fb081de31f869e53b976"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#ab96a07826128fb081de31f869e53b976">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="acc__runtime_8cu.html#ab9c9de13722260fdb73dc2e303d5a83a">acLoadStencil</a>,(const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]))</td></tr>
 <tr class="separator:ab96a07826128fb081de31f869e53b976"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2dc37370ea01b876c341fb30e17dee49" id="r_a2dc37370ea01b876c341fb30e17dee49"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a2dc37370ea01b876c341fb30e17dee49">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="acc__runtime_8cu.html#ad79c9df3421c2bf87ae7060a706408b1">acStoreStencil</a>,(const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]))</td></tr>
+<tr class="memitem:a2dc37370ea01b876c341fb30e17dee49" id="r_a2dc37370ea01b876c341fb30e17dee49"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a2dc37370ea01b876c341fb30e17dee49">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="acc__runtime_8cu.html#ad79c9df3421c2bf87ae7060a706408b1">acStoreStencil</a>,(const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]))</td></tr>
 <tr class="separator:a2dc37370ea01b876c341fb30e17dee49"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe019a972d4e372964582be105b71673" id="r_afe019a972d4e372964582be105b71673"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#afe019a972d4e372964582be105b71673">FUNC_DEFINE</a> (<a class="el" href="structVolume.html">Volume</a>, <a class="el" href="acc__runtime_8cu.html#a4bfef942621753f6046122510328bbd1">acKernelLaunchGetLastTPB</a>,(void))</td></tr>
 <tr class="separator:afe019a972d4e372964582be105b71673"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -280,7 +281,7 @@ Functions</h2></td></tr>
 <tr class="separator:a72a77196216ce3e681f9bea29ee6092d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac6c8d55ce05957fce44343fb943c492e" id="r_ac6c8d55ce05957fce44343fb943c492e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#ac6c8d55ce05957fce44343fb943c492e">FUNC_DEFINE</a> (<a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>, <a class="el" href="acc__runtime_8cu.html#a075e79acbdcb9d2a6498391aeea5c327">acRuntimeQuit</a>,())</td></tr>
 <tr class="separator:ac6c8d55ce05957fce44343fb943c492e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9d2468f3387eb685e05bf86364a6968a" id="r_a9d2468f3387eb685e05bf86364a6968a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> **&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a9d2468f3387eb685e05bf86364a6968a">ac_allocate_scratchpad_real</a> (const size_t i, const size_t new_bytes, const <a class="el" href="host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95">AcReduceOp</a> <a class="el" href="structstate.html">state</a>)</td></tr>
+<tr class="memitem:a9d2468f3387eb685e05bf86364a6968a" id="r_a9d2468f3387eb685e05bf86364a6968a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> **&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#a9d2468f3387eb685e05bf86364a6968a">ac_allocate_scratchpad_real</a> (const size_t i, const size_t new_bytes, const <a class="el" href="host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95">AcReduceOp</a> <a class="el" href="structstate.html">state</a>)</td></tr>
 <tr class="separator:a9d2468f3387eb685e05bf86364a6968a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7c1c90877653f7d24384994ad10eb42" id="r_ab7c1c90877653f7d24384994ad10eb42"><td class="memItemLeft" align="right" valign="top">int **&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8h.html#ab7c1c90877653f7d24384994ad10eb42">ac_allocate_scratchpad_int</a> (const size_t i, const size_t new_bytes, const <a class="el" href="host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95">AcReduceOp</a> <a class="el" href="structstate.html">state</a>)</td></tr>
 <tr class="separator:ab7c1c90877653f7d24384994ad10eb42"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -617,7 +618,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> ** ac_allocate_scratchpad_real </td>
+          <td class="memname"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> ** ac_allocate_scratchpad_real </td>
           <td>(</td>
           <td class="paramtype">const size_t&#160;</td>
           <td class="paramname"><em>i</em>, </td>
@@ -943,7 +944,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *arr, const size_t n, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)&#160;</td>
+          <td class="paramtype">(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *arr, const size_t n, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)&#160;</td>
           <td class="paramname">&#160;</td>
         </tr>
         <tr>
@@ -977,7 +978,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="acc__runtime_8cu.html#a093ce2c4ce550e56f60cba1f43039dc8">AcComplex</a> *arr, const size_t n, const <a class="el" href="acc__runtime_8cu.html#a093ce2c4ce550e56f60cba1f43039dc8">AcComplex</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)&#160;</td>
+          <td class="paramtype">(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="structAcComplex.html">AcComplex</a> *arr, const size_t n, const <a class="el" href="structAcComplex.html">AcComplex</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)&#160;</td>
           <td class="paramname">&#160;</td>
         </tr>
         <tr>
@@ -1079,7 +1080,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *arr, const size_t n, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)&#160;</td>
+          <td class="paramtype">(const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *arr, const size_t n, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="el" href="stdderiv_8h.html#a19558133ffcf07b3e0757a2c7787baa7">value</a>)&#160;</td>
           <td class="paramname">&#160;</td>
         </tr>
         <tr>
@@ -1215,7 +1216,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">(const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])&#160;</td>
+          <td class="paramtype">(const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])&#160;</td>
           <td class="paramname">&#160;</td>
         </tr>
         <tr>
@@ -1420,7 +1421,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">(const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])&#160;</td>
+          <td class="paramtype">(const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])&#160;</td>
           <td class="paramname">&#160;</td>
         </tr>
         <tr>

@@ -100,97 +100,94 @@ $(document).ready(function(){initNavTree('warp__reduce_8h_source.html',''); init
 <div class="contents">
 <a href="warp__reduce_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#pragma once</span></div>
 <div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span> </div>
-<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#include &quot;<a class="code" href="vecs_8h.html">vecs.h</a>&quot;</span></div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span> </div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#if AC_USE_HIP</span></div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span>    <span class="keyword">const</span> <span class="keywordtype">char</span>* <a class="code hl_variable" href="warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b">shuffle_instruction</a> = <span class="stringliteral">&quot;rocprim__warp_shuffle(val,target_tid)&quot;</span>;</div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b">    8</a></span>    <span class="keyword">const</span> <span class="keywordtype">char</span>* <a class="code hl_variable" href="warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b">shuffle_instruction</a> = <span class="stringliteral">&quot;__shfl_sync(AC_INTERNAL_active_threads,val,target_tid)&quot;</span>;</div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span> </div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="keywordtype">void</span></div>
-<div class="foldopen" id="foldopen00012" data-start="{" data-end="}">
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966">   12</a></span><a class="code hl_function" href="warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966">print_shuffle_down</a>(FILE* stream, <span class="keyword">const</span> <span class="keywordtype">int</span> offset)</div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span>{</div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="preprocessor">#if AC_USE_HIP</span></div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span>    fprintf(stream,<span class="stringliteral">&quot;rocprim__warp_shuffle_down(val,%d)&quot;</span>,offset);</div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>    fprintf(stream,<span class="stringliteral">&quot;__shfl_down_sync(AC_INTERNAL_active_threads,val,%d)&quot;</span>,offset);</div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>}</div>
+<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#if AC_USE_HIP</span></div>
+<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span>    <span class="keyword">const</span> <span class="keywordtype">char</span>* <a class="code hl_variable" href="warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b">shuffle_instruction</a> = <span class="stringliteral">&quot;rocprim__warp_shuffle(val,target_tid)&quot;</span>;</div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b">    6</a></span>    <span class="keyword">const</span> <span class="keywordtype">char</span>* <a class="code hl_variable" href="warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b">shuffle_instruction</a> = <span class="stringliteral">&quot;__shfl_sync(AC_INTERNAL_active_threads,val,target_tid)&quot;</span>;</div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span> </div>
+<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="keywordtype">void</span></div>
+<div class="foldopen" id="foldopen00010" data-start="{" data-end="}">
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966">   10</a></span><a class="code hl_function" href="warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966">print_shuffle_down</a>(FILE* stream, <span class="keyword">const</span> <span class="keywordtype">int</span> offset)</div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span>{</div>
+<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="preprocessor">#if AC_USE_HIP</span></div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span>    fprintf(stream,<span class="stringliteral">&quot;rocprim__warp_shuffle_down(val,%d)&quot;</span>,offset);</div>
+<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span>    fprintf(stream,<span class="stringliteral">&quot;__shfl_down_sync(AC_INTERNAL_active_threads,val,%d)&quot;</span>,offset);</div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>}</div>
 </div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span> </div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="keywordtype">void</span></div>
-<div class="foldopen" id="foldopen00022" data-start="{" data-end="}">
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">   22</a></span><a class="code hl_function" href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a>(FILE* stream, <span class="keyword">const</span> <span class="keywordtype">char</span>* tmp_type, <span class="keyword">const</span> <span class="keywordtype">int</span> offset, <span class="keyword">const</span> <span class="keywordtype">char</span>* op_instruction, <span class="keyword">const</span> <span class="keywordtype">bool</span> check_activeness)</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>{</div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>    <span class="keywordtype">char</span> shuffle_down[1000];</div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>    memset(shuffle_down,0,<span class="keyword">sizeof</span>(shuffle_down));</div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>    {</div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>        FILE* instruction_stream = fmemopen(shuffle_down, <span class="keyword">sizeof</span>(shuffle_down), <span class="stringliteral">&quot;w&quot;</span>);</div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>        <a class="code hl_function" href="warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966">print_shuffle_down</a>(instruction_stream,offset);</div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>        fclose(instruction_stream);</div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>    }</div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>    <span class="keywordtype">char</span> guard[1000];</div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>    memset(guard,0,<span class="keyword">sizeof</span>(guard));</div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>    {</div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span>        FILE* guard_stream = fmemopen(guard, <span class="keyword">sizeof</span>(guard), <span class="stringliteral">&quot;w&quot;</span>);</div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>        fprintf(guard_stream,<span class="stringliteral">&quot;if(AC_INTERNAL_active_threads &gt;&gt; (lane_id + %d))&quot;</span>,offset);</div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>        fclose(guard_stream);</div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>    }</div>
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>    fprintf(stream,</div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>            <span class="stringliteral">&quot;%s shuffle_tmp = %s;&quot;</span></div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>            <span class="stringliteral">&quot;%s %s;&quot;</span></div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>        ,tmp_type</div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>            ,shuffle_down</div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>        ,check_activeness ? guard : <span class="stringliteral">&quot;&quot;</span></div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>        ,op_instruction</div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>          );</div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>}</div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span> </div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="keywordtype">void</span></div>
+<div class="foldopen" id="foldopen00020" data-start="{" data-end="}">
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">   20</a></span><a class="code hl_function" href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a>(FILE* stream, <span class="keyword">const</span> <span class="keywordtype">char</span>* tmp_type, <span class="keyword">const</span> <span class="keywordtype">int</span> offset, <span class="keyword">const</span> <span class="keywordtype">char</span>* op_instruction, <span class="keyword">const</span> <span class="keywordtype">bool</span> check_activeness)</div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>{</div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>    <span class="keywordtype">char</span> shuffle_down[1000];</div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>    memset(shuffle_down,0,<span class="keyword">sizeof</span>(shuffle_down));</div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>    {</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>        FILE* instruction_stream = fmemopen(shuffle_down, <span class="keyword">sizeof</span>(shuffle_down), <span class="stringliteral">&quot;w&quot;</span>);</div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>        <a class="code hl_function" href="warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966">print_shuffle_down</a>(instruction_stream,offset);</div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>        fclose(instruction_stream);</div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>    }</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>    <span class="keywordtype">char</span> guard[1000];</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>    memset(guard,0,<span class="keyword">sizeof</span>(guard));</div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>    {</div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>        FILE* guard_stream = fmemopen(guard, <span class="keyword">sizeof</span>(guard), <span class="stringliteral">&quot;w&quot;</span>);</div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>        fprintf(guard_stream,<span class="stringliteral">&quot;if(AC_INTERNAL_active_threads &gt;&gt; (lane_id + %d))&quot;</span>,offset);</div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span>        fclose(guard_stream);</div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>    }</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>    fprintf(stream,</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>            <span class="stringliteral">&quot;%s shuffle_tmp = %s;&quot;</span></div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>            <span class="stringliteral">&quot;%s %s;&quot;</span></div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>        ,tmp_type</div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>            ,shuffle_down</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>        ,check_activeness ? guard : <span class="stringliteral">&quot;&quot;</span></div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>        ,op_instruction</div>
+<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>          );</div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>}</div>
 </div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span> </div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="keywordtype">void</span></div>
-<div class="foldopen" id="foldopen00049" data-start="{" data-end="}">
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a81216496aa0a5086b0430176c8e01096">   49</a></span><a class="code hl_function" href="warp__reduce_8h.html#a81216496aa0a5086b0430176c8e01096">print_warp_reduction</a>(FILE* stream, <span class="keyword">const</span> <span class="keywordtype">int</span> warp_size,<span class="keyword">const</span> <span class="keywordtype">char</span>* op_instruction, <span class="keyword">const</span> <span class="keywordtype">bool</span> check_activeness)</div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>{</div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>    <a class="code hl_function" href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a>(stream,<span class="stringliteral">&quot;auto&quot;</span>,warp_size/2,op_instruction,check_activeness);</div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>    <span class="keywordflow">for</span>(<span class="keywordtype">int</span> offset = warp_size/4;  offset &gt;= 1; offset /= 2)</div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>        <a class="code hl_function" href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a>(stream,<span class="stringliteral">&quot;&quot;</span>,offset,op_instruction,check_activeness);</div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>}</div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span> </div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="keywordtype">void</span></div>
+<div class="foldopen" id="foldopen00047" data-start="{" data-end="}">
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a81216496aa0a5086b0430176c8e01096">   47</a></span><a class="code hl_function" href="warp__reduce_8h.html#a81216496aa0a5086b0430176c8e01096">print_warp_reduction</a>(FILE* stream, <span class="keyword">const</span> <span class="keywordtype">int</span> warp_size,<span class="keyword">const</span> <span class="keywordtype">char</span>* op_instruction, <span class="keyword">const</span> <span class="keywordtype">bool</span> check_activeness)</div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>{</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>    <a class="code hl_function" href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a>(stream,<span class="stringliteral">&quot;auto&quot;</span>,warp_size/2,op_instruction,check_activeness);</div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>    <span class="keywordflow">for</span>(<span class="keywordtype">int</span> offset = warp_size/4;  offset &gt;= 1; offset /= 2)</div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>        <a class="code hl_function" href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a>(stream,<span class="stringliteral">&quot;&quot;</span>,offset,op_instruction,check_activeness);</div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>}</div>
 </div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span><span class="keyword">const</span> <span class="keywordtype">char</span>*</div>
-<div class="foldopen" id="foldopen00056" data-start="{" data-end="}">
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c">   56</a></span><a class="code hl_function" href="warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c">get_op_instruction</a>(<span class="keyword">const</span> <a class="code hl_enumeration" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>{</div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>    <span class="keywordflow">return</span></div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>        op == <a class="code hl_enumvalue" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0">REDUCE_SUM</a> ? <span class="stringliteral">&quot;val += shuffle_tmp&quot;</span> :</div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>        op == <a class="code hl_enumvalue" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a">REDUCE_MIN</a> ? <span class="stringliteral">&quot;val = val &gt; shuffle_tmp ? shuffle_tmp : val&quot;</span> :</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>        op == <a class="code hl_enumvalue" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088">REDUCE_MAX</a> ? <span class="stringliteral">&quot;val = val &gt; shuffle_tmp ? val : shuffle_tmp&quot;</span> :</div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>        NULL;</div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>}</div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span><span class="keyword">const</span> <span class="keywordtype">char</span>*</div>
+<div class="foldopen" id="foldopen00054" data-start="{" data-end="}">
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c">   54</a></span><a class="code hl_function" href="warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c">get_op_instruction</a>(<span class="keyword">const</span> <a class="code hl_enumeration" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>{</div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>    <span class="keywordflow">return</span></div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>        op == <a class="code hl_enumvalue" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0">REDUCE_SUM</a> ? <span class="stringliteral">&quot;val += shuffle_tmp&quot;</span> :</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>        op == <a class="code hl_enumvalue" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a">REDUCE_MIN</a> ? <span class="stringliteral">&quot;val = val &gt; shuffle_tmp ? shuffle_tmp : val&quot;</span> :</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>        op == <a class="code hl_enumvalue" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088">REDUCE_MAX</a> ? <span class="stringliteral">&quot;val = val &gt; shuffle_tmp ? val : shuffle_tmp&quot;</span> :</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>        NULL;</div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>}</div>
 </div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span><span class="keyword">const</span> <span class="keywordtype">char</span>*</div>
-<div class="foldopen" id="foldopen00065" data-start="{" data-end="}">
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8">   65</a></span><a class="code hl_function" href="warp__reduce_8h.html#a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8">reduce_op_to_name</a>(<span class="keyword">const</span> <a class="code hl_enumeration" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>{</div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>    <span class="keywordflow">return</span></div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>        op == <a class="code hl_enumvalue" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0">REDUCE_SUM</a> ? <span class="stringliteral">&quot;sum&quot;</span> :</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>        op == <a class="code hl_enumvalue" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a">REDUCE_MIN</a> ? <span class="stringliteral">&quot;min&quot;</span> :</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>        op == <a class="code hl_enumvalue" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088">REDUCE_MAX</a> ? <span class="stringliteral">&quot;max&quot;</span> :</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>        NULL;</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>}</div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span><span class="keyword">const</span> <span class="keywordtype">char</span>*</div>
+<div class="foldopen" id="foldopen00063" data-start="{" data-end="}">
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno"><a class="line" href="warp__reduce_8h.html#a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8">   63</a></span><a class="code hl_function" href="warp__reduce_8h.html#a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8">reduce_op_to_name</a>(<span class="keyword">const</span> <a class="code hl_enumeration" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>{</div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    <span class="keywordflow">return</span></div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>        op == <a class="code hl_enumvalue" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0">REDUCE_SUM</a> ? <span class="stringliteral">&quot;sum&quot;</span> :</div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>        op == <a class="code hl_enumvalue" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a">REDUCE_MIN</a> ? <span class="stringliteral">&quot;min&quot;</span> :</div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>        op == <a class="code hl_enumvalue" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088">REDUCE_MAX</a> ? <span class="stringliteral">&quot;max&quot;</span> :</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>        NULL;</div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>}</div>
 </div>
-<div class="ttc" id="avecs_8h_html"><div class="ttname"><a href="vecs_8h.html">vecs.h</a></div></div>
-<div class="ttc" id="avecs_8h_html_a1c3bc08749070d6f6b4702e44752d11f"><div class="ttname"><a href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a></div><div class="ttdeci">ReduceOp</div><div class="ttdef"><b>Definition</b> vecs.h:8</div></div>
-<div class="ttc" id="avecs_8h_html_a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088"><div class="ttname"><a href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088">REDUCE_MAX</a></div><div class="ttdeci">@ REDUCE_MAX</div><div class="ttdef"><b>Definition</b> vecs.h:11</div></div>
-<div class="ttc" id="avecs_8h_html_a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0"><div class="ttname"><a href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0">REDUCE_SUM</a></div><div class="ttdeci">@ REDUCE_SUM</div><div class="ttdef"><b>Definition</b> vecs.h:12</div></div>
-<div class="ttc" id="avecs_8h_html_a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a"><div class="ttname"><a href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a">REDUCE_MIN</a></div><div class="ttdeci">@ REDUCE_MIN</div><div class="ttdef"><b>Definition</b> vecs.h:10</div></div>
-<div class="ttc" id="awarp__reduce_8h_html_a06f8db8d69443714aaa3b018cebd328c"><div class="ttname"><a href="warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c">get_op_instruction</a></div><div class="ttdeci">const char * get_op_instruction(const ReduceOp op)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:56</div></div>
-<div class="ttc" id="awarp__reduce_8h_html_a433e04760a4c0df4327ab01c13bde02b"><div class="ttname"><a href="warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b">shuffle_instruction</a></div><div class="ttdeci">const char * shuffle_instruction</div><div class="ttdef"><b>Definition</b> warp_reduce.h:8</div></div>
-<div class="ttc" id="awarp__reduce_8h_html_a72cf3c99d99f585936adb7e3e7de5966"><div class="ttname"><a href="warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966">print_shuffle_down</a></div><div class="ttdeci">void print_shuffle_down(FILE *stream, const int offset)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:12</div></div>
-<div class="ttc" id="awarp__reduce_8h_html_a81216496aa0a5086b0430176c8e01096"><div class="ttname"><a href="warp__reduce_8h.html#a81216496aa0a5086b0430176c8e01096">print_warp_reduction</a></div><div class="ttdeci">void print_warp_reduction(FILE *stream, const int warp_size, const char *op_instruction, const bool check_activeness)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:49</div></div>
-<div class="ttc" id="awarp__reduce_8h_html_a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8"><div class="ttname"><a href="warp__reduce_8h.html#a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8">reduce_op_to_name</a></div><div class="ttdeci">const char * reduce_op_to_name(const ReduceOp op)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:65</div></div>
-<div class="ttc" id="awarp__reduce_8h_html_ae7a20060faa4a18970bde799dda3c7d9"><div class="ttname"><a href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a></div><div class="ttdeci">void print_shuffle_iteration(FILE *stream, const char *tmp_type, const int offset, const char *op_instruction, const bool check_activeness)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:22</div></div>
+<div class="ttc" id="astencilgen_8c_html_a1c3bc08749070d6f6b4702e44752d11f"><div class="ttname"><a href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a></div><div class="ttdeci">ReduceOp</div><div class="ttdef"><b>Definition</b> stencilgen.c:64</div></div>
+<div class="ttc" id="astencilgen_8c_html_a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088"><div class="ttname"><a href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088">REDUCE_MAX</a></div><div class="ttdeci">@ REDUCE_MAX</div><div class="ttdef"><b>Definition</b> stencilgen.c:67</div></div>
+<div class="ttc" id="astencilgen_8c_html_a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0"><div class="ttname"><a href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0">REDUCE_SUM</a></div><div class="ttdeci">@ REDUCE_SUM</div><div class="ttdef"><b>Definition</b> stencilgen.c:68</div></div>
+<div class="ttc" id="astencilgen_8c_html_a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a"><div class="ttname"><a href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a">REDUCE_MIN</a></div><div class="ttdeci">@ REDUCE_MIN</div><div class="ttdef"><b>Definition</b> stencilgen.c:66</div></div>
+<div class="ttc" id="awarp__reduce_8h_html_a06f8db8d69443714aaa3b018cebd328c"><div class="ttname"><a href="warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c">get_op_instruction</a></div><div class="ttdeci">const char * get_op_instruction(const ReduceOp op)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:54</div></div>
+<div class="ttc" id="awarp__reduce_8h_html_a433e04760a4c0df4327ab01c13bde02b"><div class="ttname"><a href="warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b">shuffle_instruction</a></div><div class="ttdeci">const char * shuffle_instruction</div><div class="ttdef"><b>Definition</b> warp_reduce.h:6</div></div>
+<div class="ttc" id="awarp__reduce_8h_html_a72cf3c99d99f585936adb7e3e7de5966"><div class="ttname"><a href="warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966">print_shuffle_down</a></div><div class="ttdeci">void print_shuffle_down(FILE *stream, const int offset)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:10</div></div>
+<div class="ttc" id="awarp__reduce_8h_html_a81216496aa0a5086b0430176c8e01096"><div class="ttname"><a href="warp__reduce_8h.html#a81216496aa0a5086b0430176c8e01096">print_warp_reduction</a></div><div class="ttdeci">void print_warp_reduction(FILE *stream, const int warp_size, const char *op_instruction, const bool check_activeness)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:47</div></div>
+<div class="ttc" id="awarp__reduce_8h_html_a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8"><div class="ttname"><a href="warp__reduce_8h.html#a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8">reduce_op_to_name</a></div><div class="ttdeci">const char * reduce_op_to_name(const ReduceOp op)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:63</div></div>
+<div class="ttc" id="awarp__reduce_8h_html_ae7a20060faa4a18970bde799dda3c7d9"><div class="ttname"><a href="warp__reduce_8h.html#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a></div><div class="ttdeci">void print_shuffle_iteration(FILE *stream, const char *tmp_type, const int offset, const char *op_instruction, const bool check_activeness)</div><div class="ttdef"><b>Definition</b> warp_reduce.h:20</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

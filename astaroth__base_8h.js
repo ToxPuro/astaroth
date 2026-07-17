@@ -1,6 +1,5 @@
 var astaroth__base_8h =
 [
-    [ "AcCommunicator", "structAcCommunicator.html", "structAcCommunicator" ],
     [ "AcMesh", "structAcMesh.html", "structAcMesh" ],
     [ "GridDims", "structGridDims.html", "structGridDims" ],
     [ "DeviceConfiguration", "structDeviceConfiguration.html", "structDeviceConfiguration" ],

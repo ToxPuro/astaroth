@@ -96,19 +96,11 @@ $(document).ready(function(){initNavTree('verification_8cc.html',''); initResiza
   <div class="headertitle"><div class="title">verification.cc File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;bits/std_abs.h&gt;</code><br />
-<code>#include &lt;stdio.h&gt;</code><br />
+<div class="textblock"><code>#include &quot;<a class="el" href="astaroth__utils_8h_source.html">astaroth_utils.h</a>&quot;</code><br />
+<code>#include &lt;math.h&gt;</code><br />
+<code>#include &lt;stdbool.h&gt;</code><br />
 <code>#include &lt;string.h&gt;</code><br />
-<code>#include &lt;algorithm&gt;</code><br />
-<code>#include &lt;cmath&gt;</code><br />
-<code>#include &quot;<a class="el" href="acc__runtime_8h_source.html">acc_runtime.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="acreal_8h_source.html">acreal.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth_8h_source.html">astaroth.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__base_8h_source.html">astaroth_base.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="astaroth__utils_8h_source.html">astaroth_utils.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
-<code>#include &quot;user_defines.h&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for verification.cc:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
@@ -119,7 +111,7 @@ $(document).ready(function(){initNavTree('verification_8cc.html',''); initResiza
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a2d580e4fb6c18cd96eb719d9fcedd08e" id="r_a2d580e4fb6c18cd96eb719d9fcedd08e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structError.html">Error</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="verification_8cc.html#a2d580e4fb6c18cd96eb719d9fcedd08e">acGetError</a> (const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> model, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> candidate)</td></tr>
+<tr class="memitem:a2d580e4fb6c18cd96eb719d9fcedd08e" id="r_a2d580e4fb6c18cd96eb719d9fcedd08e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structError.html">Error</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="verification_8cc.html#a2d580e4fb6c18cd96eb719d9fcedd08e">acGetError</a> (const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> model, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> candidate)</td></tr>
 <tr class="separator:a2d580e4fb6c18cd96eb719d9fcedd08e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afbfd93e078d11ebbe99a65e31a7fd093" id="r_afbfd93e078d11ebbe99a65e31a7fd093"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="verification_8cc.html#afbfd93e078d11ebbe99a65e31a7fd093">acEvalErrorWithMaximumError</a> (const char *label, const <a class="el" href="structError.html">Error</a> <a class="el" href="vecs_8h.html#ab70064e6ae258de4a1d0811824412152">error</a>, const long double max_ulp_error)</td></tr>
 <tr class="separator:afbfd93e078d11ebbe99a65e31a7fd093"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -215,13 +207,13 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="structError.html">Error</a> acGetError </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>model</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a>&#160;</td>
           <td class="paramname"><em>candidate</em>&#160;</td>
         </tr>
         <tr>

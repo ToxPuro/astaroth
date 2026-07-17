@@ -1,6 +1,5 @@
 var heffte_8cc =
 [
-    [ "AcCommunicator", "structAcCommunicator.html", "structAcCommunicator" ],
     [ "AcComplexInAndOut", "structAcComplexInAndOut.html", "structAcComplexInAndOut" ],
     [ "AcComplexFloatInAndOut", "structAcComplexFloatInAndOut.html", "structAcComplexFloatInAndOut" ],
     [ "acFFTBackwardTransformC2C", "heffte_8cc.html#a5533a4e4ab7dc6cf5230063f6643fe33", null ],

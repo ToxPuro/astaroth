@@ -12,8 +12,7 @@ var searchData=
   ['halo_5fexchange_5fsolutions_5fcurrent_9',['halo_exchange_solutions_current',['../stdlib_2geometric__multigrid_8h.html#af49557f897fc784de201fe8fb851d05e',1,'geometric_multigrid.h']]],
   ['halo_5fstr_10',['HALO_STR',['../codegen_8c.html#a8108cd5f844d5679c76f20d5333e7594',1,'codegen.c']]],
   ['halo_5ftasks_11',['halo_tasks',['../structAcTaskGraph.html#a1ec0bf72efcbd522abd9b926641825a2',1,'AcTaskGraph']]],
-  ['handle_12',['handle',['../structAcCommunicator.html#a35cbdd21df29a767ee8fa6900054c32a',1,'AcCommunicator']]],
-  ['has_5fdefault_5fvalue_13',['has_default_value',['../structAcCompInfo.html#af82061ec921c343056095a0618985d28',1,'AcCompInfo']]],
-  ['hasher_14',['hasher',['../structhashmap__s.html#a78752daed83c4f8a68f477e757568ef7',1,'hashmap_s::hasher'],['../structhashmap__create__options__s.html#a7a9e03cd6d8474d18d0a8f49c04711c2',1,'hashmap_create_options_s::hasher']]],
-  ['hip_5fon_15',['HIP_ON',['../codegen_8c.html#aae2a7c45b7db53b382ffb8fd06399d3b',1,'codegen.c']]]
+  ['has_5fdefault_5fvalue_12',['has_default_value',['../structAcCompInfo.html#af82061ec921c343056095a0618985d28',1,'AcCompInfo']]],
+  ['hasher_13',['hasher',['../structhashmap__s.html#a78752daed83c4f8a68f477e757568ef7',1,'hashmap_s::hasher'],['../structhashmap__create__options__s.html#a7a9e03cd6d8474d18d0a8f49c04711c2',1,'hashmap_create_options_s::hasher']]],
+  ['hip_5fon_14',['HIP_ON',['../codegen_8c.html#aae2a7c45b7db53b382ffb8fd06399d3b',1,'codegen.c']]]
 ];
