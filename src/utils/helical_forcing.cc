@@ -1,16 +1,11 @@
-#include <bits/std_abs.h>
-#include <stdint.h>
+#include "astaroth_forcing.h"
 
 #include <array>
-#include <cmath>
 #include <complex>
+#include <cstdlib>
 #include <iostream>
 #include <random>
-#include <string>
-#include <vector>
 
-#include "acreal.h"
-#include "astaroth_forcing.h"
 #include "astaroth_random.h"
 #include "errchk.h"
 

@@ -1,9 +1,8 @@
 #pragma once
 
-#include <stdarg.h>
+#include "stdarg.h"
 
 #include "string_vec.h"
-
 typedef enum ReduceOp
 {
 	NO_REDUCE,

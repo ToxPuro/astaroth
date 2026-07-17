@@ -1,7 +1,5 @@
 #pragma once
 
-#include "vecs.h"
-
 #if AC_USE_HIP
 	const char* shuffle_instruction = "rocprim__warp_shuffle(val,target_tid)";
 #else

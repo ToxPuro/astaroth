@@ -1,32 +1,35 @@
 #if AC_MPI_ENABLED 
 
-#include <mpi.h>
-
-#include <algorithm>
-#include <cstring>  //memcpy
-#include <queue>
-#include <stack>
-#include <vector>
-
+#include "task.h"
 #include "astaroth_analysis_helpers.h"
 #include "astaroth_grid.h"
+
+#include <algorithm>
+#include <cstring> //memcpy
+#include <mpi.h>
+#include <queue>
+#include <vector>
+#include <stack>
+
+
 #include "errchk.h"
 #include "math_utils.h"
-#include "task.h"
 #include "timer_hires.h"
-
-// clang-format off
-#include "taskgraph_kernels.h"
-#include "taskgraph_bc_handles.h"
-#include "taskgraph_kernel_bcs.h"
-#include "user_constants.h"
-// clang-format on
-
 static AcMeshInfo
 get_info()
 {
 	return acDeviceGetLocalConfig(acGridGetDevice());
 }
+
+
+
+
+
+
+#include "taskgraph_kernels.h"
+#include "taskgraph_bc_handles.h"
+#include "taskgraph_kernel_bcs.h"
+#include "user_constants.h"
 
 static int ac_pid()
 {

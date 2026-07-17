@@ -16,7 +16,7 @@ else()
   set_source_files_properties(stencil_accesses.cpp PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1)
   add_library(astaroth_core_obj OBJECT device.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp analysis_helpers.cc)
   target_link_libraries(astaroth_core_obj PUBLIC acc-runtime-headers )
-  target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src ${AC_BASE_PATH}/src/core/kernels)
+  target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src/core/kernels)
   
   
   # JP: disabled due to being error-prone, verbose, and not using modern CMake practices

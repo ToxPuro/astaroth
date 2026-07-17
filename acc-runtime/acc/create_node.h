@@ -1,9 +1,3 @@
-#pragma once
-
-#include "ast.h" // Needs to come before tab.h to have the definition of ASTNode.
-
-#include "tab.h"
-
 static inline ASTNode*
 create_identifier_node(const char* identifier)
 {	

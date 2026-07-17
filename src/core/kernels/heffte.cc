@@ -1,17 +1,13 @@
-#include "heffte.h"
-
-#include <mpi.h>
-#include <stdio.h>
-
-#include <cstdlib>
-#include <unordered_map>
-
-#include "ac_fft.h"
-#include "ac_helpers.h"
-#include "astaroth_cuda_wrappers.h"
-#include "common_kernels.h"
-#include "errchk.h"
 #include "host_datatypes.h"
+#include "ac_fft.h"
+#include "astaroth_cuda_wrappers.h"
+#include "errchk.h"
+#include "ac_helpers.h"
+#include "common_kernels.h"
+#include <stdio.h>
+#include <cstdlib>
+#include "heffte.h"
+#include <mpi.h>
 struct AcCommunicator
 {
 	MPI_Comm handle;

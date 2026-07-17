@@ -1,15 +1,13 @@
-#include <stdio.h>
-
-#include "ac_helpers.h"
-#include "acreal.h"
-#include "astaroth_cuda_wrappers.h"
-#include "device_headers.h"
-#include "errchk.h"
 #include "host_datatypes.h"
+#include "device_headers.h"
+#include "ac_helpers.h"
+#include <sys/resource.h>
+#include "astaroth_cuda_wrappers.h"
+#include <stdio.h>
+#include "errchk.h"
 
 #if USE_COMPRESSIBLE_MEMORY
 #include <cuda.h>
-
 static cudaError_t
 mallocCompressible(void** addr, const size_t requested_bytes)
 {

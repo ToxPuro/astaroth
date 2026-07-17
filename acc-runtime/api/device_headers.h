@@ -90,10 +90,9 @@ typedef int cudaDeviceAttr;
 #else 
 
 #if AC_USE_HIP
-#include <hip/hip_fp16.h>         // Half-precision floats
-#include <hip/hip_runtime_api.h>  // Streams
-
 #include "hip.h"
+#include <hip/hip_runtime_api.h>     // Streams
+#include <hip/hip_fp16.h> // Half-precision floats
 #if PROFILING_ENABLED
 #include <roctracer/roctracer_ext.h> // Profiling
 #endif
@@ -102,7 +101,7 @@ typedef int cudaDeviceAttr;
 #include <cuda_profiler_api.h> // Profiling
 #endif
 #include <cuda_runtime_api.h>  // Streams
-#include <cuda_fp16.h>         // Half-precision floats
+#include <cuda_fp16.h>  // Half-precision floats
 #endif
 
 #define KERNEL_LAUNCH(func,bgp,tpb,...) \

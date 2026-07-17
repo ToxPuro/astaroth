@@ -16,21 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <stdio.h>
-
-#include "acc_runtime.h"
-#include "acreal.h"
-#include "astaroth.h"
-#include "astaroth_base.h"
 #include "astaroth_utils.h"
-#include "builtin_enums.h"
-#include "device_headers.h"
-#include "errchk.h"
-#include "host_datatypes.h"
+#include "user_builtin_non_scalar_constants.h"
 
-// clang-format off
-#include "user_defines.h"
-// clang-format on
+#include "errchk.h"
 
 static const char dataformat_path[] = "data-format.csv";
 

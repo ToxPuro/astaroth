@@ -1,11 +1,10 @@
 #if AC_MPI_ENABLED
-#include <stdio.h>
-
-#include <string>
-
 #include "astaroth.h"
 #include "astaroth_debug.h"
 #include "task.h"
+
+#include <stdio.h>
+#include <string>
 
 static void
 writeTaskKey(FILE* fp, const Task* task)

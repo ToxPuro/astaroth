@@ -18,12 +18,9 @@
 */
 #pragma once
 #include <thrust/device_vector.h>
-// #include <thrust/for_each.h>
 #include <thrust/functional.h>
-// #include <thrust/iterator/zip_iterator.h>
-#include <thrust/reduce.h>
 // #include <thrust/transform_reduce.h>
-// #include <thrust/tuple.h>
+#include <thrust/reduce.h>
 
 typedef struct {
   AcReal *x, *y, *z;
@@ -203,6 +200,9 @@ acMapCross(const VertexBufferArray vba, const cudaStream_t stream,
 //   }
 // };
 
+// #include <thrust/for_each.h>
+// #include <thrust/iterator/zip_iterator.h>
+// #include <thrust/tuple.h>
 // void
 // acThrustMapCross(const AcReal* a0, const AcReal* a1, const AcReal* a2,
 //                  const AcReal* b0, const AcReal* b1, const AcReal* b2,

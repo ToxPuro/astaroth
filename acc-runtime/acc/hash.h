@@ -1,9 +1,4 @@
-#pragma once
-
 #include <hashtable.h>
-
-extern struct hashmap_s string_intern_hashmap;
-
 static inline const char*
 intern(const char* buffer)
 {

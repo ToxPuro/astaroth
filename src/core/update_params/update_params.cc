@@ -1,19 +1,7 @@
-#include <stddef.h>
-
-#include <type_traits>
-
-#include "ac_helpers.h"
-#include "acc_runtime.h"
-#include "acreal.h"
 #include "astaroth.h"
-#include "errchk.h"
-#include "host_datatypes.h"
-
-// clang-format off
-#include "is_comptime_param.h"
 #include "math_utils.h"
-#include "user_defines.h"
-// clang-format on
+#include "is_comptime_param.h"
+#include "ac_helpers.h"
 
 AcResult
 acHostUpdateParams(AcMeshInfo* config_ptr)

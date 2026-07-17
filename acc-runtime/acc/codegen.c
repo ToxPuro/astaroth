@@ -15,26 +15,17 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <hashtable.h>
+extern struct hashmap_s string_intern_hashmap;
+#include <hash.h>
 #include "codegen.h"
 
-#include <ctype.h>
-#include <hash.h>
-#include <hashtable.h>
-#include <limits.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-
-#include "ast.h" // Needs to come before tab.h to have the definition of ASTNode.
-
-#include "create_node.h"
-#include "expr.h"
-#include "tab.h"
-#include "warp_reduce.h"
-
+#include <math.h>
+#include <limits.h>
 static string_vec primitive_datatypes = VEC_INITIALIZER;
 #define INT_STR       primitive_datatypes.data[0]
 #define REAL_STR      primitive_datatypes.data[1]
@@ -167,10 +158,16 @@ get_executed_nodes(const int round);
 
 static int monomorphization_index = 0;
 
+#include "ast.h"
+#include "tab.h"
+#include <string.h>
+#include <ctype.h>
 extern string_vec const_ints;
 extern string_vec const_int_values;
 extern string_vec run_const_ints;
 extern string_vec run_const_int_values;
+#include "expr.h"
+
 
 #define TRAVERSE_PREAMBLE(FUNC_NAME) \
 	if(node->lhs) \
@@ -2011,6 +2008,14 @@ gen_param_names(FILE* fp, const char* datatype_scalar, const char* place_attribu
 
 
 }
+
+
+
+#include "create_node.h"
+
+
+
+
 
 static ASTNode*
 create_primary_expression(const char* identifier)
@@ -4113,6 +4118,7 @@ has_block_loops(const int kernel)
 	return has_profile_reductions(kernel);
 }
 
+#include "warp_reduce.h"
 static size_t
 count_variables(const char* datatype, const char* qual)
 {
@@ -10473,17 +10479,6 @@ stencilgen(ASTNode* root)
   // Stencil generator
   FILE* stencilgen = fopen(STENCILGEN_HEADER, "w");
   assert(stencilgen);
-
-  fprintf(stencilgen,
-          "#pragma once\n\n"
-          // System includes
-          "#include <stdbool.h>\n"
-          "#include <stddef.h>\n\n"
-          // Project includes
-          "#include \"acreal.h\"\n"
-          "#include \"builtin_enums.h\"\n"
-          // Non self-contained includes
-          "#include \"user_defines.h\"\n\n");
 
   // Stencil ops
 
