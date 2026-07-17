@@ -79,8 +79,6 @@ const bool useColor = false;
 
 #define COLORIZE(symbol, color) (useColor ? color symbol RESET : symbol)
 
-#include "astaroth_cuda_wrappers.h"
-
 //TP: When we are checking for CUDA errors we should disregard those that happened before
 //TP: Cannot abort since we do not know what has caused the error: it can be arbitrary user code
 void
