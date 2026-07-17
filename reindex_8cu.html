@@ -96,11 +96,11 @@ $(document).ready(function(){initNavTree('reindex_8cu.html',''); initResizable()
   <div class="headertitle"><div class="title">reindex.cu File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
+<div class="textblock"><code>#include &lt;stddef.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="acreal_8h_source.html">acreal.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="device__headers_8h_source.html">device_headers.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="device__details_8h_source.html">device_details.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="ac__helpers_8h_source.html">ac_helpers.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="reindex_8h_source.html">reindex.h</a>&quot;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
@@ -113,7 +113,7 @@ Functions</h2></td></tr>
 <tr class="separator:aee5bda1f1d1830c5a6621ecbe4c30031"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a387dd37ed8fde55537b6d2cb5ab6777a" id="r_a387dd37ed8fde55537b6d2cb5ab6777a"><td class="memItemLeft" align="right" valign="top">__host__ __device__ constexpr size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reindex_8cu.html#a387dd37ed8fde55537b6d2cb5ab6777a">to_linear</a> (const <a class="el" href="host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7">AcIndex</a> &amp;index, const <a class="el" href="structAcShape.html">AcShape</a> &amp;shape)</td></tr>
 <tr class="separator:a387dd37ed8fde55537b6d2cb5ab6777a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac8646158a5a0567180a9104f56fe41a0" id="r_ac8646158a5a0567180a9104f56fe41a0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reindex_8cu.html#ac8646158a5a0567180a9104f56fe41a0">acReindex</a> (const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a>, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *, const <a class="el" href="host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7">AcIndex</a>, const <a class="el" href="structAcShape.html">AcShape</a>, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *, const <a class="el" href="host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7">AcIndex</a>, const <a class="el" href="structAcShape.html">AcShape</a>, const <a class="el" href="structAcShape.html">AcShape</a>)</td></tr>
+<tr class="memitem:ac8646158a5a0567180a9104f56fe41a0" id="r_ac8646158a5a0567180a9104f56fe41a0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reindex_8cu.html#ac8646158a5a0567180a9104f56fe41a0">acReindex</a> (const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a>, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *, const <a class="el" href="host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7">AcIndex</a>, const <a class="el" href="structAcShape.html">AcShape</a>, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *, const <a class="el" href="host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7">AcIndex</a>, const <a class="el" href="structAcShape.html">AcShape</a>, const <a class="el" href="structAcShape.html">AcShape</a>)</td></tr>
 <tr class="separator:ac8646158a5a0567180a9104f56fe41a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
@@ -173,7 +173,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>in</em>, </td>
         </tr>
         <tr>
@@ -191,7 +191,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>out</em>, </td>
         </tr>
         <tr>
@@ -350,12 +350,12 @@ Variables</h2></td></tr>
 <div class="line">      a.z &lt; <a class="code hl_variable" href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>.<a class="code hl_variable" href="structAcShape.html#abaa948d1c5c1c86ab28d4b6c9704b171">z</a> ? a.z : <a class="code hl_variable" href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>.<a class="code hl_variable" href="structAcShape.html#abaa948d1c5c1c86ab28d4b6c9704b171">z</a>,</div>
 <div class="line">      a.w &lt; <a class="code hl_variable" href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>.<a class="code hl_variable" href="structAcShape.html#aae97b05dac026f52fe2b595036651388">w</a> ? a.w : <a class="code hl_variable" href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>.<a class="code hl_variable" href="structAcShape.html#aae97b05dac026f52fe2b595036651388">w</a>,</div>
 <div class="line">  }</div>
-<div class="ttc" id="areindex_8cu_html_a805fa490e79f7a5aa6484f94206e39eb"><div class="ttname"><a href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a></div><div class="ttdeci">static __host__ __device__ constexpr AcIndex const AcIndex &amp; b</div><div class="ttdef"><b>Definition</b> reindex.cu:19</div></div>
-<div class="ttc" id="astructAcShape_html"><div class="ttname"><a href="structAcShape.html">AcShape</a></div><div class="ttdef"><b>Definition</b> host_datatypes.h:83</div></div>
-<div class="ttc" id="astructAcShape_html_a6fb924156f834d97c3f1ee7352921a88"><div class="ttname"><a href="structAcShape.html#a6fb924156f834d97c3f1ee7352921a88">AcShape::x</a></div><div class="ttdeci">size_t x</div><div class="ttdef"><b>Definition</b> host_datatypes.h:84</div></div>
-<div class="ttc" id="astructAcShape_html_aae97b05dac026f52fe2b595036651388"><div class="ttname"><a href="structAcShape.html#aae97b05dac026f52fe2b595036651388">AcShape::w</a></div><div class="ttdeci">size_t w</div><div class="ttdef"><b>Definition</b> host_datatypes.h:84</div></div>
-<div class="ttc" id="astructAcShape_html_abaa948d1c5c1c86ab28d4b6c9704b171"><div class="ttname"><a href="structAcShape.html#abaa948d1c5c1c86ab28d4b6c9704b171">AcShape::z</a></div><div class="ttdeci">size_t z</div><div class="ttdef"><b>Definition</b> host_datatypes.h:84</div></div>
-<div class="ttc" id="astructAcShape_html_ae56eeb59044cad0b26038ba78fc186b9"><div class="ttname"><a href="structAcShape.html#ae56eeb59044cad0b26038ba78fc186b9">AcShape::y</a></div><div class="ttdeci">size_t y</div><div class="ttdef"><b>Definition</b> host_datatypes.h:84</div></div>
+<div class="ttc" id="areindex_8cu_html_a805fa490e79f7a5aa6484f94206e39eb"><div class="ttname"><a href="reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb">b</a></div><div class="ttdeci">static __host__ __device__ constexpr AcIndex const AcIndex &amp; b</div><div class="ttdef"><b>Definition</b> reindex.cu:20</div></div>
+<div class="ttc" id="astructAcShape_html"><div class="ttname"><a href="structAcShape.html">AcShape</a></div><div class="ttdef"><b>Definition</b> host_datatypes.h:49</div></div>
+<div class="ttc" id="astructAcShape_html_a6fb924156f834d97c3f1ee7352921a88"><div class="ttname"><a href="structAcShape.html#a6fb924156f834d97c3f1ee7352921a88">AcShape::x</a></div><div class="ttdeci">size_t x</div><div class="ttdef"><b>Definition</b> host_datatypes.h:50</div></div>
+<div class="ttc" id="astructAcShape_html_aae97b05dac026f52fe2b595036651388"><div class="ttname"><a href="structAcShape.html#aae97b05dac026f52fe2b595036651388">AcShape::w</a></div><div class="ttdeci">size_t w</div><div class="ttdef"><b>Definition</b> host_datatypes.h:50</div></div>
+<div class="ttc" id="astructAcShape_html_abaa948d1c5c1c86ab28d4b6c9704b171"><div class="ttname"><a href="structAcShape.html#abaa948d1c5c1c86ab28d4b6c9704b171">AcShape::z</a></div><div class="ttdeci">size_t z</div><div class="ttdef"><b>Definition</b> host_datatypes.h:50</div></div>
+<div class="ttc" id="astructAcShape_html_ae56eeb59044cad0b26038ba78fc186b9"><div class="ttname"><a href="structAcShape.html#ae56eeb59044cad0b26038ba78fc186b9">AcShape::y</a></div><div class="ttdeci">size_t y</div><div class="ttdef"><b>Definition</b> host_datatypes.h:50</div></div>
 </div><!-- fragment -->
 </div>
 </div>

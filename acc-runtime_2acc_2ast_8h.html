@@ -101,13 +101,14 @@ $(document).ready(function(){initNavTree('acc-runtime_2acc_2ast_8h.html',''); in
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &lt;assert.h&gt;</code><br />
+<code>#include &lt;ctype.h&gt;</code><br />
+<code>#include &lt;stdbool.h&gt;</code><br />
 <code>#include &lt;stdio.h&gt;</code><br />
 <code>#include &lt;stdlib.h&gt;</code><br />
 <code>#include &lt;string.h&gt;</code><br />
-<code>#include &lt;stdbool.h&gt;</code><br />
-<code>#include &lt;ctype.h&gt;</code><br />
-<code>#include &quot;<a class="el" href="vecs_8h_source.html">vecs.h</a>&quot;</code><br />
 <code>#include &lt;sys/stat.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="hash_8h_source.html">hash.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="vecs_8h_source.html">vecs.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for ast.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
@@ -120,7 +121,7 @@ $(document).ready(function(){initNavTree('acc-runtime_2acc_2ast_8h.html',''); in
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-1-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" frameborder="0" src="acc-runtime_2acc_2ast_8h__dep__incl.svg" width="276" height="183"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><iframe scrolling="no" frameborder="0" src="acc-runtime_2acc_2ast_8h__dep__incl.svg" width="422" height="198"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
 </div>
 </div>
 <p><a href="acc-runtime_2acc_2ast_8h_source.html">Go to the source code of this file.</a></p>
@@ -425,8 +426,8 @@ Variables</h2></td></tr>
 <b>Initial value:</b><div class="fragment"><div class="line">{</div>
 <div class="line">    <span class="keywordflow">if</span>(node-&gt;lhs)</div>
 <div class="line">        change_qualifier(node-&gt;lhs,<a class="code hl_variable" href="acc-runtime_2acc_2ast_8h.html#aedfcc3248ad933627f319b985f23ae9f">old_qualifier</a>,<a class="code hl_variable" href="acc-runtime_2acc_2ast_8h.html#a08187fcca9bba11b127584ec4e70318a">new_qualifier</a>)</div>
-<div class="ttc" id="aacc-runtime_2acc_2ast_8h_html_a08187fcca9bba11b127584ec4e70318a"><div class="ttname"><a href="acc-runtime_2acc_2ast_8h.html#a08187fcca9bba11b127584ec4e70318a">new_qualifier</a></div><div class="ttdeci">static const char const char * new_qualifier</div><div class="ttdef"><b>Definition</b> ast.h:781</div></div>
-<div class="ttc" id="aacc-runtime_2acc_2ast_8h_html_aedfcc3248ad933627f319b985f23ae9f"><div class="ttname"><a href="acc-runtime_2acc_2ast_8h.html#aedfcc3248ad933627f319b985f23ae9f">old_qualifier</a></div><div class="ttdeci">static const char * old_qualifier</div><div class="ttdef"><b>Definition</b> ast.h:780</div></div>
+<div class="ttc" id="aacc-runtime_2acc_2ast_8h_html_a08187fcca9bba11b127584ec4e70318a"><div class="ttname"><a href="acc-runtime_2acc_2ast_8h.html#a08187fcca9bba11b127584ec4e70318a">new_qualifier</a></div><div class="ttdeci">static const char const char * new_qualifier</div><div class="ttdef"><b>Definition</b> ast.h:783</div></div>
+<div class="ttc" id="aacc-runtime_2acc_2ast_8h_html_aedfcc3248ad933627f319b985f23ae9f"><div class="ttname"><a href="acc-runtime_2acc_2ast_8h.html#aedfcc3248ad933627f319b985f23ae9f">old_qualifier</a></div><div class="ttdeci">static const char * old_qualifier</div><div class="ttdef"><b>Definition</b> ast.h:782</div></div>
 </div><!-- fragment -->
 </div>
 </div>

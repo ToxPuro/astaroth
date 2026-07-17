@@ -100,20 +100,22 @@ $(document).ready(function(){initNavTree('astaroth__random_8h_source.html',''); 
 <div class="contents">
 <a href="astaroth__random_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#pragma once</span></div>
 <div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span> </div>
-<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#include &quot;<a class="code" href="datatypes_8h.html">datatypes.h</a>&quot;</span></div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &lt;random&gt;</span></div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &lt;stdint.h&gt;</span></div>
+<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#include &lt;stdint.h&gt;</span></div>
+<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span> </div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &lt;random&gt;</span></div>
 <div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span> </div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="keywordtype">void</span> <a class="code hl_function" href="astaroth__random_8h.html#a1e0ab75164f06285d26c0fb33e772c97">seed_rng</a>(uint32_t seed);</div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#include &quot;<a class="code" href="acreal_8h.html">acreal.h</a>&quot;</span></div>
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span> </div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span>std::mt19937&amp; <a class="code hl_function" href="astaroth__random_8h.html#ae96433a5a2da84eff2e2402ad609b92b">get_rng</a>();</div>
+<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="keywordtype">void</span> <a class="code hl_function" href="astaroth__random_8h.html#a1e0ab75164f06285d26c0fb33e772c97">seed_rng</a>(uint32_t seed);</div>
 <div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span> </div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><a class="code hl_typedef" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> <a class="code hl_function" href="astaroth__random_8h.html#af30f1a1f5650e947668383553744643a">random_uniform_real_01</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span>std::mt19937&amp; <a class="code hl_function" href="astaroth__random_8h.html#ae96433a5a2da84eff2e2402ad609b92b">get_rng</a>();</div>
+<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span> </div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><a class="code hl_typedef" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="code hl_function" href="astaroth__random_8h.html#af30f1a1f5650e947668383553744643a">random_uniform_real_01</a>(<span class="keywordtype">void</span>);</div>
+<div class="ttc" id="aacreal_8h_html"><div class="ttname"><a href="acreal_8h.html">acreal.h</a></div></div>
+<div class="ttc" id="aacreal_8h_html_a682ddafb17af19aa8f6e413da6625de0"><div class="ttname"><a href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a></div><div class="ttdeci">float AcReal</div><div class="ttdef"><b>Definition</b> acreal.h:11</div></div>
 <div class="ttc" id="aastaroth__random_8h_html_a1e0ab75164f06285d26c0fb33e772c97"><div class="ttname"><a href="astaroth__random_8h.html#a1e0ab75164f06285d26c0fb33e772c97">seed_rng</a></div><div class="ttdeci">void seed_rng(uint32_t seed)</div><div class="ttdef"><b>Definition</b> astaroth_random.cc:6</div></div>
 <div class="ttc" id="aastaroth__random_8h_html_ae96433a5a2da84eff2e2402ad609b92b"><div class="ttname"><a href="astaroth__random_8h.html#ae96433a5a2da84eff2e2402ad609b92b">get_rng</a></div><div class="ttdeci">std::mt19937 &amp; get_rng()</div><div class="ttdef"><b>Definition</b> astaroth_random.cc:12</div></div>
 <div class="ttc" id="aastaroth__random_8h_html_af30f1a1f5650e947668383553744643a"><div class="ttname"><a href="astaroth__random_8h.html#af30f1a1f5650e947668383553744643a">random_uniform_real_01</a></div><div class="ttdeci">AcReal random_uniform_real_01(void)</div><div class="ttdef"><b>Definition</b> astaroth_random.cc:19</div></div>
-<div class="ttc" id="adatatypes_8h_html"><div class="ttname"><a href="datatypes_8h.html">datatypes.h</a></div></div>
-<div class="ttc" id="astencilgen_8c_html_a46fb0bc56f0b52637b2f4b6cfa04fac3"><div class="ttname"><a href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a></div><div class="ttdeci">double AcReal</div><div class="ttdef"><b>Definition</b> stencilgen.c:53</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

@@ -101,28 +101,30 @@ $(document).ready(function(){initNavTree('stencilgen_8c.html',''); initResizable
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &lt;stdbool.h&gt;</code><br />
+<code>#include &lt;stdint.h&gt;</code><br />
 <code>#include &lt;stdio.h&gt;</code><br />
 <code>#include &lt;stdlib.h&gt;</code><br />
 <code>#include &lt;string.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="acreal_8h_source.html">acreal.h</a>&quot;</code><br />
 <code>#include &quot;builtin_enums.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="implementation_8h_source.html">implementation.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="vecs_8h_source.html">vecs.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="warp__reduce_8h_source.html">warp_reduce.h</a>&quot;</code><br />
+<code>#include &quot;profiles_info.h&quot;</code><br />
 <code>#include &quot;user_typedefs.h&quot;</code><br />
 <code>#include &quot;user_defines.h&quot;</code><br />
-<code>#include &quot;stencil_accesses.h&quot;</code><br />
-<code>#include &quot;stencilgen_calling_info.h&quot;</code><br />
 <code>#include &quot;stencilgen.h&quot;</code><br />
-<code>#include &quot;<a class="el" href="implementation_8h_source.html">implementation.h</a>&quot;</code><br />
-<code>#include &quot;profiles_info.h&quot;</code><br />
-<code>#include &quot;kernel_reduce_info.h&quot;</code><br />
-<code>#include &quot;<a class="el" href="mem__access__helper__funcs_8h_source.html">mem_access_helper_funcs.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="warp__reduce_8h_source.html">warp_reduce.h</a>&quot;</code><br />
+<code>#include &quot;stencil_accesses.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="3d__caching__implementations_8h_source.html">3d_caching_implementations.h</a>&quot;</code><br />
-<code>#include &lt;stdint.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="mem__access__helper__funcs_8h_source.html">mem_access_helper_funcs.h</a>&quot;</code><br />
+<code>#include &quot;kernel_reduce_info.h&quot;</code><br />
+<code>#include &quot;stencilgen_calling_info.h&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for stencilgen.c:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="stencilgen_8c__incl.svg" width="100%" height="393"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="stencilgen_8c__incl.svg" width="100%" height="558"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
@@ -145,19 +147,9 @@ Macros</h2></td></tr>
 Typedefs</h2></td></tr>
 <tr class="memitem:a21d942232c0a6fe2b0e51f8f74d0f397" id="r_a21d942232c0a6fe2b0e51f8f74d0f397"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structint3.html">int3</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a21d942232c0a6fe2b0e51f8f74d0f397">int3</a></td></tr>
 <tr class="separator:a21d942232c0a6fe2b0e51f8f74d0f397"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a46fb0bc56f0b52637b2f4b6cfa04fac3" id="r_a46fb0bc56f0b52637b2f4b6cfa04fac3"><td class="memItemLeft" align="right" valign="top">typedef double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a></td></tr>
-<tr class="separator:a46fb0bc56f0b52637b2f4b6cfa04fac3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af529ff78d887853c155bbd9e85ca6daa" id="r_af529ff78d887853c155bbd9e85ca6daa"><td class="memItemLeft" align="right" valign="top">typedef enum <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#af529ff78d887853c155bbd9e85ca6daa">ReduceOp</a></td></tr>
-<tr class="separator:af529ff78d887853c155bbd9e85ca6daa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
-<tr class="memitem:a1c3bc08749070d6f6b4702e44752d11f" id="r_a1c3bc08749070d6f6b4702e44752d11f"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> { <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38">NO_REDUCE</a>
-, <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a">REDUCE_MIN</a>
-, <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088">REDUCE_MAX</a>
-, <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0">REDUCE_SUM</a>
- }</td></tr>
-<tr class="separator:a1c3bc08749070d6f6b4702e44752d11f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab40314f722f618913ce8af1992cbfa88" id="r_ab40314f722f618913ce8af1992cbfa88"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88">AcProfileType</a> { <br />
 &#160;&#160;<a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a18412c03ee36f7cbcecc963fc75e363b">PROFILE_NONE</a> = 0
 , <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d">PROFILE_X</a> = (1 &lt;&lt; 0) | ONE_DIMENSIONAL_PROFILE
@@ -177,7 +169,7 @@ Enumerations</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a364465f1b79d56ffeae94ff640214440" id="r_a364465f1b79d56ffeae94ff640214440"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a364465f1b79d56ffeae94ff640214440">print_warp_reduce_func</a> (const char *datatype, const char *define_name, const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</td></tr>
+<tr class="memitem:a364465f1b79d56ffeae94ff640214440" id="r_a364465f1b79d56ffeae94ff640214440"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a364465f1b79d56ffeae94ff640214440">print_warp_reduce_func</a> (const char *datatype, const char *define_name, const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</td></tr>
 <tr class="separator:a364465f1b79d56ffeae94ff640214440"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac0936afc55e496b4835d9a141bb31ac0" id="r_ac0936afc55e496b4835d9a141bb31ac0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#ac0936afc55e496b4835d9a141bb31ac0">raise_error</a> (const char *str)</td></tr>
 <tr class="separator:ac0936afc55e496b4835d9a141bb31ac0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -193,7 +185,7 @@ Functions</h2></td></tr>
 <tr class="separator:a0711261159f3e2ec0da20ea05e4f8054"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6e3913980459a4395199ec24d54337d7" id="r_a6e3913980459a4395199ec24d54337d7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a6e3913980459a4395199ec24d54337d7">get_num_reduced_profiles</a> (const <a class="el" href="stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88">AcProfileType</a> prof_type, const int <a class="el" href="bwtest-benchmark_8cu.html#a4d3b1889098503be634fe5d0f5470134">kernel</a>)</td></tr>
 <tr class="separator:a6e3913980459a4395199ec24d54337d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a32d230b21b9bf027e94ad57c314bff43" id="r_a32d230b21b9bf027e94ad57c314bff43"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a32d230b21b9bf027e94ad57c314bff43">get_num_reduced_vars</a> (const int N, const int *arr, const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</td></tr>
+<tr class="memitem:a32d230b21b9bf027e94ad57c314bff43" id="r_a32d230b21b9bf027e94ad57c314bff43"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a32d230b21b9bf027e94ad57c314bff43">get_num_reduced_vars</a> (const int N, const int *arr, const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</td></tr>
 <tr class="separator:a32d230b21b9bf027e94ad57c314bff43"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aced828ca0e1ee0f9df9c4b957a340a8a" id="r_aced828ca0e1ee0f9df9c4b957a340a8a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#aced828ca0e1ee0f9df9c4b957a340a8a">is_raytracing_kernel</a> (const int curr_kernel)</td></tr>
 <tr class="separator:aced828ca0e1ee0f9df9c4b957a340a8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -265,11 +257,11 @@ Functions</h2></td></tr>
 <tr class="separator:ad50967b44f8a0c2ba098f4e5ccbb7548"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a68215e27fed8e96d1659b2cba947f84d" id="r_a68215e27fed8e96d1659b2cba947f84d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a68215e27fed8e96d1659b2cba947f84d">print_butterfly_warp_reduce</a> (FILE *stream, const int warp_size, const char *op_instruction)</td></tr>
 <tr class="separator:a68215e27fed8e96d1659b2cba947f84d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a81dc8e2008ff1d326a174119d1b847e9" id="r_a81dc8e2008ff1d326a174119d1b847e9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a81dc8e2008ff1d326a174119d1b847e9">print_reduce_ops</a> (const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op, const char *define_name)</td></tr>
+<tr class="memitem:a81dc8e2008ff1d326a174119d1b847e9" id="r_a81dc8e2008ff1d326a174119d1b847e9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a81dc8e2008ff1d326a174119d1b847e9">print_reduce_ops</a> (const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op, const char *define_name)</td></tr>
 <tr class="separator:a81dc8e2008ff1d326a174119d1b847e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1bd186c4052568abd8736bb8fbbfa20f" id="r_a1bd186c4052568abd8736bb8fbbfa20f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a1bd186c4052568abd8736bb8fbbfa20f">print_output_reduce_res</a> (const char *define_name, const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op, const int curr_kernel)</td></tr>
+<tr class="memitem:a1bd186c4052568abd8736bb8fbbfa20f" id="r_a1bd186c4052568abd8736bb8fbbfa20f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a1bd186c4052568abd8736bb8fbbfa20f">print_output_reduce_res</a> (const char *define_name, const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op, const int curr_kernel)</td></tr>
 <tr class="separator:a1bd186c4052568abd8736bb8fbbfa20f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1edd80c97821349c52ebb61a721e2b70" id="r_a1edd80c97821349c52ebb61a721e2b70"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a1edd80c97821349c52ebb61a721e2b70">print_reduce_func</a> (const char *datatype, const char *define_name, const char *enum_name, const int curr_kernel, const char **names, const int *is_reduced, const size_t n_elems, const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</td></tr>
+<tr class="memitem:a1edd80c97821349c52ebb61a721e2b70" id="r_a1edd80c97821349c52ebb61a721e2b70"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a1edd80c97821349c52ebb61a721e2b70">print_reduce_func</a> (const char *datatype, const char *define_name, const char *enum_name, const int curr_kernel, const char **names, const int *is_reduced, const size_t n_elems, const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</td></tr>
 <tr class="separator:a1edd80c97821349c52ebb61a721e2b70"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9bd730294881ee5a106587a4f4fa8e8f" id="r_a9bd730294881ee5a106587a4f4fa8e8f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a9bd730294881ee5a106587a4f4fa8e8f">printf_reduce_funcs</a> (const char *datatype, const char *define_name, const char *enum_name, const int curr_kernel, const char **names, const int *is_reduced, const size_t n_elems)</td></tr>
 <tr class="separator:a9bd730294881ee5a106587a4f4fa8e8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -327,20 +319,6 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Typedef Documentation</h2>
-<a id="a46fb0bc56f0b52637b2f4b6cfa04fac3" name="a46fb0bc56f0b52637b2f4b6cfa04fac3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a46fb0bc56f0b52637b2f4b6cfa04fac3">&#9670;&#160;</a></span>AcReal</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">typedef double <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a21d942232c0a6fe2b0e51f8f74d0f397" name="a21d942232c0a6fe2b0e51f8f74d0f397"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a21d942232c0a6fe2b0e51f8f74d0f397">&#9670;&#160;</a></span>int3</h2>
 
@@ -389,20 +367,6 @@ CS view:
 </pre> 
 </div>
 </div>
-<a id="af529ff78d887853c155bbd9e85ca6daa" name="af529ff78d887853c155bbd9e85ca6daa"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af529ff78d887853c155bbd9e85ca6daa">&#9670;&#160;</a></span>ReduceOp</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">typedef enum <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <h2 class="groupheader">Enumeration Type Documentation</h2>
 <a id="ab40314f722f618913ce8af1992cbfa88" name="ab40314f722f618913ce8af1992cbfa88"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab40314f722f618913ce8af1992cbfa88">&#9670;&#160;</a></span>AcProfileType</h2>
@@ -426,26 +390,6 @@ CS view:
 <tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88aabd40d231a3fb6818d77db0a54d53d9f" name="ab40314f722f618913ce8af1992cbfa88aabd40d231a3fb6818d77db0a54d53d9f"></a>PROFILE_YZ&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88ac4978dfeda8fcc48a84988716f21fbef" name="ab40314f722f618913ce8af1992cbfa88ac4978dfeda8fcc48a84988716f21fbef"></a>PROFILE_ZX&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ab40314f722f618913ce8af1992cbfa88a0b92292bdfe9e60ab755e077bc589391" name="ab40314f722f618913ce8af1992cbfa88a0b92292bdfe9e60ab755e077bc589391"></a>PROFILE_ZY&#160;</td><td class="fielddoc"></td></tr>
-</table>
-
-</div>
-</div>
-<a id="a1c3bc08749070d6f6b4702e44752d11f" name="a1c3bc08749070d6f6b4702e44752d11f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1c3bc08749070d6f6b4702e44752d11f">&#9670;&#160;</a></span>ReduceOp</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">enum <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38" name="a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38"></a>NO_REDUCE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a" name="a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a"></a>REDUCE_MIN&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088" name="a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088"></a>REDUCE_MAX&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0" name="a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0"></a>REDUCE_SUM&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
@@ -1078,7 +1022,7 @@ CS view:
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
           <td class="paramname"><em>op</em>&#160;</td>
         </tr>
         <tr>
@@ -1444,7 +1388,7 @@ CS view:
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
           <td class="paramname"><em>op</em>, </td>
         </tr>
         <tr>
@@ -1514,7 +1458,7 @@ CS view:
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
           <td class="paramname"><em>op</em>&#160;</td>
         </tr>
         <tr>
@@ -1536,7 +1480,7 @@ CS view:
         <tr>
           <td class="memname">void print_reduce_ops </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
           <td class="paramname"><em>op</em>, </td>
         </tr>
         <tr>
@@ -1576,7 +1520,7 @@ CS view:
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
+          <td class="paramtype">const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>&#160;</td>
           <td class="paramname"><em>op</em>&#160;</td>
         </tr>
         <tr>
