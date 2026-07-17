@@ -155,7 +155,24 @@ main(int argc, char* argv[])
     acPushToConfig(info,AC_len_w,info[AC_integration_end_w]-info[AC_integration_start_w]);
     acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
     acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_LINEAR);
-    const int3 decomp = (int3){nprocs,1,1};
+    int3 decomp = {1,1,1};
+    if(info[AC_integration_points_x] > 1)
+    {
+	decomp.x = nprocs;
+    }
+    else if(info[AC_integration_points_y] > 1)
+    {
+	decomp.y = nprocs;
+    }
+    else if(info[AC_integration_points_z] > 1)
+    {
+	decomp.z = nprocs;
+    }
+    else
+    {
+	    fprintf(stderr,"Only points in w is not allowed!\n");
+	    exit(EXIT_FAILURE);
+    }
     acPushToConfig(info,AC_domain_decomposition,decomp);
     const int3 pid3d = acGetPid3D(pid,decomp,info);
     acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_EXTERNAL);
