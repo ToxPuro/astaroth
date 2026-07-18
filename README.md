@@ -220,4 +220,5 @@ How do I contribute?
 
 Reporting issues and seeking help
 
-> This section is to be expanded, but for reporting issues and for seeking help you can always contact one of the main developers: touko.puro@aalto.fi.
+> This section is to be expanded, but for reporting issues and for seeking help you can always contact one of the main developers: touko.puro@aalto.fi. For issues and bug reports, please describe them in enough detail for them to be reproducible, and best if you have clear description on how to invoke the problem. For seeking help on syntax, APIs, etc. please first check does the documentation already answer your problem.
+
