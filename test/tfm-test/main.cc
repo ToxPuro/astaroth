@@ -30,15 +30,8 @@
 #include <vector>
 
 
-static bool finalized = false;
 
 #include <stdlib.h>
-void
-acAbort(void)
-{
-    if (!finalized)
-        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
-}
 double
 drand()
 {
@@ -49,8 +42,6 @@ drand()
 int
 main(void)
 {
-    atexit(acAbort);
-
     int nprocs, pid;
     MPI_Init(NULL,NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -96,12 +87,13 @@ main(void)
     const auto graph = acGetOptimizedDSLTaskGraph(AC_tfm_update);
     acGridExecuteTaskGraph(graph,1);
     const int retval = AC_SUCCESS;
-
-
+    acGridSynchronizeStream(STREAM_ALL);
     if (pid == 0)
         fprintf(stderr, "TFM_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
+    acGridQuit();
+    MPI_Finalize();
     return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
