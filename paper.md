@@ -86,7 +86,7 @@ The primary benefit of a DSL is that assumptions about the structure of computat
 Performance-portability is typically augmented with automated tuning and algorithm selection (e.g., `PATUS` [@christen_patuscode_2011], `PARTANS` [@lutz_partansautotuning_2013]).
 These approaches are also adopted in `Astaroth`, which introduces a DSL, a code generator, and implements automated tile-size optimization.
 A distinctive feature of Astaroth is its algorithmic specialization for cache-constrained use cases in multiphysics, where the working set required to update interdependent physical fields is too large to fit into on-chip caches.
-This is addressed by first calculating the stencils, where there is the most reuse of the cache between threads, and then storing them on-chip, which the rest of the computation uses [@pekkila2025stencil].
+This is addressed by reordering the computations into stages of higher and lower cache reuse, thereby enabling better utilization of on-chip caches [@pekkila2025stencil].
 `Astaroth` not only consider stencils in isolation, but also their combinations with other operations inside the same kernel, such as the automatic fusion of distributed reductions with other computations.
 
 Methods to improve the performance-portability-productivity dimensions in multiprocess applications include topology-aware workload distribution and abstractions for distributed operations.
