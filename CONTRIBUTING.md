@@ -113,6 +113,10 @@ A flowchart is available at [doc/commitflowchart.png](https://bitbucket.org/jpek
 
 * If you think that you have messed up and lost work, run `git reflog` which lists the latests commits. All work that has been committed should be accessible with the hashes listed by this command with `git checkout <reflog hash>`.
 
+## Pull requests
+
+Due to Bitbucket not anymore allowing people creating pull requests outside of the workspace of the repository, please create your pull requests on the Github mirror of the repo.
+Please describe your additions/edits clearly and the rationale for why the additions/edits were needed. For new functionality there should ideally be a corresponding auto-test one can run, and it would be ideally incorporated to the auto-test suite of Astaroth.
 
 
 
