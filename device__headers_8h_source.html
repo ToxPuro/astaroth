@@ -190,37 +190,38 @@ $(document).ready(function(){initNavTree('device__headers_8h_source.html',''); i
 <div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span><span class="preprocessor">#else </span></div>
 <div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span> </div>
 <div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span><span class="preprocessor">#if AC_USE_HIP</span></div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span><span class="preprocessor">#include &quot;<a class="code" href="hip_8h.html">hip.h</a>&quot;</span></div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span><span class="preprocessor">#include &lt;hip/hip_runtime_api.h&gt;</span>     <span class="comment">// Streams</span></div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span><span class="preprocessor">#include &lt;hip/hip_fp16.h&gt;</span> <span class="comment">// Half-precision floats</span></div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span><span class="preprocessor">#if PROFILING_ENABLED</span></div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span><span class="preprocessor">#include &lt;roctracer/roctracer_ext.h&gt;</span> <span class="comment">// Profiling</span></div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#if PROFILING_ENABLED</span></div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="preprocessor">#include &lt;cuda_profiler_api.h&gt;</span> <span class="comment">// Profiling</span></div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span><span class="preprocessor">#include &lt;cuda_runtime_api.h&gt;</span>  <span class="comment">// Streams</span></div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="preprocessor">#include &lt;cuda_fp16.h&gt;</span>  <span class="comment">// Half-precision floats</span></div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span> </div>
-<div class="foldopen" id="foldopen00107" data-start="" data-end="">
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno"><a class="line" href="device__headers_8h.html#adcfc7bd4b965bb8ce0e93af6297f316f">  107</a></span><span class="preprocessor">#define KERNEL_LAUNCH(func,bgp,tpb,...) \</span></div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span><span class="preprocessor">    func&lt;&lt;&lt;bpg,tpb,__VA_ARGS__&gt;&gt;&gt;</span></div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span><span class="preprocessor">#include &lt;hip/hip_fp16.h&gt;</span>         <span class="comment">// Half-precision floats</span></div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span><span class="preprocessor">#include &lt;hip/hip_runtime_api.h&gt;</span>  <span class="comment">// Streams</span></div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span> </div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span><span class="preprocessor">#include &quot;<a class="code" href="hip_8h.html">hip.h</a>&quot;</span></div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span><span class="preprocessor">#if PROFILING_ENABLED</span></div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="preprocessor">#include &lt;roctracer/roctracer_ext.h&gt;</span> <span class="comment">// Profiling</span></div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="preprocessor">#if PROFILING_ENABLED</span></div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="preprocessor">#include &lt;cuda_profiler_api.h&gt;</span> <span class="comment">// Profiling</span></div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span><span class="preprocessor">#include &lt;cuda_runtime_api.h&gt;</span>  <span class="comment">// Streams</span></div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="preprocessor">#include &lt;cuda_fp16.h&gt;</span>         <span class="comment">// Half-precision floats</span></div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span> </div>
+<div class="foldopen" id="foldopen00108" data-start="" data-end="">
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno"><a class="line" href="device__headers_8h.html#adcfc7bd4b965bb8ce0e93af6297f316f">  108</a></span><span class="preprocessor">#define KERNEL_LAUNCH(func,bgp,tpb,...) \</span></div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span><span class="preprocessor">    func&lt;&lt;&lt;bpg,tpb,__VA_ARGS__&gt;&gt;&gt;</span></div>
 </div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span> </div>
-<div class="foldopen" id="foldopen00110" data-start="" data-end="">
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno"><a class="line" href="device__headers_8h.html#a73ce5083e58f870ec967cccdfecf1944">  110</a></span><span class="preprocessor">#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \</span></div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span><span class="preprocessor">    func&lt;&lt;&lt;bpg,tpb,__VA_ARGS__&gt;&gt;&gt;</span></div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span> </div>
+<div class="foldopen" id="foldopen00111" data-start="" data-end="">
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno"><a class="line" href="device__headers_8h.html#a73ce5083e58f870ec967cccdfecf1944">  111</a></span><span class="preprocessor">#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \</span></div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span><span class="preprocessor">    func&lt;&lt;&lt;bpg,tpb,__VA_ARGS__&gt;&gt;&gt;</span></div>
 </div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span> </div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span> </div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span><span class="preprocessor">#if AC_CPU_BUILD</span></div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span><span class="preprocessor">#define AC_READ_ONLY_LOAD(expr) expr</span></div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span><span class="preprocessor">#else</span></div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno"><a class="line" href="device__headers_8h.html#a4bb8cfd1342e90908812f78adb9d6571">  118</a></span><span class="preprocessor">#define AC_READ_ONLY_LOAD(expr) __ldg(&amp;expr)</span></div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span> </div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span> </div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span><span class="preprocessor">#if AC_CPU_BUILD</span></div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span><span class="preprocessor">#define AC_READ_ONLY_LOAD(expr) expr</span></div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span><span class="preprocessor">#else</span></div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno"><a class="line" href="device__headers_8h.html#a4bb8cfd1342e90908812f78adb9d6571">  119</a></span><span class="preprocessor">#define AC_READ_ONLY_LOAD(expr) __ldg(&amp;expr)</span></div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span><span class="preprocessor">#endif</span></div>
 <div class="ttc" id="ahip_8h_html"><div class="ttname"><a href="hip_8h.html">hip.h</a></div></div>
 <div class="ttc" id="ahip_8h_html_a32b4c230cc7c3a66496a02734d96ed4f"><div class="ttname"><a href="hip_8h.html#a32b4c230cc7c3a66496a02734d96ed4f">cudaEvent_t</a></div><div class="ttdeci">#define cudaEvent_t</div><div class="ttdef"><b>Definition</b> hip.h:42</div></div>
 <div class="ttc" id="ahip_8h_html_a96105a2e43b036236409e7d00e20ff57"><div class="ttname"><a href="hip_8h.html#a96105a2e43b036236409e7d00e20ff57">cudaDeviceProp</a></div><div class="ttdeci">#define cudaDeviceProp</div><div class="ttdef"><b>Definition</b> hip.h:78</div></div>

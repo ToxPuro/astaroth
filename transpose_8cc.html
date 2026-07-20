@@ -95,30 +95,29 @@ $(document).ready(function(){initNavTree('transpose_8cc.html',''); initResizable
   <div class="headertitle"><div class="title">transpose.cc File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="device__headers_8h_source.html">device_headers.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="device__details_8h_source.html">device_details.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="ac__helpers_8h_source.html">ac_helpers.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="transpose_8h_source.html">transpose.h</a>&quot;</code><br />
+<div class="textblock"><code>#include &quot;<a class="el" href="transpose_8h_source.html">transpose.h</a>&quot;</code><br />
+<code>#include &lt;stddef.h&gt;</code><br />
 <code>#include &quot;<a class="el" href="astaroth__cuda__wrappers_8h_source.html">astaroth_cuda_wrappers.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="device__headers_8h_source.html">device_headers.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="math__utils__base_8h_source.html">math_utils_base.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for transpose.cc:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="transpose_8cc__incl.svg" width="100%" height="492"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="transpose_8cc__incl.svg" width="100%" height="547"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a9380ad5cacb3998af993648feb58d89f" id="r_a9380ad5cacb3998af993648feb58d89f"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:a9380ad5cacb3998af993648feb58d89f"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#a9380ad5cacb3998af993648feb58d89f">transpose_base</a> (const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *src, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const T TRANSPOSED_IDX)</td></tr>
+<tr class="memitem:a9380ad5cacb3998af993648feb58d89f"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#a9380ad5cacb3998af993648feb58d89f">transpose_base</a> (const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const T TRANSPOSED_IDX)</td></tr>
 <tr class="separator:a9380ad5cacb3998af993648feb58d89f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab6b1bba12edd57fde5ac6a74bb869ea6" id="r_ab6b1bba12edd57fde5ac6a74bb869ea6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#ab6b1bba12edd57fde5ac6a74bb869ea6">acTransposeWithBounds</a> (const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *src, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream)</td></tr>
+<tr class="memitem:ab6b1bba12edd57fde5ac6a74bb869ea6" id="r_ab6b1bba12edd57fde5ac6a74bb869ea6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#ab6b1bba12edd57fde5ac6a74bb869ea6">acTransposeWithBounds</a> (const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream)</td></tr>
 <tr class="separator:ab6b1bba12edd57fde5ac6a74bb869ea6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8abcc668bbabaa8ff8c971a9605de043" id="r_a8abcc668bbabaa8ff8c971a9605de043"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#a8abcc668bbabaa8ff8c971a9605de043">acTranspose</a> (const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *src, <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream)</td></tr>
+<tr class="memitem:a8abcc668bbabaa8ff8c971a9605de043" id="r_a8abcc668bbabaa8ff8c971a9605de043"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#a8abcc668bbabaa8ff8c971a9605de043">acTranspose</a> (const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream)</td></tr>
 <tr class="separator:a8abcc668bbabaa8ff8c971a9605de043"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
@@ -137,13 +136,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>src</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>dst</em>, </td>
         </tr>
         <tr>
@@ -183,13 +182,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>src</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>dst</em>, </td>
         </tr>
         <tr>
@@ -237,13 +236,13 @@ template&lt;typename T &gt; </div>
         <tr>
           <td class="memname">void transpose_base </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
+          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>src</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>dst</em>, </td>
         </tr>
         <tr>

@@ -5,9 +5,7 @@ var stencilgen_8c =
     [ "uint3_64", "structuint3__64.html", "structuint3__64" ],
     [ "ONE_DIMENSIONAL_PROFILE", "stencilgen_8c.html#ab05911eb069642c037eddbcbbfedb9da", null ],
     [ "TWO_DIMENSIONAL_PROFILE", "stencilgen_8c.html#ac727fc264af97cb7ad3e5cd5cb23219a", null ],
-    [ "AcReal", "stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3", null ],
     [ "int3", "stencilgen_8c.html#a21d942232c0a6fe2b0e51f8f74d0f397", null ],
-    [ "ReduceOp", "stencilgen_8c.html#af529ff78d887853c155bbd9e85ca6daa", null ],
     [ "AcProfileType", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88", [
       [ "PROFILE_NONE", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a18412c03ee36f7cbcecc963fc75e363b", null ],
       [ "PROFILE_X", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d", null ],
@@ -19,12 +17,6 @@ var stencilgen_8c =
       [ "PROFILE_YZ", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aabd40d231a3fb6818d77db0a54d53d9f", null ],
       [ "PROFILE_ZX", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88ac4978dfeda8fcc48a84988716f21fbef", null ],
       [ "PROFILE_ZY", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a0b92292bdfe9e60ab755e077bc589391", null ]
-    ] ],
-    [ "ReduceOp", "stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11f", [
-      [ "NO_REDUCE", "stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38", null ],
-      [ "REDUCE_MIN", "stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a", null ],
-      [ "REDUCE_MAX", "stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088", null ],
-      [ "REDUCE_SUM", "stencilgen_8c.html#a1c3bc08749070d6f6b4702e44752d11fa5e32ce8a9bed04ef62416aad49c6adf0", null ]
     ] ],
     [ "accesses_backwards_ray", "stencilgen_8c.html#abb2683da9f0cd0372efcd4ea0243f3e1", null ],
     [ "accesses_forward_ray", "stencilgen_8c.html#afc11a4bb92b56dd0c28705b1303ed20d", null ],

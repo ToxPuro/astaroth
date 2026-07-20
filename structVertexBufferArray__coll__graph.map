@@ -1,23 +1,21 @@
 <map id="VertexBufferArray" name="VertexBufferArray">
-<area shape="rect" id="Node000001" title=" " alt="" coords="339,387,478,412"/>
-<area shape="rect" id="Node000002" href="$structAcMeshDims.html" title=" " alt="" coords="27,269,134,295"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,304,126,334,162,360,193,370,238,379,340,390,339,396,238,384,192,376,159,365,122,338,95,308"/>
-<area shape="rect" id="Node000003" href="$structVolume.html" title=" " alt="" coords="5,93,76,119"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="43,132,47,185,60,244,74,268,69,270,56,246,42,186,38,133"/>
-<area shape="rect" id="Node000004" href="$structDeviceVertexBufferArray.html" title=" " alt="" coords="179,269,361,295"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="291,303,319,332,352,361,388,384,385,389,348,365,315,335,287,307"/>
-<area shape="rect" id="Node000005" href="$structAcComplex.html" title=" " alt="" coords="101,93,197,119"/>
-<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="153,132,163,187,175,217,192,244,208,257,228,267,225,272,205,262,188,247,170,220,158,189,147,133"/>
-<area shape="rect" id="Node000006" href="$structProfileBufferArray.html" title=" " alt="" coords="221,93,359,119"/>
-<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="290,133,274,269,269,269,284,132"/>
-<area shape="rect" id="Node000007" href="$structint3.html" title=" " alt="" coords="383,93,429,119"/>
-<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="403,133,384,189,368,220,347,247,328,261,308,272,306,267,326,257,343,243,363,217,379,187,398,131"/>
-<area shape="rect" id="Node000008" href="$structAcScratchpadStates.html" title=" " alt="" coords="385,269,536,295"/>
-<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="452,308,416,388,411,386,447,306"/>
-<area shape="rect" id="Node000009" href="$structAcReduceBuffer.html" title=" " alt="" coords="561,269,686,295"/>
-<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="616,309,600,338,574,365,552,378,528,387,479,398,478,392,526,382,550,373,571,361,595,335,612,306"/>
-<area shape="rect" id="Node000010" href="$structAcBuffer.html" title=" " alt="" coords="585,93,662,119"/>
-<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="626,132,626,269,621,269,621,132"/>
-<area shape="rect" id="Node000011" href="$structAcShape.html" title=" " alt="" coords="584,5,663,31"/>
-<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="626,45,626,93,621,93,621,45"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="297,387,436,412"/>
+<area shape="rect" id="Node000002" href="$structAcMeshDims.html" title=" " alt="" coords="5,269,112,295"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,305,92,335,120,360,151,372,196,380,298,391,297,397,195,386,149,377,117,365,88,339,68,308"/>
+<area shape="rect" id="Node000003" href="$structVolume.html" title=" " alt="" coords="23,93,94,119"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="61,132,61,269,56,269,56,132"/>
+<area shape="rect" id="Node000004" href="$structDeviceVertexBufferArray.html" title=" " alt="" coords="137,269,319,295"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="249,303,277,332,310,361,346,384,343,389,306,365,273,335,245,307"/>
+<area shape="rect" id="Node000005" href="$structProfileBufferArray.html" title=" " alt="" coords="139,93,277,119"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="214,132,229,269,224,269,208,133"/>
+<area shape="rect" id="Node000006" href="$structint3.html" title=" " alt="" coords="301,93,347,119"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="324,133,313,188,301,219,285,247,271,261,255,272,252,267,267,257,281,244,297,216,308,186,319,132"/>
+<area shape="rect" id="Node000007" href="$structAcScratchpadStates.html" title=" " alt="" coords="343,269,494,295"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="410,308,374,388,369,386,405,306"/>
+<area shape="rect" id="Node000008" href="$structAcReduceBuffer.html" title=" " alt="" coords="519,269,644,295"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="574,309,558,338,532,365,510,378,486,387,437,398,436,392,484,382,508,373,529,361,553,335,570,306"/>
+<area shape="rect" id="Node000009" href="$structAcBuffer.html" title=" " alt="" coords="543,93,620,119"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="584,132,584,269,579,269,579,132"/>
+<area shape="rect" id="Node000010" href="$structAcShape.html" title=" " alt="" coords="542,5,621,31"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="584,45,584,93,579,93,579,45"/>
 </map>

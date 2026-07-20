@@ -496,7 +496,6 @@ var codegen_8c =
     [ "SINGLE_PRECISION_STR", "codegen_8c.html#a94d9a1f1df1c44103f21edcbb9e1a4a6", null ],
     [ "skip_kernel_in_analysis", "codegen_8c.html#aeda6fd0842f7f3eeac0ee7856f3fe974", null ],
     [ "STENCIL_STR", "codegen_8c.html#a4e5d0c32aeb6e9904b9178631cd1595d", null ],
-    [ "string_intern_hashmap", "codegen_8c.html#a52813ca89bffb1ddd2ead123025be77d", null ],
     [ "TENSOR_STR", "codegen_8c.html#a540c87ca85150432b967df6422e3cca3", null ],
     [ "TRUE_STR", "codegen_8c.html#a259a992bb394d1afecdff1d9e1314c90", null ],
     [ "UTILITY_STR", "codegen_8c.html#a9c60342a038fcccc5e2b5115cc3bcfee", null ],

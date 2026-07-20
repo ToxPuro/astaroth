@@ -13,7 +13,7 @@ var searchData=
   ['acmeshinfoloadedinfo_10',['AcMeshInfoLoadedInfo',['../acc__runtime_8h.html#a9fff84f39caf8898683bd417c7c7c90c',1,'acc_runtime.h']]],
   ['acmeshinfoscalars_11',['AcMeshInfoScalars',['../acc__runtime_8h.html#aac5839b1e1c9df008cff960cb8d7c84d',1,'acc_runtime.h']]],
   ['acrandstate_12',['acRandState',['../random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f',1,'random.cuh']]],
-  ['acreal_13',['acreal',['../stencilgen_8c.html#a46fb0bc56f0b52637b2f4b6cfa04fac3',1,'AcReal:&#160;stencilgen.c'],['../acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0',1,'AcReal:&#160;acreal.h']]],
+  ['acreal_13',['AcReal',['../acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0',1,'acreal.h']]],
   ['acrealpacked_14',['AcRealPacked',['../src_2core_2kernels_2kernels_8h.html#abf1332c19cfbe2f3bfd8cef07478f583',1,'kernels.h']]],
   ['acreduceop_15',['AcReduceOp',['../host__datatypes_8h.html#ab08beb09749de71a5db5954797656dad',1,'host_datatypes.h']]],
   ['acshearinterpolationcoeffs_16',['AcShearInterpolationCoeffs',['../src_2core_2kernels_2kernels_8h.html#ae8c1559adcafd9ffaa6b063f0558fe28',1,'kernels.h']]],

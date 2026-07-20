@@ -1,17 +1,10 @@
 var host__datatypes_8h =
 [
-    [ "Volume", "structVolume.html", "structVolume" ],
-    [ "AcComplex", "structAcComplex.html", "structAcComplex" ],
-    [ "AcComplexFloat", "structAcComplexFloat.html", "structAcComplexFloat" ],
-    [ "AcReal3", "structAcReal3.html", "structAcReal3" ],
     [ "AcShape", "structAcShape.html", "structAcShape" ],
     [ "AcMeshDims", "structAcMeshDims.html", "structAcMeshDims" ],
-    [ "COMPLEX_DEFINED", "host__datatypes_8h.html#a1851ad014f38dea6872af4197d919431", null ],
     [ "N_DIMS", "host__datatypes_8h.html#a82fa9f1c919bef6677d8695e2a5d3a7d", null ],
     [ "ONE_DIMENSIONAL_PROFILE", "host__datatypes_8h.html#ab05911eb069642c037eddbcbbfedb9da", null ],
-    [ "REAL3_DEFINED", "host__datatypes_8h.html#af0597c7716852ab732b72661915bf088", null ],
     [ "TWO_DIMENSIONAL_PROFILE", "host__datatypes_8h.html#ac727fc264af97cb7ad3e5cd5cb23219a", null ],
-    [ "VOLUME_DEFINED", "host__datatypes_8h.html#af83b88b5eae0c194cde898b7f8d5927a", null ],
     [ "X_ORDER_INT", "host__datatypes_8h.html#ae5b8b9140c27551d8bef6277a775ccd0", null ],
     [ "Y_ORDER_INT", "host__datatypes_8h.html#af6803addfe2b39cc2c7e5d6868287091", null ],
     [ "Z_ORDER_INT", "host__datatypes_8h.html#aff8ab01b729f9e2b740d40e091a63d35", null ],
@@ -26,11 +19,6 @@ var host__datatypes_8h =
       [ "YZX", "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a0c75015db91d2767bd7ccae7958d9a80", null ],
       [ "ZXY", "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a6e11756d8b160f36bfabb7fa0f302a57", null ],
       [ "ZYX", "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a5f37dd57f20f263fd5a5f742265800ea", null ]
-    ] ],
-    [ "AcPrecision", "host__datatypes_8h.html#acf378d4b5531d10d4e4dbfcd06dbd472", [
-      [ "AC_REAL_PRECISION", "host__datatypes_8h.html#acf378d4b5531d10d4e4dbfcd06dbd472af828a41028ccb7b29b09df0618420809", null ],
-      [ "AC_SINGLE_PRECISION", "host__datatypes_8h.html#acf378d4b5531d10d4e4dbfcd06dbd472ae887b9a5c468b5982c5dfc2535bca193", null ],
-      [ "AC_HALF_PRECISION", "host__datatypes_8h.html#acf378d4b5531d10d4e4dbfcd06dbd472ac933d9b85fb5b2a02d2ea9c4e11f80b9", null ]
     ] ],
     [ "AcProfileType", "host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88", [
       [ "PROFILE_NONE", "host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88a18412c03ee36f7cbcecc963fc75e363b", null ],

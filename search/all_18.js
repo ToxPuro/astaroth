@@ -44,7 +44,7 @@ var searchData=
   ['outputs_41',['outputs',['../structCrossProductInputs.html#a5aa5834c2385dcd3ac93bf3c828a0965',1,'CrossProductInputs']]],
   ['overlaps_42',['overlaps',['../structRegion.html#ad884a1819a01e9e92badb602e6f958f4',1,'Region']]],
   ['overloaded_5fdfuncs_43',['overloaded_dfuncs',['../structoverloaded__dfuncs.html',1,'']]],
-  ['overloaded_5ffunc_5fdefine_44',['overloaded_func_define',['../astaroth_8h.html#a81c3e906ea345434302343bf8fe0e7e0',1,'OVERLOADED_FUNC_DEFINE(AcReal *, acHostCreateVertexBuffer,(const AcMeshInfo info)):&#160;astaroth.h'],['../func__define_8h.html#a4c5307d09a6e1193c9df6c7632265b3b',1,'OVERLOADED_FUNC_DEFINE:&#160;func_define.h']]],
+  ['overloaded_5ffunc_5fdefine_44',['overloaded_func_define',['../astaroth__helpers_8h.html#a81c3e906ea345434302343bf8fe0e7e0',1,'OVERLOADED_FUNC_DEFINE(AcReal *, acHostCreateVertexBuffer,(const AcMeshInfo info)):&#160;astaroth_helpers.h'],['../func__define_8h.html#a4c5307d09a6e1193c9df6c7632265b3b',1,'OVERLOADED_FUNC_DEFINE:&#160;func_define.h']]],
   ['override_5fstr_45',['OVERRIDE_STR',['../codegen_8c.html#a67ed60aa00b8c8061ab385845ac2ac67',1,'codegen.c']]],
   ['overview_46',['Overview',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md126',1,'']]]
 ];
