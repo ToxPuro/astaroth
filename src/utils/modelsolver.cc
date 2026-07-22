@@ -1242,7 +1242,9 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
         acHostMeshApplyPeriodicBounds(&mesh);
 
         // Alpha step
+#ifdef _OPENMP
         #pragma omp parallel for
+#endif
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
@@ -1252,7 +1254,9 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
         }
 
         // Beta step
+#ifdef _OPENMP
         #pragma omp parallel for
+#endif
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
