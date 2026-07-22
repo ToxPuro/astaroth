@@ -63,7 +63,7 @@ done
 
 wait
 
-if [ ! -f $TEST_DIR/*/FAIL ]; then
+if [ -z "$(find $TEST_DIR -maxdepth 2 -type f -name FAIL)" ]; then
     echo "[SUCCESS] All builds completed successfully!"
     exit 0  # Success
 else
