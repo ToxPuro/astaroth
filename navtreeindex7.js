@@ -1,8 +1,6 @@
 var NAVTREEINDEX7 =
 {
-"cpu_8cc.html#ae2e6f90eaa8672d38a4d0a0d31ea30c4":[20,0,6,0,0,0,16],
-"cpu_8cc.html#ae3ed8195da81f9071a593f47875905d1":[20,0,6,0,0,0,6],
-"cpu_8cc.html#ae8b329e2c4b85aaa471ecc1efe18db3a":[20,0,6,0,0,0,37],
+"cpu_8cc.html#af07de625b8153117936b31cff4eb50bc":[20,0,6,0,0,0,27],
 "cpu_8cc.html#af17be839cb94cbe4c9e6bed37bbded2c":[20,0,6,0,0,0,1],
 "cpu_8cc.html#afc926d7c267c90f1327df2970c64a8a1":[20,0,6,0,0,0,5],
 "cpu_8cc.html#aff3ab96b4d67e56a5bc4ba4168b10d48":[20,0,6,0,0,0,24],
@@ -127,8 +125,8 @@ var NAVTREEINDEX7 =
 "derivs_8h.html#a07e4e3ee13a1969e5d7f9f67842c73ba":[20,0,0,5,10,2],
 "derivs_8h.html#a0849ef13f48216a94db94b7c8015cea7":[20,0,0,5,10,33],
 "derivs_8h.html#a08a153103580544909f8a020f9603608":[20,0,0,5,10,6],
-"derivs_8h.html#a0b0546f4dcff8a79316574c4c3b7bd84":[20,0,0,5,10,36],
 "derivs_8h.html#a0b0546f4dcff8a79316574c4c3b7bd84":[20,0,0,5,10,37],
+"derivs_8h.html#a0b0546f4dcff8a79316574c4c3b7bd84":[20,0,0,5,10,36],
 "derivs_8h.html#a0fc38a8e138a600a1d31fa18e9e46684":[20,0,0,5,10,13],
 "derivs_8h.html#a20a572dbe1ac8d4db589984d3828d7b6":[20,0,0,5,10,16],
 "derivs_8h.html#a24990b016a846112333af562a264df3a":[20,0,0,5,10,12],
@@ -162,8 +160,8 @@ var NAVTREEINDEX7 =
 "derivs_8h.html#ac972e08b9f66a38dad81989309aad37e":[20,0,0,5,10,19],
 "derivs_8h.html#ac9cdb9e5b6ffa202261ebcdf1ea141c7":[20,0,0,5,10,44],
 "derivs_8h.html#acb5b1b022534b29852f2d5935ef0e68a":[20,0,0,5,10,5],
-"derivs_8h.html#ace14a62455d7cb0d089017d381fa6e3b":[20,0,0,5,10,41],
 "derivs_8h.html#ace14a62455d7cb0d089017d381fa6e3b":[20,0,0,5,10,40],
+"derivs_8h.html#ace14a62455d7cb0d089017d381fa6e3b":[20,0,0,5,10,41],
 "derivs_8h.html#ae7757a44dbeb76b0d368b7b1c7e5c5cc":[20,0,0,5,10,1],
 "derivs_8h.html#aee56dddb642526bf346ca4838262fe1d":[20,0,0,5,10,26],
 "derivs_8h.html#afbb61efb334721d8246f04f5dcc3d344":[20,0,0,5,10,14],
@@ -249,5 +247,7 @@ var NAVTREEINDEX7 =
 "device_8cc.html#ac46e93d02dc53671b354b7ea985cfbc6":[20,0,6,0,13,62],
 "device_8cc.html#ac6c3c37bf5db17e7f52f35796711a024":[20,0,6,0,13,73],
 "device_8cc.html#ac8b592b7625728481233116382548951":[20,0,6,0,13,49],
-"device_8cc.html#acb2e963826cb26202acd8f047ec1903f":[20,0,6,0,13,42]
+"device_8cc.html#acb2e963826cb26202acd8f047ec1903f":[20,0,6,0,13,42],
+"device_8cc.html#acf467511f478b384bf7111261e3e3505":[20,0,6,0,13,84],
+"device_8cc.html#acf88d16d2b13ca0d4403c28b62332625":[20,0,6,0,13,71]
 };

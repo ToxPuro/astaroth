@@ -1,12 +1,6 @@
 var NAVTREEINDEX1 =
 {
-"acc__runtime_8cu.html#adb11b936e6ba7fb80d89da9df6ef6b5b":[20,0,0,1,0,12],
-"acc__runtime_8cu.html#adb76139e81584fdf93eee336ccfc650f":[20,0,0,1,0,47],
-"acc__runtime_8cu.html#ae00d3b0b281b9f53aed9b776a9b4e2b4":[20,0,0,1,0,11],
-"acc__runtime_8cu.html#ae3f04187f62c111638deca630a05a176":[20,0,0,1,0,66],
-"acc__runtime_8cu.html#af25d1911ed951caf594252e1a419b4f3":[20,0,0,1,0,22],
-"acc__runtime_8cu.html#af3491b9ac664c04c396dafd55a49fbf8":[20,0,0,1,0,43],
-"acc__runtime_8cu.html#af3fa28437ed9f01064dfb8abcfec8339":[20,0,0,1,0,44],
+"acc__runtime_8cu.html#af3fa28437ed9f01064dfb8abcfec8339":[20,0,0,1,0,40],
 "acc__runtime_8cu_source.html":[20,0,0,1,0],
 "acc__runtime_8h.html":[20,0,0,1,1],
 "acc__runtime_8h.html#a01b2a7daafd0dedfd4cb91a32eb62519":[20,0,0,1,1,53],
@@ -249,5 +243,11 @@ var NAVTREEINDEX1 =
 "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0a91897537ddfee6e141484f85c24b6e49":[20,0,4,5,20,21],
 "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0a9818945030a14239abd3cf6bb3995a2d":[20,0,4,5,20,22],
 "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aab42d5e9cf72d8a3ac7aead8f9b6ca27":[20,0,4,5,20,7],
-"astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aaeb47e9d0f5c248578ba96add2c1fe00":[20,0,4,5,20,16]
+"astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aaeb47e9d0f5c248578ba96add2c1fe00":[20,0,4,5,20,16],
+"astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aaf9ee2b7792e0b46d3f2979d62f9cc4c":[20,0,4,5,20,24],
+"astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0ab2bdd2e36eb9510365b1693561903279":[20,0,4,5,20,26],
+"astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0ab7797fdb9bcb9f588d969f9ddff8a75d":[20,0,4,5,20,1],
+"astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aba3ef9431d9778907a58438c20d8eb33":[20,0,4,5,20,6],
+"astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0abd704498063a391ddf5d652e59f091e5":[20,0,4,5,20,19],
+"astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0ac90f03cac2cac46ae1bb2957fc39c83f":[20,0,4,5,20,4]
 };

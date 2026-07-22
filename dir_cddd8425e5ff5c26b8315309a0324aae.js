@@ -12,7 +12,7 @@ var dir_cddd8425e5ff5c26b8315309a0324aae =
     [ "hashtable.h", "hashtable_8h.html", "hashtable_8h" ],
     [ "implementation.c", "implementation_8c.html", "implementation_8c" ],
     [ "implementation.h", "implementation_8h.html", "implementation_8h" ],
-    [ "mem_access_helper_funcs.h", "mem__access__helper__funcs_8h.html", "mem__access__helper__funcs_8h" ],
+    [ "mem_access_helper_funcs.h", "mem__access__helper__funcs_8h.html", null ],
     [ "stencilgen copy.c", "stencilgen_01copy_8c.html", "stencilgen_01copy_8c" ],
     [ "stencilgen.c", "stencilgen_8c.html", "stencilgen_8c" ],
     [ "string_vec.h", "string__vec_8h.html", "string__vec_8h" ],

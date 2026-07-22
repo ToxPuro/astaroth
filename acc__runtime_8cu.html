@@ -169,14 +169,6 @@ Macros</h2></td></tr>
 <tr class="separator:ab702106cf3b3e96750b6845ded4e0299"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae00d3b0b281b9f53aed9b776a9b4e2b4" id="r_ae00d3b0b281b9f53aed9b776a9b4e2b4"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#ae00d3b0b281b9f53aed9b776a9b4e2b4">COLORIZE</a>(symbol,  color)&#160;&#160;&#160;(<a class="el" href="acc__runtime_8cu.html#a7e1457dd1a68b86a53fa7ebbf156c2e5">useColor</a> ? color symbol <a class="el" href="acc__runtime_8cu.html#ab702106cf3b3e96750b6845ded4e0299">RESET</a> : symbol)</td></tr>
 <tr class="separator:ae00d3b0b281b9f53aed9b776a9b4e2b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7351009dde6267a3cddba6af83e6d757" id="r_a7351009dde6267a3cddba6af83e6d757"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#a7351009dde6267a3cddba6af83e6d757">acMemcpyFromSymbol</a>&#160;&#160;&#160;<a class="el" href="hip_8h.html#a51ebbfacd73f5f9aa8cdd60e040c635d">cudaMemcpyFromSymbol</a></td></tr>
-<tr class="separator:a7351009dde6267a3cddba6af83e6d757"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a13a064ec9960d625af89d4ac72d6ee68" id="r_a13a064ec9960d625af89d4ac72d6ee68"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#a13a064ec9960d625af89d4ac72d6ee68">acMemcpyFromSymbolAsync</a>&#160;&#160;&#160;<a class="el" href="hip_8h.html#a166a2dafb91c6d96adf6893dc109ece0">cudaMemcpyFromSymbolAsync</a></td></tr>
-<tr class="separator:a13a064ec9960d625af89d4ac72d6ee68"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a975c1fa47195d8d9e0659ae5c983be9c" id="r_a975c1fa47195d8d9e0659ae5c983be9c"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#a975c1fa47195d8d9e0659ae5c983be9c">acMemcpyToSymbol</a>&#160;&#160;&#160;<a class="el" href="hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c">cudaMemcpyToSymbol</a></td></tr>
-<tr class="separator:a975c1fa47195d8d9e0659ae5c983be9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aba13cf0f8fb627bca230fe24499996b9" id="r_aba13cf0f8fb627bca230fe24499996b9"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#aba13cf0f8fb627bca230fe24499996b9">acMemcpyToSymbolAsync</a>&#160;&#160;&#160;<a class="el" href="hip_8h.html#a790ef41641e10e7c33050d449bc04e18">cudaMemcpyToSymbolAsync</a></td></tr>
-<tr class="separator:aba13cf0f8fb627bca230fe24499996b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7b7bffdc46e1140d9304ac947b97e6f" id="r_ab7b7bffdc46e1140d9304ac947b97e6f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#ab7b7bffdc46e1140d9304ac947b97e6f">DECLARE_GMEM_ARRAY</a>(DATATYPE,  DEFINE_NAME,  ARR_NAME)&#160;&#160;&#160;__device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME</td></tr>
 <tr class="separator:ab7b7bffdc46e1140d9304ac947b97e6f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1842622dd5252ac35d4f87e616526fff" id="r_a1842622dd5252ac35d4f87e616526fff"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#a1842622dd5252ac35d4f87e616526fff">DECLARE_CONST_DIMS_GMEM_ARRAY</a>(DATATYPE,  DEFINE_NAME,  ARR_NAME,  LEN)&#160;&#160;&#160;static __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]</td></tr>
@@ -310,10 +302,6 @@ Variables</h2></td></tr>
 <tr class="separator:a3d7abfe0435364e9cf468893276e3a81"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a457553e4e12a2a32a3df4d48babc3bd3" id="r_a457553e4e12a2a32a3df4d48babc3bd3"><td class="memItemLeft" align="right" valign="top">__device__ __constant__ <a class="el" href="structAcMeshInfoScalars.html">AcMeshInfoScalars</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#a457553e4e12a2a32a3df4d48babc3bd3">d_mesh_info</a></td></tr>
 <tr class="separator:a457553e4e12a2a32a3df4d48babc3bd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7891ce2553ff5848dd0bcbcf7cf763bd" id="r_a7891ce2553ff5848dd0bcbcf7cf763bd"><td class="memItemLeft" align="right" valign="top">__device__ __constant__ <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#a7891ce2553ff5848dd0bcbcf7cf763bd">d_symbol_reduce_scratchpads_real</a> [NUM_REAL_SCRATCHPADS]</td></tr>
-<tr class="separator:a7891ce2553ff5848dd0bcbcf7cf763bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acf9eb56b955b610b40406290b0f9811e" id="r_acf9eb56b955b610b40406290b0f9811e"><td class="memItemLeft" align="right" valign="top">__device__ __constant__ <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="acc__runtime_8cu.html#acf9eb56b955b610b40406290b0f9811e">d_reduce_real_res_symbol</a> [NUM_REAL_SCRATCHPADS]</td></tr>
-<tr class="separator:acf9eb56b955b610b40406290b0f9811e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
 <a id="acd0ca30d79fdc8e3109df5bc7ccf7b68" name="acd0ca30d79fdc8e3109df5bc7ccf7b68"></a>
@@ -378,62 +366,6 @@ Variables</h2></td></tr>
           <td></td>
           <td>)</td>
           <td></td><td>&#160;&#160;&#160;  (AcComplex) { <a class="el" href="slope__limited__diffusion_8h.html#a682ab6f9e449fd03e8f93cab54a14f8c">x</a>, <a class="el" href="slope__limited__diffusion_8h.html#a7d10a2a41e0b73477b9c627cbb1d268c">y</a> }</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7351009dde6267a3cddba6af83e6d757" name="a7351009dde6267a3cddba6af83e6d757"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7351009dde6267a3cddba6af83e6d757">&#9670;&#160;</a></span>acMemcpyFromSymbol</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define acMemcpyFromSymbol&#160;&#160;&#160;<a class="el" href="hip_8h.html#a51ebbfacd73f5f9aa8cdd60e040c635d">cudaMemcpyFromSymbol</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a13a064ec9960d625af89d4ac72d6ee68" name="a13a064ec9960d625af89d4ac72d6ee68"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a13a064ec9960d625af89d4ac72d6ee68">&#9670;&#160;</a></span>acMemcpyFromSymbolAsync</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define acMemcpyFromSymbolAsync&#160;&#160;&#160;<a class="el" href="hip_8h.html#a166a2dafb91c6d96adf6893dc109ece0">cudaMemcpyFromSymbolAsync</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a975c1fa47195d8d9e0659ae5c983be9c" name="a975c1fa47195d8d9e0659ae5c983be9c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a975c1fa47195d8d9e0659ae5c983be9c">&#9670;&#160;</a></span>acMemcpyToSymbol</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define acMemcpyToSymbol&#160;&#160;&#160;<a class="el" href="hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c">cudaMemcpyToSymbol</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aba13cf0f8fb627bca230fe24499996b9" name="aba13cf0f8fb627bca230fe24499996b9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aba13cf0f8fb627bca230fe24499996b9">&#9670;&#160;</a></span>acMemcpyToSymbolAsync</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define acMemcpyToSymbolAsync&#160;&#160;&#160;<a class="el" href="hip_8h.html#a790ef41641e10e7c33050d449bc04e18">cudaMemcpyToSymbolAsync</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -2221,34 +2153,6 @@ template&lt;typename P , typename V &gt; </div>
       <table class="memname">
         <tr>
           <td class="memname">__device__ __constant__ <a class="el" href="structAcMeshInfoScalars.html">AcMeshInfoScalars</a> d_mesh_info</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="acf9eb56b955b610b40406290b0f9811e" name="acf9eb56b955b610b40406290b0f9811e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acf9eb56b955b610b40406290b0f9811e">&#9670;&#160;</a></span>d_reduce_real_res_symbol</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">__device__ __constant__ <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS]</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7891ce2553ff5848dd0bcbcf7cf763bd" name="a7891ce2553ff5848dd0bcbcf7cf763bd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7891ce2553ff5848dd0bcbcf7cf763bd">&#9670;&#160;</a></span>d_symbol_reduce_scratchpads_real</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">__device__ __constant__ <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS]</td>
         </tr>
       </table>
 </div><div class="memdoc">

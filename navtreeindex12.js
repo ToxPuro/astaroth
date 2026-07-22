@@ -1,7 +1,5 @@
 var NAVTREEINDEX12 =
 {
-"matplotlibcpp_8h.html#a40ac4e0d416fad21899637dcf8d281c6":[20,0,8,36,0,1,82],
-"matplotlibcpp_8h.html#a44ccb9a7b34bc240b8cc8b3095dd8537":[20,0,8,36,0,1,31],
 "matplotlibcpp_8h.html#a4645651772918e2dad7d36d9eeaeaefa":[20,0,8,36,0,1,100],
 "matplotlibcpp_8h.html#a468096a42e46d0a26e8a237ffb24caca":[20,0,8,36,0,1,47],
 "matplotlibcpp_8h.html#a4854fc237468144bd46809ea7ce8f2a0":[20,0,8,36,0,1,12],
@@ -216,11 +214,6 @@ var NAVTREEINDEX12 =
 "md_test_2walker-test_2matplotlib-cpp_2contrib_2README.html#autotoc_md194":[16,0],
 "md_test_2walker-test_2matplotlib-cpp_2contrib_2README.html#autotoc_md195":[16,0,0],
 "mem__access__helper__funcs_8h.html":[20,0,0,0,12],
-"mem__access__helper__funcs_8h.html#a015b89bab6ff1a5019633fe1905a55e4":[20,0,0,0,12,4],
-"mem__access__helper__funcs_8h.html#a12937e23b24a38fb6dad2466420db869":[20,0,0,0,12,3],
-"mem__access__helper__funcs_8h.html#a1a3985b25537f0f164e1d42a3e024649":[20,0,0,0,12,2],
-"mem__access__helper__funcs_8h.html#a220d0f05f1a4f9cf01e4526c888150ea":[20,0,0,0,12,0],
-"mem__access__helper__funcs_8h.html#af8b4e385e0a62d5c7aeff1bd8b8b1381":[20,0,0,0,12,1],
 "mem__access__helper__funcs_8h_source.html":[20,0,0,0,12],
 "memory_8cc.html":[20,0,6,1,5],
 "memory_8cc.html#a1c3eafe69a85d0ae7dc699d98c47f5ef":[20,0,6,1,5,5],
@@ -249,5 +242,12 @@ var NAVTREEINDEX12 =
 "mpi-profile-reduce_2main_8cc.html#a840291bc02cba5474a4cb46a9b9566fe":[20,0,8,18,0,0],
 "multigrid-tests_2anisotropic-test_2main_8cc.html":[20,0,8,19,0,0],
 "multigrid-tests_2anisotropic-test_2main_8cc.html#a840291bc02cba5474a4cb46a9b9566fe":[20,0,8,19,0,0,0],
-"multigrid-tests_2compact-stencil-multigrid-test_2main_8cc.html":[20,0,8,19,1,0]
+"multigrid-tests_2compact-stencil-multigrid-test_2main_8cc.html":[20,0,8,19,1,0],
+"multigrid-tests_2compact-stencil-multigrid-test_2main_8cc.html#a840291bc02cba5474a4cb46a9b9566fe":[20,0,8,19,1,0,0],
+"multigrid-tests_2line-smoother-multigrid-test_2main_8cc.html":[20,0,8,19,2,0],
+"multigrid-tests_2line-smoother-multigrid-test_2main_8cc.html#a840291bc02cba5474a4cb46a9b9566fe":[20,0,8,19,2,0,0],
+"multigrid-tests_2multigrid-test_2main_8cc.html":[20,0,8,19,3,0],
+"multigrid-tests_2multigrid-test_2main_8cc.html#a840291bc02cba5474a4cb46a9b9566fe":[20,0,8,19,3,0,0],
+"multigrid-tests_2non-equidistant-test_2main_8cc.html":[20,0,8,19,4,0],
+"multigrid-tests_2non-equidistant-test_2main_8cc.html#a840291bc02cba5474a4cb46a9b9566fe":[20,0,8,19,4,0,0]
 };
