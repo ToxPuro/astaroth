@@ -10865,20 +10865,30 @@ print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
 static const char*
 get_compiler(const bool cxx_compiler)
 {
-        const int gcc_not_available = system("gcc --version > /dev/null");
-        if(!gcc_not_available)
-        {
-		if(cxx_compiler) return "g++";
-        	return "gcc";
-        }
-        const int cc_not_available = system("cc --version > /dev/null");
-        if(!cc_not_available)
-        {
-		if(cxx_compiler) return "CC";
-        	return "cc";
-        }
-	fatal("%s","Unable to find a C/C++ compiler to preprocess and compile!!\n");
-	return NULL;
+  static bool compilers_checked = false;
+
+  static bool gcc_not_available = false;
+  static bool cc_not_available = false;
+
+  if (!compilers_checked) {
+    gcc_not_available = system("gcc --version > /dev/null");
+    cc_not_available  = system("cc --version > /dev/null");
+    compilers_checked = true;
+  }
+
+  if (!gcc_not_available) {
+    if (cxx_compiler)
+      return "g++";
+    return "gcc";
+  }
+
+  if (!cc_not_available) {
+    if (cxx_compiler)
+      return "CC";
+    return "cc";
+  }
+  fatal("%s", "Unable to find a C/C++ compiler to preprocess and compile!!\n");
+  return NULL;
 }
 
 void
