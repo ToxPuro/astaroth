@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: nvidia/cuda:12.9.0-devel-ubuntu24.04
+      image: nvidia/cuda:13.3.0-devel-ubuntu26.04
 
     timeout-minutes: 180
     steps:
