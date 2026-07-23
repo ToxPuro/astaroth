@@ -1,4 +1,7 @@
 #pragma once
+
+#include "func_define.h"
+
 #ifndef UNUSED
 #define UNUSED __attribute__((unused)) // Does not give a warning if unused
 #endif
