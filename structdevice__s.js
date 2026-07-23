@@ -1,9 +1,9 @@
 var structdevice__s =
 [
-    [ "id", "structdevice__s.html#a9a42c8eeda82848da368e45adbc808c1", null ],
-    [ "input", "structdevice__s.html#abf1ae483c524b6f26f023380bdb106b7", null ],
-    [ "local_config", "structdevice__s.html#a415cf9e554c5034c41aad64c9b7868d2", null ],
-    [ "output", "structdevice__s.html#a2cde532c15cf8198d184888276da48a0", null ],
-    [ "streams", "structdevice__s.html#af07a00c2f0da2fa664dda9585fcb005e", null ],
-    [ "vba", "structdevice__s.html#aec091d8248588b79fc547a0e7f00402f", null ]
+    [ "id", "structdevice__s.html#acba8d88e9870a9c9e034c4e438264655", null ],
+    [ "input", "structdevice__s.html#a54334354f9c32f7f2dc0a67b89057362", null ],
+    [ "local_config", "structdevice__s.html#a7146ada002873f0bc1a09a3469ddf6d1", null ],
+    [ "output", "structdevice__s.html#a3f2fe941d2a1b30d782a221a7d8dc666", null ],
+    [ "streams", "structdevice__s.html#aff2c54893398370e7c0320aea8e77d6a", null ],
+    [ "vba", "structdevice__s.html#acf588d81e3eff2c4dd78cbc4c9bf4bad", null ]
 ];

@@ -18,7 +18,7 @@ var searchData=
   ['communicates_5fboundary_15',['communicates_boundary',['../structAcTaskDefinition.html#a8420da4a803e5d69389685f08175cfe7',1,'AcTaskDefinition']]],
   ['comp_5fdims_16',['comp_dims',['../structRegion.html#a220d9fccc497ee299a991f38a96fc742',1,'Region']]],
   ['comp_5ftasks_17',['comp_tasks',['../structAcTaskGraph.html#ad76bfbf9aa8751907077beb26fff1cd6',1,'AcTaskGraph']]],
-  ['comparer_18',['comparer',['../structhashmap__create__options__s.html#aa818149faeae8da1039f02184a378620',1,'hashmap_create_options_s::comparer'],['../structhashmap__s.html#a729a4def5335887218c76637e90f4000',1,'hashmap_s::comparer']]],
+  ['comparer_18',['comparer',['../structhashmap__create__options__t.html#a06cf55b0cd4e55e7a6b174af3610ab26',1,'hashmap_create_options_t::comparer'],['../structhashmap__t.html#af64d239aa75400b2f5b77c4d9b961cd1',1,'hashmap_t::comparer']]],
   ['complex_5ffield_5fstr_19',['COMPLEX_FIELD_STR',['../codegen_8c.html#a25455be706b66645003f9bdb3aa24d7b',1,'codegen.c']]],
   ['complex_5fin_20',['complex_in',['../structDeviceVertexBufferArray.html#abc0acc90b45b9a3a6b47e681f915be58',1,'DeviceVertexBufferArray']]],
   ['complex_5fstr_21',['COMPLEX_STR',['../codegen_8c.html#a7c5d50da7de9f63f4c48b291b7f9aa2c',1,'codegen.c']]],

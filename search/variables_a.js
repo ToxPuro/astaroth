@@ -10,6 +10,6 @@ var searchData=
   ['kernel_5frunning_5freduce_5foffsets_7',['kernel_running_reduce_offsets',['../acc__runtime_8cu.html#a76181f18fcf24f32a590ed76d38e1acc',1,'acc_runtime.cu']]],
   ['kernel_5fstr_8',['KERNEL_STR',['../codegen_8c.html#a0ee8698b77c138c1acfbb35dbb4de92b',1,'codegen.c']]],
   ['kernels_5fwith_5finput_5fparams_9',['kernels_with_input_params',['../structcombinatorial__params__info.html#a78238cff38a44824b94c3f3276a0c08d',1,'combinatorial_params_info']]],
-  ['key_10',['key',['../structhashmap__element__s.html#a9285188fdcfd10f600c523b30e0c12db',1,'hashmap_element_s']]],
-  ['key_5flen_11',['key_len',['../structhashmap__element__s.html#afe57b47c01ca7ecace981282bc019339',1,'hashmap_element_s']]]
+  ['key_10',['key',['../structhashmap__element__t.html#a9780dac974e65b153da7996d8f6e3123',1,'hashmap_element_t']]],
+  ['key_5flen_11',['key_len',['../structhashmap__element__t.html#af842ceb5fbbaed8c176088db464d9fb8',1,'hashmap_element_t']]]
 ];

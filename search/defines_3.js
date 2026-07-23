@@ -12,7 +12,7 @@ var searchData=
   ['check_5frocfft_5fstatus_9',['check_rocfft_status',['../rocfft_8cc.html#a4be724aa613834884349799aa00cd8d8',1,'rocfft.cc']]],
   ['colorize_10',['COLORIZE',['../acc__runtime_8cu.html#ae00d3b0b281b9f53aed9b776a9b4e2b4',1,'acc_runtime.cu']]],
   ['complex_5fdefined_11',['COMPLEX_DEFINED',['../datatypes_8h.html#a1851ad014f38dea6872af4197d919431',1,'datatypes.h']]],
-  ['constexpr_12',['constexpr',['../acc__runtime_8h.html#acaa06fbc27c59926a41e7575667e5280',1,'CONSTEXPR:&#160;acc_runtime.h'],['../stencil__accesses_8cpp.html#a72f0657181cca64b44eb186b707eb380',1,'constexpr:&#160;stencil_accesses.cpp']]],
+  ['constexpr_12',['constexpr',['../stencil__accesses_8cpp.html#a72f0657181cca64b44eb186b707eb380',1,'constexpr:&#160;stencil_accesses.cpp'],['../acc__runtime_8h.html#acaa06fbc27c59926a41e7575667e5280',1,'CONSTEXPR:&#160;acc_runtime.h']]],
   ['cos_13',['cos',['../math__utils_8h.html#a6164614557902f0c3801d44b5b47e7a6',1,'math_utils.h']]],
   ['cudadevattrclockrate_14',['cudaDevAttrClockRate',['../hip_8h.html#a3400f4dfb02c31aaea9adf5e539c8041',1,'hip.h']]],
   ['cudadevattrcomputemode_15',['cudaDevAttrComputeMode',['../hip_8h.html#aa6135265fd88022851f41431b2ca4bb3',1,'hip.h']]],

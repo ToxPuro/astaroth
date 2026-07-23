@@ -15,6 +15,6 @@ var searchData=
   ['halo_5ftypes_12',['halo_types',['../structlevel__set.html#af8518e47af007c626957bf0c99fa1a60',1,'level_set::halo_types'],['../structAcTaskDefinition.html#a843d3eecd6bf43e3339cf947eb4f8501',1,'AcTaskDefinition::halo_types']]],
   ['handle_13',['handle',['../structAcCommunicator.html#a35cbdd21df29a767ee8fa6900054c32a',1,'AcCommunicator']]],
   ['has_5fdefault_5fvalue_14',['has_default_value',['../structAcCompInfo.html#af82061ec921c343056095a0618985d28',1,'AcCompInfo']]],
-  ['hasher_15',['hasher',['../structhashmap__create__options__s.html#a7a9e03cd6d8474d18d0a8f49c04711c2',1,'hashmap_create_options_s::hasher'],['../structhashmap__s.html#a78752daed83c4f8a68f477e757568ef7',1,'hashmap_s::hasher']]],
+  ['hasher_15',['hasher',['../structhashmap__create__options__t.html#a29b06a74fb656dad816bdc1f0dfbbc4f',1,'hashmap_create_options_t::hasher'],['../structhashmap__t.html#a9e622f7a7ad2ad96aabbdb79c13747ba',1,'hashmap_t::hasher']]],
   ['hip_5fon_16',['HIP_ON',['../codegen_8c.html#aae2a7c45b7db53b382ffb8fd06399d3b',1,'codegen.c']]]
 ];

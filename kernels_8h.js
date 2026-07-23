@@ -2,7 +2,6 @@ var kernels_8h =
 [
     [ "AcShearInterpolationCoeffs", "structAcShearInterpolationCoeffs.html", "structAcShearInterpolationCoeffs" ],
     [ "AcRealPacked", "kernels_8h.html#abf1332c19cfbe2f3bfd8cef07478f583", null ],
-    [ "AcShearInterpolationCoeffs", "kernels_8h.html#ae8c1559adcafd9ffaa6b063f0558fe28", null ],
     [ "acKernelDummy", "kernels_8h.html#a0c0608ac2b82c2246acca212683c7645", null ],
     [ "acKernelMoveData", "kernels_8h.html#af817b3993995cc1e014f0a508a39ba6f", null ],
     [ "acKernelPackData", "kernels_8h.html#a8cf0b7147c92de29da6d10fe163ec00c", null ],

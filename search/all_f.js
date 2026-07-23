@@ -54,5 +54,5 @@ var searchData=
   ['explicit_5frolling_5fpingpong_5fblocksize_51',['EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE',['../implementation_8h.html#aea2549cd8df91125a4af7b1134949656',1,'implementation.h']]],
   ['expr_2eh_52',['expr.h',['../expr_8h.html',1,'']]],
   ['expr_5fnodes_53',['expr_nodes',['../structfunc__params__info.html#a8f5420c215c70b8a75c401768ba3aba9',1,'func_params_info']]],
-  ['expr_5ftype_54',['expr_type',['../structastnode__s.html#a847a41160646be16db6c6c840293a5f3',1,'astnode_s']]]
+  ['expr_5ftype_54',['expr_type',['../structASTNode.html#afae1b9c3b7bf94d162efb6262c904e0c',1,'ASTNode']]]
 ];

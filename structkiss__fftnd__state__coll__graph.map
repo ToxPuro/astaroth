@@ -1,8 +1,5 @@
-<map id="kiss_fftnd_state" name="kiss_fftnd_state">
-<area shape="rect" id="Node000001" title=" " alt="" coords="13,181,139,207"/>
-<area shape="rect" id="Node000002" href="$structkiss__fft__state.html" title=" " alt="" coords="109,93,219,119"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,130,90,183,86,179,141,126"/>
-<area shape="rect" id="Node000003" href="$structkiss__fft__cpx.html" title=" " alt="" coords="5,5,104,31"/>
-<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="51,45,46,80,48,118,59,152,72,180,67,182,54,154,43,119,41,80,46,44"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="82,37,151,91,147,95,79,41"/>
+<map id="kiss_fftnd_cfg" name="kiss_fftnd_cfg">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,93,117,119"/>
+<area shape="rect" id="Node000002" href="$structkiss__fft__cpx.html" title=" " alt="" coords="12,5,111,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="64,45,64,93,59,93,59,45"/>
 </map>

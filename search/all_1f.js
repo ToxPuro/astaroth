@@ -23,7 +23,7 @@ var searchData=
   ['variables_20',['variables',['../md_acc-runtime_2README.html#autotoc_md91',1,'Built-in variables'],['../md_acc-runtime_2README.html#autotoc_md81',1,'Variables']]],
   ['variables_20functions_20and_20constants_21',['Built-in variables, functions and constants',['../md_acc-runtime_2README.html#autotoc_md89',1,'']]],
   ['various_20index_20offsets_22',['Throughout this file we use the following notation and names for various index offsets',['../node_8cc.html#autotoc_md129',1,'']]],
-  ['vba_23',['vba',['../classTask.html#ae849cdf6649025db897d4a0862e13677',1,'Task::vba'],['../structdevice__s.html#aec091d8248588b79fc547a0e7f00402f',1,'device_s::vba'],['../stencil__accesses_8cpp.html#a34058d9e3637c165db916e8e2cf148a2',1,'VBA:&#160;stencil_accesses.cpp']]],
+  ['vba_23',['vba',['../classTask.html#ae849cdf6649025db897d4a0862e13677',1,'Task::vba'],['../structdevice__s.html#acf588d81e3eff2c4dd78cbc4c9bf4bad',1,'device_s::vba'],['../stencil__accesses_8cpp.html#a34058d9e3637c165db916e8e2cf148a2',1,'VBA:&#160;stencil_accesses.cpp']]],
   ['vba_2ecc_24',['vba.cc',['../vba_8cc.html',1,'']]],
   ['vbacreate_25',['vbaCreate',['../stencil__accesses_8cpp.html#a3bbdd18286aeb3cd078c244a1ff0e8a3',1,'stencil_accesses.cpp']]],
   ['vbadestroy_26',['vbaDestroy',['../stencil__accesses_8cpp.html#a6faacef598b82feb2016e15195edf5cd',1,'stencil_accesses.cpp']]],

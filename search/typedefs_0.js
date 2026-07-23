@@ -1,24 +1,9 @@
 var searchData=
 [
-  ['acbuffer_0',['AcBuffer',['../ac__helpers_8h.html#afdb7793f772c49d9ed78ef19d34844e4',1,'ac_helpers.h']]],
-  ['accommunicator_1',['AcCommunicator',['../host__datatypes_8h.html#a4e08bf2928ffe420262e8971e7fd8747',1,'host_datatypes.h']]],
-  ['accompinfoconfig_2',['AcCompInfoConfig',['../acc__runtime_8h.html#ad433993ee8cbe972c886c465dba4031b',1,'acc_runtime.h']]],
-  ['accompinfohasdefaultvalue_3',['AcCompInfoHasDefaultValue',['../acc__runtime_8h.html#a8390b4865f16f944d33ba367ddb278fc',1,'acc_runtime.h']]],
-  ['accompinfoloaded_4',['AcCompInfoLoaded',['../acc__runtime_8h.html#aee661173bbe075f15074d32805bf8657',1,'acc_runtime.h']]],
-  ['acindex_5',['AcIndex',['../host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7',1,'host_datatypes.h']]],
-  ['aclibhandle_6',['AcLibHandle',['../astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8',1,'astaroth_lib.h']]],
-  ['acmeasurementgatherfunc_7',['AcMeasurementGatherFunc',['../acc__runtime_8h.html#a6847c8ebb7b2d105a6342c92c78ef6bc',1,'acc_runtime.h']]],
-  ['acmeshinfo_8',['AcMeshInfo',['../acc__runtime_8h.html#aa39425d76d8bae601c7b247f9ed3642a',1,'acc_runtime.h']]],
-  ['acmeshinfoloadedinfo_9',['AcMeshInfoLoadedInfo',['../acc__runtime_8h.html#a9fff84f39caf8898683bd417c7c7c90c',1,'acc_runtime.h']]],
-  ['acmeshinfoscalars_10',['AcMeshInfoScalars',['../acc__runtime_8h.html#aac5839b1e1c9df008cff960cb8d7c84d',1,'acc_runtime.h']]],
-  ['acrandstate_11',['acRandState',['../random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f',1,'random.cuh']]],
-  ['acreal_12',['AcReal',['../acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0',1,'acreal.h']]],
-  ['acrealpacked_13',['AcRealPacked',['../kernels_8h.html#abf1332c19cfbe2f3bfd8cef07478f583',1,'kernels.h']]],
-  ['acreduceop_14',['AcReduceOp',['../host__datatypes_8h.html#ab08beb09749de71a5db5954797656dad',1,'host_datatypes.h']]],
-  ['acshearinterpolationcoeffs_15',['AcShearInterpolationCoeffs',['../kernels_8h.html#ae8c1559adcafd9ffaa6b063f0558fe28',1,'kernels.h']]],
-  ['acsubcommunicators_16',['AcSubCommunicators',['../ac__mpi_8h.html#a10d9affc5926657f1cf2a38e8771dc18',1,'ac_mpi.h']]],
-  ['actaskdefinition_17',['AcTaskDefinition',['../astaroth__grid_8h.html#a2b96e48d1eb071bdb14f75396a46be8d',1,'astaroth_grid.h']]],
-  ['actaskgraph_18',['AcTaskGraph',['../astaroth__grid_8h.html#ac339c5f974cd7716df6119c12b7158cd',1,'astaroth_grid.h']]],
-  ['actasktype_19',['AcTaskType',['../astaroth__grid_8h.html#aee5f676c7532746b6f984d639b3d7512',1,'astaroth_grid.h']]],
-  ['astnode_20',['ASTNode',['../ast_8h.html#a58b6658d22dcc357b57be73b62c80b91',1,'ast.h']]]
+  ['acindex_0',['AcIndex',['../host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7',1,'host_datatypes.h']]],
+  ['aclibhandle_1',['AcLibHandle',['../astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8',1,'astaroth_lib.h']]],
+  ['acmeasurementgatherfunc_2',['AcMeasurementGatherFunc',['../acc__runtime_8h.html#a6847c8ebb7b2d105a6342c92c78ef6bc',1,'acc_runtime.h']]],
+  ['acrandstate_3',['acRandState',['../random_8cuh.html#ae68bf4d330b6693422b11ef68767a65f',1,'random.cuh']]],
+  ['acreal_4',['AcReal',['../acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0',1,'acreal.h']]],
+  ['acrealpacked_5',['AcRealPacked',['../kernels_8h.html#abf1332c19cfbe2f3bfd8cef07478f583',1,'kernels.h']]]
 ];

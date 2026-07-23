@@ -6,7 +6,6 @@ var grid_8cc =
     [ "BUFFER_DISK_WRITE_THROUGH_CPU", "grid_8cc.html#a1d51ea00c0a805315fa7ba04f8be78da", null ],
     [ "fatal", "grid_8cc.html#aced7e196f61079291c8737fd74ea0bc4", null ],
     [ "USE_CPP_THREADS", "grid_8cc.html#a60b6c925f65b838eed958f91792f640b", null ],
-    [ "Grid", "grid_8cc.html#a8f9a8bbb733c9be873a366e7d7bd099a", null ],
     [ "ac_MPI_Barrier", "grid_8cc.html#aee6e7504435bcc3b4e5ec077e257cb6d", null ],
     [ "ac_MPI_Comm_rank", "grid_8cc.html#a74148f2e0808d0d8b52fe366e60744c4", null ],
     [ "ac_MPI_Comm_size", "grid_8cc.html#a55995fe0435ade27fbe1791ccfdef5f9", null ],

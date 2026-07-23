@@ -1,6 +1,5 @@
 <map id="traverse_base_params" name="traverse_base_params">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,127,176,152"/>
-<area shape="rect" id="Node000002" href="$structastnode__s.html" title=" " alt="" coords="47,15,135,40"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,54,93,126,88,126,88,54"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="150,16,158,20,161,28,153,38,136,41,135,36,151,33,156,27,154,24,147,21"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,108,176,133"/>
+<area shape="rect" id="Node000002" href="$structASTNode.html" title=" " alt="" coords="50,5,131,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,45,93,108,88,108,88,45"/>
 </map>

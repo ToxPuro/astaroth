@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['paramloadinginfo_0',['ParamLoadingInfo',['../astaroth__grid_8h.html#a62703700ea0cf837f783273870c8ddbe',1,'astaroth_grid.h']]],
-  ['periodicraytask_1',['PeriodicRayTask',['../task_8h.html#a23f7cc0e68725ac575b73efbf4fad072',1,'task.h']]]
+  ['vec3_0',['vec3',['../helical__forcing_8cc.html#a866c318818f6cc1d5dae031080c39dfa',1,'helical_forcing.cc']]]
 ];

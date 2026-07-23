@@ -1,6 +1,6 @@
 var device_8cc =
 [
-    [ "device_s", "structdevice__s.html", "structdevice__s" ],
+    [ "Device", "structdevice__s.html", "structdevice__s" ],
     [ "load_all_scalars_uniform< P >", "structload__all__scalars__uniform.html", "structload__all__scalars__uniform" ],
     [ "load_all_arrays_uniform< P >", "structload__all__arrays__uniform.html", "structload__all__arrays__uniform" ],
     [ "ARRAY_SIZE", "device_8cc.html#a6242a25f9d996f0cc4f4cdb911218b75", null ],

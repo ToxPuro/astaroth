@@ -30,7 +30,7 @@ var node_8cc =
     [ "acNodeSynchronizeMesh", "node_8cc.html#ab54ba4d1d2d92986c511eebab189c569", null ],
     [ "acNodeSynchronizeStream", "node_8cc.html#a312d80654741c733274c93ab8c7eef90", null ],
     [ "acNodeSynchronizeVertexBuffer", "node_8cc.html#a973d463e56fce5adc666b23241b45a6c", null ],
-    [ "int3", "node_8cc.html#a0acbca84f9cdc275ac99e6a344e4110c", null ],
+    [ "int3", "node_8cc.html#a07730023f4679db4fd509ba2b1adce97", null ],
     [ "param", "node_8cc.html#ae51ba72c3c71c9413c61b773798d3ed5", null ],
     [ "value", "node_8cc.html#a4a2787dbefb1b9a7111df0154ef0beba", null ]
 ];

@@ -1,44 +1,5 @@
 <map id="ParamLoadingInfo" name="ParamLoadingInfo">
-<area shape="rect" id="Node000001" title=" " alt="" coords="1411,331,1549,356"/>
-<area shape="rect" id="Node000002" href="$structdevice__s.html" title=" " alt="" coords="1236,220,1315,245"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1313,250,1456,328,1454,333,1310,254"/>
-<area shape="rect" id="Node000003" href="$structAcMeshInfo.html" title=" " alt="" coords="973,160,1072,185"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1086,182,1213,210,1238,217,1236,223,1211,215,1085,187"/>
-<area shape="rect" id="Node000004" href="$structAcMeshInfoLoaded.html" title=" " alt="" coords="577,160,723,185"/>
-<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="736,170,973,170,973,175,736,175"/>
-<area shape="rect" id="Node000005" href="$structAcCommunicator.html" title=" " alt="" coords="583,52,717,77"/>
-<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="731,60,776,64,824,72,872,87,916,109,925,118,929,128,933,137,940,145,974,162,972,166,937,149,928,140,924,130,921,121,913,113,870,92,823,77,775,69,731,65"/>
-<area shape="rect" id="Node000006" href="$structAcCompInfo.html" title=" " alt="" coords="599,101,701,127"/>
-<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="715,120,915,150,974,161,973,166,914,155,714,125"/>
-<area shape="rect" id="Node000007" href="$structAcCompInfoConfig.html" title=" " alt="" coords="210,104,353,129"/>
-<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="366,113,599,112,599,117,366,119"/>
-<area shape="rect" id="Node000008" href="$structAcCompInfoLoaded.html" title=" " alt="" coords="207,5,355,31"/>
-<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="370,17,453,29,496,42,536,60,549,73,560,87,600,103,598,108,557,91,545,77,533,64,494,47,451,34,369,22"/>
-<area shape="rect" id="Node000009" href="$structAcCompInfoHasDefaultValue.html" title=" " alt="" coords="176,55,387,80"/>
-<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="401,78,535,94,599,103,598,109,534,99,400,83"/>
-<area shape="rect" id="Node000010" href="$structAcInputs.html" title=" " alt="" coords="983,220,1062,245"/>
-<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="1076,230,1236,230,1236,235,1076,235"/>
-<area shape="rect" id="Node000011" href="$structVertexBufferArray.html" title=" " alt="" coords="953,281,1092,307"/>
-<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="1102,276,1211,250,1235,243,1237,248,1213,255,1103,281"/>
-<area shape="rect" id="Node000012" href="$structAcMeshDims.html" title=" " alt="" coords="597,232,703,257"/>
-<area shape="poly" id="edge11_Node000011_Node000012" title=" " alt="" coords="717,249,915,274,954,280,953,285,914,279,716,255"/>
-<area shape="rect" id="Node000013" href="$structVolume.html" title=" " alt="" coords="246,235,317,260"/>
-<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="330,244,597,242,597,248,330,250"/>
-<area shape="rect" id="Node000014" href="$structDeviceVertexBufferArray.html" title=" " alt="" coords="559,281,741,307"/>
-<area shape="poly" id="edge13_Node000011_Node000014" title=" " alt="" coords="755,291,953,291,953,297,755,297"/>
-<area shape="rect" id="Node000015" href="$structProfileBufferArray.html" title=" " alt="" coords="213,284,350,309"/>
-<area shape="poly" id="edge14_Node000014_Node000015" title=" " alt="" coords="364,293,558,292,558,297,364,299"/>
-<area shape="rect" id="Node000016" href="$structint3.html" title=" " alt="" coords="258,357,305,383"/>
-<area shape="poly" id="edge21_Node000001_Node000016" title=" " alt="" coords="319,371,463,384,649,391,1277,391,1324,388,1370,378,1447,354,1449,359,1372,383,1325,393,1277,397,649,397,462,389,318,377"/>
-<area shape="poly" id="edge15_Node000014_Node000016" title=" " alt="" coords="318,360,587,304,588,309,319,365"/>
-<area shape="rect" id="Node000017" href="$structAcScratchpadStates.html" title=" " alt="" coords="575,331,725,356"/>
-<area shape="poly" id="edge16_Node000011_Node000017" title=" " alt="" coords="739,333,914,311,957,304,958,309,915,317,740,338"/>
-<area shape="rect" id="Node000018" href="$structAcReduceBuffer.html" title=" " alt="" coords="587,432,713,457"/>
-<area shape="poly" id="edge17_Node000011_Node000018" title=" " alt="" coords="706,425,804,392,914,349,999,304,1001,309,916,354,806,397,707,430"/>
-<area shape="rect" id="Node000019" href="$structAcBuffer.html" title=" " alt="" coords="243,432,320,457"/>
-<area shape="poly" id="edge18_Node000018_Node000019" title=" " alt="" coords="333,442,587,442,587,447,333,447"/>
-<area shape="rect" id="Node000020" href="$structAcShape.html" title=" " alt="" coords="5,432,84,457"/>
-<area shape="poly" id="edge19_Node000019_Node000020" title=" " alt="" coords="98,442,242,442,242,447,98,447"/>
-<area shape="rect" id="Node000021" href="$structAcDeviceKernelOutput.html" title=" " alt="" coords="939,111,1107,136"/>
-<area shape="poly" id="edge20_Node000002_Node000021" title=" " alt="" coords="1115,137,1165,151,1213,173,1243,195,1265,218,1262,222,1239,199,1211,178,1163,156,1114,142"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,93,144,119"/>
+<area shape="rect" id="Node000002" href="$structint3.html" title=" " alt="" coords="51,5,98,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="77,45,77,93,72,93,72,45"/>
 </map>

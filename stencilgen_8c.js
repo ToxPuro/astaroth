@@ -5,7 +5,6 @@ var stencilgen_8c =
     [ "uint3_64", "structuint3__64.html", "structuint3__64" ],
     [ "ONE_DIMENSIONAL_PROFILE", "stencilgen_8c.html#ab05911eb069642c037eddbcbbfedb9da", null ],
     [ "TWO_DIMENSIONAL_PROFILE", "stencilgen_8c.html#ac727fc264af97cb7ad3e5cd5cb23219a", null ],
-    [ "int3", "stencilgen_8c.html#a07730023f4679db4fd509ba2b1adce97", null ],
     [ "AcProfileType", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88", [
       [ "PROFILE_NONE", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88a18412c03ee36f7cbcecc963fc75e363b", null ],
       [ "PROFILE_X", "stencilgen_8c.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d", null ],

@@ -1,8 +1,6 @@
 var ac__helpers_8h =
 [
     [ "AcBuffer", "structAcBuffer.html", "structAcBuffer" ],
-    [ "AcBuffer", "ac__helpers_8h.html#afdb7793f772c49d9ed78ef19d34844e4", null ],
-    [ "Device", "ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7", null ],
     [ "ac_restore_floating_point_exceptions", "ac__helpers_8h.html#a19f3229f04326d2099866276eae57111", null ],
     [ "ac_unset_floating_point_exceptions", "ac__helpers_8h.html#a6deb305065f97cd74dec1550a130cc16", null ],
     [ "acBufferCopy", "ac__helpers_8h.html#a619f8d3013b982f8e834dbab81031c50", null ],

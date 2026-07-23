@@ -12,5 +12,5 @@ var searchData=
   ['equal_5fstr_9',['EQUAL_STR',['../codegen_8c.html#a3154351f2fb4754309cec8c097643842',1,'codegen.c']]],
   ['error_10',['error',['../vecs_8h.html#ab70064e6ae258de4a1d0811824412152',1,'vecs.h']]],
   ['expr_5fnodes_11',['expr_nodes',['../structfunc__params__info.html#a8f5420c215c70b8a75c401768ba3aba9',1,'func_params_info']]],
-  ['expr_5ftype_12',['expr_type',['../structastnode__s.html#a847a41160646be16db6c6c840293a5f3',1,'astnode_s']]]
+  ['expr_5ftype_12',['expr_type',['../structASTNode.html#afae1b9c3b7bf94d162efb6262c904e0c',1,'ASTNode']]]
 ];

@@ -3,9 +3,6 @@ var vecs_8h =
     [ "int_vec", "structint__vec.html", "structint__vec" ],
     [ "op_vec", "structop__vec.html", "structop__vec" ],
     [ "int_vec_contains", "vecs_8h.html#ab05524467eab0a1d3c6037f22829a73d", null ],
-    [ "int_vec", "vecs_8h.html#ad8647be60982eb33d361d63b07efd8e7", null ],
-    [ "op_vec", "vecs_8h.html#a7f8f1c1e2e417036bc656ceebee59789", null ],
-    [ "ReduceOp", "vecs_8h.html#af529ff78d887853c155bbd9e85ca6daa", null ],
     [ "ReduceOp", "vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f", [
       [ "NO_REDUCE", "vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38", null ],
       [ "REDUCE_MIN", "vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fadb3866bc643932f773582218a4ba4f6a", null ],

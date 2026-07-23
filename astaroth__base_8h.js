@@ -15,7 +15,6 @@ var astaroth__base_8h =
     [ "NUM_STREAMS", "astaroth__base_8h.html#a876704225d1c5ecd8b0fc85315f88397", null ],
     [ "RTYPE_ISNAN", "astaroth__base_8h.html#a5a802f6492438259b3360450d252b487", null ],
     [ "UNUSED", "astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076", null ],
-    [ "Device", "astaroth__base_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7", null ],
     [ "Node", "astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612", null ],
     [ "AcPlateDirection", "astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94c", [
       [ "AC_H2D", "astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94ca2abe9b61a1673d1fa5c8fae444290126", null ],

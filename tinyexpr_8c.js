@@ -12,7 +12,6 @@ var tinyexpr_8c =
     [ "NEW_EXPR", "tinyexpr_8c.html#aa47b4f7495eb58f5cf1479b952dfb0af", null ],
     [ "TE_FUN", "tinyexpr_8c.html#a48f38c2e0f46c5c58660f65efc14916c", null ],
     [ "TYPE_MASK", "tinyexpr_8c.html#a6bccb8f9ab88245dff99aa3bf6ca6cae", null ],
-    [ "state", "tinyexpr_8c.html#a99852dcb2cc193a859b86bef9805381f", null ],
     [ "te_fun2", "tinyexpr_8c.html#a87218ffe62aa6d51e679402112e9a3ac", null ],
     [ "next_token", "tinyexpr_8c.html#a8519f55fa3a3272a43a5eee3102b2722", null ],
     [ "te_compile", "tinyexpr_8c.html#a7c2f4f3ec7775f44ae8e98b7314ce570", null ],

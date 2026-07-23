@@ -1,6 +1,6 @@
 var __kiss__fft__guts_8h =
 [
-    [ "kiss_fft_state", "structkiss__fft__state.html", "structkiss__fft__state" ],
+    [ "kiss_fft_cfg", "structkiss__fft__state.html", "structkiss__fft__state" ],
     [ "C_ADD", "__kiss__fft__guts_8h.html#a1f70747639c855259a0965de768e030a", null ],
     [ "C_ADDTO", "__kiss__fft__guts_8h.html#a2042ee8c6fb9306eb20d62e6506446aa", null ],
     [ "C_FIXDIV", "__kiss__fft__guts_8h.html#a05e11bb1e8e815dd7bdd199060b7555a", null ],

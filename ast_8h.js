@@ -1,14 +1,11 @@
 var ast_8h =
 [
-    [ "astnode_s", "structastnode__s.html", "structastnode__s" ],
+    [ "ASTNode", "structASTNode.html", "structASTNode" ],
     [ "CodeGenInput", "structCodeGenInput.html", "structCodeGenInput" ],
     [ "node_vec", "structnode__vec.html", "structnode__vec" ],
     [ "BUFFER_SIZE", "ast_8h.html#a6b20d41d6252e9871430c242cb1a56e7", null ],
     [ "FATAL_ERROR_MESSAGE", "ast_8h.html#a0af2192ef49e85c6c47f01368dc15e32", null ],
     [ "KERNEL_PREFIX", "ast_8h.html#a4bd1daa7a5b7f0c4aef1c2660310ddb9", null ],
-    [ "ASTNode", "ast_8h.html#a58b6658d22dcc357b57be73b62c80b91", null ],
-    [ "CodeGenInput", "ast_8h.html#af6922f4648f17c4eedcd2985fed45220", null ],
-    [ "node_vec", "ast_8h.html#aa67dc5e569486ee95baa2f1430724394", null ],
     [ "NodeType", "ast_8h.html#acac9cbaeea226ed297804c012dc12b16", [
       [ "NODE_UNKNOWN", "ast_8h.html#acac9cbaeea226ed297804c012dc12b16af61b72eeff33bbe0201392e0261c5df1", null ],
       [ "NODE_PRIMARY_EXPRESSION", "ast_8h.html#acac9cbaeea226ed297804c012dc12b16a62511c33cd59ed1f1c1a4c360855cd55", null ],

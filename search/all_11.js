@@ -260,7 +260,7 @@ var searchData=
   ['greater_5fstr_257',['GREATER_STR',['../codegen_8c.html#a8b1734b0a8a4122a84f035436146a0cf',1,'codegen.c']]],
   ['greduce_258',['greduce',['../mapreduce_8cuh.html#ab446ce2ed92307958d150217f04b8b56',1,'mapreduce.cuh']]],
   ['green_259',['GREEN',['../acc__runtime_8cu.html#acfbc006ea433ad708fdee3e82996e721',1,'acc_runtime.cu']]],
-  ['grid_260',['grid',['../grid_8cc.html#a8f9a8bbb733c9be873a366e7d7bd099a',1,'Grid:&#160;grid.cc'],['../structDeviceConfiguration.html#af717a0dbaded38622d0954a1a6173377',1,'DeviceConfiguration::grid'],['../structGrid.html',1,'Grid']]],
+  ['grid_260',['grid',['../structDeviceConfiguration.html#af717a0dbaded38622d0954a1a6173377',1,'DeviceConfiguration::grid'],['../structGrid.html',1,'Grid']]],
   ['grid_2ecc_261',['grid.cc',['../grid_8cc.html',1,'']]],
   ['grid_5fcommdata_5fbased_2ecc_262',['grid_commdata_based.cc',['../grid__commdata__based_8cc.html',1,'']]],
   ['grid_5fdetail_2eh_263',['grid_detail.h',['../grid__detail_8h.html',1,'']]],

@@ -93,7 +93,6 @@ $(document).ready(function(){initNavTree('stencilgen_8c.html',''); initResizable
   <div class="summary">
 <a href="#nested-classes">Data Structures</a> &#124;
 <a href="#define-members">Macros</a> &#124;
-<a href="#typedef-members">Typedefs</a> &#124;
 <a href="#enum-members">Enumerations</a> &#124;
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
@@ -142,11 +141,6 @@ Macros</h2></td></tr>
 <tr class="separator:ab05911eb069642c037eddbcbbfedb9da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac727fc264af97cb7ad3e5cd5cb23219a" id="r_ac727fc264af97cb7ad3e5cd5cb23219a"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#ac727fc264af97cb7ad3e5cd5cb23219a">TWO_DIMENSIONAL_PROFILE</a>&#160;&#160;&#160;(1 &lt;&lt; 21)</td></tr>
 <tr class="separator:ac727fc264af97cb7ad3e5cd5cb23219a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
-Typedefs</h2></td></tr>
-<tr class="memitem:a07730023f4679db4fd509ba2b1adce97" id="r_a07730023f4679db4fd509ba2b1adce97"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structint3.html">int3</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stencilgen_8c.html#a07730023f4679db4fd509ba2b1adce97">int3</a></td></tr>
-<tr class="separator:a07730023f4679db4fd509ba2b1adce97"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
@@ -316,73 +310,6 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-</div>
-</div>
-<h2 class="groupheader">Typedef Documentation</h2>
-<a id="a07730023f4679db4fd509ba2b1adce97" name="a07730023f4679db4fd509ba2b1adce97"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a07730023f4679db4fd509ba2b1adce97">&#9670;&#160;</a></span>int3</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">static</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structint3.html">int3</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Initial value:</b><div class="fragment"><div class="line">{}</div>
-<div class="line"> </div>
-<div class="line"><span class="keyword">struct </span><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">node_s</a> {</div>
-<div class="line">    <span class="keywordtype">int</span> id;</div>
-<div class="line"> </div>
-<div class="line">    <span class="keywordtype">int</span> num_devices;</div>
-<div class="line">    <a class="code hl_struct" href="structdevice__s.html">Device</a> devices[MAX_NUM_DEVICES];</div>
-<div class="line"> </div>
-<div class="line">    <a class="code hl_struct" href="structGridDims.html">GridDims</a> grid;</div>
-<div class="line">    <a class="code hl_struct" href="structGridDims.html">GridDims</a> subgrid;</div>
-<div class="line"> </div>
-<div class="line">    <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> <a class="code hl_variable" href="astaroth__utils_8h.html#a67414ecb24200d9f1a60f2923f1cfa7b">config</a>;</div>
-<div class="line">}</div>
-<div class="ttc" id="aacc__runtime_8cu_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">__device__ const int const int index</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:466</div></div>
-<div class="ttc" id="aastaroth__utils_8h_html_a67414ecb24200d9f1a60f2923f1cfa7b"><div class="ttname"><a href="astaroth__utils_8h.html#a67414ecb24200d9f1a60f2923f1cfa7b">config</a></div><div class="ttdeci">AcResult AcMeshInfo * config</div><div class="ttdef"><b>Definition</b> astaroth_utils.h:156</div></div>
-<div class="ttc" id="astructAcMeshInfo_html"><div class="ttname"><a href="structAcMeshInfo.html">AcMeshInfo</a></div><div class="ttdef"><b>Definition</b> acc_runtime.h:164</div></div>
-<div class="ttc" id="astructGridDims_html"><div class="ttname"><a href="structGridDims.html">GridDims</a></div><div class="ttdef"><b>Definition</b> astaroth_base.h:138</div></div>
-<div class="ttc" id="astructdevice__s_html"><div class="ttname"><a href="structdevice__s.html">device_s</a></div><div class="ttdef"><b>Definition</b> device.cc:63</div></div>
-</div><!-- fragment --><p>Code generator for unrolling and reordering memory accesses</p>
-<p>Key structures: </p><pre class="fragment">stencils
-
-int stencils_accessed[kernel][field][stencil]: Set if `stencil` accessed for `field` in `kernel`
-char* stencils[stencil][depth][height][width]: contains the expression to compute the stencil coefficient
-
-char* stencil_unary_ops[stencil]: contains the function name of the unary operation used to process `stencil`
-char* stencil_binary_ops[stencil]: contains the function name of the binary operation used to process `stencil`
-
-A stencil is defined (formally) as
-
-  f: R -&gt; R       | Map operator
-  g: R^{|s|} -&gt; R | Reduce operator
-  p: stencil points
-  w: stencil element weights (coefficients)
-
-  f(p_i) = ...
-  s_i = w_i f(p_i)
-  g(s) = ...
-
-  For example for an ordinary stencil
-  f(p_i) = p_i
-  g(s) = sum_{i=1}^{|s|} s_i = sum s_i
-
-Alternatively by recursion
-  G(p_0) = w_i f(p_0)
-  G(p_i) = g(w_i f(p_i), G(p_{i-1}))
-
-Could also simplify notation by incorporating w into f
-
-CS view:
-  res = f(p[0])
-  for i in 1,len(p):
-    res = g(f(p[i]), res)
-</pre> 
 </div>
 </div>
 <h2 class="groupheader">Enumeration Type Documentation</h2>

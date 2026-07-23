@@ -7,9 +7,9 @@ var searchData=
   ['time_4',['time',['../structAcAutotuneMeasurement.html#afa596f4b367cd5ad741ea97b451b9907',1,'AcAutotuneMeasurement']]],
   ['timer_5',['timer',['../structTraceFile.html#ab50deb1c3e2da273492115b1bb5a427c',1,'TraceFile']]],
   ['tmp_5fbuffers_6',['tmp_buffers',['../rocfft_8cc.html#ab9cc93ae72dba31729719484e53b3c27',1,'rocfft.cc']]],
-  ['tmpbuf_7',['tmpbuf',['../structkiss__fftnd__state.html#a5a2fbe494c8e53174cb9050fd2888edd',1,'kiss_fftnd_state']]],
+  ['tmpbuf_7',['tmpbuf',['../structkiss__fftnd__state.html#ac100714f59b30d1402b055b368f769b8',1,'kiss_fftnd_state']]],
   ['to_5fdsl_8',['to_DSL',['../structtraverse__base__params.html#acd4bc413806565703a38c9d070e809ee',1,'traverse_base_params']]],
-  ['token_9',['token',['../structastnode__s.html#a57b868dbca8ab8ada4a3ffae5c4a925e',1,'astnode_s::token'],['../structtspecifier.html#a2cf41d58fc0330ad1ef7007e9cf234fe',1,'tspecifier::token']]],
+  ['token_9',['token',['../structASTNode.html#a7e5d742d46455122eacca7c89a3a7f25',1,'ASTNode::token'],['../structtspecifier.html#a2cf41d58fc0330ad1ef7007e9cf234fe',1,'tspecifier::token']]],
   ['topological_5findex_10',['topological_index',['../structfuncs__calling__info.html#a581930a26929833714f0ed2a3a6c4e4f',1,'funcs_calling_info']]],
   ['topological_5forder_11',['topological_order',['../structBoundCond.html#a6573cf11d79bd5c9170188c5ea6746db',1,'BoundCond']]],
   ['tpb_12',['tpb',['../structTBConfig.html#ac4ec06a6adff3c24065c21c3411932bb',1,'TBConfig::tpb'],['../structAcAutotuneMeasurement.html#aa766bdc21a35a06a5ede906a379272ba',1,'AcAutotuneMeasurement::tpb']]],
@@ -18,8 +18,8 @@ var searchData=
   ['transposed_15',['transposed',['../structAcReduceBuffer.html#ad1e82adc51e7ca1eb0dca35a3b58d0ee',1,'AcReduceBuffer']]],
   ['true_5fstr_16',['TRUE_STR',['../codegen_8c.html#a259a992bb394d1afecdff1d9e1314c90',1,'codegen.c']]],
   ['tspecifier_17',['tspecifier',['../structSymbol.html#a65a0fcc5efc8462caa20150ab0c75ed2',1,'Symbol']]],
-  ['twiddles_18',['twiddles',['../structkiss__fft__state.html#aa7d1cab86ec03a8ecddfe0d91ef0bd20',1,'kiss_fft_state']]],
+  ['twiddles_18',['twiddles',['../structkiss__fft__state.html#a6b9c4f1326ee803892126780583d93ef',1,'kiss_fft_state']]],
   ['two_5fdimensional_5fsetup_19',['TWO_DIMENSIONAL_SETUP',['../decomposition_8cc.html#af2498a75ffbe9c8245c822f541d5244e',1,'decomposition.cc']]],
-  ['type_20',['type',['../structastnode__s.html#a9e243e676693de7a781652fde1985c9f',1,'astnode_s::type'],['../structSymbol.html#ae49229da2b4fbb7ef7ba12f24d8ac14b',1,'Symbol::type'],['../structvariable.html#a2a9eeb57183d967d7086abf99348c6e5',1,'variable::type'],['../structstate.html#a8f960cbbf1b94dee7dc6cf2fe3b5c4c4',1,'state::type'],['../structte__expr.html#a3e7afb069294af6962be87bfaeaf5edc',1,'te_expr::type'],['../structte__variable.html#af07e006edd70271440a510748f6cd9c4',1,'te_variable::type'],['../structKernelReduceOutput.html#a7fd4212f8856e3c939dc49617c218d9e',1,'KernelReduceOutput::type'],['../structHaloMessage.html#acfec68f192d4ac680ecf256ae55cb277',1,'HaloMessage::type'],['../vba_8cc.html#a0d36ace95a225a7dbd6a73103893bb2a',1,'type:&#160;vba.cc']]],
+  ['type_20',['type',['../structASTNode.html#a34086f3bc5af008f08f255c8ec57ba21',1,'ASTNode::type'],['../structSymbol.html#ae49229da2b4fbb7ef7ba12f24d8ac14b',1,'Symbol::type'],['../structvariable.html#a2a9eeb57183d967d7086abf99348c6e5',1,'variable::type'],['../structstate.html#a8f960cbbf1b94dee7dc6cf2fe3b5c4c4',1,'state::type'],['../structte__expr.html#a3e7afb069294af6962be87bfaeaf5edc',1,'te_expr::type'],['../structte__variable.html#af07e006edd70271440a510748f6cd9c4',1,'te_variable::type'],['../structKernelReduceOutput.html#a7fd4212f8856e3c939dc49617c218d9e',1,'KernelReduceOutput::type'],['../structHaloMessage.html#acfec68f192d4ac680ecf256ae55cb277',1,'HaloMessage::type'],['../vba_8cc.html#a0d36ace95a225a7dbd6a73103893bb2a',1,'type:&#160;vba.cc']]],
   ['types_21',['types',['../structfunc__params__info.html#a1120aac67e50ae778da99ce1b24357b1',1,'func_params_info::types'],['../structdfunc__possibilities.html#afa3a960b0ddd4b30abc06626ee3ac222',1,'dfunc_possibilities::types']]]
 ];

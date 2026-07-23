@@ -7,7 +7,7 @@ var searchData=
   ['value_5fstr_4',['VALUE_STR',['../codegen_8c.html#ae05f43454c7e9a67cc4ccb105589595a',1,'codegen.c']]],
   ['values_5',['values',['../structuser__enums__info.html#af027c00143458be0d7be45ac419e1305',1,'user_enums_info']]],
   ['variable_6',['variable',['../vba_8cc.html#ab7602066367aecfb05e061137f304a06',1,'variable:&#160;vba.cc'],['../structKernelReduceOutput.html#a377fc4b473305ec86f43d4ab32396cfa',1,'KernelReduceOutput::variable']]],
-  ['vba_7',['vba',['../stencil__accesses_8cpp.html#a34058d9e3637c165db916e8e2cf148a2',1,'VBA:&#160;stencil_accesses.cpp'],['../classTask.html#ae849cdf6649025db897d4a0862e13677',1,'Task::vba'],['../structdevice__s.html#aec091d8248588b79fc547a0e7f00402f',1,'device_s::vba']]],
+  ['vba_7',['vba',['../stencil__accesses_8cpp.html#a34058d9e3637c165db916e8e2cf148a2',1,'VBA:&#160;stencil_accesses.cpp'],['../classTask.html#ae849cdf6649025db897d4a0862e13677',1,'Task::vba'],['../structdevice__s.html#acf588d81e3eff2c4dd78cbc4c9bf4bad',1,'device_s::vba']]],
   ['vertex_5fbuffer_8',['vertex_buffer',['../structAcMesh.html#a8ad3200c879752e41d25b329bd81053d',1,'AcMesh']]],
   ['vertex_5fbuffer_5fcopied_5ffrom_5fuser_9',['vertex_buffer_copied_from_user',['../structGrid.html#a7df7ec346fdf6819f57221fbece7bf32',1,'Grid']]],
   ['volume_10',['volume',['../structRegion.html#a6b889c6aec620a52457876658492b75b',1,'Region']]],

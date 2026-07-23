@@ -8,9 +8,7 @@ var host__datatypes_8h =
     [ "X_ORDER_INT", "host__datatypes_8h.html#ae5b8b9140c27551d8bef6277a775ccd0", null ],
     [ "Y_ORDER_INT", "host__datatypes_8h.html#af6803addfe2b39cc2c7e5d6868287091", null ],
     [ "Z_ORDER_INT", "host__datatypes_8h.html#aff8ab01b729f9e2b740d40e091a63d35", null ],
-    [ "AcCommunicator", "host__datatypes_8h.html#a4e08bf2928ffe420262e8971e7fd8747", null ],
     [ "AcIndex", "host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7", null ],
-    [ "AcReduceOp", "host__datatypes_8h.html#ab08beb09749de71a5db5954797656dad", null ],
     [ "size3_t", "host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f", null ],
     [ "AcMeshOrder", "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1", [
       [ "XYZ", "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1ac3906aa83f2e1601606b5297cd4508a2", null ],

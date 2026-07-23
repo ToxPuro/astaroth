@@ -9,8 +9,8 @@ var searchData=
   ['boundary_5fnormal_6',['boundary_normal',['../structParamLoadingInfo.html#a3a13a8efaebfe37f68971ce3399b35b5',1,'ParamLoadingInfo']]],
   ['boundcond_5fstr_7',['BOUNDCOND_STR',['../codegen_8c.html#a8a8abbbe6e07ab3edeb44f09ce0fa588',1,'codegen.c']]],
   ['buf_5fidx_8',['buf_idx',['../structHaloMessageSwapChain.html#aee5dc51abda8d85e5f5bdb3fb9f615da',1,'HaloMessageSwapChain']]],
-  ['buffer_9',['buffer',['../structastnode__s.html#a2f8d106918fdda474992ae9bccf6d8ab',1,'astnode_s']]],
-  ['buffer_5ftoken_10',['buffer_token',['../structastnode__s.html#a4da56f9e60abd18a263a67af5f9f66aa',1,'astnode_s']]],
+  ['buffer_9',['buffer',['../structASTNode.html#ac435c4ef39b86ea688fadb6bc2fbc543',1,'ASTNode']]],
+  ['buffer_5ftoken_10',['buffer_token',['../structASTNode.html#a30eb7545e2f88544049e69026c600f18',1,'ASTNode']]],
   ['buffers_11',['buffers',['../structHaloMessageSwapChain.html#acf233e8eacb5316e546f16cc6b816160',1,'HaloMessageSwapChain']]],
   ['bytes_12',['bytes',['../structAcDeviceTmpBuffer.html#a89dcdc775690019306bd7a00205db25a',1,'AcDeviceTmpBuffer::bytes'],['../structVertexBufferArray.html#a6d116468065bf5430379a3408cd983c1',1,'VertexBufferArray::bytes']]]
 ];
