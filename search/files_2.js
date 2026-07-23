@@ -10,7 +10,7 @@ var searchData=
   ['analysis_5fhelpers_2ecc_7',['analysis_helpers.cc',['../analysis__helpers_8cc.html',1,'']]],
   ['api_5fspecification_5fand_5fuser_5fmanual_2emd_8',['API_specification_and_user_manual.md',['../API__specification__and__user__manual_8md.html',1,'']]],
   ['arrays_2ecc_9',['arrays.cc',['../arrays_8cc.html',1,'']]],
-  ['ast_2eh_10',['ast.h',['../acc-runtime_2acc_2ast_8h.html',1,'(Global Namespace)'],['../deprecated_2acc-2_84_2src_2ast_8h.html',1,'(Global Namespace)']]],
+  ['ast_2eh_10',['ast.h',['../ast_8h.html',1,'']]],
   ['astaroth_2ecc_11',['astaroth.cc',['../astaroth_8cc.html',1,'']]],
   ['astaroth_2eh_12',['astaroth.h',['../astaroth_8h.html',1,'']]],
   ['astaroth_5fanalysis_2eh_13',['astaroth_analysis.h',['../astaroth__analysis_8h.html',1,'']]],
@@ -32,6 +32,5 @@ var searchData=
   ['astaroth_5frandom_2ecc_29',['astaroth_random.cc',['../astaroth__random_8cc.html',1,'']]],
   ['astaroth_5frandom_2eh_30',['astaroth_random.h',['../astaroth__random_8h.html',1,'']]],
   ['astaroth_5fruntime_5fcompilation_2eh_31',['astaroth_runtime_compilation.h',['../astaroth__runtime__compilation_8h.html',1,'']]],
-  ['astaroth_5futils_2eh_32',['astaroth_utils.h',['../astaroth__utils_8h.html',1,'']]],
-  ['average_2eh_33',['average.h',['../average_8h.html',1,'']]]
+  ['astaroth_5futils_2eh_32',['astaroth_utils.h',['../astaroth__utils_8h.html',1,'']]]
 ];

@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['node_0',['Node',['../astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612',1,'astaroth_base.h']]],
-  ['node_5fvec_1',['node_vec',['../acc-runtime_2acc_2ast_8h.html#aa67dc5e569486ee95baa2f1430724394',1,'ast.h']]]
+  ['loader_5fptr_0',['loader_ptr',['../compute__steps_8cc.html#a1f87072b828036a5baa2f8657c6477a4',1,'compute_steps.cc']]],
+  ['loadkernelparamsfunc_1',['loadkernelparamsfunc',['../astaroth__grid_8h.html#ac2944870a54d36393fe59fc62e8ad19f',1,'LoadKernelParamsFunc:&#160;astaroth_grid.h'],['../task_8h.html#ac2944870a54d36393fe59fc62e8ad19f',1,'LoadKernelParamsFunc:&#160;task.h']]]
 ];

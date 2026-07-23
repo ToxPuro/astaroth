@@ -106,7 +106,7 @@ $(document).ready(function(){initNavTree('task_8h.html',''); initResizable(); })
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="astaroth_8h_source.html">astaroth.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="decomposition_8h_source.html">decomposition/decomposition.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="src_2core_2kernels_2kernels_8h_source.html">kernels/kernels.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="kernels_8h_source.html">kernels/kernels.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="math__utils_8h_source.html">math_utils.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="timer__hires_8h_source.html">timer_hires.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
@@ -115,6 +115,13 @@ $(document).ready(function(){initNavTree('task_8h.html',''); initResizable(); })
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
 <div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="task_8h__incl.svg" width="100%" height="600"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+</div>
+</div><div class="textblock"><div id="dynsection-1" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
+  <img id="dynsection-1-trigger" src="closed.png" alt="+"/> This graph shows which files directly or indirectly include this file:</div>
+<div id="dynsection-1-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-1-content" class="dyncontent" style="display:none;">
+<div class="center"><iframe scrolling="no" frameborder="0" src="task_8h__dep__incl.svg" width="656" height="110"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
 </div>
 </div>
 <p><a href="task_8h_source.html">Go to the source code of this file.</a></p>
@@ -156,30 +163,30 @@ Data Structures</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:a675c02aac0f97f7a91e11e1f329d6532" id="r_a675c02aac0f97f7a91e11e1f329d6532"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a675c02aac0f97f7a91e11e1f329d6532">SWAP_CHAIN_LENGTH</a>&#160;&#160;&#160;(2)</td></tr>
+<tr class="memitem:a675c02aac0f97f7a91e11e1f329d6532" id="r_a675c02aac0f97f7a91e11e1f329d6532"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a675c02aac0f97f7a91e11e1f329d6532">SWAP_CHAIN_LENGTH</a>&#160;&#160;&#160;(2)</td></tr>
 <tr class="separator:a675c02aac0f97f7a91e11e1f329d6532"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a12ea1a839334ba8ef947b61f8a8a0047" id="r_a12ea1a839334ba8ef947b61f8a8a0047"><td class="memItemLeft" align="right" valign="top">typedef class <a class="el" href="classTask.html">Task</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a12ea1a839334ba8ef947b61f8a8a0047">Task</a></td></tr>
+<tr class="memitem:a12ea1a839334ba8ef947b61f8a8a0047" id="r_a12ea1a839334ba8ef947b61f8a8a0047"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="classTask.html">Task</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a12ea1a839334ba8ef947b61f8a8a0047">Task</a></td></tr>
 <tr class="separator:a12ea1a839334ba8ef947b61f8a8a0047"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aab388c17ebbef1e6bb1a05d46c805e24" id="r_aab388c17ebbef1e6bb1a05d46c805e24"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classComputeTask.html">ComputeTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#aab388c17ebbef1e6bb1a05d46c805e24">ComputeTask</a></td></tr>
+<tr class="memitem:aab388c17ebbef1e6bb1a05d46c805e24" id="r_aab388c17ebbef1e6bb1a05d46c805e24"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="classComputeTask.html">ComputeTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#aab388c17ebbef1e6bb1a05d46c805e24">ComputeTask</a></td></tr>
 <tr class="separator:aab388c17ebbef1e6bb1a05d46c805e24"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1a4c81441156f21619b2b1bb15e4c70c" id="r_a1a4c81441156f21619b2b1bb15e4c70c"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structHaloMessage.html">HaloMessage</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a1a4c81441156f21619b2b1bb15e4c70c">HaloMessage</a></td></tr>
+<tr class="memitem:a1a4c81441156f21619b2b1bb15e4c70c" id="r_a1a4c81441156f21619b2b1bb15e4c70c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structHaloMessage.html">HaloMessage</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a1a4c81441156f21619b2b1bb15e4c70c">HaloMessage</a></td></tr>
 <tr class="separator:a1a4c81441156f21619b2b1bb15e4c70c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9f4fe74a008f3807f0b3e7087923410d" id="r_a9f4fe74a008f3807f0b3e7087923410d"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structHaloMessageSwapChain.html">HaloMessageSwapChain</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a9f4fe74a008f3807f0b3e7087923410d">HaloMessageSwapChain</a></td></tr>
+<tr class="memitem:a9f4fe74a008f3807f0b3e7087923410d" id="r_a9f4fe74a008f3807f0b3e7087923410d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structHaloMessageSwapChain.html">HaloMessageSwapChain</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a9f4fe74a008f3807f0b3e7087923410d">HaloMessageSwapChain</a></td></tr>
 <tr class="separator:a9f4fe74a008f3807f0b3e7087923410d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e2525a59aae9c503118f397dd95c8c1" id="r_a7e2525a59aae9c503118f397dd95c8c1"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classHaloExchangeTask.html">HaloExchangeTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a7e2525a59aae9c503118f397dd95c8c1">HaloExchangeTask</a></td></tr>
+<tr class="memitem:a7e2525a59aae9c503118f397dd95c8c1" id="r_a7e2525a59aae9c503118f397dd95c8c1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="classHaloExchangeTask.html">HaloExchangeTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a7e2525a59aae9c503118f397dd95c8c1">HaloExchangeTask</a></td></tr>
 <tr class="separator:a7e2525a59aae9c503118f397dd95c8c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a44367f7e4789b2ff3d8156ac041967ff" id="r_a44367f7e4789b2ff3d8156ac041967ff"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classMPIScanTask.html">MPIScanTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a44367f7e4789b2ff3d8156ac041967ff">MPIScanTask</a></td></tr>
+<tr class="memitem:a44367f7e4789b2ff3d8156ac041967ff" id="r_a44367f7e4789b2ff3d8156ac041967ff"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="classMPIScanTask.html">MPIScanTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a44367f7e4789b2ff3d8156ac041967ff">MPIScanTask</a></td></tr>
 <tr class="separator:a44367f7e4789b2ff3d8156ac041967ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a23f7cc0e68725ac575b73efbf4fad072" id="r_a23f7cc0e68725ac575b73efbf4fad072"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classPeriodicRayTask.html">PeriodicRayTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a23f7cc0e68725ac575b73efbf4fad072">PeriodicRayTask</a></td></tr>
+<tr class="memitem:a23f7cc0e68725ac575b73efbf4fad072" id="r_a23f7cc0e68725ac575b73efbf4fad072"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="classPeriodicRayTask.html">PeriodicRayTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a23f7cc0e68725ac575b73efbf4fad072">PeriodicRayTask</a></td></tr>
 <tr class="separator:a23f7cc0e68725ac575b73efbf4fad072"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad995100dcbb5ae70e26e47eed394b2b4" id="r_ad995100dcbb5ae70e26e47eed394b2b4"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classBoundaryConditionTask.html">BoundaryConditionTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#ad995100dcbb5ae70e26e47eed394b2b4">BoundaryConditionTask</a></td></tr>
+<tr class="memitem:ad995100dcbb5ae70e26e47eed394b2b4" id="r_ad995100dcbb5ae70e26e47eed394b2b4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="classBoundaryConditionTask.html">BoundaryConditionTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#ad995100dcbb5ae70e26e47eed394b2b4">BoundaryConditionTask</a></td></tr>
 <tr class="separator:ad995100dcbb5ae70e26e47eed394b2b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa3e99d9c847fd8eddde97579aa1fbcff" id="r_aa3e99d9c847fd8eddde97579aa1fbcff"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classReduceTask.html">ReduceTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#aa3e99d9c847fd8eddde97579aa1fbcff">ReduceTask</a></td></tr>
+<tr class="memitem:aa3e99d9c847fd8eddde97579aa1fbcff" id="r_aa3e99d9c847fd8eddde97579aa1fbcff"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="classReduceTask.html">ReduceTask</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#aa3e99d9c847fd8eddde97579aa1fbcff">ReduceTask</a></td></tr>
 <tr class="separator:aa3e99d9c847fd8eddde97579aa1fbcff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac2944870a54d36393fe59fc62e8ad19f" id="r_ac2944870a54d36393fe59fc62e8ad19f"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structLoadKernelParamsFunc.html">LoadKernelParamsFunc</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#ac2944870a54d36393fe59fc62e8ad19f">LoadKernelParamsFunc</a></td></tr>
+<tr class="memitem:ac2944870a54d36393fe59fc62e8ad19f" id="r_ac2944870a54d36393fe59fc62e8ad19f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structLoadKernelParamsFunc.html">LoadKernelParamsFunc</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#ac2944870a54d36393fe59fc62e8ad19f">LoadKernelParamsFunc</a></td></tr>
 <tr class="separator:ac2944870a54d36393fe59fc62e8ad19f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
@@ -245,11 +252,11 @@ Enumerations</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a163f799c9f7eef22136e3e272bef1bca" id="r_a163f799c9f7eef22136e3e272bef1bca"><td class="memItemLeft" align="right" valign="top"><a class="el" href="typedefs_8h.html#a6b1305c8b347b12540cc391a175696da">AcBoundary</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a163f799c9f7eef22136e3e272bef1bca">boundary_from_normal</a> (<a class="el" href="structint3.html">int3</a> normal)</td></tr>
+<tr class="memitem:a163f799c9f7eef22136e3e272bef1bca" id="r_a163f799c9f7eef22136e3e272bef1bca"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcBoundary</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a163f799c9f7eef22136e3e272bef1bca">boundary_from_normal</a> (<a class="el" href="structint3.html">int3</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">normal</a>)</td></tr>
 <tr class="separator:a163f799c9f7eef22136e3e272bef1bca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1125db3af2830a3526f46e3dfbb54fcc" id="r_a1125db3af2830a3526f46e3dfbb54fcc"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structint3.html">int3</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a1125db3af2830a3526f46e3dfbb54fcc">normal_from_boundary</a> (<a class="el" href="typedefs_8h.html#a6b1305c8b347b12540cc391a175696da">AcBoundary</a> boundary)</td></tr>
+<tr class="memitem:a1125db3af2830a3526f46e3dfbb54fcc" id="r_a1125db3af2830a3526f46e3dfbb54fcc"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structint3.html">int3</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a1125db3af2830a3526f46e3dfbb54fcc">normal_from_boundary</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcBoundary</a> boundary)</td></tr>
 <tr class="separator:a1125db3af2830a3526f46e3dfbb54fcc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4822044491b695ff1c0a28be7f8778ee" id="r_a4822044491b695ff1c0a28be7f8778ee"><td class="memItemLeft" align="right" valign="top">AcTaskDefinition&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a4822044491b695ff1c0a28be7f8778ee">convert_iter_to_normal_compute</a> (AcTaskDefinition op, int step_num)</td></tr>
+<tr class="memitem:a4822044491b695ff1c0a28be7f8778ee" id="r_a4822044491b695ff1c0a28be7f8778ee"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcTaskDefinition.html">AcTaskDefinition</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="task_8h.html#a4822044491b695ff1c0a28be7f8778ee">convert_iter_to_normal_compute</a> (<a class="el" href="structAcTaskDefinition.html">AcTaskDefinition</a> op, <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">step_num</a>)</td></tr>
 <tr class="separator:a4822044491b695ff1c0a28be7f8778ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
@@ -260,7 +267,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define SWAP_CHAIN_LENGTH&#160;&#160;&#160;(2)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> SWAP_CHAIN_LENGTH&#160;&#160;&#160;(2)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -275,7 +282,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef  <a class="el" href="classBoundaryConditionTask.html">BoundaryConditionTask</a> <a class="el" href="classBoundaryConditionTask.html">BoundaryConditionTask</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a>  <a class="el" href="classBoundaryConditionTask.html">BoundaryConditionTask</a> <a class="el" href="classBoundaryConditionTask.html">BoundaryConditionTask</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -289,7 +296,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef  <a class="el" href="classComputeTask.html">ComputeTask</a> <a class="el" href="classComputeTask.html">ComputeTask</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a>  <a class="el" href="classComputeTask.html">ComputeTask</a> <a class="el" href="classComputeTask.html">ComputeTask</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -303,7 +310,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef  <a class="el" href="classHaloExchangeTask.html">HaloExchangeTask</a> <a class="el" href="classHaloExchangeTask.html">HaloExchangeTask</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a>  <a class="el" href="classHaloExchangeTask.html">HaloExchangeTask</a> <a class="el" href="classHaloExchangeTask.html">HaloExchangeTask</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -317,7 +324,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef struct <a class="el" href="structHaloMessage.html">HaloMessage</a> <a class="el" href="structHaloMessage.html">HaloMessage</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structHaloMessage.html">HaloMessage</a> <a class="el" href="structHaloMessage.html">HaloMessage</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -331,7 +338,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef struct <a class="el" href="structHaloMessageSwapChain.html">HaloMessageSwapChain</a> <a class="el" href="structHaloMessageSwapChain.html">HaloMessageSwapChain</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structHaloMessageSwapChain.html">HaloMessageSwapChain</a> <a class="el" href="structHaloMessageSwapChain.html">HaloMessageSwapChain</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -345,7 +352,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef struct <a class="el" href="structLoadKernelParamsFunc.html">LoadKernelParamsFunc</a> <a class="el" href="structLoadKernelParamsFunc.html">LoadKernelParamsFunc</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structLoadKernelParamsFunc.html">LoadKernelParamsFunc</a> <a class="el" href="structLoadKernelParamsFunc.html">LoadKernelParamsFunc</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -359,7 +366,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef  <a class="el" href="classMPIScanTask.html">MPIScanTask</a> <a class="el" href="classMPIScanTask.html">MPIScanTask</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a>  <a class="el" href="classMPIScanTask.html">MPIScanTask</a> <a class="el" href="classMPIScanTask.html">MPIScanTask</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -373,7 +380,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef  <a class="el" href="classPeriodicRayTask.html">PeriodicRayTask</a> <a class="el" href="classPeriodicRayTask.html">PeriodicRayTask</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a>  <a class="el" href="classPeriodicRayTask.html">PeriodicRayTask</a> <a class="el" href="classPeriodicRayTask.html">PeriodicRayTask</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -387,7 +394,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef  <a class="el" href="classReduceTask.html">ReduceTask</a> <a class="el" href="classReduceTask.html">ReduceTask</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a>  <a class="el" href="classReduceTask.html">ReduceTask</a> <a class="el" href="classReduceTask.html">ReduceTask</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -401,13 +408,13 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef class <a class="el" href="classTask.html">Task</a> <a class="el" href="classTask.html">Task</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="classTask.html">Task</a> <a class="el" href="classTask.html">Task</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
-<h2><a class="anchor" id="autotoc_md192"></a>
+<h2><a class="anchor" id="autotoc_md131"></a>
 Task interface</h2>
-<p>Each task is tied to an output region (and input regions, but they are not explicit members of <a class="el" href="classTask.html">Task</a>). Tasks may depend on other Tasks. The existence of dependency between two tasks is deduced from their input and output regions. At the moment, this is done explicitly by comparing region ids and happens in <a class="el" href="grid_8cc.html">grid.cc</a>:GridInit() </p>
+<p>Each task is tied to an output region (and input regions, but they are not explicit members of <a class="el" href="classTask.html">Task</a>). Tasks may depend on other Tasks. The existence of dependency between two tasks is deduced from their input and output regions. At the moment, this is done explicitly by comparing region ids and happens in <a class="el" href="grid_8cc.html">grid.cc</a>:<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">GridInit()</a> </p>
 
 </div>
 </div>
@@ -422,7 +429,7 @@ Task interface</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="task_8h.html#ab624ed55ed3692f5b77adcfd7511cf99">BoundaryConditionState</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="task_8h.html#ab624ed55ed3692f5b77adcfd7511cf99">BoundaryConditionState</a></td>
         </tr>
       </table>
   </td>
@@ -448,7 +455,7 @@ Task interface</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="task_8h.html#ae5b5008315766bd9b7ac217894d38af2">ComputeState</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="task_8h.html#ae5b5008315766bd9b7ac217894d38af2">ComputeState</a></td>
         </tr>
       </table>
   </td>
@@ -474,7 +481,7 @@ Task interface</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="task_8h.html#ae06a32b9b155c134f986e0cc50f7e144">HaloExchangeState</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="task_8h.html#ae06a32b9b155c134f986e0cc50f7e144">HaloExchangeState</a></td>
         </tr>
       </table>
   </td>
@@ -503,7 +510,7 @@ Task interface</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="task_8h.html#aa2553dac5f55a1e06f2d054faea2fd0e">HaloMessageType</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="task_8h.html#aa2553dac5f55a1e06f2d054faea2fd0e">HaloMessageType</a></td>
         </tr>
       </table>
   </td>
@@ -529,7 +536,7 @@ Task interface</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="task_8h.html#a29eeaf568356aeef4c36b6f3150b7219">MPIScanTaskState</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="task_8h.html#a29eeaf568356aeef4c36b6f3150b7219">MPIScanTaskState</a></td>
         </tr>
       </table>
   </td>
@@ -557,7 +564,7 @@ Task interface</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="task_8h.html#a5d08741fcaeb095fbc3423bce5689b4d">PeriodicRayTaskState</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="task_8h.html#a5d08741fcaeb095fbc3423bce5689b4d">PeriodicRayTaskState</a></td>
         </tr>
       </table>
   </td>
@@ -586,7 +593,7 @@ Task interface</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="task_8h.html#a6258f3761fab0a3d29b7e6eae75aa263">ReduceState</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="task_8h.html#a6258f3761fab0a3d29b7e6eae75aa263">ReduceState</a></td>
         </tr>
       </table>
   </td>
@@ -615,7 +622,7 @@ Task interface</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="task_8h.html#a68645f369252eb31bc1d60eceaad6c44">RegionFamily</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">class</a> <a class="el" href="task_8h.html#a68645f369252eb31bc1d60eceaad6c44">RegionFamily</a></td>
         </tr>
       </table>
   </td>
@@ -624,7 +631,7 @@ Task interface</h2>
   </tr>
 </table>
 </div><div class="memdoc">
-<h2><a class="anchor" id="autotoc_md191"></a>
+<h2><a class="anchor" id="autotoc_md130"></a>
 Regions</h2>
 <p>Regions are identified by a non-zero region id of type {-1,0,1}^3 A region's id describes its position the region topology of the subdomain.</p>
 <p>There are three families of regions: Exchange_output message regions, outgoing message regions, and compute regions. The three families each cover some zone of data, as follows:</p><ul>
@@ -652,7 +659,7 @@ Regions</h2>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="typedefs_8h.html#a6b1305c8b347b12540cc391a175696da">AcBoundary</a> boundary_from_normal </td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcBoundary</a> boundary_from_normal </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structint3.html">int3</a>&#160;</td>
           <td class="paramname"><em>normal</em></td><td>)</td>
@@ -670,15 +677,15 @@ Regions</h2>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">AcTaskDefinition convert_iter_to_normal_compute </td>
+          <td class="memname"><a class="el" href="structAcTaskDefinition.html">AcTaskDefinition</a> convert_iter_to_normal_compute </td>
           <td>(</td>
-          <td class="paramtype">AcTaskDefinition&#160;</td>
+          <td class="paramtype"><a class="el" href="structAcTaskDefinition.html">AcTaskDefinition</a>&#160;</td>
           <td class="paramname"><em>op</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">int&#160;</td>
+          <td class="paramtype"><a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td>
           <td class="paramname"><em>step_num</em>&#160;</td>
         </tr>
         <tr>
@@ -700,7 +707,7 @@ Regions</h2>
         <tr>
           <td class="memname"><a class="el" href="structint3.html">int3</a> normal_from_boundary </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="typedefs_8h.html#a6b1305c8b347b12540cc391a175696da">AcBoundary</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcBoundary</a>&#160;</td>
           <td class="paramname"><em>boundary</em></td><td>)</td>
           <td></td>
         </tr>

@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['yxz_0',['YXZ',['../host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a616fc6d0ff8f80aecc92f8987c045012',1,'host_datatypes.h']]],
-  ['yzx_1',['YZX',['../host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a0c75015db91d2767bd7ccae7958d9a80',1,'host_datatypes.h']]]
+  ['zxy_0',['ZXY',['../host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a6e11756d8b160f36bfabb7fa0f302a57',1,'host_datatypes.h']]],
+  ['zyx_1',['ZYX',['../host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a5f37dd57f20f263fd5a5f742265800ea',1,'host_datatypes.h']]]
 ];

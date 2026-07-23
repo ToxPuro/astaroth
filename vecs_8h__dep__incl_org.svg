@@ -20,7 +20,7 @@
 <!-- Node2 -->
 <g id="Node000002" class="node">
 <title>Node2</title>
-<g id="a_Node000002"><a xlink:href="acc-runtime_2acc_2ast_8h.html" target="_top" xlink:title=" ">
+<g id="a_Node000002"><a xlink:href="ast_8h.html" target="_top" xlink:title=" ">
 <polygon fill="white" stroke="#666666" points="263.64,-145.5 141.64,-145.5 141.64,-126.5 263.64,-126.5 263.64,-145.5"/>
 <text text-anchor="middle" x="202.64" y="-133.5" font-family="Helvetica,sans-Serif" font-size="10.00">acc&#45;runtime/acc/ast.h</text>
 </a>

@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['waiting_0',['waiting',['../task_8h.html#ae5b5008315766bd9b7ac217894d38af2a5706de961fb376d701be6e7762d8b09c',1,'Waiting:&#160;task.h'],['../task_8h.html#ae06a32b9b155c134f986e0cc50f7e144a5706de961fb376d701be6e7762d8b09c',1,'Waiting:&#160;task.h'],['../task_8h.html#a29eeaf568356aeef4c36b6f3150b7219a5706de961fb376d701be6e7762d8b09c',1,'Waiting:&#160;task.h'],['../task_8h.html#a5d08741fcaeb095fbc3423bce5689b4da5706de961fb376d701be6e7762d8b09c',1,'Waiting:&#160;task.h'],['../task_8h.html#ab624ed55ed3692f5b77adcfd7511cf99a5706de961fb376d701be6e7762d8b09c',1,'Waiting:&#160;task.h'],['../task_8h.html#a6258f3761fab0a3d29b7e6eae75aa263a5706de961fb376d701be6e7762d8b09c',1,'Waiting:&#160;task.h']]]
+  ['xyz_0',['XYZ',['../host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1ac3906aa83f2e1601606b5297cd4508a2',1,'host_datatypes.h']]],
+  ['xzy_1',['XZY',['../host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a2f40244b989825fc009f5862f7ecc00c',1,'host_datatypes.h']]]
 ];

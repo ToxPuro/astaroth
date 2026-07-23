@@ -104,6 +104,7 @@ $(document).ready(function(){initNavTree('astaroth__base_8h.html',''); initResiz
 <code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
 <code>#include &quot;user_built-in_constants.h&quot;</code><br />
 <code>#include &quot;user_builtin_non_scalar_constants.h&quot;</code><br />
+<code>#include &lt;mpi.h&gt;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
   <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for astaroth_base.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
@@ -116,7 +117,7 @@ $(document).ready(function(){initNavTree('astaroth__base_8h.html',''); initResiz
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-1-content" class="dyncontent" style="display:none;">
-<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="astaroth__base_8h__dep__incl.svg" width="100%" height="525"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="astaroth__base_8h__dep__incl.svg" width="100%" height="514"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 </div>
 <p><a href="astaroth__base_8h_source.html">Go to the source code of this file.</a></p>
@@ -132,36 +133,36 @@ Data Structures</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:addf5ec070e9499d36b7f2009ce736076" id="r_addf5ec070e9499d36b7f2009ce736076"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a>&#160;&#160;&#160;__attribute__((unused))</td></tr>
+<tr class="memitem:addf5ec070e9499d36b7f2009ce736076" id="r_addf5ec070e9499d36b7f2009ce736076"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a>&#160;&#160;&#160;__attribute__((<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">unused</a>))</td></tr>
 <tr class="separator:addf5ec070e9499d36b7f2009ce736076"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a876704225d1c5ecd8b0fc85315f88397" id="r_a876704225d1c5ecd8b0fc85315f88397"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a876704225d1c5ecd8b0fc85315f88397">NUM_STREAMS</a>&#160;&#160;&#160;(32)</td></tr>
+<tr class="memitem:a876704225d1c5ecd8b0fc85315f88397" id="r_a876704225d1c5ecd8b0fc85315f88397"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a876704225d1c5ecd8b0fc85315f88397">NUM_STREAMS</a>&#160;&#160;&#160;(32)</td></tr>
 <tr class="separator:a876704225d1c5ecd8b0fc85315f88397"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5a802f6492438259b3360450d252b487" id="r_a5a802f6492438259b3360450d252b487"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a5a802f6492438259b3360450d252b487">RTYPE_ISNAN</a>&#160;&#160;&#160;(<a class="el" href="reduction_8h.html#a0e2c1ca902f59e2f0ded030f6aa64061">RTYPE_SUM</a>)</td></tr>
+<tr class="memitem:a5a802f6492438259b3360450d252b487" id="r_a5a802f6492438259b3360450d252b487"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a5a802f6492438259b3360450d252b487">RTYPE_ISNAN</a>&#160;&#160;&#160;(<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">RTYPE_SUM</a>)</td></tr>
 <tr class="separator:a5a802f6492438259b3360450d252b487"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a480a090f8741bbd3cad88cc508f8d90e" id="r_a480a090f8741bbd3cad88cc508f8d90e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a480a090f8741bbd3cad88cc508f8d90e">AC_FOR_INIT_TYPES</a>(FUNC)</td></tr>
+<tr class="memitem:a480a090f8741bbd3cad88cc508f8d90e" id="r_a480a090f8741bbd3cad88cc508f8d90e"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a480a090f8741bbd3cad88cc508f8d90e">AC_FOR_INIT_TYPES</a>(<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">FUNC</a>)</td></tr>
 <tr class="separator:a480a090f8741bbd3cad88cc508f8d90e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a715d17598fa37df82308eb17f736b791" id="r_a715d17598fa37df82308eb17f736b791"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a715d17598fa37df82308eb17f736b791">AC_GEN_ID</a>(X)&#160;&#160;&#160;X,</td></tr>
+<tr class="memitem:a715d17598fa37df82308eb17f736b791" id="r_a715d17598fa37df82308eb17f736b791"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a715d17598fa37df82308eb17f736b791">AC_GEN_ID</a>(<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">X</a>)&#160;&#160;&#160;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">X</a>,</td></tr>
 <tr class="separator:a715d17598fa37df82308eb17f736b791"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af36055989edf4c2cb9fde7b5f890be1f" id="r_af36055989edf4c2cb9fde7b5f890be1f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#af36055989edf4c2cb9fde7b5f890be1f">AcProcMappingStrategy_MORTON</a>&#160;&#160;&#160;(-1)</td></tr>
+<tr class="memitem:af36055989edf4c2cb9fde7b5f890be1f" id="r_af36055989edf4c2cb9fde7b5f890be1f"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#af36055989edf4c2cb9fde7b5f890be1f">AcProcMappingStrategy_MORTON</a>&#160;&#160;&#160;(-1)</td></tr>
 <tr class="separator:af36055989edf4c2cb9fde7b5f890be1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa3b170934977a156f44bd506b8347840" id="r_aa3b170934977a156f44bd506b8347840"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#aa3b170934977a156f44bd506b8347840">AcProcMappingStrategy_LINEAR</a>&#160;&#160;&#160;(1)</td></tr>
+<tr class="memitem:aa3b170934977a156f44bd506b8347840" id="r_aa3b170934977a156f44bd506b8347840"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#aa3b170934977a156f44bd506b8347840">AcProcMappingStrategy_LINEAR</a>&#160;&#160;&#160;(1)</td></tr>
 <tr class="separator:aa3b170934977a156f44bd506b8347840"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a429c13f9aefe1d68463a3cdf0f6cd1b6" id="r_a429c13f9aefe1d68463a3cdf0f6cd1b6"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a429c13f9aefe1d68463a3cdf0f6cd1b6">AcDecompStrategy_DEFAULT</a>&#160;&#160;&#160;(-1)</td></tr>
+<tr class="memitem:a429c13f9aefe1d68463a3cdf0f6cd1b6" id="r_a429c13f9aefe1d68463a3cdf0f6cd1b6"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a429c13f9aefe1d68463a3cdf0f6cd1b6">AcDecompStrategy_DEFAULT</a>&#160;&#160;&#160;(-1)</td></tr>
 <tr class="separator:a429c13f9aefe1d68463a3cdf0f6cd1b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abef8bd7ac103bd5ae6b070de75434e49" id="r_abef8bd7ac103bd5ae6b070de75434e49"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#abef8bd7ac103bd5ae6b070de75434e49">AcDecompStrategy_EXTERNAL</a>&#160;&#160;&#160;(1)</td></tr>
+<tr class="memitem:abef8bd7ac103bd5ae6b070de75434e49" id="r_abef8bd7ac103bd5ae6b070de75434e49"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#abef8bd7ac103bd5ae6b070de75434e49">AcDecompStrategy_EXTERNAL</a>&#160;&#160;&#160;(1)</td></tr>
 <tr class="separator:abef8bd7ac103bd5ae6b070de75434e49"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a913a7bd4a7d841425d1c70b92807354c" id="r_a913a7bd4a7d841425d1c70b92807354c"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a913a7bd4a7d841425d1c70b92807354c">AcMPICommStrategy_DUPLICATE_MPI_COMM_WORLD</a>&#160;&#160;&#160;(-1)</td></tr>
+<tr class="memitem:a913a7bd4a7d841425d1c70b92807354c" id="r_a913a7bd4a7d841425d1c70b92807354c"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a913a7bd4a7d841425d1c70b92807354c">AcMPICommStrategy_DUPLICATE_MPI_COMM_WORLD</a>&#160;&#160;&#160;(-1)</td></tr>
 <tr class="separator:a913a7bd4a7d841425d1c70b92807354c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abcf296f8f5059823fbab222b0f218ce0" id="r_abcf296f8f5059823fbab222b0f218ce0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#abcf296f8f5059823fbab222b0f218ce0">AcMPICommStrategy_DUPLICATE_USER_COMM</a>&#160;&#160;&#160;(1)</td></tr>
+<tr class="memitem:abcf296f8f5059823fbab222b0f218ce0" id="r_abcf296f8f5059823fbab222b0f218ce0"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#abcf296f8f5059823fbab222b0f218ce0">AcMPICommStrategy_DUPLICATE_USER_COMM</a>&#160;&#160;&#160;(1)</td></tr>
 <tr class="separator:abcf296f8f5059823fbab222b0f218ce0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac7f86c76a4d3ce7b11f00fcfdba809b8" id="r_ac7f86c76a4d3ce7b11f00fcfdba809b8"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#ac7f86c76a4d3ce7b11f00fcfdba809b8">AC_GEN_STR</a>(X)&#160;&#160;&#160;#X,</td></tr>
+<tr class="memitem:ac7f86c76a4d3ce7b11f00fcfdba809b8" id="r_ac7f86c76a4d3ce7b11f00fcfdba809b8"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#ac7f86c76a4d3ce7b11f00fcfdba809b8">AC_GEN_STR</a>(<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">X</a>)&#160;&#160;&#160;#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">X</a>,</td></tr>
 <tr class="separator:ac7f86c76a4d3ce7b11f00fcfdba809b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a4261c9bbb28aa78f2b9516fc0f504612" id="r_a4261c9bbb28aa78f2b9516fc0f504612"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structnode__s.html">node_s</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a></td></tr>
+<tr class="memitem:a4261c9bbb28aa78f2b9516fc0f504612" id="r_a4261c9bbb28aa78f2b9516fc0f504612"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">node_s</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a></td></tr>
 <tr class="separator:a4261c9bbb28aa78f2b9516fc0f504612"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1dfe2d9de2ccb7457d6db278f84acbb7" id="r_a1dfe2d9de2ccb7457d6db278f84acbb7"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structdevice__s.html">device_s</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a></td></tr>
+<tr class="memitem:a1dfe2d9de2ccb7457d6db278f84acbb7" id="r_a1dfe2d9de2ccb7457d6db278f84acbb7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structdevice__s.html">device_s</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a></td></tr>
 <tr class="separator:a1dfe2d9de2ccb7457d6db278f84acbb7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
@@ -225,13 +226,28 @@ Enumerations</h2></td></tr>
 <br />
  }</td></tr>
 <tr class="separator:a63f31c6e4874260362c8995061883c78"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8b039e6ef27959d7fc6119161905f257" id="r_a8b039e6ef27959d7fc6119161905f257"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257">InitType</a> { <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a03d7cfe98f35bec25375e803412ac94d">NUM_INIT_TYPES</a>
+<tr class="memitem:a8b039e6ef27959d7fc6119161905f257" id="r_a8b039e6ef27959d7fc6119161905f257"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257">InitType</a> { <br />
+&#160;&#160;<a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ac3072eb6d8236d5fa388e0c7ddccff79">INIT_TYPE_RANDOM</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a1f8232d1cfbc345afaab09291fba9d0d">INIT_TYPE_AA_RANDOM</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257aab09c9c79a060c87114c05f02520afa0">INIT_TYPE_XWAVE</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a8b24da74c64cee913361b4bb919b02bc">INIT_TYPE_GAUSSIAN_RADIAL_EXPL</a>
+, <br />
+&#160;&#160;<a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a54e763ee8006868788096c727502e35d">INIT_TYPE_ABC_FLOW</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257aabaeebf876ae0d231be17dda8bdfb234">INIT_TYPE_SIMPLE_CORE</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a16cdeae196bbc7103b903a3a893a42fc">INIT_TYPE_KICKBALL</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ae5e7086b4beeeef64bfe533b60fb3dab">INIT_TYPE_VEDGE</a>
+, <br />
+&#160;&#160;<a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a9e18750dc8fe86e237a892ae78c83468">INIT_TYPE_VEDGEX</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ab1c3b3d29322778d3a89f00ed468c1cb">INIT_TYPE_RAYLEIGH_TAYLOR</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257afaa303621f1bedd2c4d29e885c664faf">INIT_TYPE_RAYLEIGH_BENARD</a>
+, <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a03d7cfe98f35bec25375e803412ac94d">NUM_INIT_TYPES</a>
+<br />
  }</td></tr>
 <tr class="separator:a8b039e6ef27959d7fc6119161905f257"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:af33de62dcfe8be8cfa7f916f5101bcdf" id="r_af33de62dcfe8be8cfa7f916f5101bcdf"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#af33de62dcfe8be8cfa7f916f5101bcdf">STREAM_DEFAULT</a> = <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0acc7d7f4176bc82842397bb74e1b14016">STREAM_0</a></td></tr>
+<tr class="memitem:af33de62dcfe8be8cfa7f916f5101bcdf" id="r_af33de62dcfe8be8cfa7f916f5101bcdf"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="astaroth__base_8h.html#af33de62dcfe8be8cfa7f916f5101bcdf">STREAM_DEFAULT</a> = <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0acc7d7f4176bc82842397bb74e1b14016">STREAM_0</a></td></tr>
 <tr class="separator:af33de62dcfe8be8cfa7f916f5101bcdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
@@ -242,25 +258,37 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AC_FOR_INIT_TYPES</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AC_FOR_INIT_TYPES</td>
           <td>(</td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname">FUNC</td><td>)</td>
+          <td class="paramname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">FUNC</a></td><td>)</td>
           <td></td>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">    FUNC(INIT_TYPE_RANDOM)                                                        \</div>
-<div class="line">    FUNC(INIT_TYPE_AA_RANDOM)                                                     \</div>
-<div class="line">    FUNC(INIT_TYPE_XWAVE)                                                         \</div>
-<div class="line">    FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                          \</div>
-<div class="line">    FUNC(INIT_TYPE_ABC_FLOW)                                                      \</div>
-<div class="line">    FUNC(INIT_TYPE_SIMPLE_CORE)                                                   \</div>
-<div class="line">    FUNC(INIT_TYPE_KICKBALL)                                                      \</div>
-<div class="line">    FUNC(INIT_TYPE_VEDGE)                                                         \</div>
-<div class="line">    FUNC(INIT_TYPE_VEDGEX)                                                        \</div>
-<div class="line">    FUNC(INIT_TYPE_RAYLEIGH_TAYLOR)                                               \</div>
-<div class="line">    FUNC(INIT_TYPE_RAYLEIGH_BENARD)</div>
+<b>Value:</b><div class="fragment"><div class="line">    <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ac3072eb6d8236d5fa388e0c7ddccff79">INIT_TYPE_RANDOM</a>)                                                        <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a1f8232d1cfbc345afaab09291fba9d0d">INIT_TYPE_AA_RANDOM</a>)                                                     <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257aab09c9c79a060c87114c05f02520afa0">INIT_TYPE_XWAVE</a>)                                                         <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a8b24da74c64cee913361b4bb919b02bc">INIT_TYPE_GAUSSIAN_RADIAL_EXPL</a>)                                          <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a54e763ee8006868788096c727502e35d">INIT_TYPE_ABC_FLOW</a>)                                                      <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257aabaeebf876ae0d231be17dda8bdfb234">INIT_TYPE_SIMPLE_CORE</a>)                                                   <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a16cdeae196bbc7103b903a3a893a42fc">INIT_TYPE_KICKBALL</a>)                                                      <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ae5e7086b4beeeef64bfe533b60fb3dab">INIT_TYPE_VEDGE</a>)                                                         <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a9e18750dc8fe86e237a892ae78c83468">INIT_TYPE_VEDGEX</a>)                                                        <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ab1c3b3d29322778d3a89f00ed468c1cb">INIT_TYPE_RAYLEIGH_TAYLOR</a>)                                               <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">    FUNC</a>(<a class="code hl_enumvalue" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257afaa303621f1bedd2c4d29e885c664faf">INIT_TYPE_RAYLEIGH_BENARD</a>)</div>
+<div class="ttc" id="aacc__runtime_8cu_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">__device__ const int const int index</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:466</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257a16cdeae196bbc7103b903a3a893a42fc"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a16cdeae196bbc7103b903a3a893a42fc">INIT_TYPE_KICKBALL</a></div><div class="ttdeci">@ INIT_TYPE_KICKBALL</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257a1f8232d1cfbc345afaab09291fba9d0d"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a1f8232d1cfbc345afaab09291fba9d0d">INIT_TYPE_AA_RANDOM</a></div><div class="ttdeci">@ INIT_TYPE_AA_RANDOM</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257a54e763ee8006868788096c727502e35d"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a54e763ee8006868788096c727502e35d">INIT_TYPE_ABC_FLOW</a></div><div class="ttdeci">@ INIT_TYPE_ABC_FLOW</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257a8b24da74c64cee913361b4bb919b02bc"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a8b24da74c64cee913361b4bb919b02bc">INIT_TYPE_GAUSSIAN_RADIAL_EXPL</a></div><div class="ttdeci">@ INIT_TYPE_GAUSSIAN_RADIAL_EXPL</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257a9e18750dc8fe86e237a892ae78c83468"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a9e18750dc8fe86e237a892ae78c83468">INIT_TYPE_VEDGEX</a></div><div class="ttdeci">@ INIT_TYPE_VEDGEX</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257aab09c9c79a060c87114c05f02520afa0"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257aab09c9c79a060c87114c05f02520afa0">INIT_TYPE_XWAVE</a></div><div class="ttdeci">@ INIT_TYPE_XWAVE</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257aabaeebf876ae0d231be17dda8bdfb234"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257aabaeebf876ae0d231be17dda8bdfb234">INIT_TYPE_SIMPLE_CORE</a></div><div class="ttdeci">@ INIT_TYPE_SIMPLE_CORE</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257ab1c3b3d29322778d3a89f00ed468c1cb"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ab1c3b3d29322778d3a89f00ed468c1cb">INIT_TYPE_RAYLEIGH_TAYLOR</a></div><div class="ttdeci">@ INIT_TYPE_RAYLEIGH_TAYLOR</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257ac3072eb6d8236d5fa388e0c7ddccff79"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ac3072eb6d8236d5fa388e0c7ddccff79">INIT_TYPE_RANDOM</a></div><div class="ttdeci">@ INIT_TYPE_RANDOM</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257ae5e7086b4beeeef64bfe533b60fb3dab"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ae5e7086b4beeeef64bfe533b60fb3dab">INIT_TYPE_VEDGE</a></div><div class="ttdeci">@ INIT_TYPE_VEDGE</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_a8b039e6ef27959d7fc6119161905f257afaa303621f1bedd2c4d29e885c664faf"><div class="ttname"><a href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257afaa303621f1bedd2c4d29e885c664faf">INIT_TYPE_RAYLEIGH_BENARD</a></div><div class="ttdeci">@ INIT_TYPE_RAYLEIGH_BENARD</div><div class="ttdef"><b>Definition</b> astaroth_base.h:112</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -271,11 +299,11 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AC_GEN_ID</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AC_GEN_ID</td>
           <td>(</td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname">X</td><td>)</td>
-          <td>&#160;&#160;&#160;X,</td>
+          <td class="paramname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">X</a></td><td>)</td>
+          <td>&#160;&#160;&#160;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">X</a>,</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -289,11 +317,11 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AC_GEN_STR</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AC_GEN_STR</td>
           <td>(</td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname">X</td><td>)</td>
-          <td>&#160;&#160;&#160;#X,</td>
+          <td class="paramname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">X</a></td><td>)</td>
+          <td>&#160;&#160;&#160;#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">X</a>,</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -307,7 +335,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AcDecompStrategy_DEFAULT&#160;&#160;&#160;(-1)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AcDecompStrategy_DEFAULT&#160;&#160;&#160;(-1)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -321,7 +349,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AcDecompStrategy_EXTERNAL&#160;&#160;&#160;(1)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AcDecompStrategy_EXTERNAL&#160;&#160;&#160;(1)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -335,7 +363,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AcMPICommStrategy_DUPLICATE_MPI_COMM_WORLD&#160;&#160;&#160;(-1)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AcMPICommStrategy_DUPLICATE_MPI_COMM_WORLD&#160;&#160;&#160;(-1)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -349,7 +377,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AcMPICommStrategy_DUPLICATE_USER_COMM&#160;&#160;&#160;(1)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AcMPICommStrategy_DUPLICATE_USER_COMM&#160;&#160;&#160;(1)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -363,7 +391,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AcProcMappingStrategy_LINEAR&#160;&#160;&#160;(1)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AcProcMappingStrategy_LINEAR&#160;&#160;&#160;(1)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -377,7 +405,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define AcProcMappingStrategy_MORTON&#160;&#160;&#160;(-1)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> AcProcMappingStrategy_MORTON&#160;&#160;&#160;(-1)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -391,7 +419,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define NUM_STREAMS&#160;&#160;&#160;(32)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> NUM_STREAMS&#160;&#160;&#160;(32)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -405,7 +433,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define RTYPE_ISNAN&#160;&#160;&#160;(<a class="el" href="reduction_8h.html#a0e2c1ca902f59e2f0ded030f6aa64061">RTYPE_SUM</a>)</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> RTYPE_ISNAN&#160;&#160;&#160;(<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">RTYPE_SUM</a>)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -419,7 +447,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define UNUSED&#160;&#160;&#160;__attribute__((unused))</td>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> UNUSED&#160;&#160;&#160;__attribute__((<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">unused</a>))</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -434,7 +462,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef struct <a class="el" href="structdevice__s.html">device_s</a>* <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structdevice__s.html">device_s</a>* <a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -448,7 +476,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef struct <a class="el" href="structnode__s.html">node_s</a>* <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">node_s</a>* <a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -463,7 +491,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">enum <a class="el" href="astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94c">AcPlateDirection</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94c">AcPlateDirection</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -481,12 +509,23 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">enum <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257">InitType</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257">InitType</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257a03d7cfe98f35bec25375e803412ac94d" name="a8b039e6ef27959d7fc6119161905f257a03d7cfe98f35bec25375e803412ac94d"></a>NUM_INIT_TYPES&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257ac3072eb6d8236d5fa388e0c7ddccff79" name="a8b039e6ef27959d7fc6119161905f257ac3072eb6d8236d5fa388e0c7ddccff79"></a>INIT_TYPE_RANDOM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257a1f8232d1cfbc345afaab09291fba9d0d" name="a8b039e6ef27959d7fc6119161905f257a1f8232d1cfbc345afaab09291fba9d0d"></a>INIT_TYPE_AA_RANDOM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257aab09c9c79a060c87114c05f02520afa0" name="a8b039e6ef27959d7fc6119161905f257aab09c9c79a060c87114c05f02520afa0"></a>INIT_TYPE_XWAVE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257a8b24da74c64cee913361b4bb919b02bc" name="a8b039e6ef27959d7fc6119161905f257a8b24da74c64cee913361b4bb919b02bc"></a>INIT_TYPE_GAUSSIAN_RADIAL_EXPL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257a54e763ee8006868788096c727502e35d" name="a8b039e6ef27959d7fc6119161905f257a54e763ee8006868788096c727502e35d"></a>INIT_TYPE_ABC_FLOW&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257aabaeebf876ae0d231be17dda8bdfb234" name="a8b039e6ef27959d7fc6119161905f257aabaeebf876ae0d231be17dda8bdfb234"></a>INIT_TYPE_SIMPLE_CORE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257a16cdeae196bbc7103b903a3a893a42fc" name="a8b039e6ef27959d7fc6119161905f257a16cdeae196bbc7103b903a3a893a42fc"></a>INIT_TYPE_KICKBALL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257ae5e7086b4beeeef64bfe533b60fb3dab" name="a8b039e6ef27959d7fc6119161905f257ae5e7086b4beeeef64bfe533b60fb3dab"></a>INIT_TYPE_VEDGE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257a9e18750dc8fe86e237a892ae78c83468" name="a8b039e6ef27959d7fc6119161905f257a9e18750dc8fe86e237a892ae78c83468"></a>INIT_TYPE_VEDGEX&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257ab1c3b3d29322778d3a89f00ed468c1cb" name="a8b039e6ef27959d7fc6119161905f257ab1c3b3d29322778d3a89f00ed468c1cb"></a>INIT_TYPE_RAYLEIGH_TAYLOR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257afaa303621f1bedd2c4d29e885c664faf" name="a8b039e6ef27959d7fc6119161905f257afaa303621f1bedd2c4d29e885c664faf"></a>INIT_TYPE_RAYLEIGH_BENARD&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8b039e6ef27959d7fc6119161905f257a03d7cfe98f35bec25375e803412ac94d" name="a8b039e6ef27959d7fc6119161905f257a03d7cfe98f35bec25375e803412ac94d"></a>NUM_INIT_TYPES&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
@@ -498,7 +537,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">enum <a class="el" href="astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78">PlateType</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78">PlateType</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -519,7 +558,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">enum <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">enum</a> <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -569,7 +608,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> STREAM_DEFAULT = <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0acc7d7f4176bc82842397bb74e1b14016">STREAM_0</a></td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> STREAM_DEFAULT = <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0acc7d7f4176bc82842397bb74e1b14016">STREAM_0</a></td>
         </tr>
       </table>
 </div><div class="memdoc">

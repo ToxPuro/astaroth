@@ -1,8 +1,14 @@
 var searchData=
 [
-  ['kernel_0',['Kernel',['../acc__runtime_8cu.html#a98666be13c8e67196b9560ba9eeff819',1,'acc_runtime.cu']]],
-  ['kernelreduceoutput_1',['KernelReduceOutput',['../acc__runtime_8h.html#ab0641d8f8018b1e669acf2f1796dd448',1,'acc_runtime.h']]],
-  ['keytype_2',['KeyType',['../rocfft_8cc.html#a5444bd5aee82aa5e9c70f9d6cb73572b',1,'rocfft.cc']]],
-  ['kiss_5ffft_5fcfg_3',['kiss_fft_cfg',['../kiss__fft_8h.html#ab8c364e12d4cbde47dca54eb4bc3ce79',1,'kiss_fft.h']]],
-  ['kiss_5ffftnd_5fcfg_4',['kiss_fftnd_cfg',['../kiss__fftnd_8h.html#ae5cdf6777f8f50604da48808be9ab836',1,'kiss_fftnd.h']]]
+  ['haloexchangetask_0',['HaloExchangeTask',['../task_8h.html#a7e2525a59aae9c503118f397dd95c8c1',1,'task.h']]],
+  ['halomessage_1',['HaloMessage',['../task_8h.html#a1a4c81441156f21619b2b1bb15e4c70c',1,'task.h']]],
+  ['halomessageswapchain_2',['HaloMessageSwapChain',['../task_8h.html#a9f4fe74a008f3807f0b3e7087923410d',1,'task.h']]],
+  ['hashmap_5fcomparer_5ft_3',['hashmap_comparer_t',['../hashtable_8h.html#a0971cfb86efe251aeb71f0173f8d400a',1,'hashtable.h']]],
+  ['hashmap_5fcreate_5foptions_5ft_4',['hashmap_create_options_t',['../hashtable_8h.html#a4d532be53df9ced860a6fbb2c9dd4f91',1,'hashtable.h']]],
+  ['hashmap_5felement_5ft_5',['hashmap_element_t',['../hashtable_8h.html#aa33a73b2253824c5f2064e752a87784c',1,'hashtable.h']]],
+  ['hashmap_5fhasher_5ft_6',['hashmap_hasher_t',['../hashtable_8h.html#a341daad52cb42654316b24828f666d6b',1,'hashtable.h']]],
+  ['hashmap_5ft_7',['hashmap_t',['../hashtable_8h.html#a5448dbf692dd2b3e95f7943b6e029478',1,'hashtable.h']]],
+  ['hashmap_5fuint32_5ft_8',['hashmap_uint32_t',['../hashtable_8h.html#ad051e8698dcb05b7cc6dfcd563dbeb59',1,'hashtable.h']]],
+  ['hashmap_5fuint64_5ft_9',['hashmap_uint64_t',['../hashtable_8h.html#adb4f5f1c89ab27db75ffc115682573a3',1,'hashtable.h']]],
+  ['hashmap_5fuint8_5ft_10',['hashmap_uint8_t',['../hashtable_8h.html#ad81d2b7bbda6afa3690af5090b098a44',1,'hashtable.h']]]
 ];

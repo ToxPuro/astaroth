@@ -5,5 +5,5 @@ var reindex_8cu =
     [ "operator+", "reindex_8cu.html#af5058d006c997a098ab9243420fe05be", null ],
     [ "to_linear", "reindex_8cu.html#a387dd37ed8fde55537b6d2cb5ab6777a", null ],
     [ "to_spatial", "reindex_8cu.html#aee5bda1f1d1830c5a6621ecbe4c30031", null ],
-    [ "b", "reindex_8cu.html#a805fa490e79f7a5aa6484f94206e39eb", null ]
+    [ "b", "reindex_8cu.html#a3f52a023c798481c7c8326b74acef436", null ]
 ];

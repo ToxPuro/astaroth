@@ -1,0 +1,9 @@
+<map id="KernelOutputs" name="KernelOutputs">
+<area shape="rect" id="Node000001" title=" " alt="" coords="129,93,244,119"/>
+<area shape="rect" id="Node000002" href="$structKernelFields.html" title=" " alt="" coords="5,5,107,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,36,170,91,167,95,83,40"/>
+<area shape="rect" id="Node000003" href="$structKernelProfiles.html" title=" " alt="" coords="131,5,242,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="189,45,189,93,184,93,184,45"/>
+<area shape="rect" id="Node000004" href="$structKernelReduceOutputs.html" title=" " alt="" coords="267,5,429,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="315,40,210,95,207,91,313,35"/>
+</map>

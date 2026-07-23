@@ -90,9 +90,979 @@ $(document).ready(function(){initNavTree('grid_8cc.html',''); initResizable(); }
 </div>
 
 <div class="header">
+  <div class="summary">
+<a href="#nested-classes">Data Structures</a> &#124;
+<a href="#define-members">Macros</a> &#124;
+<a href="#typedef-members">Typedefs</a> &#124;
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">grid.cc File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+<div class="textblock"><code>#include &lt;mpi.h&gt;</code><br />
+<code>#include &lt;algorithm&gt;</code><br />
+<code>#include &lt;cstring&gt;</code><br />
+<code>#include &lt;queue&gt;</code><br />
+<code>#include &lt;stack&gt;</code><br />
+<code>#include &lt;vector&gt;</code><br />
+<code>#include &quot;<a class="el" href="ac__fft_8h_source.html">ac_fft.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="ac__helpers_8h_source.html">ac_helpers.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth_8h_source.html">astaroth.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__analysis__helpers_8h_source.html">astaroth_analysis_helpers.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__cuda__wrappers_8h_source.html">astaroth_cuda_wrappers.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="decomposition_8h_source.html">decomposition/decomposition.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="internal__device__funcs_8h_source.html">internal_device_funcs.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="math__utils_8h_source.html">math_utils.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="task_8h_source.html">task.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="timer__hires_8h_source.html">timer_hires.h</a>&quot;</code><br />
+<code>#include &lt;thread&gt;</code><br />
+<code>#include &quot;stencil_accesses.h&quot;</code><br />
+</div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
+  <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for grid.cc:</div>
+<div id="dynsection-0-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-0-content" class="dyncontent" style="display:none;">
+<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="grid_8cc__incl.svg" width="100%" height="600"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+</div>
+</div><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
+Data Structures</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGrid.html">Grid</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
+Macros</h2></td></tr>
+<tr class="memitem:a60b6c925f65b838eed958f91792f640b" id="r_a60b6c925f65b838eed958f91792f640b"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a60b6c925f65b838eed958f91792f640b">USE_CPP_THREADS</a>&#160;&#160;&#160;(1)</td></tr>
+<tr class="separator:a60b6c925f65b838eed958f91792f640b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aced7e196f61079291c8737fd74ea0bc4" id="r_aced7e196f61079291c8737fd74ea0bc4"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aced7e196f61079291c8737fd74ea0bc4">fatal</a>(<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">MESSAGE</a>, ...)</td></tr>
+<tr class="separator:aced7e196f61079291c8737fd74ea0bc4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1d51ea00c0a805315fa7ba04f8be78da" id="r_a1d51ea00c0a805315fa7ba04f8be78da"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a1d51ea00c0a805315fa7ba04f8be78da">BUFFER_DISK_WRITE_THROUGH_CPU</a>&#160;&#160;&#160;(1)</td></tr>
+<tr class="separator:a1d51ea00c0a805315fa7ba04f8be78da"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1d51ea00c0a805315fa7ba04f8be78da" id="r_a1d51ea00c0a805315fa7ba04f8be78da"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a1d51ea00c0a805315fa7ba04f8be78da">BUFFER_DISK_WRITE_THROUGH_CPU</a>&#160;&#160;&#160;(1)</td></tr>
+<tr class="separator:a1d51ea00c0a805315fa7ba04f8be78da"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1d51ea00c0a805315fa7ba04f8be78da" id="r_a1d51ea00c0a805315fa7ba04f8be78da"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a1d51ea00c0a805315fa7ba04f8be78da">BUFFER_DISK_WRITE_THROUGH_CPU</a>&#160;&#160;&#160;(1)</td></tr>
+<tr class="separator:a1d51ea00c0a805315fa7ba04f8be78da"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:a8f9a8bbb733c9be873a366e7d7bd099a" id="r_a8f9a8bbb733c9be873a366e7d7bd099a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structGrid.html">Grid</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a8f9a8bbb733c9be873a366e7d7bd099a">Grid</a></td></tr>
+<tr class="separator:a8f9a8bbb733c9be873a366e7d7bd099a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
+Functions</h2></td></tr>
+<tr class="memitem:a08865293b8287e668194267bba651a66" id="r_a08865293b8287e668194267bba651a66"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a08865293b8287e668194267bba651a66">acAnalysisLoadMeshInfo</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> info)</td></tr>
+<tr class="separator:a08865293b8287e668194267bba651a66"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a41a853ed1458877c705cc9e9c7ba3f1d" id="r_a41a853ed1458877c705cc9e9c7ba3f1d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a41a853ed1458877c705cc9e9c7ba3f1d">acGridInitialized</a> ()</td></tr>
+<tr class="separator:a41a853ed1458877c705cc9e9c7ba3f1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a698408f06e802c737b844043d267d6c7" id="r_a698408f06e802c737b844043d267d6c7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcMeshInfo.html">AcMeshInfo</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a698408f06e802c737b844043d267d6c7">acGridGetLocalMeshInfo</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>)</td></tr>
+<tr class="separator:a698408f06e802c737b844043d267d6c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae0b854c8640848dbbe92be1680019d92" id="r_ae0b854c8640848dbbe92be1680019d92"><td class="memItemLeft" align="right" valign="top"><a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#ae0b854c8640848dbbe92be1680019d92">acGridGetDevice</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>)</td></tr>
+<tr class="separator:ae0b854c8640848dbbe92be1680019d92"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a878616232951babdb8c06ce6c78a1db1" id="r_a878616232951babdb8c06ce6c78a1db1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a878616232951babdb8c06ce6c78a1db1">ac_MPI_Init</a> ()</td></tr>
+<tr class="separator:a878616232951babdb8c06ce6c78a1db1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a93a0aecd405758a740001fa82a7e08d2" id="r_a93a0aecd405758a740001fa82a7e08d2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a93a0aecd405758a740001fa82a7e08d2">ac_MPI_Init_thread</a> (<a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">thread_level</a>)</td></tr>
+<tr class="separator:a93a0aecd405758a740001fa82a7e08d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9aa1e935442b97654abcc540c8da0ff1" id="r_a9aa1e935442b97654abcc540c8da0ff1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a9aa1e935442b97654abcc540c8da0ff1">ac_MPI_Finalize</a> ()</td></tr>
+<tr class="separator:a9aa1e935442b97654abcc540c8da0ff1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aca55d27ecf4b3485aae9885971f4c1e1" id="r_aca55d27ecf4b3485aae9885971f4c1e1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">MPI_Comm</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aca55d27ecf4b3485aae9885971f4c1e1">acGridMPIComm</a> ()</td></tr>
+<tr class="separator:aca55d27ecf4b3485aae9885971f4c1e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a519d94967cd2bfd393e9a2fe57d7f45c" id="r_a519d94967cd2bfd393e9a2fe57d7f45c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcSubCommunicators.html">AcSubCommunicators</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a519d94967cd2bfd393e9a2fe57d7f45c">acGridMPISubComms</a> ()</td></tr>
+<tr class="separator:a519d94967cd2bfd393e9a2fe57d7f45c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a74148f2e0808d0d8b52fe366e60744c4" id="r_a74148f2e0808d0d8b52fe366e60744c4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a74148f2e0808d0d8b52fe366e60744c4">ac_MPI_Comm_rank</a> ()</td></tr>
+<tr class="separator:a74148f2e0808d0d8b52fe366e60744c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a55995fe0435ade27fbe1791ccfdef5f9" id="r_a55995fe0435ade27fbe1791ccfdef5f9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a55995fe0435ade27fbe1791ccfdef5f9">ac_MPI_Comm_size</a> ()</td></tr>
+<tr class="separator:a55995fe0435ade27fbe1791ccfdef5f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee6e7504435bcc3b4e5ec077e257cb6d" id="r_aee6e7504435bcc3b4e5ec077e257cb6d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aee6e7504435bcc3b4e5ec077e257cb6d">ac_MPI_Barrier</a> ()</td></tr>
+<tr class="separator:aee6e7504435bcc3b4e5ec077e257cb6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad30572b6e1c374b61f02e56a562995be" id="r_ad30572b6e1c374b61f02e56a562995be"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#ad30572b6e1c374b61f02e56a562995be">acGridSynchronizeStream</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a> stream)</td></tr>
+<tr class="separator:ad30572b6e1c374b61f02e56a562995be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa01fedf35dd4d4a8bd13505c9a00212a" id="r_aa01fedf35dd4d4a8bd13505c9a00212a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aa01fedf35dd4d4a8bd13505c9a00212a">acGridRandomize</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>)</td></tr>
+<tr class="separator:aa01fedf35dd4d4a8bd13505c9a00212a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a73ad37344137d130f346c8d3bf623f6e" id="r_a73ad37344137d130f346c8d3bf623f6e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a73ad37344137d130f346c8d3bf623f6e">acGridDiskAccessSync</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>)</td></tr>
+<tr class="separator:a73ad37344137d130f346c8d3bf623f6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6ce5e32c8d38a8bda3b1c6e879408d23" id="r_a6ce5e32c8d38a8bda3b1c6e879408d23"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a6ce5e32c8d38a8bda3b1c6e879408d23">acGridDiskAccessLaunch</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478">AccessType</a> <a class="el" href="vba_8cc.html#a0d36ace95a225a7dbd6a73103893bb2a">type</a>)</td></tr>
+<tr class="separator:a6ce5e32c8d38a8bda3b1c6e879408d23"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab28285b702f2e1cf396ba252aa6572e7" id="r_ab28285b702f2e1cf396ba252aa6572e7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#ab28285b702f2e1cf396ba252aa6572e7">acGridWriteMeshToDiskLaunch</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dir</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">label</a>)</td></tr>
+<tr class="separator:ab28285b702f2e1cf396ba252aa6572e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa37baed555e8abc34f3db2c194f6ed15" id="r_aa37baed555e8abc34f3db2c194f6ed15"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aa37baed555e8abc34f3db2c194f6ed15">acGridWriteSlicesToDiskLaunch</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dir</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a> step_number, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">simulation_time</a>)</td></tr>
+<tr class="separator:aa37baed555e8abc34f3db2c194f6ed15"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa0d922097ba9e29ceb31cf097e685c40" id="r_aa0d922097ba9e29ceb31cf097e685c40"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aa0d922097ba9e29ceb31cf097e685c40">acGridWriteSlicesToDiskSynchronous</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dir</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a> step_number, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">simulation_time</a>)</td></tr>
+<tr class="separator:aa0d922097ba9e29ceb31cf097e685c40"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9b08fa51f2023afce864b75527fd0724" id="r_a9b08fa51f2023afce864b75527fd0724"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a9b08fa51f2023afce864b75527fd0724">acGridWriteSlicesToDiskCollectiveSynchronous</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dir</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a> step_number, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">simulation_time</a>)</td></tr>
+<tr class="separator:a9b08fa51f2023afce864b75527fd0724"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2e29cd3908b2d459c977739805a0a574" id="r_a2e29cd3908b2d459c977739805a0a574"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a2e29cd3908b2d459c977739805a0a574">acGridAccessMeshOnDiskSynchronous</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">VertexBufferHandle</a> vtxbuf, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dir</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">label</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478">AccessType</a> <a class="el" href="vba_8cc.html#a0d36ace95a225a7dbd6a73103893bb2a">type</a>)</td></tr>
+<tr class="separator:a2e29cd3908b2d459c977739805a0a574"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3949cb3cf1255bb86572d010efe56013" id="r_a3949cb3cf1255bb86572d010efe56013"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a3949cb3cf1255bb86572d010efe56013">acGridAccessMeshOnDiskSynchronousDistributed</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">VertexBufferHandle</a> vtxbuf, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dir</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">label</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478">AccessType</a> <a class="el" href="vba_8cc.html#a0d36ace95a225a7dbd6a73103893bb2a">type</a>)</td></tr>
+<tr class="separator:a3949cb3cf1255bb86572d010efe56013"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa73a59288e117fadeee4163683f0a218" id="r_aa73a59288e117fadeee4163683f0a218"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aa73a59288e117fadeee4163683f0a218">acGridAccessMeshOnDiskSynchronousCollective</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">VertexBufferHandle</a> vtxbuf, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dir</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">label</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478">AccessType</a> <a class="el" href="vba_8cc.html#a0d36ace95a225a7dbd6a73103893bb2a">type</a>)</td></tr>
+<tr class="separator:aa73a59288e117fadeee4163683f0a218"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a45cf1a4d1e8d4540a025a7c6a6cb183c" id="r_a45cf1a4d1e8d4540a025a7c6a6cb183c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a45cf1a4d1e8d4540a025a7c6a6cb183c">acGridReadVarfileToMesh</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *<a class="el" href="string__vec_8h.html#a21e15f8aeaee9432808967b358dc2c49">file</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Field</a> fields[], <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">size_t</a> num_fields, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structint3.html">int3</a> nn, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structint3.html">int3</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">rr</a>)</td></tr>
+<tr class="separator:a45cf1a4d1e8d4540a025a7c6a6cb183c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af2d48eb897a42c779c760cf78c931cb8" id="r_af2d48eb897a42c779c760cf78c931cb8"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#af2d48eb897a42c779c760cf78c931cb8">acGridTaskGraphHasPeriodicBoundcondsX</a> (<a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>)</td></tr>
+<tr class="separator:af2d48eb897a42c779c760cf78c931cb8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d141b4d098da0d3a9b145e54cfbdc07" id="r_a2d141b4d098da0d3a9b145e54cfbdc07"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a2d141b4d098da0d3a9b145e54cfbdc07">acGridTaskGraphIsEmpty</a> (<a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>)</td></tr>
+<tr class="separator:a2d141b4d098da0d3a9b145e54cfbdc07"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a13ff699612160b9ef9f28e88a6527f26" id="r_a13ff699612160b9ef9f28e88a6527f26"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a13ff699612160b9ef9f28e88a6527f26">acGridTaskGraphHasPeriodicBoundcondsY</a> (<a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>)</td></tr>
+<tr class="separator:a13ff699612160b9ef9f28e88a6527f26"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee3ebcc8012c7d4acc34ce3b3b116517" id="r_aee3ebcc8012c7d4acc34ce3b3b116517"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aee3ebcc8012c7d4acc34ce3b3b116517">acGridTaskGraphHasPeriodicBoundcondsZ</a> (<a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>)</td></tr>
+<tr class="separator:aee3ebcc8012c7d4acc34ce3b3b116517"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9fdced9f9c587e657de3ceb876a6ab33" id="r_a9fdced9f9c587e657de3ceb876a6ab33"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVertexBufferArray.html">VertexBufferArray</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a9fdced9f9c587e657de3ceb876a6ab33">acGridGetVBA</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>)</td></tr>
+<tr class="separator:a9fdced9f9c587e657de3ceb876a6ab33"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:ae51ba72c3c71c9413c61b773798d3ed5" id="r_ae51ba72c3c71c9413c61b773798d3ed5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">static</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcIntParam</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#ae51ba72c3c71c9413c61b773798d3ed5">param</a></td></tr>
+<tr class="separator:ae51ba72c3c71c9413c61b773798d3ed5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9d2899e8e3269fed117015c38568a67c" id="r_a9d2899e8e3269fed117015c38568a67c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">static</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcIntParam</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#a9d2899e8e3269fed117015c38568a67c">value</a></td></tr>
+<tr class="separator:a9d2899e8e3269fed117015c38568a67c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa8907c3a5abad1ba549ef103e0e8031c" id="r_aa8907c3a5abad1ba549ef103e0e8031c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">static</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grid_8cc.html#aa8907c3a5abad1ba549ef103e0e8031c">int</a></td></tr>
+<tr class="separator:aa8907c3a5abad1ba549ef103e0e8031c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<h2 class="groupheader">Macro Definition Documentation</h2>
+<a id="a1d51ea00c0a805315fa7ba04f8be78da" name="a1d51ea00c0a805315fa7ba04f8be78da"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1d51ea00c0a805315fa7ba04f8be78da">&#9670;&#160;</a></span>BUFFER_DISK_WRITE_THROUGH_CPU <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> BUFFER_DISK_WRITE_THROUGH_CPU&#160;&#160;&#160;(1)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1d51ea00c0a805315fa7ba04f8be78da" name="a1d51ea00c0a805315fa7ba04f8be78da"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1d51ea00c0a805315fa7ba04f8be78da">&#9670;&#160;</a></span>BUFFER_DISK_WRITE_THROUGH_CPU <span class="overload">[2/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> BUFFER_DISK_WRITE_THROUGH_CPU&#160;&#160;&#160;(1)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1d51ea00c0a805315fa7ba04f8be78da" name="a1d51ea00c0a805315fa7ba04f8be78da"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1d51ea00c0a805315fa7ba04f8be78da">&#9670;&#160;</a></span>BUFFER_DISK_WRITE_THROUGH_CPU <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> BUFFER_DISK_WRITE_THROUGH_CPU&#160;&#160;&#160;(1)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aced7e196f61079291c8737fd74ea0bc4" name="aced7e196f61079291c8737fd74ea0bc4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aced7e196f61079291c8737fd74ea0bc4">&#9670;&#160;</a></span>fatal</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> fatal</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">MESSAGE</a>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>...</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Value:</b><div class="fragment"><div class="line">        { <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">	acLogFromRootProc</a>(ac_pid(),<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">MESSAGE</a>,<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">__VA_ARGS__</a>); <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">	fflush</a>(<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">stderr</a>); <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">	fflush</a>(<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">stdout</a>); <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">	ERRCHK_ALWAYS</a>(<span class="keyword">false</span>); \</div>
+<div class="line">    }</div>
+<div class="ttc" id="aacc__runtime_8cu_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">__device__ const int const int index</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:466</div></div>
+</div><!-- fragment -->
+</div>
+</div>
+<a id="a60b6c925f65b838eed958f91792f640b" name="a60b6c925f65b838eed958f91792f640b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a60b6c925f65b838eed958f91792f640b">&#9670;&#160;</a></span>USE_CPP_THREADS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> USE_CPP_THREADS&#160;&#160;&#160;(1)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Quick overview of the MPI implementation:</p>
+<p>The halo is partitioned into segments, each segment is assigned a <a class="el" href="classHaloExchangeTask.html">HaloExchangeTask</a>. A <a class="el" href="classHaloExchangeTask.html">HaloExchangeTask</a> sends local data as a halo to a neighbor and receives halo data from a (possibly different) neighbor.</p>
+<p>struct PackedData is used for packing and unpacking. Holds the actual data in the halo partition (wrapped by <a class="el" href="structHaloMessage.html">HaloMessage</a>) struct <a class="el" href="structGrid.html">Grid</a> contains information about the local GPU device, decomposition, the total mesh dimensions, default tasks, and MPI requests struct <a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> contains <em>Tasks</em>, encapsulated pieces of work that depend on each other. Users can create their own AcTaskGraphs, but the struct implementation is hidden from them.</p>
+<p>Basic steps: 1) Distribute the mesh among ranks 2) Integrate &amp; communicate</p><ul>
+<li>start inner integration and at the same time, pack halo data and send it to neighbors</li>
+<li>as halo data is received and unpacked, integrate segments whose dependencies are ready</li>
+<li>tasks in the task graph are run for three iterations. They are started early as possible 3) Gather the mesh to rank 0 for postprocessing</li>
+</ul>
+<p>This file contains the grid interface, with algorithms and high level functionality The nitty gritty of the MPI communication and the <a class="el" href="classTask.html">Task</a> interface is defined in <a class="el" href="task_8h.html">task.h</a>/task.cc </p>
+
+</div>
+</div>
+<h2 class="groupheader">Typedef Documentation</h2>
+<a id="a8f9a8bbb733c9be873a366e7d7bd099a" name="a8f9a8bbb733c9be873a366e7d7bd099a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8f9a8bbb733c9be873a366e7d7bd099a">&#9670;&#160;</a></span>Grid</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">struct</a> <a class="el" href="structGrid.html">Grid</a> <a class="el" href="structGrid.html">Grid</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Function Documentation</h2>
+<a id="aee6e7504435bcc3b4e5ec077e257cb6d" name="aee6e7504435bcc3b4e5ec077e257cb6d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee6e7504435bcc3b4e5ec077e257cb6d">&#9670;&#160;</a></span>ac_MPI_Barrier()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> ac_MPI_Barrier </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Calls MPI_Barrier on the Astaroth communicator </p>
+
+</div>
+</div>
+<a id="a74148f2e0808d0d8b52fe366e60744c4" name="a74148f2e0808d0d8b52fe366e60744c4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a74148f2e0808d0d8b52fe366e60744c4">&#9670;&#160;</a></span>ac_MPI_Comm_rank()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a> ac_MPI_Comm_rank </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Returns the rank of the Astaroth communicator </p>
+
+</div>
+</div>
+<a id="a55995fe0435ade27fbe1791ccfdef5f9" name="a55995fe0435ade27fbe1791ccfdef5f9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a55995fe0435ade27fbe1791ccfdef5f9">&#9670;&#160;</a></span>ac_MPI_Comm_size()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a> ac_MPI_Comm_size </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Returns the size of the Astaroth communicator </p>
+
+</div>
+</div>
+<a id="a9aa1e935442b97654abcc540c8da0ff1" name="a9aa1e935442b97654abcc540c8da0ff1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9aa1e935442b97654abcc540c8da0ff1">&#9670;&#160;</a></span>ac_MPI_Finalize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> ac_MPI_Finalize </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Destroys the communicator and calls MPI_Finalize </p>
+
+</div>
+</div>
+<a id="a878616232951babdb8c06ce6c78a1db1" name="a878616232951babdb8c06ce6c78a1db1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a878616232951babdb8c06ce6c78a1db1">&#9670;&#160;</a></span>ac_MPI_Init()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> ac_MPI_Init </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color = 666 Any program running in the same MPI process space must also call MPI_Comm_split with some color != 666. OTHERWISE this call will hang.</p>
+<p>Returns AC_SUCCESS on successfullly initializing MPI and creating a communicator.</p>
+<p>Returns AC_FAILURE otherwise. </p>
+
+</div>
+</div>
+<a id="a93a0aecd405758a740001fa82a7e08d2" name="a93a0aecd405758a740001fa82a7e08d2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a93a0aecd405758a740001fa82a7e08d2">&#9670;&#160;</a></span>ac_MPI_Init_thread()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> ac_MPI_Init_thread </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td>
+          <td class="paramname"><em>thread_level</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Calls MPI_Init_thread with the provided thread_level and creates a separate communicator for Astaroth procs with MPI_Comm_split, color = 666 Any program running in the same MPI process space must also call MPI_Comm_split with some color != 666. OTHERWISE this call will hang.</p>
+<p>Returns AC_SUCCESS on successfullly initializing MPI with the requested thread level and creating a communicator.</p>
+<p>Returns AC_FAILURE otherwise. </p>
+
+</div>
+</div>
+<a id="a08865293b8287e668194267bba651a66" name="a08865293b8287e668194267bba651a66"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a08865293b8287e668194267bba651a66">&#9670;&#160;</a></span>acAnalysisLoadMeshInfo()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acAnalysisLoadMeshInfo </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a>&#160;</td>
+          <td class="paramname"><em>info</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a2e29cd3908b2d459c977739805a0a574" name="a2e29cd3908b2d459c977739805a0a574"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2e29cd3908b2d459c977739805a0a574">&#9670;&#160;</a></span>acGridAccessMeshOnDiskSynchronous()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridAccessMeshOnDiskSynchronous </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">VertexBufferHandle</a>&#160;</td>
+          <td class="paramname"><em>vtxbuf</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>dir</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>label</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478">AccessType</a>&#160;</td>
+          <td class="paramname"><em>type</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa73a59288e117fadeee4163683f0a218" name="aa73a59288e117fadeee4163683f0a218"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa73a59288e117fadeee4163683f0a218">&#9670;&#160;</a></span>acGridAccessMeshOnDiskSynchronousCollective()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridAccessMeshOnDiskSynchronousCollective </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">VertexBufferHandle</a>&#160;</td>
+          <td class="paramname"><em>vtxbuf</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>dir</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>label</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478">AccessType</a>&#160;</td>
+          <td class="paramname"><em>type</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3949cb3cf1255bb86572d010efe56013" name="a3949cb3cf1255bb86572d010efe56013"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3949cb3cf1255bb86572d010efe56013">&#9670;&#160;</a></span>acGridAccessMeshOnDiskSynchronousDistributed()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridAccessMeshOnDiskSynchronousDistributed </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">VertexBufferHandle</a>&#160;</td>
+          <td class="paramname"><em>vtxbuf</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>dir</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>label</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478">AccessType</a>&#160;</td>
+          <td class="paramname"><em>type</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a6ce5e32c8d38a8bda3b1c6e879408d23" name="a6ce5e32c8d38a8bda3b1c6e879408d23"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6ce5e32c8d38a8bda3b1c6e879408d23">&#9670;&#160;</a></span>acGridDiskAccessLaunch()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridDiskAccessLaunch </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478">AccessType</a>&#160;</td>
+          <td class="paramname"><em>type</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a73ad37344137d130f346c8d3bf623f6e" name="a73ad37344137d130f346c8d3bf623f6e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a73ad37344137d130f346c8d3bf623f6e">&#9670;&#160;</a></span>acGridDiskAccessSync()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridDiskAccessSync </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae0b854c8640848dbbe92be1680019d92" name="ae0b854c8640848dbbe92be1680019d92"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae0b854c8640848dbbe92be1680019d92">&#9670;&#160;</a></span>acGridGetDevice()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="ac__helpers_8h.html#a1dfe2d9de2ccb7457d6db278f84acbb7">Device</a> acGridGetDevice </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Get the local device </p>
+
+</div>
+</div>
+<a id="a698408f06e802c737b844043d267d6c7" name="a698408f06e802c737b844043d267d6c7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a698408f06e802c737b844043d267d6c7">&#9670;&#160;</a></span>acGridGetLocalMeshInfo()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> acGridGetLocalMeshInfo </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9fdced9f9c587e657de3ceb876a6ab33" name="a9fdced9f9c587e657de3ceb876a6ab33"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9fdced9f9c587e657de3ceb876a6ab33">&#9670;&#160;</a></span>acGridGetVBA()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structVertexBufferArray.html">VertexBufferArray</a> acGridGetVBA </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a41a853ed1458877c705cc9e9c7ba3f1d" name="a41a853ed1458877c705cc9e9c7ba3f1d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a41a853ed1458877c705cc9e9c7ba3f1d">&#9670;&#160;</a></span>acGridInitialized()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> acGridInitialized </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aca55d27ecf4b3485aae9885971f4c1e1" name="aca55d27ecf4b3485aae9885971f4c1e1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aca55d27ecf4b3485aae9885971f4c1e1">&#9670;&#160;</a></span>acGridMPIComm()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">MPI_Comm</a> acGridMPIComm </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD </p>
+
+</div>
+</div>
+<a id="a519d94967cd2bfd393e9a2fe57d7f45c" name="a519d94967cd2bfd393e9a2fe57d7f45c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a519d94967cd2bfd393e9a2fe57d7f45c">&#9670;&#160;</a></span>acGridMPISubComms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structAcSubCommunicators.html">AcSubCommunicators</a> acGridMPISubComms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa01fedf35dd4d4a8bd13505c9a00212a" name="aa01fedf35dd4d4a8bd13505c9a00212a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa01fedf35dd4d4a8bd13505c9a00212a">&#9670;&#160;</a></span>acGridRandomize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridRandomize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Randomizes the local mesh </p>
+
+</div>
+</div>
+<a id="a45cf1a4d1e8d4540a025a7c6a6cb183c" name="a45cf1a4d1e8d4540a025a7c6a6cb183c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a45cf1a4d1e8d4540a025a7c6a6cb183c">&#9670;&#160;</a></span>acGridReadVarfileToMesh()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridReadVarfileToMesh </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>file</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Field</a>&#160;</td>
+          <td class="paramname"><em>fields</em>[], </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">size_t</a>&#160;</td>
+          <td class="paramname"><em>num_fields</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structint3.html">int3</a>&#160;</td>
+          <td class="paramname"><em>nn</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structint3.html">int3</a>&#160;</td>
+          <td class="paramname"><em>rr</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad30572b6e1c374b61f02e56a562995be" name="ad30572b6e1c374b61f02e56a562995be"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad30572b6e1c374b61f02e56a562995be">&#9670;&#160;</a></span>acGridSynchronizeStream()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridSynchronizeStream </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0">Stream</a>&#160;</td>
+          <td class="paramname"><em>stream</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af2d48eb897a42c779c760cf78c931cb8" name="af2d48eb897a42c779c760cf78c931cb8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af2d48eb897a42c779c760cf78c931cb8">&#9670;&#160;</a></span>acGridTaskGraphHasPeriodicBoundcondsX()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> acGridTaskGraphHasPeriodicBoundcondsX </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *&#160;</td>
+          <td class="paramname"><em>graph</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a13ff699612160b9ef9f28e88a6527f26" name="a13ff699612160b9ef9f28e88a6527f26"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a13ff699612160b9ef9f28e88a6527f26">&#9670;&#160;</a></span>acGridTaskGraphHasPeriodicBoundcondsY()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> acGridTaskGraphHasPeriodicBoundcondsY </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *&#160;</td>
+          <td class="paramname"><em>graph</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aee3ebcc8012c7d4acc34ce3b3b116517" name="aee3ebcc8012c7d4acc34ce3b3b116517"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee3ebcc8012c7d4acc34ce3b3b116517">&#9670;&#160;</a></span>acGridTaskGraphHasPeriodicBoundcondsZ()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> acGridTaskGraphHasPeriodicBoundcondsZ </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *&#160;</td>
+          <td class="paramname"><em>graph</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a2d141b4d098da0d3a9b145e54cfbdc07" name="a2d141b4d098da0d3a9b145e54cfbdc07"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2d141b4d098da0d3a9b145e54cfbdc07">&#9670;&#160;</a></span>acGridTaskGraphIsEmpty()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> acGridTaskGraphIsEmpty </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *&#160;</td>
+          <td class="paramname"><em>graph</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab28285b702f2e1cf396ba252aa6572e7" name="ab28285b702f2e1cf396ba252aa6572e7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab28285b702f2e1cf396ba252aa6572e7">&#9670;&#160;</a></span>acGridWriteMeshToDiskLaunch()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridWriteMeshToDiskLaunch </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>dir</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>label</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9b08fa51f2023afce864b75527fd0724" name="a9b08fa51f2023afce864b75527fd0724"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9b08fa51f2023afce864b75527fd0724">&#9670;&#160;</a></span>acGridWriteSlicesToDiskCollectiveSynchronous()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridWriteSlicesToDiskCollectiveSynchronous </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>dir</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td>
+          <td class="paramname"><em>step_number</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramname"><em>simulation_time</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa37baed555e8abc34f3db2c194f6ed15" name="aa37baed555e8abc34f3db2c194f6ed15"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa37baed555e8abc34f3db2c194f6ed15">&#9670;&#160;</a></span>acGridWriteSlicesToDiskLaunch()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridWriteSlicesToDiskLaunch </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>dir</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td>
+          <td class="paramname"><em>step_number</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramname"><em>simulation_time</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa0d922097ba9e29ceb31cf097e685c40" name="aa0d922097ba9e29ceb31cf097e685c40"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa0d922097ba9e29ceb31cf097e685c40">&#9670;&#160;</a></span>acGridWriteSlicesToDiskSynchronous()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridWriteSlicesToDiskSynchronous </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">char</a> *&#160;</td>
+          <td class="paramname"><em>dir</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td>
+          <td class="paramname"><em>step_number</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td>
+          <td class="paramname"><em>simulation_time</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Variable Documentation</h2>
+<a id="aa8907c3a5abad1ba549ef103e0e8031c" name="aa8907c3a5abad1ba549ef103e0e8031c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa8907c3a5abad1ba549ef103e0e8031c">&#9670;&#160;</a></span>int</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> int</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae51ba72c3c71c9413c61b773798d3ed5" name="ae51ba72c3c71c9413c61b773798d3ed5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae51ba72c3c71c9413c61b773798d3ed5">&#9670;&#160;</a></span>param</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcInt3Param</a> param</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9d2899e8e3269fed117015c38568a67c" name="a9d2899e8e3269fed117015c38568a67c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9d2899e8e3269fed117015c38568a67c">&#9670;&#160;</a></span>value</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">static</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcInt3Param</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structint3.html">int3</a> value</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">{</div>
+<div class="line">    <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">acPushToConfig</a>(info,<a class="code hl_variable" href="grid_8cc.html#ae51ba72c3c71c9413c61b773798d3ed5">param</a>,<a class="code hl_variable" href="grid_8cc.html#a9d2899e8e3269fed117015c38568a67c">value</a>)</div>
+<div class="ttc" id="agrid_8cc_html_a9d2899e8e3269fed117015c38568a67c"><div class="ttname"><a href="grid_8cc.html#a9d2899e8e3269fed117015c38568a67c">value</a></div><div class="ttdeci">static void const AcIntParam const int value</div><div class="ttdef"><b>Definition</b> grid.cc:328</div></div>
+<div class="ttc" id="agrid_8cc_html_ae51ba72c3c71c9413c61b773798d3ed5"><div class="ttname"><a href="grid_8cc.html#ae51ba72c3c71c9413c61b773798d3ed5">param</a></div><div class="ttdeci">static void const AcIntParam param</div><div class="ttdef"><b>Definition</b> grid.cc:327</div></div>
+</div><!-- fragment -->
+</div>
+</div>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

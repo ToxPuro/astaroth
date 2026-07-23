@@ -93,24 +93,24 @@ $(document).ready(function(){initNavTree('md_CONTRIBUTING.html',''); initResizab
   <div class="headertitle"><div class="title">Contributing</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md98"></a> Contributions to Astaroth are very welcome!</p>
+<div class="textblock"><p><a class="anchor" id="autotoc_md13"></a> Contributions to Astaroth are very welcome!</p>
 <p>This document details how to create good contributions. There are two primary concerns:</p>
 <ol type="1">
 <li>The codebase should stay maintainable and commits should adhere to a consistent style.</li>
 <li>New additions should not disrupt the work of others.</li>
 </ol>
-<h1><a class="anchor" id="autotoc_md99"></a>
+<h1><a class="anchor" id="autotoc_md14"></a>
 Basic workflow</h1>
 <blockquote class="doxtable">
 <p>&zwj;"There is something that needs fixing" </p>
 </blockquote>
 <ol type="1">
-<li>Create your work. See Programming and Committing .</li>
+<li>Create your work. See <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Programming</a> and <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Committing</a> .</li>
 <li>When done, check that autotests still pass by running <code>./ac_run -t</code>.</li>
-<li><b>[Recommended]:</b> Autoformat your code. See Formatting.</li>
+<li><b>[Recommended]:</b> Autoformat your code. See <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Formatting</a>.</li>
 <li>Create a pull request.</li>
 </ol>
-<h1><a class="anchor" id="autotoc_md100"></a>
+<h1><a class="anchor" id="autotoc_md15"></a>
 Programming</h1>
 <ul>
 <li><b>Strive for code clarity over micro-optimizations.</b><ul>
@@ -124,14 +124,14 @@ Programming</h1>
 </ul>
 </li>
 </ul>
-<h1><a class="anchor" id="autotoc_md101"></a>
+<h1><a class="anchor" id="autotoc_md16"></a>
 Committing</h1>
 <ul>
 <li>Prefer multiple small commits over few large ones.</li>
 <li>Provide meaningful commit messages.</li>
-<li>If a feature consists of multiple commits, consider creating a new branch. See Managing feature branches and About branches in general for more details. When done, issue the pull request to the new branch.</li>
+<li>If a feature consists of multiple commits, consider creating a new branch. See <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Managing feature branches</a> and <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">About branches in general</a> for more details. When done, issue the pull request to the new branch.</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md102"></a>
+<h1><a class="anchor" id="autotoc_md17"></a>
 Formatting</h1>
 <p>If you have <code>clang-format</code>, you may run <code>scripts/fix_style.sh</code>. This script will recursively fix style of all the source files down from the current working directory. The script will ask for a confirmation before making any changes.</p>
 <blockquote class="doxtable">
@@ -145,14 +145,15 @@ Formatting</h1>
 <li><a href="https://isocpp.org/wiki/faq/const-correctness">Be generous with <code>const</code> type qualifiers</a>.</li>
 <li>When in doubt, see <a href="https://google.github.io/styleguide/cppguide.html">Google C++ Style Guide</a>.</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md103"></a>
+<h1><a class="anchor" id="autotoc_md18"></a>
 Header example:</h1>
 <div class="fragment"><div class="line"><span class="comment">// Licence notice and doxygen description here</span></div>
 <div class="line"><span class="preprocessor">#pragma once</span></div>
 <div class="line"><span class="preprocessor">#include &quot;avoid_including_headers_here.h&quot;</span></div>
 <div class="line"> </div>
-<div class="line"><span class="keywordtype">void</span> globalFunction(<span class="keywordtype">void</span>);</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md104"></a>
+<div class="line"><span class="keywordtype">void</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">globalFunction</a>(<span class="keywordtype">void</span>);</div>
+<div class="ttc" id="aacc__runtime_8cu_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">__device__ const int const int index</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:466</div></div>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md19"></a>
 Source example:</h1>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &quot;parent_header.h&quot;</span></div>
 <div class="line"> </div>
@@ -162,26 +163,27 @@ Source example:</h1>
 <div class="line"><span class="preprocessor">#include &quot;more_headers.h&quot;</span></div>
 <div class="line"> </div>
 <div class="line"><span class="keyword">typedef</span> <span class="keyword">struct </span>{</div>
-<div class="line">    <span class="keywordtype">int</span> data;</div>
-<div class="line">} SomeStruct;</div>
+<div class="line">    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#ae56c2367da268bdb962b7fbf13028a82">data</a>;</div>
+<div class="line">} <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">SomeStruct</a>;</div>
 <div class="line"> </div>
-<div class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">int</span> small_function(<span class="keyword">const</span> SomeStruct&amp; stuff) { <span class="keywordflow">return</span> stuff.data; }</div>
+<div class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">int</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">small_function</a>(<span class="keyword">const</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">SomeStruct</a>&amp; <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">stuff</a>) { <span class="keywordflow">return</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">stuff</a>.data; }</div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// Pass constant structs always by reference (&amp;) and use const type qualifier.</span></div>
 <div class="line"><span class="comment">// Modified structs are always passed as pointers (*), never as references.</span></div>
 <div class="line"><span class="comment">// Constant parameters should be on the left-hand side, while non-consts go to the right.</span></div>
 <div class="line"><span class="keyword">static</span> <span class="keywordtype">void</span></div>
-<div class="line">local_function(<span class="keyword">const</span> SomeStruct&amp; constant_struct, SomeStruct* modified_struct)</div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">local_function</a>(<span class="keyword">const</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">SomeStruct</a>&amp; <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">constant_struct</a>, <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">SomeStruct</a>* <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">modified_struct</a>)</div>
 <div class="line">{</div>
-<div class="line">    modified_struct-&gt;data = constant_struct.data;</div>
+<div class="line">    <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">modified_struct</a>-&gt;data = <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">constant_struct</a>.data;</div>
 <div class="line">}</div>
 <div class="line"> </div>
 <div class="line"><span class="keywordtype">void</span></div>
-<div class="line">globalFunction(<span class="keywordtype">void</span>)</div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">globalFunction</a>(<span class="keywordtype">void</span>)</div>
 <div class="line">{</div>
 <div class="line">    <span class="keywordflow">return</span>;</div>
 <div class="line">}</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md105"></a>
+<div class="ttc" id="amath__utils_8h_html_ae56c2367da268bdb962b7fbf13028a82"><div class="ttname"><a href="math__utils_8h.html#ae56c2367da268bdb962b7fbf13028a82">data</a></div><div class="ttdeci">out data[0][0]</div><div class="ttdef"><b>Definition</b> math_utils.h:712</div></div>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md20"></a>
 Managing feature branches</h1>
 <ol type="1">
 <li>Ensure that you're on the latest version of master. <code>git checkout master &amp;&amp; git pull</code></li>
@@ -193,7 +195,7 @@ Managing feature branches</h1>
 <li>Unless you really have to keep your feature branch around for historical/other reasons, remove it from remote by calling <code>git push origin --delete &lt;your feature branch&gt;</code></li>
 </ol>
 <p>A flowchart is available at <a href="https://bitbucket.org/jpekkila/astaroth/src/2d91df19dcb3/doc/commitflowchart.png?at=master">doc/commitflowchart.png</a>.</p>
-<h1><a class="anchor" id="autotoc_md106"></a>
+<h1><a class="anchor" id="autotoc_md21"></a>
 About branches in general</h1>
 <ul>
 <li>Unused branches should not kept around after merging them into master in order to avoid cluttering the repository.</li>

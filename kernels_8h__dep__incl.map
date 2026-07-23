@@ -1,0 +1,24 @@
+<map id="src/core/kernels/kernels.h" name="src/core/kernels/kernels.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="298,5,485,31"/>
+<area shape="rect" id="Node000002" href="$acc__runtime_8cu.html" title=" " alt="" coords="5,79,156,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="333,37,156,81,155,76,332,31"/>
+<area shape="rect" id="Node000003" href="$kernels_8cu.html" title=" " alt="" coords="41,167,235,192"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="322,37,270,54,221,81,197,102,176,126,147,168,142,165,171,122,193,98,218,76,268,50,320,32"/>
+<area shape="rect" id="Node000004" href="$device_8cc.html" title=" " alt="" coords="231,86,370,111"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="369,42,316,88,312,84,366,38"/>
+<area shape="rect" id="Node000005" href="$grid__commdata__based_8cc.html" title=" " alt="" coords="394,79,573,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="417,38,463,76,459,81,414,42"/>
+<area shape="rect" id="Node000006" href="$reductions_8cu.html" title=" " alt="" coords="597,86,812,111"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="451,31,660,83,658,89,449,37"/>
+<area shape="rect" id="Node000007" href="$task_8h.html" title=" " alt="" coords="837,86,954,111"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="499,28,654,47,825,76,856,83,855,89,824,81,653,53,498,33"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="105,128,132,165,127,168,101,132"/>
+<area shape="rect" id="Node000008" href="$compute__steps_8cc.html" title=" " alt="" coords="533,167,727,192"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="844,118,669,169,668,164,843,113"/>
+<area shape="rect" id="Node000009" href="$debug_8cc.html" title=" " alt="" coords="752,167,887,192"/>
+<area shape="poly" id="edge9_Node000007_Node000009" title=" " alt="" coords="877,123,833,168,829,165,873,119"/>
+<area shape="rect" id="Node000010" href="$grid_8cc.html" title=" " alt="" coords="911,167,1031,192"/>
+<area shape="poly" id="edge10_Node000007_Node000010" title=" " alt="" coords="918,119,962,165,958,168,914,123"/>
+<area shape="rect" id="Node000011" href="$task_8cc.html" title=" " alt="" coords="1055,167,1178,192"/>
+<area shape="poly" id="edge11_Node000007_Node000011" title=" " alt="" coords="942,113,1085,164,1084,169,940,118"/>
+</map>

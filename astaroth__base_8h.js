@@ -22,6 +22,17 @@ var astaroth__base_8h =
       [ "AC_D2H", "astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94cadf1122edbb03a436a7d52e7134edd66d", null ]
     ] ],
     [ "InitType", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257", [
+      [ "INIT_TYPE_RANDOM", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ac3072eb6d8236d5fa388e0c7ddccff79", null ],
+      [ "INIT_TYPE_AA_RANDOM", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a1f8232d1cfbc345afaab09291fba9d0d", null ],
+      [ "INIT_TYPE_XWAVE", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257aab09c9c79a060c87114c05f02520afa0", null ],
+      [ "INIT_TYPE_GAUSSIAN_RADIAL_EXPL", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a8b24da74c64cee913361b4bb919b02bc", null ],
+      [ "INIT_TYPE_ABC_FLOW", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a54e763ee8006868788096c727502e35d", null ],
+      [ "INIT_TYPE_SIMPLE_CORE", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257aabaeebf876ae0d231be17dda8bdfb234", null ],
+      [ "INIT_TYPE_KICKBALL", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a16cdeae196bbc7103b903a3a893a42fc", null ],
+      [ "INIT_TYPE_VEDGE", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ae5e7086b4beeeef64bfe533b60fb3dab", null ],
+      [ "INIT_TYPE_VEDGEX", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a9e18750dc8fe86e237a892ae78c83468", null ],
+      [ "INIT_TYPE_RAYLEIGH_TAYLOR", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257ab1c3b3d29322778d3a89f00ed468c1cb", null ],
+      [ "INIT_TYPE_RAYLEIGH_BENARD", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257afaa303621f1bedd2c4d29e885c664faf", null ],
       [ "NUM_INIT_TYPES", "astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a03d7cfe98f35bec25375e803412ac94d", null ]
     ] ],
     [ "PlateType", "astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78", [

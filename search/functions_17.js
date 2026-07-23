@@ -1,7 +1,9 @@
 var searchData=
 [
-  ['xkcd_0',['xkcd',['../namespacematplotlibcpp.html#aca0fdbeae2fd86ab7291661f154f83ff',1,'matplotlibcpp']]],
-  ['xlabel_1',['xlabel',['../namespacematplotlibcpp.html#a93e96cce1779c757a9ac754639c80878',1,'matplotlibcpp']]],
-  ['xlim_2',['xlim',['../namespacematplotlibcpp.html#a712cd34472b3687668048899bee4cdbf',1,'matplotlibcpp::xlim(Numeric left, Numeric right)'],['../namespacematplotlibcpp.html#a12ac5a7fc96a03d27b3249fc6a54974f',1,'matplotlibcpp::xlim()']]],
-  ['xticks_3',['xticks',['../namespacematplotlibcpp.html#acd5a42a3079f5459cdf66292ebd6bcf9',1,'matplotlibcpp::xticks(const std::vector&lt; Numeric &gt; &amp;ticks, const std::vector&lt; std::string &gt; &amp;labels={}, const std::map&lt; std::string, std::string &gt; &amp;keywords={})'],['../namespacematplotlibcpp.html#a2f48d08907cd16a6310191719c51a4d8',1,'matplotlibcpp::xticks(const std::vector&lt; Numeric &gt; &amp;ticks, const std::map&lt; std::string, std::string &gt; &amp;keywords)']]]
+  ['_7ecomputetask_0',['~ComputeTask',['../classComputeTask.html#a39634a7772963a0ab8e588d051ace52e',1,'ComputeTask']]],
+  ['_7ehaloexchangetask_1',['~HaloExchangeTask',['../classHaloExchangeTask.html#a3a64471e4a9018a9fcfbad94851b4ed4',1,'HaloExchangeTask']]],
+  ['_7ehalomessage_2',['~HaloMessage',['../structHaloMessage.html#a8a890b4a1a293f1f360a7660773e9367',1,'HaloMessage']]],
+  ['_7empiscantask_3',['~MPIScanTask',['../classMPIScanTask.html#a7fd21ce23573ff151ffd3e7689205257',1,'MPIScanTask']]],
+  ['_7eperiodicraytask_4',['~PeriodicRayTask',['../classPeriodicRayTask.html#a3d0b56f64273dc48d873e5d56b228aed',1,'PeriodicRayTask']]],
+  ['_7etask_5',['~Task',['../classTask.html#a7bff79cc05fa4511c72048d33591503b',1,'Task']]]
 ];

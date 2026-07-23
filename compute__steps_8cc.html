@@ -90,9 +90,625 @@ $(document).ready(function(){initNavTree('compute__steps_8cc.html',''); initResi
 </div>
 
 <div class="header">
+  <div class="summary">
+<a href="#nested-classes">Data Structures</a> &#124;
+<a href="#define-members">Macros</a> &#124;
+<a href="#typedef-members">Typedefs</a> &#124;
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">compute_steps.cc File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+<div class="textblock"><code>#include &lt;mpi.h&gt;</code><br />
+<code>#include &lt;algorithm&gt;</code><br />
+<code>#include &lt;cstring&gt;</code><br />
+<code>#include &lt;queue&gt;</code><br />
+<code>#include &lt;stack&gt;</code><br />
+<code>#include &lt;vector&gt;</code><br />
+<code>#include &quot;<a class="el" href="ac__mpi_8h_source.html">ac_mpi.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__analysis__helpers_8h_source.html">astaroth_analysis_helpers.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__base_8h_source.html">astaroth_base.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__grid_8h_source.html">astaroth_grid.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="math__utils_8h_source.html">math_utils.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="task_8h_source.html">task.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="timer__hires_8h_source.html">timer_hires.h</a>&quot;</code><br />
+<code>#include &quot;taskgraph_kernels.h&quot;</code><br />
+<code>#include &quot;taskgraph_bc_handles.h&quot;</code><br />
+<code>#include &quot;taskgraph_kernel_bcs.h&quot;</code><br />
+<code>#include &quot;user_constants.h&quot;</code><br />
+<code>#include &quot;user_loader_impls.h&quot;</code><br />
+<code>#include &quot;user_loaders.h&quot;</code><br />
+</div><div class="textblock"><div id="dynsection-0" onclick="return toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;">
+  <img id="dynsection-0-trigger" src="closed.png" alt="+"/> Include dependency graph for compute_steps.cc:</div>
+<div id="dynsection-0-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-0-content" class="dyncontent" style="display:none;">
+<div class="center"><div class="zoom"><iframe scrolling="no" frameborder="0" src="compute__steps_8cc__incl.svg" width="100%" height="600"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+</div>
+</div><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
+Data Structures</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBoundCond.html">BoundCond</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKernelFields.html">KernelFields</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKernelProfiles.html">KernelProfiles</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKernelReduceOutputs.html">KernelReduceOutputs</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKernelOutputs.html">KernelOutputs</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKernelCall.html">KernelCall</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structlevel__set.html">level_set</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structVectorHash.html">VectorHash</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKeyHash.html">KeyHash</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKeyEqual.html">KeyEqual</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
+Macros</h2></td></tr>
+<tr class="memitem:aced7e196f61079291c8737fd74ea0bc4" id="r_aced7e196f61079291c8737fd74ea0bc4"><td class="memItemLeft" align="right" valign="top">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#aced7e196f61079291c8737fd74ea0bc4">fatal</a>(<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">MESSAGE</a>, ...)</td></tr>
+<tr class="separator:aced7e196f61079291c8737fd74ea0bc4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:a8eed71f1224988ccb8709c88e24eced7" id="r_a8eed71f1224988ccb8709c88e24eced7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt; <a class="el" href="structBoundCond.html">BoundCond</a>, 27 &gt;, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NUM_VTXBUF_HANDLES</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a8eed71f1224988ccb8709c88e24eced7">FieldBCs</a></td></tr>
+<tr class="separator:a8eed71f1224988ccb8709c88e24eced7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1f87072b828036a5baa2f8657c6477a4" id="r_a1f87072b828036a5baa2f8657c6477a4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a1f87072b828036a5baa2f8657c6477a4">loader_ptr</a>) (<a class="el" href="structParamLoadingInfo.html">ParamLoadingInfo</a>)</td></tr>
+<tr class="separator:a1f87072b828036a5baa2f8657c6477a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8173d130065a0523b541e9f9f2ceeb39" id="r_a8173d130065a0523b541e9f9f2ceeb39"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">using</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a8173d130065a0523b541e9f9f2ceeb39">KeyType</a> = <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::tuple</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcKernel</a> &gt;, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcKernel</a> &gt;, <a class="el" href="structVolume.html">Volume</a>, <a class="el" href="structVolume.html">Volume</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a> &gt; &gt;</td></tr>
+<tr class="separator:a8173d130065a0523b541e9f9f2ceeb39"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
+Functions</h2></td></tr>
+<tr class="memitem:abae1b9bd7ba5de811f1230e4937e3010" id="r_abae1b9bd7ba5de811f1230e4937e3010"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#abae1b9bd7ba5de811f1230e4937e3010">overlaps</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Field</a> &gt; &amp;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">a</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Field</a> &gt; &amp;<a class="el" href="math__utils_8h.html#a805fa490e79f7a5aa6484f94206e39eb">b</a>)</td></tr>
+<tr class="separator:abae1b9bd7ba5de811f1230e4937e3010"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1acfb3e27aecdf3c4bea87dc0f0d6b56" id="r_a1acfb3e27aecdf3c4bea87dc0f0d6b56"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a1acfb3e27aecdf3c4bea87dc0f0d6b56">AC_INTERNAL_empty_loader</a> (<a class="el" href="structParamLoadingInfo.html">ParamLoadingInfo</a>)</td></tr>
+<tr class="separator:a1acfb3e27aecdf3c4bea87dc0f0d6b56"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5082fe591deeaa14249a124358d07727" id="r_a5082fe591deeaa14249a124358d07727"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a5082fe591deeaa14249a124358d07727">get_dynamic_info</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>)</td></tr>
+<tr class="separator:a5082fe591deeaa14249a124358d07727"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0438490e80b9a48e348e4ea3ddf19e7f" id="r_a0438490e80b9a48e348e4ea3ddf19e7f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structAcTaskDefinition.html">AcTaskDefinition</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a0438490e80b9a48e348e4ea3ddf19e7f">acGetDSLBCTaskGraphOps</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bc_graph</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">optimized</a>)</td></tr>
+<tr class="separator:a0438490e80b9a48e348e4ea3ddf19e7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a32cc059b99bcf3e3f83fcd4b965dcd3a" id="r_a32cc059b99bcf3e3f83fcd4b965dcd3a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcBoundary</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a32cc059b99bcf3e3f83fcd4b965dcd3a">get_opposite_boundary</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcBoundary</a> boundary)</td></tr>
+<tr class="separator:a32cc059b99bcf3e3f83fcd4b965dcd3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7983ff98e746b813aa4514350054e596" id="r_a7983ff98e746b813aa4514350054e596"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a7983ff98e746b813aa4514350054e596">compute_next_level_set</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NUM_KERNELS</a> &gt; &amp;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dst</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcKernel</a> &gt; &amp;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">kernel_calls</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NUM_FIELDS</a> &gt; &amp;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">field_written_to</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt; <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>, <a class="el" href="compute__steps_8cc.html#a70f46ea64bcdec7977060c861616106f">MAX_TASKS</a> &gt; &amp;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">call_level_set</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a> &gt; &amp;info)</td></tr>
+<tr class="separator:a7983ff98e746b813aa4514350054e596"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac10a65714e4702c8c46a49cb0cb1fa8c" id="r_ac10a65714e4702c8c46a49cb0cb1fa8c"><td class="memTemplParams" colspan="2">template&lt;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typename</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">T</a> &gt; </td></tr>
+<tr class="memitem:ac10a65714e4702c8c46a49cb0cb1fa8c"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#ac10a65714e4702c8c46a49cb0cb1fa8c">hash_combine</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::size_t</a> &amp;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">seed</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">T</a> &amp;<a class="el" href="grid_8cc.html#a9d2899e8e3269fed117015c38568a67c">value</a>)</td></tr>
+<tr class="separator:ac10a65714e4702c8c46a49cb0cb1fa8c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60e5f60a758204937cd2615c6c1ce298" id="r_a60e5f60a758204937cd2615c6c1ce298"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a60e5f60a758204937cd2615c6c1ce298">hash_kernel_analysis_info</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::size_t</a> &amp;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">seed</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a> info)</td></tr>
+<tr class="separator:a60e5f60a758204937cd2615c6c1ce298"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae45db6de9245798dcae99740aabce6c3" id="r_ae45db6de9245798dcae99740aabce6c3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structAcTaskDefinition.html">AcTaskDefinition</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#ae45db6de9245798dcae99740aabce6c3">acGetDSLTaskGraphOps</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">optimized</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">no_communication</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bc_graph</a>)</td></tr>
+<tr class="separator:ae45db6de9245798dcae99740aabce6c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aae65ce5fffb040870877932b241157ab" id="r_aae65ce5fffb040870877932b241157ab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#aae65ce5fffb040870877932b241157ab">acGridClearTaskGraphCache</a> ()</td></tr>
+<tr class="separator:aae65ce5fffb040870877932b241157ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a880c77754af94ea98136175a858775fb" id="r_a880c77754af94ea98136175a858775fb"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a880c77754af94ea98136175a858775fb">acGetOptimizedDSLTaskGraphWithBounds</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> start, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> end, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bcs_everywhere</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bc_graph</a>)</td></tr>
+<tr class="separator:a880c77754af94ea98136175a858775fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0280a3acb14dfca785fc041ea5b6830b" id="r_a0280a3acb14dfca785fc041ea5b6830b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a0280a3acb14dfca785fc041ea5b6830b">acGetOptimizedDSLTaskGraph</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>)</td></tr>
+<tr class="separator:a0280a3acb14dfca785fc041ea5b6830b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ade8ead56d96be9fd0d49e0fe88efdd9d" id="r_ade8ead56d96be9fd0d49e0fe88efdd9d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#ade8ead56d96be9fd0d49e0fe88efdd9d">acGetDSLTaskGraphWithBounds</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> start, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> end)</td></tr>
+<tr class="separator:ade8ead56d96be9fd0d49e0fe88efdd9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad536d62d6bcb1d33367c3dfa4de8af10" id="r_ad536d62d6bcb1d33367c3dfa4de8af10"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#ad536d62d6bcb1d33367c3dfa4de8af10">acGetDSLTaskGraph</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>)</td></tr>
+<tr class="separator:ad536d62d6bcb1d33367c3dfa4de8af10"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5a258d7ca091675c753e39e5ba6bede7" id="r_a5a258d7ca091675c753e39e5ba6bede7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a5a258d7ca091675c753e39e5ba6bede7">acGetComputeStepsBCs</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">graph</a>)</td></tr>
+<tr class="separator:a5a258d7ca091675c753e39e5ba6bede7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:a70f46ea64bcdec7977060c861616106f" id="r_a70f46ea64bcdec7977060c861616106f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="stencil__accesses_8cpp.html#a72f0657181cca64b44eb186b707eb380">constexpr</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute__steps_8cc.html#a70f46ea64bcdec7977060c861616106f">MAX_TASKS</a> = 100</td></tr>
+<tr class="separator:a70f46ea64bcdec7977060c861616106f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<h2 class="groupheader">Macro Definition Documentation</h2>
+<a id="aced7e196f61079291c8737fd74ea0bc4" name="aced7e196f61079291c8737fd74ea0bc4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aced7e196f61079291c8737fd74ea0bc4">&#9670;&#160;</a></span>fatal</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">define</a> fatal</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">MESSAGE</a>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>...</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Value:</b><div class="fragment"><div class="line">        { <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">	acLogFromRootProc</a>(ac_pid(),<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">MESSAGE</a>,<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">__VA_ARGS__</a>); <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">\</a></div>
+<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">	abort</a>(); \</div>
+<div class="line">    }</div>
+<div class="ttc" id="aacc__runtime_8cu_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">__device__ const int const int index</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:466</div></div>
+</div><!-- fragment -->
+</div>
+</div>
+<h2 class="groupheader">Typedef Documentation</h2>
+<a id="a8eed71f1224988ccb8709c88e24eced7" name="a8eed71f1224988ccb8709c88e24eced7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8eed71f1224988ccb8709c88e24eced7">&#9670;&#160;</a></span>FieldBCs</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt;<a class="el" href="structBoundCond.html">BoundCond</a>,27&gt;,<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NUM_VTXBUF_HANDLES</a>&gt; <a class="el" href="compute__steps_8cc.html#a8eed71f1224988ccb8709c88e24eced7">FieldBCs</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a8173d130065a0523b541e9f9f2ceeb39" name="a8173d130065a0523b541e9f9f2ceeb39"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8173d130065a0523b541e9f9f2ceeb39">&#9670;&#160;</a></span>KeyType</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">using</a> <a class="el" href="compute__steps_8cc.html#a8173d130065a0523b541e9f9f2ceeb39">KeyType</a> =  <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::tuple</a>&lt;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcKernel</a>&gt;,<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcKernel</a>&gt;,<a class="el" href="structVolume.html">Volume</a>,<a class="el" href="structVolume.html">Volume</a>,<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>,<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt;<a class="el" href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a>&gt; &gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1f87072b828036a5baa2f8657c6477a4" name="a1f87072b828036a5baa2f8657c6477a4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1f87072b828036a5baa2f8657c6477a4">&#9670;&#160;</a></span>loader_ptr</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typedef</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>(* loader_ptr) (<a class="el" href="structParamLoadingInfo.html">ParamLoadingInfo</a>)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Function Documentation</h2>
+<a id="a1acfb3e27aecdf3c4bea87dc0f0d6b56" name="a1acfb3e27aecdf3c4bea87dc0f0d6b56"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1acfb3e27aecdf3c4bea87dc0f0d6b56">&#9670;&#160;</a></span>AC_INTERNAL_empty_loader()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> AC_INTERNAL_empty_loader </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structParamLoadingInfo.html">ParamLoadingInfo</a>&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5a258d7ca091675c753e39e5ba6bede7" name="a5a258d7ca091675c753e39e5ba6bede7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5a258d7ca091675c753e39e5ba6bede7">&#9670;&#160;</a></span>acGetComputeStepsBCs()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a> acGetComputeStepsBCs </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>graph</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0438490e80b9a48e348e4ea3ddf19e7f" name="a0438490e80b9a48e348e4ea3ddf19e7f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0438490e80b9a48e348e4ea3ddf19e7f">&#9670;&#160;</a></span>acGetDSLBCTaskGraphOps()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structAcTaskDefinition.html">AcTaskDefinition</a> &gt; acGetDSLBCTaskGraphOps </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>bc_graph</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td>
+          <td class="paramname"><em>optimized</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad536d62d6bcb1d33367c3dfa4de8af10" name="ad536d62d6bcb1d33367c3dfa4de8af10"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad536d62d6bcb1d33367c3dfa4de8af10">&#9670;&#160;</a></span>acGetDSLTaskGraph()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> * acGetDSLTaskGraph </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>graph</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae45db6de9245798dcae99740aabce6c3" name="ae45db6de9245798dcae99740aabce6c3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae45db6de9245798dcae99740aabce6c3">&#9670;&#160;</a></span>acGetDSLTaskGraphOps()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structAcTaskDefinition.html">AcTaskDefinition</a> &gt; acGetDSLTaskGraphOps </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>graph</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td>
+          <td class="paramname"><em>optimized</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td>
+          <td class="paramname"><em>no_communication</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>bc_graph</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ade8ead56d96be9fd0d49e0fe88efdd9d" name="ade8ead56d96be9fd0d49e0fe88efdd9d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ade8ead56d96be9fd0d49e0fe88efdd9d">&#9670;&#160;</a></span>acGetDSLTaskGraphWithBounds()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> * acGetDSLTaskGraphWithBounds </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>graph</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramname"><em>start</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramname"><em>end</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0280a3acb14dfca785fc041ea5b6830b" name="a0280a3acb14dfca785fc041ea5b6830b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0280a3acb14dfca785fc041ea5b6830b">&#9670;&#160;</a></span>acGetOptimizedDSLTaskGraph()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> * acGetOptimizedDSLTaskGraph </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>graph</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a880c77754af94ea98136175a858775fb" name="a880c77754af94ea98136175a858775fb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a880c77754af94ea98136175a858775fb">&#9670;&#160;</a></span>acGetOptimizedDSLTaskGraphWithBounds()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structAcTaskGraph.html">AcTaskGraph</a> * acGetOptimizedDSLTaskGraphWithBounds </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>graph</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramname"><em>start</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramname"><em>end</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>&#160;</td>
+          <td class="paramname"><em>bcs_everywhere</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>bc_graph</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aae65ce5fffb040870877932b241157ab" name="aae65ce5fffb040870877932b241157ab"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aae65ce5fffb040870877932b241157ab">&#9670;&#160;</a></span>acGridClearTaskGraphCache()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acGridClearTaskGraphCache </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7983ff98e746b813aa4514350054e596" name="a7983ff98e746b813aa4514350054e596"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7983ff98e746b813aa4514350054e596">&#9670;&#160;</a></span>compute_next_level_set()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> compute_next_level_set </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NUM_KERNELS</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>dst</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcKernel</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>kernel_calls</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NUM_FIELDS</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>field_written_to</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::array</a>&lt; <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a>, <a class="el" href="compute__steps_8cc.html#a70f46ea64bcdec7977060c861616106f">MAX_TASKS</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>call_level_set</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>info</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5082fe591deeaa14249a124358d07727" name="a5082fe591deeaa14249a124358d07727"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5082fe591deeaa14249a124358d07727">&#9670;&#160;</a></span>get_dynamic_info()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a> &gt; get_dynamic_info </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcDSLTaskGraph</a>&#160;</td>
+          <td class="paramname"><em>graph</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a32cc059b99bcf3e3f83fcd4b965dcd3a" name="a32cc059b99bcf3e3f83fcd4b965dcd3a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a32cc059b99bcf3e3f83fcd4b965dcd3a">&#9670;&#160;</a></span>get_opposite_boundary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcBoundary</a> get_opposite_boundary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">AcBoundary</a>&#160;</td>
+          <td class="paramname"><em>boundary</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac10a65714e4702c8c46a49cb0cb1fa8c" name="ac10a65714e4702c8c46a49cb0cb1fa8c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac10a65714e4702c8c46a49cb0cb1fa8c">&#9670;&#160;</a></span>hash_combine()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typename</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">T</a> &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> hash_combine </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::size_t</a> &amp;&#160;</td>
+          <td class="paramname"><em>seed</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">T</a> &amp;&#160;</td>
+          <td class="paramname"><em>value</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a60e5f60a758204937cd2615c6c1ce298" name="a60e5f60a758204937cd2615c6c1ce298"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a60e5f60a758204937cd2615c6c1ce298">&#9670;&#160;</a></span>hash_kernel_analysis_info()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> hash_kernel_analysis_info </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::size_t</a> &amp;&#160;</td>
+          <td class="paramname"><em>seed</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structKernelAnalysisInfo.html">KernelAnalysisInfo</a>&#160;</td>
+          <td class="paramname"><em>info</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="abae1b9bd7ba5de811f1230e4937e3010" name="abae1b9bd7ba5de811f1230e4937e3010"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abae1b9bd7ba5de811f1230e4937e3010">&#9670;&#160;</a></span>overlaps()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">bool</a> overlaps </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Field</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>a</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">std::vector</a>&lt; <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Field</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>b</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Variable Documentation</h2>
+<a id="a70f46ea64bcdec7977060c861616106f" name="a70f46ea64bcdec7977060c861616106f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a70f46ea64bcdec7977060c861616106f">&#9670;&#160;</a></span>MAX_TASKS</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="stencil__accesses_8cpp.html#a72f0657181cca64b44eb186b707eb380">constexpr</a> <a class="el" href="math__utils__base_8h.html#a4af1cd90d991f96997984c2389da02e2">int</a> MAX_TASKS = 100</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

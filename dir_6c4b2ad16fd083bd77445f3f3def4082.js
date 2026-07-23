@@ -6,7 +6,7 @@ var dir_6c4b2ad16fd083bd77445f3f3def4082 =
     [ "empty.cc", "kernels_2empty_8cc.html", null ],
     [ "heffte.cc", "heffte_8cc.html", "heffte_8cc" ],
     [ "kernels.cu", "kernels_8cu.html", "kernels_8cu" ],
-    [ "kernels.h", "src_2core_2kernels_2kernels_8h.html", "src_2core_2kernels_2kernels_8h" ],
+    [ "kernels.h", "kernels_8h.html", "kernels_8h" ],
     [ "nofft.cc", "nofft_8cc.html", "nofft_8cc" ],
     [ "pack_unpack.cuh", "pack__unpack_8cuh.html", "pack__unpack_8cuh" ],
     [ "packing.cuh", "packing_8cuh.html", "packing_8cuh" ],

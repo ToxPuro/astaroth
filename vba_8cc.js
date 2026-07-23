@@ -14,5 +14,7 @@ var vba_8cc =
     [ "acVBASwapBuffers", "vba_8cc.html#a40c58b6c0487f0926eaded23976ea27f", null ],
     [ "check_if_free_memory_for_profile_reductions", "vba_8cc.html#af0fedac0d291b021ccda505eafa7d2bd", null ],
     [ "get_free_mem", "vba_8cc.html#a537835c6cc2a7a04ca97d9abff0c5158", null ],
-    [ "init_scratchpads", "vba_8cc.html#a3b8d25afefa4a18a59b8bc4fef731a70", null ]
+    [ "init_scratchpads", "vba_8cc.html#a3b8d25afefa4a18a59b8bc4fef731a70", null ],
+    [ "type", "vba_8cc.html#a0d36ace95a225a7dbd6a73103893bb2a", null ],
+    [ "variable", "vba_8cc.html#ab7602066367aecfb05e061137f304a06", null ]
 ];

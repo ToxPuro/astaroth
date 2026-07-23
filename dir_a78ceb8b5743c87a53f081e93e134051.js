@@ -1,4 +1,0 @@
-var dir_a78ceb8b5743c87a53f081e93e134051 =
-[
-    [ "acc-2.4", "dir_8c771148f58f59d60e787de081a5f79e.html", "dir_8c771148f58f59d60e787de081a5f79e" ]
-];

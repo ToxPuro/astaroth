@@ -1,7 +1,7 @@
 var dir_cddd8425e5ff5c26b8315309a0324aae =
 [
     [ "3d_caching_implementations.h", "3d__caching__implementations_8h.html", null ],
-    [ "ast.h", "acc-runtime_2acc_2ast_8h.html", "acc-runtime_2acc_2ast_8h" ],
+    [ "ast.h", "ast_8h.html", "ast_8h" ],
     [ "codegen.c", "codegen_8c.html", "codegen_8c" ],
     [ "codegen.h", "codegen_8h.html", "codegen_8h" ],
     [ "create_node.h", "create__node_8h.html", null ],

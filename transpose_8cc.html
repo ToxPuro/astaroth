@@ -112,12 +112,12 @@ $(document).ready(function(){initNavTree('transpose_8cc.html',''); initResizable
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a9380ad5cacb3998af993648feb58d89f" id="r_a9380ad5cacb3998af993648feb58d89f"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:a9380ad5cacb3998af993648feb58d89f"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#a9380ad5cacb3998af993648feb58d89f">transpose_base</a> (const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const T TRANSPOSED_IDX)</td></tr>
+<tr class="memitem:a9380ad5cacb3998af993648feb58d89f" id="r_a9380ad5cacb3998af993648feb58d89f"><td class="memTemplParams" colspan="2">template&lt;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typename</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">T</a> &gt; </td></tr>
+<tr class="memitem:a9380ad5cacb3998af993648feb58d89f"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#a9380ad5cacb3998af993648feb58d89f">transpose_base</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dst</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> <a class="el" href="acc__runtime_8cu.html#a5d8f31ceb442db9fba625396b61bad42">dims</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> start, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> end, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">T</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">TRANSPOSED_IDX</a>)</td></tr>
 <tr class="separator:a9380ad5cacb3998af993648feb58d89f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab6b1bba12edd57fde5ac6a74bb869ea6" id="r_ab6b1bba12edd57fde5ac6a74bb869ea6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#ab6b1bba12edd57fde5ac6a74bb869ea6">acTransposeWithBounds</a> (const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="structVolume.html">Volume</a> start, const <a class="el" href="structVolume.html">Volume</a> end, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream)</td></tr>
+<tr class="memitem:ab6b1bba12edd57fde5ac6a74bb869ea6" id="r_ab6b1bba12edd57fde5ac6a74bb869ea6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#ab6b1bba12edd57fde5ac6a74bb869ea6">acTransposeWithBounds</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dst</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> <a class="el" href="acc__runtime_8cu.html#a5d8f31ceb442db9fba625396b61bad42">dims</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> start, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> end, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream)</td></tr>
 <tr class="separator:ab6b1bba12edd57fde5ac6a74bb869ea6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8abcc668bbabaa8ff8c971a9605de043" id="r_a8abcc668bbabaa8ff8c971a9605de043"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#a8abcc668bbabaa8ff8c971a9605de043">acTranspose</a> (const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *dst, const <a class="el" href="structVolume.html">Volume</a> <a class="el" href="bicgstab_8h.html#a9f12d89e7979e015dfaa9a88aefc5930">dims</a>, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream)</td></tr>
+<tr class="memitem:a8abcc668bbabaa8ff8c971a9605de043" id="r_a8abcc668bbabaa8ff8c971a9605de043"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="transpose_8cc.html#a8abcc668bbabaa8ff8c971a9605de043">acTranspose</a> (<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a> order, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *src, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">dst</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a> <a class="el" href="acc__runtime_8cu.html#a5d8f31ceb442db9fba625396b61bad42">dims</a>, <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream)</td></tr>
 <tr class="separator:a8abcc668bbabaa8ff8c971a9605de043"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
@@ -130,13 +130,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acTranspose </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a>&#160;</td>
           <td class="paramname"><em>order</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>src</em>, </td>
         </tr>
         <tr>
@@ -148,13 +148,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
           <td class="paramname"><em>dims</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a>&#160;</td>
           <td class="paramname"><em>stream</em>&#160;</td>
         </tr>
         <tr>
@@ -176,13 +176,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acTransposeWithBounds </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1">AcMeshOrder</a>&#160;</td>
           <td class="paramname"><em>order</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>src</em>, </td>
         </tr>
         <tr>
@@ -194,25 +194,25 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
           <td class="paramname"><em>dims</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
           <td class="paramname"><em>start</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
           <td class="paramname"><em>end</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a>&#160;</td>
           <td class="paramname"><em>stream</em>&#160;</td>
         </tr>
         <tr>
@@ -231,12 +231,12 @@ Functions</h2></td></tr>
 <div class="memitem">
 <div class="memproto">
 <div class="memtemplate">
-template&lt;typename T &gt; </div>
+template&lt;<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">typename</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">T</a> &gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname">void transpose_base </td>
+          <td class="memname"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">void</a> transpose_base </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *&#160;</td>
           <td class="paramname"><em>src</em>, </td>
         </tr>
         <tr>
@@ -248,25 +248,25 @@ template&lt;typename T &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
           <td class="paramname"><em>dims</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
           <td class="paramname"><em>start</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structVolume.html">Volume</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="structVolume.html">Volume</a>&#160;</td>
           <td class="paramname"><em>end</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const T&#160;</td>
+          <td class="paramtype"><a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">const</a> <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">T</a>&#160;</td>
           <td class="paramname"><em>TRANSPOSED_IDX</em>&#160;</td>
         </tr>
         <tr>

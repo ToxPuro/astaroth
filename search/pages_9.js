@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['notes_20and_20instructions_0',['Pilot run notes and instructions',['../md_pilot_2README.html',1,'']]]
+  ['public_20license_0',['public license',['../md_LICENCE.html',1,'GNU GENERAL PUBLIC LICENSE'],['../md_acc-runtime_2LICENCE.html',1,'GNU GENERAL PUBLIC LICENSE']]]
 ];

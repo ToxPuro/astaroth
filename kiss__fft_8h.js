@@ -10,9 +10,9 @@ var kiss__fft_8h =
     [ "kiss_fft_scalar", "kiss__fft_8h.html#a4d9bf2d6a2ce1b061545a16faf77d337", null ],
     [ "kiss_fftr_next_fast_size_real", "kiss__fft_8h.html#ad5d759d8e80434375e61c6a7de9aee79", null ],
     [ "kiss_fft_cfg", "kiss__fft_8h.html#ab8c364e12d4cbde47dca54eb4bc3ce79", null ],
-    [ "kiss_fft", "kiss__fft_8h.html#aa79492c87ecb142d418284bf0a6c8259", null ],
-    [ "kiss_fft_alloc", "kiss__fft_8h.html#a7a5959c0424de9553661fe50fdc4264e", null ],
-    [ "kiss_fft_cleanup", "kiss__fft_8h.html#ac8e3d057dae601d4e4c0925c6f47da53", null ],
-    [ "kiss_fft_next_fast_size", "kiss__fft_8h.html#a1c86cad1a0ff555e370ec3bdf9b823d5", null ],
-    [ "kiss_fft_stride", "kiss__fft_8h.html#add8218d5f9262e975a513657d6646311", null ]
+    [ "kiss_fft", "kiss__fft_8h.html#ab36e2bb33b74c1a7eabe3271d0916030", null ],
+    [ "kiss_fft_alloc", "kiss__fft_8h.html#ab5ad1560b58375ec071da45401911358", null ],
+    [ "kiss_fft_cleanup", "kiss__fft_8h.html#aab7972365fc8f30a13eed91fa29172ba", null ],
+    [ "kiss_fft_next_fast_size", "kiss__fft_8h.html#a26b8ac31a43a356943061318831508e9", null ],
+    [ "kiss_fft_stride", "kiss__fft_8h.html#a240e0a77bb991890d609f498f9c75ec8", null ]
 ];
