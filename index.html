@@ -208,47 +208,65 @@ CMake Options</h1>
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone">Option   </th><th class="markdownTableHeadNone">Description   </th><th class="markdownTableHeadNone">Default    </th></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">CMAKE_BUILD_TYPE   </td><td class="markdownTableBodyNone">Selects the build type. Possible values: Debug, Release, RelWithDebInfo, MinSizeRel. See (CMake documentation)[<a href="https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html">https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html</a>] for more details.   </td><td class="markdownTableBodyNone">Release    </td></tr>
+<td class="markdownTableBodyNone"><code>2D</code>   </td><td class="markdownTableBodyNone">Compile Astaroth for 2D simulation   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">CUDA_ARCHITECTURES   </td><td class="markdownTableBodyNone">Selects CUDA architecture support. Multiple architectures delimited by <code>;</code>. See (CMake documentation)[<a href="https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html">https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html</a>] for more details.   </td><td class="markdownTableBodyNone">"60;70"    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_ACM</code>   </td><td class="markdownTableBodyNone">Whether to build to the Astaroth Communication Module (ACM).   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">DOUBLE_PRECISION   </td><td class="markdownTableBodyNone">Generates double precision code.   </td><td class="markdownTableBodyNone">ON    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_ADVECTION_EXAMPL</code>   </td><td class="markdownTableBodyNone">Builds hello world example   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">BUILD_SAMPLES   </td><td class="markdownTableBodyNone">Builds projects in samples subdirectory.   </td><td class="markdownTableBodyNone">ON    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_MHD_SAMPLES</code>   </td><td class="markdownTableBodyNone">Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF.   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">MPI_ENABLED   </td><td class="markdownTableBodyNone">Enables acGrid functions for carrying out computations with MPI.   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_MLLIB_SAMPLES</code>   </td><td class="markdownTableBodyNone">Builds samples that use cuDNN or MIOpen   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">MULTIGPU_ENABLED   </td><td class="markdownTableBodyNone">Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy &amp; Node layers only.   </td><td class="markdownTableBodyNone">ON    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_SAMPLES</code>   </td><td class="markdownTableBodyNone">Builds projects in samples subdirectory.   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">DSL_MODULE_DIR   </td><td class="markdownTableBodyNone">Defines the directory to be scanned when looking for DSL files.   </td><td class="markdownTableBodyNone"><code>acc-runtime/samples/mhd_modular</code>    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_SHARED_LIBS</code>   </td><td class="markdownTableBodyNone">Build Astaroth as a collection of shared libraries instead of statically built modules   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">DSL_MODULE_FILE   </td><td class="markdownTableBodyNone">Optionally can specify which file in DSL_MODULE_DIR to compile   </td><td class="markdownTableBodyNone">empty    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_STANDALONE</code>   </td><td class="markdownTableBodyNone">Build the standalone_mpi executable to run standard simulation.   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">PROGRAM_MODULE_DIR   </td><td class="markdownTableBodyNone">Can be used to declare additional host-side program modules (also known as Thrones)   </td><td class="markdownTableBodyNone">empty    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_TESTS</code>   </td><td class="markdownTableBodyNone">Builds tests in test subdirectory.   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">VERBOSE   </td><td class="markdownTableBodyNone">Enables various non-critical warning and status messages.   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>BUILD_UTILS</code>   </td><td class="markdownTableBodyNone">Builds the utility library   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">BUILD_UTILS   </td><td class="markdownTableBodyNone">"Builds the utility library.   </td><td class="markdownTableBodyNone">ON    </td></tr>
+<td class="markdownTableBodyNone"><code>CPU_BUILD</code>   </td><td class="markdownTableBodyNone">To build CPU-only build   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">BUILD_ACC_RUNTIME_LIBRARY   </td><td class="markdownTableBodyNone">"Builds the standalone acc runtime library"   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>DEBUG_SYNC</code>   </td><td class="markdownTableBodyNone">Whether to sync after all tasks in default ops   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">USE_HIP   </td><td class="markdownTableBodyNone">"Use HIP as the underlying GPGPU library instead of CUDA"   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>DOUBLE_PRECISION</code>   </td><td class="markdownTableBodyNone">Generates double precision code.   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">SINGLEPASS_INTEGRATION   </td><td class="markdownTableBodyNone">"Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach"   </td><td class="markdownTableBodyNone">ON    </td></tr>
+<td class="markdownTableBodyNone"><code>FFT_ENABLED</code>   </td><td class="markdownTableBodyNone">Whether to enable FFT   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">OPTIMIZE_MEM_ACCESSES   </td><td class="markdownTableBodyNone">"Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time"   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>INCLUDE_3RD_PARTIES</code>   </td><td class="markdownTableBodyNone">Whether to include 3rd party dependencies   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">BUILD_SHARED_LIBS   </td><td class="markdownTableBodyNone">"Builds Astaroth as a collection of shared libraries instead of statically built modules"   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>LAGRANGIAN_GRID</code>   </td><td class="markdownTableBodyNone">Use Lagrangian grid instead of Eulerian   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">RUNTIME_COMPILATION   </td><td class="markdownTableBodyNone">"Compile version of Astaroth compiled at runtime"   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>MPI_ENABLED</code>   </td><td class="markdownTableBodyNone">Enables additional functions for MPI communciation.   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">BUILD_TESTS   </td><td class="markdownTableBodyNone">"Builds Astaroth test samples"   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>MULTIGPU_ENABLED</code>   </td><td class="markdownTableBodyNone">Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy &amp; Node layers only.   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">2D   </td><td class="markdownTableBodyNone">"Specifies that Astaroth is being compiled for a two-dimensional setup (XY). When possible prefer to give this information via AC_dimension_inactive parameter"   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>PACKED_DATA_TRANSFERS</code>   </td><td class="markdownTableBodyNone">Enables kernel for packed data transfers   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">CPU_BUILD   </td><td class="markdownTableBodyNone">"To build CPU-only build"   </td><td class="markdownTableBodyNone">OFF    </td></tr>
+<td class="markdownTableBodyNone"><code>PROFILING_ENABLED</code>   </td><td class="markdownTableBodyNone">Whether to enable profiling and link to the vendor profiling libraries   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">FFT_ENABLED   </td><td class="markdownTableBodyNone">"Whether to enable FFT API functions"   </td><td class="markdownTableBodyNone">OFF   </td></tr>
+<td class="markdownTableBodyNone"><code>RUNTIME_COMPILATION</code>   </td><td class="markdownTableBodyNone">Compile version of Astaroth compiled at runtime   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>SINGLEPASS_INTEGRATION</code>   </td><td class="markdownTableBodyNone">Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>SUPPORT_MAJOR_ARCHITECTURES</code>   </td><td class="markdownTableBodyNone">Compile for all major CUDA architectures supported by the used CUDA SDK   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>SUPPRESS_COMPILER_WARNINGS</code>   </td><td class="markdownTableBodyNone">Suppress default compiler warnings of Astaroth   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>USE_DISTRIBUTED_IO</code>   </td><td class="markdownTableBodyNone">Use distributed IO (one file per process) instead of collective   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>USE_HIP</code>   </td><td class="markdownTableBodyNone">Use HIP as the underlying GPGPU library instead of CUDA   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>USE_PERFSTUBS</code>   </td><td class="markdownTableBodyNone">Build with perfstubs   </td><td class="markdownTableBodyNone"><code>OFF</code>    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>USE_POSIX_IO</code>   </td><td class="markdownTableBodyNone">Uses POSIX I/O less error prone, but increased overheads.   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code>USE_VENDORED_PERFSTUBS</code>   </td><td class="markdownTableBodyNone">Use the vendored perfstubs in 3rd_party/perfstubs   </td><td class="markdownTableBodyNone"><code>ON</code>    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone"><code>VERBOSE</code>   </td><td class="markdownTableBodyNone">Enables various status and warning messages   </td><td class="markdownTableBodyNone"><code>OFF</code>   </td></tr>
 </table>
 <h1><a class="anchor" id="autotoc_md9"></a>
 Standalone Module</h1>
