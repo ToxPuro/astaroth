@@ -129,27 +129,36 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| CMAKE_BUILD_TYPE | Selects the build type. Possible values: Debug, Release, RelWithDebInfo, MinSizeRel. See (CMake documentation)[https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html] for more details. | Release |
-| CUDA_ARCHITECTURES | Selects CUDA architecture support. Multiple architectures delimited by `;`. See (CMake documentation)[https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html] for more details. | "60;70" |
-| DOUBLE_PRECISION | Generates double precision code. | ON |
-| BUILD_SAMPLES | Builds projects in samples subdirectory. | ON |
-| MPI_ENABLED | Enables acGrid functions for carrying out computations with MPI. | OFF |
-| MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
-| DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc-runtime/samples/mhd_modular` |
-| DSL_MODULE_FILE | Optionally can specify which file in DSL_MODULE_DIR to compile | empty |
-| PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
-| VERBOSE | Enables various non-critical warning and status messages. | OFF |
-| BUILD_UTILS | "Builds the utility library. | ON |
-| BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
-| USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |
-| SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | ON |
-| OPTIMIZE_MEM_ACCESSES | "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time" | OFF |
-| BUILD_SHARED_LIBS | "Builds Astaroth as a collection of shared libraries instead of statically built modules" | OFF |
-| RUNTIME_COMPILATION | "Compile version of Astaroth compiled at runtime" | OFF |
-| BUILD_TESTS | "Builds Astaroth test samples" | OFF |
-| 2D | "Specifies that Astaroth is being compiled for a two-dimensional setup (XY). When possible prefer to give this information via AC_dimension_inactive parameter" | OFF |
-| CPU_BUILD | "To build CPU-only build" | OFF |
-| FFT_ENABLED | "Whether to enable FFT API functions" | OFF |
+| `2D`                          | Compile Astaroth for 2D simulation | `OFF` |
+| `BUILD_ACM`                   | Whether to build to the Astaroth Communication Module (ACM). | `OFF` |
+| `BUILD_ADVECTION_EXAMPL`      | Builds hello world example | `OFF` |
+| `BUILD_MHD_SAMPLES`           | Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF. | `ON` |
+| `BUILD_MLLIB_SAMPLES`         | Builds samples that use cuDNN or MIOpen | `OFF` |
+| `BUILD_SAMPLES`               | Builds projects in samples subdirectory. | `ON` |
+| `BUILD_SHARED_LIBS`           | Build Astaroth as a collection of shared libraries instead of statically built modules | `OFF` |
+| `BUILD_STANDALONE`            | Build the standalone_mpi executable to run standard simulation. | `ON` |
+| `BUILD_TESTS`                 | Builds tests in test subdirectory. | `OFF` |
+| `BUILD_UTILS`                 | Builds the utility library | `ON` |
+| `CPU_BUILD`                   | To build CPU-only build | `OFF` |
+| `DEBUG_SYNC`                  | Whether to sync after all tasks in default ops | `OFF` |
+| `DOUBLE_PRECISION`            | Generates double precision code. | `ON` |
+| `FFT_ENABLED`                 | Whether to enable FFT | `OFF` |
+| `INCLUDE_3RD_PARTIES`         | Whether to include 3rd party dependencies | `OFF` |
+| `LAGRANGIAN_GRID`             | Use Lagrangian grid instead of Eulerian | `OFF` |
+| `MPI_ENABLED`                 | Enables additional functions for MPI communciation. | `OFF` |
+| `MULTIGPU_ENABLED`            | Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | `ON` |
+| `PACKED_DATA_TRANSFERS`       | Enables kernel for packed data transfers | `OFF` |
+| `PROFILING_ENABLED`           | Whether to enable profiling and link to the vendor profiling libraries | `ON` |
+| `RUNTIME_COMPILATION`         | Compile version of Astaroth compiled at runtime | `OFF` |
+| `SINGLEPASS_INTEGRATION`      | Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach | `OFF` |
+| `SUPPORT_MAJOR_ARCHITECTURES` | Compile for all major CUDA architectures supported by the used CUDA SDK | `ON` |
+| `SUPPRESS_COMPILER_WARNINGS`  | Suppress default compiler warnings of Astaroth | `OFF` |
+| `USE_DISTRIBUTED_IO`          | Use distributed IO (one file per process) instead of collective | `ON` |
+| `USE_HIP`                     | Use HIP as the underlying GPGPU library instead of CUDA | `OFF` |
+| `USE_PERFSTUBS`               | Build with perfstubs | `OFF` |
+| `USE_POSIX_IO`                | Uses POSIX I/O less error prone, but increased overheads. | `ON` |
+| `USE_VENDORED_PERFSTUBS`      | Use the vendored perfstubs in 3rd_party/perfstubs | `ON` |
+| `VERBOSE`                     | Enables various status and warning messages | `OFF` |
 
 
 
