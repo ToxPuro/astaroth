@@ -1,5 +1,6 @@
 var NAVTREEINDEX12 =
 {
+"string__vec_8h.html#a03cbd7543ad334167af12654f70f567e":[8,0,0,0,15,2],
 "string__vec_8h.html#a0ebdedf6fe29baf22d7a0dd42578a23c":[8,0,0,0,15,4],
 "string__vec_8h.html#a21e15f8aeaee9432808967b358dc2c49":[8,0,0,0,15,6],
 "string__vec_8h.html#a6d574f3bbd7bbcb2515d234be74beaa4":[8,0,0,0,15,7],
@@ -248,6 +249,5 @@ var NAVTREEINDEX12 =
 "structGrid.html#aea6d16d28730593f5ac97ee9e39c7f1d":[7,0,52,3],
 "structGridDims.html":[7,0,53],
 "structGridDims.html#a21efdd6e712ca67005f17d514901cbc6":[7,0,53,0],
-"structGridDims.html#a820d9d37fa8dd5c12642f484c06000db":[7,0,53,1],
-"structHaloMessage.html":[7,0,55]
+"structGridDims.html#a820d9d37fa8dd5c12642f484c06000db":[7,0,53,1]
 };

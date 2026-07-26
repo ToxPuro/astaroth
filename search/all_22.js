@@ -4,7 +4,7 @@ var searchData=
   ['y_5fcoeff_1',['y_coeff',['../memory_8cc.html#a1913d920289453b665f071a491f37788',1,'memory.cc']]],
   ['y_5forder_5fint_2',['Y_ORDER_INT',['../host__datatypes_8h.html#af6803addfe2b39cc2c7e5d6868287091',1,'host_datatypes.h']]],
   ['yellow_3',['YELLOW',['../acc__runtime_8cu.html#abf681265909adf3d3e8116c93c0ba179',1,'acc_runtime.cu']]],
-  ['your_20new_20programs_4',['your new programs',['../md_acc-runtime_2LICENCE.html#autotoc_md65',1,'How to Apply These Terms to Your New Programs'],['../md_LICENCE.html#autotoc_md43',1,'How to Apply These Terms to Your New Programs']]],
+  ['your_20new_20programs_4',['your new programs',['../md_acc-runtime_2LICENCE.html#autotoc_md66',1,'How to Apply These Terms to Your New Programs'],['../md_LICENCE.html#autotoc_md44',1,'How to Apply These Terms to Your New Programs']]],
   ['yxz_5',['YXZ',['../host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a616fc6d0ff8f80aecc92f8987c045012',1,'host_datatypes.h']]],
   ['yz_6',['yz',['../structAcSubCommunicators.html#af5ffa2130f07386377bed5ff5bdaaff0',1,'AcSubCommunicators']]],
   ['yzx_7',['YZX',['../host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a0c75015db91d2767bd7ccae7958d9a80',1,'host_datatypes.h']]]

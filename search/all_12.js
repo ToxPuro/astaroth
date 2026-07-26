@@ -63,14 +63,14 @@ var searchData=
   ['hashmap_5fuint64_5ft_60',['hashmap_uint64_t',['../hashtable_8h.html#adb4f5f1c89ab27db75ffc115682573a3',1,'hashtable.h']]],
   ['hashmap_5fuint8_5ft_61',['hashmap_uint8_t',['../hashtable_8h.html#ad81d2b7bbda6afa3690af5090b098a44',1,'hashtable.h']]],
   ['hashtable_2eh_62',['hashtable.h',['../hashtable_8h.html',1,'']]],
-  ['having_20copies_63',['having copies',['../md_acc-runtime_2LICENCE.html#autotoc_md56',1,'9. Acceptance Not Required for Having Copies.'],['../md_LICENCE.html#autotoc_md34',1,'9. Acceptance Not Required for Having Copies.']]],
+  ['having_20copies_63',['having copies',['../md_acc-runtime_2LICENCE.html#autotoc_md57',1,'9. Acceptance Not Required for Having Copies.'],['../md_LICENCE.html#autotoc_md35',1,'9. Acceptance Not Required for Having Copies.']]],
   ['header_20example_3a_64',['Header example:',['../md_CONTRIBUTING.html#autotoc_md18',1,'']]],
   ['heffte_2ecc_65',['heffte.cc',['../heffte_8cc.html',1,'']]],
   ['helical_5fforcing_2ecc_66',['helical_forcing.cc',['../helical__forcing_8cc.html',1,'']]],
   ['helical_5fforcing_5fe_5fgenerator_67',['helical_forcing_e_generator',['../astaroth__forcing_8cc.html#aabce2b039eef6c49a111101c7e3b75ed',1,'astaroth_forcing.cc']]],
   ['helical_5fforcing_5fk_5fgenerator_68',['helical_forcing_k_generator',['../astaroth__forcing_8cc.html#acc56385bbd7e928169a6c5db4943a9cc',1,'astaroth_forcing.cc']]],
   ['helical_5fforcing_5fspecial_5fvector_69',['helical_forcing_special_vector',['../astaroth__forcing_8cc.html#a449782ef7762d00fc8119e96d2efd957',1,'astaroth_forcing.cc']]],
-  ['helper_20functions_70',['Initialization, Quitting and Helper Functions',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md108',1,'']]],
+  ['helper_20functions_70',['Initialization, Quitting and Helper Functions',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md109',1,'']]],
   ['helpers_2ecc_71',['helpers.cc',['../helpers_8cc.html',1,'']]],
   ['hierarchical_5fdecompose_72',['hierarchical_decompose',['../decomposition_8cc.html#abdd25806b12e8e29e0bd38f2fd40fab7',1,'decomposition.cc']]],
   ['hierarchical_5fgetpid_73',['hierarchical_getPid',['../decomposition_8cc.html#a869f1ede4ef9e7da7d99dd0c47ffde5b',1,'decomposition.cc']]],
@@ -81,5 +81,5 @@ var searchData=
   ['host_5fdevice_78',['HOST_DEVICE',['../func__attributes_8h.html#a9e64b37aa76347c9bf88985c9dec78c9',1,'func_attributes.h']]],
   ['host_5fdevice_5finline_79',['HOST_DEVICE_INLINE',['../func__attributes_8h.html#a652a53d224ff3f9092f9f5e82a339ae9',1,'func_attributes.h']]],
   ['host_5finline_80',['HOST_INLINE',['../func__attributes_8h.html#a3ecbf5173855036dcf23e50973d5e275',1,'func_attributes.h']]],
-  ['how_20to_20apply_20these_20terms_20to_20your_20new_20programs_81',['how to apply these terms to your new programs',['../md_LICENCE.html#autotoc_md43',1,'How to Apply These Terms to Your New Programs'],['../md_acc-runtime_2LICENCE.html#autotoc_md65',1,'How to Apply These Terms to Your New Programs']]]
+  ['how_20to_20apply_20these_20terms_20to_20your_20new_20programs_81',['how to apply these terms to your new programs',['../md_LICENCE.html#autotoc_md44',1,'How to Apply These Terms to Your New Programs'],['../md_acc-runtime_2LICENCE.html#autotoc_md66',1,'How to Apply These Terms to Your New Programs']]]
 ];

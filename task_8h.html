@@ -364,7 +364,7 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<h2><a class="anchor" id="autotoc_md131"></a>
+<h2><a class="anchor" id="autotoc_md132"></a>
 Task interface</h2>
 <p>Each task is tied to an output region (and input regions, but they are not explicit members of <a class="el" href="classTask.html">Task</a>). Tasks may depend on other Tasks. The existence of dependency between two tasks is deduced from their input and output regions. At the moment, this is done explicitly by comparing region ids and happens in <a class="el" href="grid_8cc.html">grid.cc</a>:<a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">GridInit()</a> </p>
 
@@ -583,7 +583,7 @@ Task interface</h2>
   </tr>
 </table>
 </div><div class="memdoc">
-<h2><a class="anchor" id="autotoc_md130"></a>
+<h2><a class="anchor" id="autotoc_md131"></a>
 Regions</h2>
 <p>Regions are identified by a non-zero region id of type {-1,0,1}^3 A region's id describes its position the region topology of the subdomain.</p>
 <p>There are three families of regions: Exchange_output message regions, outgoing message regions, and compute regions. The three families each cover some zone of data, as follows:</p><ul>

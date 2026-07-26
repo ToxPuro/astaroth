@@ -1,5 +1,6 @@
 var NAVTREEINDEX14 =
 {
+"structkiss__fftnd__state.html#a350067f9bd33fc47d9506094f4ef90ca":[7,0,75,1],
 "structkiss__fftnd__state.html#a85d3fea0ae9ddab5016e35574de93374":[7,0,75,3],
 "structkiss__fftnd__state.html#aac7dce5db0b9ae4a07615fbd139a4c54":[7,0,75,0],
 "structkiss__fftnd__state.html#ac100714f59b30d1402b055b368f769b8":[7,0,75,4],
@@ -248,6 +249,5 @@ var NAVTREEINDEX14 =
 "vba_8cc.html#a8bcfe9c6ade39f6f44bdbb2362f11e6e":[8,0,0,1,22,4],
 "vba_8cc.html#a93b9fbcee9024a47049013b5a634fe86":[8,0,0,1,22,0],
 "vba_8cc.html#aa33edc580156ffb5583238de26e2add8":[8,0,0,1,22,3],
-"vba_8cc.html#aaf53c6e4675bd63f3359d7d1dc763aa4":[8,0,0,1,22,1],
-"vba_8cc.html#ab6a419ec7d62681031188172dbb854eb":[8,0,0,1,22,7]
+"vba_8cc.html#aaf53c6e4675bd63f3359d7d1dc763aa4":[8,0,0,1,22,1]
 };

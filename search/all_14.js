@@ -37,7 +37,7 @@ var searchData=
   ['kernelprofiles_34',['KernelProfiles',['../structKernelProfiles.html',1,'']]],
   ['kernelreduceoutput_35',['KernelReduceOutput',['../structKernelReduceOutput.html',1,'']]],
   ['kernelreduceoutputs_36',['KernelReduceOutputs',['../structKernelReduceOutputs.html',1,'']]],
-  ['kernels_37',['kernels',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md122',1,'Kernels'],['../md_acc-runtime_2README.html#autotoc_md87',1,'Kernels']]],
+  ['kernels_37',['kernels',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md123',1,'Kernels'],['../md_acc-runtime_2README.html#autotoc_md88',1,'Kernels']]],
   ['kernels_2ecu_38',['kernels.cu',['../kernels_8cu.html',1,'']]],
   ['kernels_2eh_39',['kernels.h',['../kernels_8h.html',1,'']]],
   ['kernels_5fwith_5finput_5fparams_40',['kernels_with_input_params',['../structcombinatorial__params__info.html#a78238cff38a44824b94c3f3276a0c08d',1,'combinatorial_params_info']]],

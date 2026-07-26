@@ -219,7 +219,7 @@ Variables</h2></td></tr>
             (0, 0, STENCIL_ORDER/2) to (subgrid.m.x, subgrid.m.y, subgrid.m.z -
 </pre><p> STENCIL_ORDER/2) </p><pre class="fragment">    on a single device are "local", in the sense that they can be computed without
 </pre><p> having to exchange data with neighboring GPUs. Special care is needed only for transferring the data to the fron and back plates outside this range. In the solution we use here, we solve the local boundaries first, and then just exchange the front and back plates in a "ring", like so device_id (n) &lt;-&gt; 0 &lt;-&gt; 1 &lt;-&gt; ... &lt;-&gt; n &lt;-&gt; (0)</p>
-<h3><a class="anchor" id="autotoc_md129"></a>
+<h3><a class="anchor" id="autotoc_md130"></a>
 Throughout this file we use the following notation and names for various index offsets</h3>
 <pre class="fragment">Global coordinates: coordinates with respect to the global grid (static GridDims grid)
 Local coordinates: coordinates with respect to the local subgrid (static Subgrid subgrid)
