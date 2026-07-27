@@ -435,6 +435,13 @@ reset_diff_files()
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
     FILE* fp = fopen(files[i], "w");
     fclose(fp);
+
+    // The sources managed by the sources_manager are persisted across code
+    // generation passes and thus need to be reset manually.
+    char stripped_filename[BUFFER_SIZE] = {0};
+    strcpy(stripped_filename, files[i]);
+    *(strrchr(stripped_filename, '.')) = '\0';
+    acc_sources_manager_invalidate_source(acc_sources_manager_singleton(), stripped_filename);
   }
 }
 void

@@ -6,8 +6,8 @@
 #include "host_datatypes.h"
 
 // clang-format off
-#include "memcpy_from_gmem_arrays_header.h"
-#include "memcpy_to_gmem_arrays_header.h"
+#include "memcpy_from_gmem_arrays_decls.h"
+#include "memcpy_to_gmem_arrays_decls.h"
 // clang-format on
 
 template <typename P>
