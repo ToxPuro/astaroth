@@ -46,11 +46,18 @@ static string_vec primitive_datatypes = VEC_INITIALIZER;
 #define DOUBLE_STR    primitive_datatypes.data[5]
 #define SIZE_T_STR    primitive_datatypes.data[6]
 #define MAX_ARRAY_RANK (10)
+
+#define KERNEL_NAME_PREFIX_DEFAULT "KERNEL"
+#define KERNEL_NAME_PREFIX_ANALYSIS "ANALYSIS_KERNEL"
+
 #if AC_USE_HIP
 const bool HIP_ON = true;
 #else
 const bool HIP_ON = false;
 #endif
+
+static char* KERNEL_NAME_PREFIX = KERNEL_NAME_PREFIX_DEFAULT;
+
 string_vec
 get_prof_types()
 {
@@ -4691,17 +4698,16 @@ check_for_undeclared(const ASTNode* node)
 
 }
 
-char* KERNEL_NAME_PREFIX = "KERNEL";
 static void
 set_kernel_prefix(const bool mem_accesses)
 {
 	if(mem_accesses)
 	{
-		KERNEL_NAME_PREFIX = "ANALYSIS_KERNEL";
+		KERNEL_NAME_PREFIX = KERNEL_NAME_PREFIX_ANALYSIS;
 	}
 	else
 	{
-		KERNEL_NAME_PREFIX = "KERNEL";
+		KERNEL_NAME_PREFIX = KERNEL_NAME_PREFIX_DEFAULT;
 	}
 }
 
@@ -4733,7 +4739,7 @@ translate_buffer_body(FILE* stream, const ASTNode* node, const bool to_DSL)
 	   if(to_DSL) fprintf(stream,"%s",node->buffer);
 	   else       
 	   {
-             fprintf(stream,"%s_%s",KERNEL_NAME_PREFIX,node->buffer);
+             fprintf(stream,"%s_%s", KERNEL_NAME_PREFIX, node->buffer);
 	   }
     }
     else
@@ -7183,26 +7189,24 @@ gen_user_kernels(const char* out, const bool analysis_kernels)
 {
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
+  const char* default_param_list = "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
+  const char* kernel_name_prefix = analysis_kernels
+                                       ? KERNEL_NAME_PREFIX_ANALYSIS
+                                       : KERNEL_NAME_PREFIX_DEFAULT;
 
-  const char* default_param_list=  "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
   FILE* fp_dec = fopen(out, "a");
-  const char* prefix = analysis_kernels ? "ANALYSIS_KERNEL" : "KERNEL";
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].tspecifier == KERNEL_STR)
-      fprintf(fp_dec, "static void __global__ %s_%s %s);\n",prefix,symbol_table[i].identifier, default_param_list);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].tspecifier == KERNEL_STR) {
+      fprintf(fp_dec, "static void __global__ %s_%s %s);\n", kernel_name_prefix,
+              symbol_table[i].identifier, default_param_list);
+    }
+  }
 
   fprintf(fp_dec, "static const Kernel kernels[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
     {
-      if(analysis_kernels)
-      {
-        fprintf(fp_dec, "%s_%s,",prefix,symbol_table[i].identifier);
-      }
-      else
-      {
-        fprintf(fp_dec, "KERNEL_%s,",symbol_table[i].identifier);
-      }
+      fprintf(fp_dec, "%s_%s,", kernel_name_prefix, symbol_table[i].identifier);
     }
   fprintf(fp_dec, "};");
 
