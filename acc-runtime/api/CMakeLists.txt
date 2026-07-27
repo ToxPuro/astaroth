@@ -136,6 +136,8 @@ else()
 endif()
 
 set(ACC_GENERATED_SOURCES
+    "memcpy_from_gmem_arrays.cu"
+    "memcpy_to_gmem_arrays.cu"
     "reduce_helpers.cu")
 
 if (USE_HIP)
