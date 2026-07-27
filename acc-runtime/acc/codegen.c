@@ -4690,6 +4690,21 @@ check_for_undeclared(const ASTNode* node)
 	}
 
 }
+
+char* KERNEL_NAME_PREFIX = "KERNEL";
+static void
+set_kernel_prefix(const bool mem_accesses)
+{
+	if(mem_accesses)
+	{
+		KERNEL_NAME_PREFIX = "ANALYSIS_KERNEL";
+	}
+	else
+	{
+		KERNEL_NAME_PREFIX = "KERNEL";
+	}
+}
+
 static void
 translate_buffer_body(FILE* stream, const ASTNode* node, const bool to_DSL)
 {
@@ -4716,7 +4731,10 @@ translate_buffer_body(FILE* stream, const ASTNode* node, const bool to_DSL)
     else if(symbol && symbol->tspecifier == KERNEL_STR)
     {
 	   if(to_DSL) fprintf(stream,"%s",node->buffer);
-	   else       fprintf(stream,"KERNEL_%s",node->buffer);
+	   else       
+	   {
+             fprintf(stream,"%s_%s",KERNEL_NAME_PREFIX,node->buffer);
+	   }
     }
     else
     {
@@ -7161,21 +7179,31 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
 
 static void
-gen_user_kernels(const char* out)
+gen_user_kernels(const char* out, const bool analysis_kernels)
 {
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
 
   const char* default_param_list=  "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
   FILE* fp_dec = fopen(out, "a");
+  const char* prefix = analysis_kernels ? "ANALYSIS_KERNEL" : "KERNEL";
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
-      fprintf(fp_dec, "static void __global__ KERNEL_%s %s);\n", symbol_table[i].identifier, default_param_list);
+      fprintf(fp_dec, "static void __global__ %s_%s %s);\n",prefix,symbol_table[i].identifier, default_param_list);
 
   fprintf(fp_dec, "static const Kernel kernels[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
-      fprintf(fp_dec, "KERNEL_%s,", symbol_table[i].identifier);
+    {
+      if(analysis_kernels)
+      {
+        fprintf(fp_dec, "%s_%s,",prefix,symbol_table[i].identifier);
+      }
+      else
+      {
+        fprintf(fp_dec, "KERNEL_%s,",symbol_table[i].identifier);
+      }
+    }
   fprintf(fp_dec, "};");
 
   fclose(fp_dec);
@@ -10626,7 +10654,8 @@ gen_output_files(ASTNode* root)
   gen_user_defines(root, "user_defines.h");
   gen_kernel_structs(root);
   stencilgen(root);
-  gen_user_kernels("user_kernel_declarations.h");
+  gen_user_kernels("user_kernel_declarations.h",false);
+  gen_user_kernels("user_analysis_kernel_declarations.h",true);
   FILE *fp = fopen("user_typedefs.h","a");
   fprintf(fp,"typedef enum{\n");
   string_vec datatypes = get_all_datatypes();
@@ -11502,6 +11531,7 @@ empty_non_optimized_kernels(ASTNode* node, const param_combinations combinations
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool ELIMINATE_CONDITIONALS, const bool runtime_compilation)
 { 
+  set_kernel_prefix(gen_mem_accesses);
   symboltable_reset();
   reset_dfunc_cache = true;
   ASTNode* root = astnode_dup(root_in,NULL);
@@ -11651,7 +11681,7 @@ compile_helper(const bool log)
 {
   format_source("user_kernels.h.raw","user_kernels.h");
   copy_file("user_kernels.h","user_kernels_backup.h");
-  copy_file("user_kernels.h","user_cpu_kernels.h");
+  copy_file("user_kernels.h","user_analysis_kernels.h");
   if(log)
   {
   	printf("Compiling %s...\n", STENCILACC_SRC);
