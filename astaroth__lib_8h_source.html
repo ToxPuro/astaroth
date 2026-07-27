@@ -101,25 +101,37 @@ $(document).ready(function(){initNavTree('astaroth__lib_8h_source.html',''); ini
 <a href="astaroth__lib_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#ifndef AC_LIB_H</span></div>
 <div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span><span class="preprocessor">#define AC_LIB_H</span></div>
 <div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span> </div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="comment">//#ifdef __cplusplus</span></div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="comment">//  class AcLibHandle</span></div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="comment">//  {</span></div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="comment">//    private:</span></div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="comment">//        void* handle;</span></div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="comment">//    public:</span></div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="comment">//        AcLibHandle(void* _handle) : handle(_handle){}</span></div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="comment">//        ~AcLibHandle() {dlclose(handle); }</span></div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="comment">//  };</span></div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="comment">//#else</span></div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="comment">//  typedef void* AcLibHandle;</span></div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="comment">//#endif</span></div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno"><a class="line" href="astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8">   16</a></span><span class="keyword">typedef</span> <span class="keywordtype">void</span>* <a class="code hl_typedef" href="astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8">AcLibHandle</a>;</div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="keyword">static</span> <a class="code hl_typedef" href="astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8">AcLibHandle</a> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> astarothLibHandle=<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NULL</a>, kernelsLibHandle=<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NULL</a>, utilsLibHandle=<a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">NULL</a>;</div>
+<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &quot;<a class="code" href="func__define_8h.html">func_define.h</a>&quot;</span></div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span> </div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="comment">//#ifdef __cplusplus</span></div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="comment">//  class AcLibHandle</span></div>
+<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="comment">//  {</span></div>
+<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="comment">//    private:</span></div>
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="comment">//        void* handle;</span></div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="comment">//    public:</span></div>
+<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="comment">//        AcLibHandle(void* _handle) : handle(_handle){}</span></div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="comment">//        ~AcLibHandle() {dlclose(handle); }</span></div>
+<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="comment">//  };</span></div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="comment">//#else</span></div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="comment">//  typedef void* AcLibHandle;</span></div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="comment">//#endif</span></div>
 <div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span> </div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="preprocessor">#endif</span></div>
-<div class="ttc" id="aacc__runtime_8cu_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">__device__ const int const int index</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:466</div></div>
-<div class="ttc" id="aastaroth__lib_8h_html_a18c352a2df77907ab0e840511ff115b8"><div class="ttname"><a href="astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8">AcLibHandle</a></div><div class="ttdeci">void * AcLibHandle</div><div class="ttdef"><b>Definition</b> astaroth_lib.h:16</div></div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><a class="code hl_define" href="func__define_8h.html#a647edb5f42c181fd2443f4d9e556b3a9">AC_BEGIN_C_DECLARATIONS</a></div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span> </div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno"><a class="line" href="astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8">   21</a></span><span class="keyword">typedef</span> <span class="keywordtype">void</span>* <a class="code hl_typedef" href="astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8">AcLibHandle</a>;</div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span> </div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span> </div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="keyword">static</span> <a class="code hl_typedef" href="astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8">AcLibHandle</a> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> astarothLibHandle=<a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">NULL</a>, kernelsLibHandle=<a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">NULL</a>, utilsLibHandle=<a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">NULL</a>;</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span> </div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><a class="code hl_define" href="func__define_8h.html#ac083955fb77e3fb56cef11c97df9f246">AC_END_C_DECLARATIONS</a></div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#endif</span></div>
+<div class="ttc" id="aastaroth__lib_8h_html_a18c352a2df77907ab0e840511ff115b8"><div class="ttname"><a href="astaroth__lib_8h.html#a18c352a2df77907ab0e840511ff115b8">AcLibHandle</a></div><div class="ttdeci">void * AcLibHandle</div><div class="ttdef"><b>Definition</b> astaroth_lib.h:21</div></div>
 <div class="ttc" id="afunc__attributes_8h_html_addf5ec070e9499d36b7f2009ce736076"><div class="ttname"><a href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a></div><div class="ttdeci">#define UNUSED</div><div class="ttdef"><b>Definition</b> func_attributes.h:4</div></div>
+<div class="ttc" id="afunc__define_8h_html"><div class="ttname"><a href="func__define_8h.html">func_define.h</a></div></div>
+<div class="ttc" id="afunc__define_8h_html_a647edb5f42c181fd2443f4d9e556b3a9"><div class="ttname"><a href="func__define_8h.html#a647edb5f42c181fd2443f4d9e556b3a9">AC_BEGIN_C_DECLARATIONS</a></div><div class="ttdeci">#define AC_BEGIN_C_DECLARATIONS</div><div class="ttdef"><b>Definition</b> func_define.h:13</div></div>
+<div class="ttc" id="afunc__define_8h_html_ac083955fb77e3fb56cef11c97df9f246"><div class="ttname"><a href="func__define_8h.html#ac083955fb77e3fb56cef11c97df9f246">AC_END_C_DECLARATIONS</a></div><div class="ttdeci">#define AC_END_C_DECLARATIONS</div><div class="ttdef"><b>Definition</b> func_define.h:14</div></div>
+<div class="ttc" id="amath__utils_8h_html_a4d348ec60ddcabc4d3429057f3889815"><div class="ttname"><a href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">val</a></div><div class="ttdeci">constexpr const AcReal &amp; val</div><div class="ttdef"><b>Definition</b> math_utils.h:1090</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

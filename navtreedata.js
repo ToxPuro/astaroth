@@ -38,92 +38,86 @@ var NAVTREE =
       [ "Pull requests", "md_CONTRIBUTING.html#autotoc_md22", null ]
     ] ],
     [ "GNU GENERAL PUBLIC LICENSE", "md_LICENCE.html", null ],
-    [ "GNU GENERAL PUBLIC LICENSE", "md_acc-runtime_2LICENCE.html", null ],
     [ "Building ACC runtime (incl. DSL files)", "md_acc-runtime_2README.html", [
-      [ "Debugging", "md_acc-runtime_2README.html#autotoc_md68", null ],
-      [ "The Astaroth Domain-Specific Language", "md_acc-runtime_2README.html#autotoc_md69", [
-        [ "Comments and preprocessor directives", "md_acc-runtime_2README.html#autotoc_md70", null ],
-        [ "Datatypes", "md_acc-runtime_2README.html#autotoc_md71", [
-          [ "Fields", "md_acc-runtime_2README.html#autotoc_md72", null ],
-          [ "Primitive types", "md_acc-runtime_2README.html#autotoc_md73", null ],
-          [ "Additional built-in types", "md_acc-runtime_2README.html#autotoc_md74", null ],
-          [ "User-defined types", "md_acc-runtime_2README.html#autotoc_md75", [
-            [ "Structures", "md_acc-runtime_2README.html#autotoc_md76", null ],
-            [ "Enums", "md_acc-runtime_2README.html#autotoc_md78", null ]
+      [ "Debugging", "md_acc-runtime_2README.html#autotoc_md46", null ],
+      [ "The Astaroth Domain-Specific Language", "md_acc-runtime_2README.html#autotoc_md47", [
+        [ "Comments and preprocessor directives", "md_acc-runtime_2README.html#autotoc_md48", null ],
+        [ "Datatypes", "md_acc-runtime_2README.html#autotoc_md49", [
+          [ "Fields", "md_acc-runtime_2README.html#autotoc_md50", null ],
+          [ "Primitive types", "md_acc-runtime_2README.html#autotoc_md51", null ],
+          [ "Additional built-in types", "md_acc-runtime_2README.html#autotoc_md52", null ],
+          [ "User-defined types", "md_acc-runtime_2README.html#autotoc_md53", [
+            [ "Structures", "md_acc-runtime_2README.html#autotoc_md54", null ],
+            [ "Enums", "md_acc-runtime_2README.html#autotoc_md56", null ]
           ] ],
-          [ "Type qualifiers", "md_acc-runtime_2README.html#autotoc_md80", null ],
-          [ "Advanced", "md_acc-runtime_2README.html#autotoc_md81", null ]
+          [ "Type qualifiers", "md_acc-runtime_2README.html#autotoc_md58", null ],
+          [ "Advanced", "md_acc-runtime_2README.html#autotoc_md59", null ]
         ] ],
-        [ "Variables", "md_acc-runtime_2README.html#autotoc_md82", [
-          [ "Arrays", "md_acc-runtime_2README.html#autotoc_md83", null ],
-          [ "Casting", "md_acc-runtime_2README.html#autotoc_md84", null ]
+        [ "Variables", "md_acc-runtime_2README.html#autotoc_md60", [
+          [ "Arrays", "md_acc-runtime_2README.html#autotoc_md61", null ],
+          [ "Casting", "md_acc-runtime_2README.html#autotoc_md62", null ]
         ] ],
-        [ "Looping", "md_acc-runtime_2README.html#autotoc_md85", null ],
-        [ "Functions", "md_acc-runtime_2README.html#autotoc_md86", [
-          [ "Printing", "md_acc-runtime_2README.html#autotoc_md87", null ],
-          [ "Kernels", "md_acc-runtime_2README.html#autotoc_md88", null ],
-          [ "Stencils", "md_acc-runtime_2README.html#autotoc_md89", null ]
+        [ "Looping", "md_acc-runtime_2README.html#autotoc_md63", null ],
+        [ "Functions", "md_acc-runtime_2README.html#autotoc_md64", [
+          [ "Printing", "md_acc-runtime_2README.html#autotoc_md65", null ],
+          [ "Kernels", "md_acc-runtime_2README.html#autotoc_md66", null ],
+          [ "Stencils", "md_acc-runtime_2README.html#autotoc_md67", null ]
         ] ],
-        [ "Built-in variables, functions and constants", "md_acc-runtime_2README.html#autotoc_md90", [
-          [ "Built-in constants", "md_acc-runtime_2README.html#autotoc_md91", null ],
-          [ "Built-in variables", "md_acc-runtime_2README.html#autotoc_md92", null ]
+        [ "Built-in variables, functions and constants", "md_acc-runtime_2README.html#autotoc_md68", [
+          [ "Built-in constants", "md_acc-runtime_2README.html#autotoc_md69", null ],
+          [ "Built-in variables", "md_acc-runtime_2README.html#autotoc_md70", null ]
         ] ],
-        [ "Advanced features", "md_acc-runtime_2README.html#autotoc_md93", [
-          [ "Profiles", "md_acc-runtime_2README.html#autotoc_md94", null ],
-          [ "Allocating declarations", "md_acc-runtime_2README.html#autotoc_md95", null ],
-          [ "Reductions", "md_acc-runtime_2README.html#autotoc_md96", null ],
-          [ "ComputeSteps", "md_acc-runtime_2README.html#autotoc_md97", null ],
-          [ "Rays", "md_acc-runtime_2README.html#autotoc_md98", null ],
-          [ "1D and 2D setups.", "md_acc-runtime_2README.html#autotoc_md99", null ]
+        [ "Advanced features", "md_acc-runtime_2README.html#autotoc_md71", [
+          [ "Profiles", "md_acc-runtime_2README.html#autotoc_md72", null ],
+          [ "Allocating declarations", "md_acc-runtime_2README.html#autotoc_md73", null ],
+          [ "Reductions", "md_acc-runtime_2README.html#autotoc_md74", null ],
+          [ "ComputeSteps", "md_acc-runtime_2README.html#autotoc_md75", null ],
+          [ "Rays", "md_acc-runtime_2README.html#autotoc_md76", null ],
+          [ "1D and 2D setups.", "md_acc-runtime_2README.html#autotoc_md77", null ]
         ] ]
       ] ],
-      [ "Interaction with the Astaroth Core and Utils libraries", "md_acc-runtime_2README.html#autotoc_md100", [
-        [ "Loading and storing stencil coefficients at runtime", "md_acc-runtime_2README.html#autotoc_md101", null ],
-        [ "Additional physics-specific API functions", "md_acc-runtime_2README.html#autotoc_md102", null ],
-        [ "Stencil order", "md_acc-runtime_2README.html#autotoc_md103", null ]
+      [ "Interaction with the Astaroth Core and Utils libraries", "md_acc-runtime_2README.html#autotoc_md78", [
+        [ "Loading and storing stencil coefficients at runtime", "md_acc-runtime_2README.html#autotoc_md79", null ],
+        [ "Additional physics-specific API functions", "md_acc-runtime_2README.html#autotoc_md80", null ],
+        [ "Stencil order", "md_acc-runtime_2README.html#autotoc_md81", null ]
       ] ]
     ] ],
     [ "Astaroth Specification and User Manual", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html", [
-      [ "Introduction and Background", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md105", [
-        [ "Publications", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md106", null ]
+      [ "Introduction and Background", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md83", [
+        [ "Publications", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md84", null ]
       ] ],
-      [ "Astaroth API", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md107", [
-        [ "List of Astaroth API Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md108", [
-          [ "Initialization, Quitting and Helper Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md109", null ],
-          [ "Loading and Storing", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md110", null ],
-          [ "Integration, Reductions and Boundary Conditions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md111", null ]
+      [ "Astaroth API", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md85", [
+        [ "List of Astaroth API Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md86", [
+          [ "Initialization, Quitting and Helper Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md87", null ],
+          [ "Loading and Storing", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md88", null ],
+          [ "Integration, Reductions and Boundary Conditions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md89", null ]
         ] ],
-        [ "Stream Synchronization", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md112", null ],
-        [ "Data Synchronization", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md113", null ],
-        [ "Input and Output Buffers", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md114", null ],
-        [ "Devices", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md115", null ],
-        [ "Nodes", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md116", null ],
-        [ "Meshes", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md117", null ]
+        [ "Stream Synchronization", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md90", null ],
+        [ "Data Synchronization", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md91", null ],
+        [ "Input and Output Buffers", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md92", null ],
+        [ "Devices", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md93", null ],
+        [ "Nodes", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md94", null ],
+        [ "Meshes", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md95", null ]
       ] ],
-      [ "Astaroth Domain-Specific Language 2.0 (<strong>DEPRECATED</strong>. See acc-runtime/README.md for the Astaroth 3.0 DSL syntax)", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md118", [
-        [ "Overview", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md119", null ],
-        [ "Data Types", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md120", null ],
-        [ "Precision", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md121", null ],
-        [ "Control Flow", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md122", null ],
-        [ "Kernels", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md123", null ],
-        [ "Preprocessed Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md124", null ],
-        [ "Device Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md125", null ],
-        [ "Uniforms", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md126", null ],
-        [ "Standard Libraries", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md127", null ],
-        [ "Performance Considerations", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md128", null ],
-        [ "Notes on autotesting", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md129", null ]
+      [ "Astaroth Domain-Specific Language 2.0 (<strong>DEPRECATED</strong>. See acc-runtime/README.md for the Astaroth 3.0 DSL syntax)", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md96", [
+        [ "Overview", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md97", null ],
+        [ "Data Types", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md98", null ],
+        [ "Precision", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md99", null ],
+        [ "Control Flow", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md100", null ],
+        [ "Kernels", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md101", null ],
+        [ "Preprocessed Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md102", null ],
+        [ "Device Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md103", null ],
+        [ "Uniforms", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md104", null ],
+        [ "Standard Libraries", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md105", null ],
+        [ "Performance Considerations", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md106", null ],
+        [ "Notes on autotesting", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md107", null ]
       ] ]
-    ] ],
-    [ "Namespaces", "namespaces.html", [
-      [ "Namespace List", "namespaces.html", "namespaces_dup" ]
     ] ],
     [ "Data Structures", "annotated.html", [
       [ "Data Structures", "annotated.html", "annotated_dup" ],
       [ "Data Structure Index", "classes.html", null ],
-      [ "Class Hierarchy", "hierarchy.html", "hierarchy" ],
       [ "Data Fields", "functions.html", [
         [ "All", "functions.html", "functions_dup" ],
-        [ "Functions", "functions_func.html", null ],
         [ "Variables", "functions_vars.html", "functions_vars" ]
       ] ]
     ] ],
@@ -136,7 +130,7 @@ var NAVTREE =
         [ "Typedefs", "globals_type.html", null ],
         [ "Enumerations", "globals_enum.html", null ],
         [ "Enumerator", "globals_eval.html", null ],
-        [ "Macros", "globals_defs.html", "globals_defs" ]
+        [ "Macros", "globals_defs.html", null ]
       ] ]
     ] ]
   ] ]
@@ -145,21 +139,11 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "3d__caching__implementations_8h.html",
-"ast_8h.html#a4bd1daa7a5b7f0c4aef1c2660310ddb9",
-"astaroth__cuda__wrappers_8h.html#a9a952a0168282c60c57681407ec8f121",
-"astaroth__helpers_8h.html#a3477d84dd3113141a4ad2200c8dfd474",
-"classTask.html#a7d523906581fa4be895cd525ea56a2dc",
-"codegen_8c.html#a7966d57301e963a5a22d2fb95682c1fa",
-"codegen_8c.html#af5580bb3ca3b60d73149586fba2efa2b",
-"decomposition_8cc.html#a67e86817a6c8b4e89b46b349996f4f1b",
-"functions_z.html",
-"hip_8h.html#a33617c801be71c10412c55826db2660b",
-"math__utils_8h.html#ae56c2367da268bdb962b7fbf13028a82",
-"rocfft_8cc.html#a5533a4e4ab7dc6cf5230063f6643fe33",
-"string__vec_8h.html",
-"structGridDims.html#a820d9d37fa8dd5c12642f484c06000db",
-"structkiss__fftnd__state.html",
-"vba_8cc.html#aaf53c6e4675bd63f3359d7d1dc763aa4"
+"astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612",
+"astaroth__grid_8h.html#aecb3a6f182e8c6592c9b8c53d7543652",
+"func__attributes_8h.html#a9e64b37aa76347c9bf88985c9dec78c9",
+"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88a618c3d05df2893d887d66e94b05e3095",
+"structAcMeshInfoLoadedInfo.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

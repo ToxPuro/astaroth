@@ -1,5 +1,7 @@
 var searchData=
 [
-  ['one_5fdimensional_5fprofile_0',['one_dimensional_profile',['../stencilgen_8c.html#ab05911eb069642c037eddbcbbfedb9da',1,'ONE_DIMENSIONAL_PROFILE:&#160;stencilgen.c'],['../host__datatypes_8h.html#ab05911eb069642c037eddbcbbfedb9da',1,'ONE_DIMENSIONAL_PROFILE:&#160;host_datatypes.h']]],
-  ['overloaded_5ffunc_5fdefine_1',['OVERLOADED_FUNC_DEFINE',['../func__define_8h.html#a4c5307d09a6e1193c9df6c7632265b3b',1,'func_define.h']]]
+  ['sin_0',['sin',['../math__utils_8h.html#a0cb8046c9ac52516329d57a440a7e60a',1,'math_utils.h']]],
+  ['sqrt_1',['sqrt',['../math__utils_8h.html#ac4acb71b4114d72176466f9b52bf72ac',1,'math_utils.h']]],
+  ['str_5fvec_5fcontains_2',['str_vec_contains',['../string__vec_8h.html#adf95ace7802cdf5762874c7d32d23523',1,'string_vec.h']]],
+  ['strcmps_3',['strcmps',['../string__vec_8h.html#a03cbd7543ad334167af12654f70f567e',1,'string_vec.h']]]
 ];

@@ -105,9 +105,9 @@ Basic workflow</h1>
 <p>&zwj;"There is something that needs fixing" </p>
 </blockquote>
 <ol type="1">
-<li>Create your work. See <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Programming</a> and <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Committing</a> .</li>
+<li>Create your work. See <a class="el" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">Programming</a> and <a class="el" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">Committing</a> .</li>
 <li>When done, check that autotests still pass by running <code>./ac_run -t</code>.</li>
-<li><b>[Recommended]:</b> Autoformat your code. See <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Formatting</a>.</li>
+<li><b>[Recommended]:</b> Autoformat your code. See <a class="el" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">Formatting</a>.</li>
 <li>Create a pull request.</li>
 </ol>
 <h1><a class="anchor" id="autotoc_md15"></a>
@@ -129,7 +129,7 @@ Committing</h1>
 <ul>
 <li>Prefer multiple small commits over few large ones.</li>
 <li>Provide meaningful commit messages.</li>
-<li>If a feature consists of multiple commits, consider creating a new branch. See <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">Managing feature branches</a> and <a class="el" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">About branches in general</a> for more details. When done, issue the pull request to the new branch.</li>
+<li>If a feature consists of multiple commits, consider creating a new branch. See <a class="el" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">Managing feature branches</a> and <a class="el" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">About branches in general</a> for more details. When done, issue the pull request to the new branch.</li>
 </ul>
 <h1><a class="anchor" id="autotoc_md17"></a>
 Formatting</h1>
@@ -151,8 +151,8 @@ Header example:</h1>
 <div class="line"><span class="preprocessor">#pragma once</span></div>
 <div class="line"><span class="preprocessor">#include &quot;avoid_including_headers_here.h&quot;</span></div>
 <div class="line"> </div>
-<div class="line"><span class="keywordtype">void</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">globalFunction</a>(<span class="keywordtype">void</span>);</div>
-<div class="ttc" id="aacc__runtime_8cu_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">__device__ const int const int index</div><div class="ttdef"><b>Definition</b> acc_runtime.cu:466</div></div>
+<div class="line"><span class="keywordtype">void</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">globalFunction</a>(<span class="keywordtype">void</span>);</div>
+<div class="ttc" id="amath__utils_8h_html_a4d348ec60ddcabc4d3429057f3889815"><div class="ttname"><a href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">val</a></div><div class="ttdeci">constexpr const AcReal &amp; val</div><div class="ttdef"><b>Definition</b> math_utils.h:1090</div></div>
 </div><!-- fragment --><h1><a class="anchor" id="autotoc_md19"></a>
 Source example:</h1>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &quot;parent_header.h&quot;</span></div>
@@ -164,21 +164,21 @@ Source example:</h1>
 <div class="line"> </div>
 <div class="line"><span class="keyword">typedef</span> <span class="keyword">struct </span>{</div>
 <div class="line">    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#ae56c2367da268bdb962b7fbf13028a82">data</a>;</div>
-<div class="line">} <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">SomeStruct</a>;</div>
+<div class="line">} <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">SomeStruct</a>;</div>
 <div class="line"> </div>
-<div class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">int</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">small_function</a>(<span class="keyword">const</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">SomeStruct</a>&amp; <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">stuff</a>) { <span class="keywordflow">return</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">stuff</a>.data; }</div>
+<div class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">small_function</a>(<span class="keyword">const</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">SomeStruct</a>&amp; <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">stuff</a>) { <span class="keywordflow">return</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">stuff</a>.data; }</div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// Pass constant structs always by reference (&amp;) and use const type qualifier.</span></div>
 <div class="line"><span class="comment">// Modified structs are always passed as pointers (*), never as references.</span></div>
 <div class="line"><span class="comment">// Constant parameters should be on the left-hand side, while non-consts go to the right.</span></div>
 <div class="line"><span class="keyword">static</span> <span class="keywordtype">void</span></div>
-<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">local_function</a>(<span class="keyword">const</span> <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">SomeStruct</a>&amp; <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">constant_struct</a>, <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">SomeStruct</a>* <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">modified_struct</a>)</div>
+<div class="line"><a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">local_function</a>(<span class="keyword">const</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">SomeStruct</a>&amp; <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">constant_struct</a>, <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">SomeStruct</a>* <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">modified_struct</a>)</div>
 <div class="line">{</div>
-<div class="line">    <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">modified_struct</a>-&gt;data = <a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">constant_struct</a>.data;</div>
+<div class="line">    <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">modified_struct</a>-&gt;data = <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">constant_struct</a>.data;</div>
 <div class="line">}</div>
 <div class="line"> </div>
 <div class="line"><span class="keywordtype">void</span></div>
-<div class="line"><a class="code hl_variable" href="acc__runtime_8cu.html#ab6e9e0ce0bd2c6664dc941509bcef12c">globalFunction</a>(<span class="keywordtype">void</span>)</div>
+<div class="line"><a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">globalFunction</a>(<span class="keywordtype">void</span>)</div>
 <div class="line">{</div>
 <div class="line">    <span class="keywordflow">return</span>;</div>
 <div class="line">}</div>

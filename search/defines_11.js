@@ -1,20 +1,5 @@
 var searchData=
 [
-  ['s_5fmul_0',['S_MUL',['../__kiss__fft__guts_8h.html#a944e08f3916c56a9697bbfed458eaa94',1,'_kiss_fft_guts.h']]],
-  ['sin_1',['sin',['../math__utils_8h.html#a0cb8046c9ac52516329d57a440a7e60a',1,'math_utils.h']]],
-  ['single_5fprecision_5ftag_5foffset_2',['SINGLE_PRECISION_TAG_OFFSET',['../task_8cc.html#a76790ccf29cd5669820dcffda0e1a80b',1,'task.cc']]],
-  ['size_3',['size',['../acc__runtime_8cu.html#abe573881d0168a5509f3837df08013e1',1,'size:&#160;acc_runtime.cu'],['../stencil__accesses_8cpp.html#abe573881d0168a5509f3837df08013e1',1,'size:&#160;stencil_accesses.cpp']]],
-  ['size_5ft_5fstr_4',['SIZE_T_STR',['../codegen_8c.html#a12d7dadf8cb255cde07ce9d6230ec6c2',1,'codegen.c']]],
-  ['sqrt_5',['sqrt',['../math__utils_8h.html#ac4acb71b4114d72176466f9b52bf72ac',1,'sqrt:&#160;math_utils.h'],['../modelreduce_8cc.html#aa8418f27fe28830a7fb62322463f15e0',1,'sqrt:&#160;modelreduce.cc']]],
-  ['stencilacc_5fexec_6',['STENCILACC_EXEC',['../codegen_8c.html#a95cc9d4a326611cb1fc2119eb9d729ff',1,'codegen.c']]],
-  ['stencilacc_5fsrc_7',['STENCILACC_SRC',['../codegen_8c.html#a1852c762d57a483acf9b63aeb9e76ab3',1,'codegen.c']]],
-  ['stencilgen_5fexec_8',['STENCILGEN_EXEC',['../codegen_8c.html#a15f881a7beab3b6e972d4d1133b03fb4',1,'codegen.c']]],
-  ['stencilgen_5fheader_9',['STENCILGEN_HEADER',['../codegen_8c.html#ad020c4c5b3c04f022dba785f5fe6a7d8',1,'codegen.c']]],
-  ['stencilgen_5fsrc_10',['STENCILGEN_SRC',['../codegen_8c.html#a17b188d67fa60fc56bac45cca4595c2a',1,'codegen.c']]],
-  ['str_5fvec_5fcontains_11',['str_vec_contains',['../string__vec_8h.html#adf95ace7802cdf5762874c7d32d23523',1,'string_vec.h']]],
-  ['strcmps_12',['strcmps',['../string__vec_8h.html#a03cbd7543ad334167af12654f70f567e',1,'string_vec.h']]],
-  ['stringify_13',['STRINGIFY',['../kiss__fft__log_8h.html#a6df1d22fb5f09eccc23b9f399670cfd7',1,'kiss_fft_log.h']]],
-  ['suppress_5funused_5fwarning_14',['suppress_unused_warning',['../acc__runtime_8cu.html#a38715da958262eb3d7b9768e2b85dea9',1,'suppress_unused_warning:&#160;acc_runtime.cu'],['../stencil__accesses_8cpp.html#a38715da958262eb3d7b9768e2b85dea9',1,'suppress_unused_warning:&#160;stencil_accesses.cpp']]],
-  ['swap_5fchain_5flength_15',['SWAP_CHAIN_LENGTH',['../task_8h.html#a675c02aac0f97f7a91e11e1f329d6532',1,'task.h']]],
-  ['symbol_5ftable_5fsize_16',['SYMBOL_TABLE_SIZE',['../codegen_8c.html#add55624170e6366d96baf14cac17962a',1,'codegen.c']]]
+  ['vec_5finitializer_0',['VEC_INITIALIZER',['../string__vec_8h.html#a8f3b91283882c14a45d415b3025adada',1,'string_vec.h']]],
+  ['volume_5fdefined_1',['VOLUME_DEFINED',['../datatypes_8h.html#af83b88b5eae0c194cde898b7f8d5927a',1,'datatypes.h']]]
 ];

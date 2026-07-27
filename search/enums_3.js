@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['haloexchangestate_0',['HaloExchangeState',['../task_8h.html#ae06a32b9b155c134f986e0cc50f7e144',1,'task.h']]],
-  ['halomessagetype_1',['HaloMessageType',['../task_8h.html#aa2553dac5f55a1e06f2d054faea2fd0e',1,'task.h']]]
+  ['platetype_0',['PlateType',['../astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78',1,'astaroth_base.h']]]
 ];

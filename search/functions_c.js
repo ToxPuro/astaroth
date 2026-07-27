@@ -1,25 +1,11 @@
 var searchData=
 [
-  ['main_0',['main',['../acc-runtime_2acc_2empty_8c.html#ae66f6b31b5ad750f1fe042a706a4e3d4',1,'main():&#160;empty.c'],['../stencilgen_01copy_8c.html#a3c04138a5bfe5d72780bb7e82a18e627',1,'main(int argc, char **argv):&#160;stencilgen copy.c'],['../stencilgen_8c.html#a3c04138a5bfe5d72780bb7e82a18e627',1,'main(int argc, char **argv):&#160;stencilgen.c']]],
-  ['make_5finto_5freference_1',['make_into_reference',['../codegen_8c.html#aaeb13263c8518bba0f5e4de95747c79b',1,'codegen.c']]],
-  ['make_5funique_5fbc_5fcalls_2',['make_unique_bc_calls',['../codegen_8c.html#a8ea7c26a160dfc3e82dc64c679414f29',1,'codegen.c']]],
-  ['make_5fvtxbuf_5finput_5fparams_5fsafe_3',['make_vtxbuf_input_params_safe',['../acc__runtime_8cu.html#a99f3f8e3dea4acfa12dfab9fe1a75364',1,'acc_runtime.cu']]],
-  ['mangle_5fdfunc_5fnames_4',['mangle_dfunc_names',['../codegen_8c.html#ac2bf848633d1e428ff5b4387a63116d1',1,'codegen.c']]],
-  ['mangle_5fdfunc_5fnames_5fbase_5',['mangle_dfunc_names_base',['../codegen_8c.html#a9245c92c468ee316cf26ad3c20bb36a7',1,'codegen.c']]],
-  ['map_5fcross_5fproduct_6',['map_cross_product',['../mapreduce_8cuh.html#aeb46040ceab4c6ed432583a31b58040f',1,'mapreduce.cuh']]],
-  ['mark_5fas_5finput_7',['mark_as_input',['../codegen_8c.html#a16a062867eb3dbf65e472f0791d6f5f7',1,'codegen.c']]],
-  ['mark_5fas_5fwritten_8',['mark_as_written',['../stencil__accesses_8cpp.html#ac72cec8a5a578b2609336f4acacb84f4',1,'mark_as_written(const Field &amp;field, const int x, const int y, const int z):&#160;stencil_accesses.cpp'],['../stencil__accesses_8cpp.html#a67c7ac8b64fd0ea55b7ff796731a5ae4',1,'mark_as_written(const ComplexField &amp;field, const int x, const int y, const int z):&#160;stencil_accesses.cpp'],['../stencil__accesses_8cpp.html#a4aa7fafa6d37d853c4128eaae1f44ace',1,'mark_as_written(const Field3 &amp;field, const int x, const int y, const int z):&#160;stencil_accesses.cpp']]],
-  ['mark_5ffirst_5fdeclarations_9',['mark_first_declarations',['../codegen_8c.html#a655a602551102a083fe5cc000cf56409',1,'codegen.c']]],
-  ['mark_5ffirst_5fdeclarations_5fin_5ffuncs_10',['mark_first_declarations_in_funcs',['../codegen_8c.html#a5f119c0f8ee873aeef802470aba24875',1,'codegen.c']]],
-  ['mark_5fkernel_5finputs_11',['mark_kernel_inputs',['../codegen_8c.html#a952ea7e768157589a812655d62a3fabd',1,'codegen.c']]],
-  ['matmul_5farr_12',['matmul_arr',['../stencil__accesses_8cpp.html#abe382b5ef7eedc07b3bbf055ad78bace',1,'stencil_accesses.cpp']]],
-  ['max_13',['max',['../stencilgen_8c.html#a223e0897758a189109f228133e20a384',1,'stencilgen.c']]],
-  ['merge_5fptrs_14',['merge_ptrs',['../task_8cc.html#a0aea021f1d17b155758fe9a0c7b30ce1',1,'task.cc']]],
-  ['monomorphize_5fkernel_5fcalls_15',['monomorphize_kernel_calls',['../codegen_8c.html#a187e61ce2584212eca472860aa493ca1',1,'codegen.c']]],
-  ['morton_5fdecompose_16',['morton_decompose',['../decomposition_8cc.html#a9f5ab641e0cb4fdb914b8fe025238cfc',1,'decomposition.cc']]],
-  ['morton_5fgetpid_17',['morton_getPid',['../decomposition_8cc.html#a2d59f192f49c8971e74f85342e3f2f87',1,'decomposition.cc']]],
-  ['morton_5fgetpid3d_18',['morton_getPid3D',['../decomposition_8cc.html#ac07d9cc56cb19b7af646dbcb8fc941a9',1,'decomposition.cc']]],
-  ['move_19',['move',['../classHaloExchangeTask.html#ac2188cc822822f23931f09812d6de96f',1,'HaloExchangeTask']]],
-  ['mpi_5ftest_5fall_20',['mpi_test_all',['../task_8cc.html#a8fab769f85f17b6afdcc7caa0e91d9a1',1,'task.cc']]],
-  ['mpiscantask_21',['mpiscantask',['../classMPIScanTask.html#a2c2fade22a8b9b8c2cdc789b0ecacf8e',1,'MPIScanTask::MPIScanTask(const MPIScanTask &amp;other)=delete'],['../classMPIScanTask.html#a294fde007ae905a28d15c035c22c38a1',1,'MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id, AcGridInfo grid_info, Device device_, std::array&lt; bool, NUM_VTXBUF_HANDLES+NUM_PROFILES &gt; swap_offset_)']]]
+  ['rand_5finit_0',['rand_init',['../random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f',1,'random.cuh']]],
+  ['random_5funiform_1',['random_uniform',['../random_8cuh.html#a6acc73ce0204c1e21b3e1fd3e9f0e688',1,'random.cuh']]],
+  ['random_5funiform_5freal_5f01_2',['random_uniform_real_01',['../astaroth__random_8h.html#af30f1a1f5650e947668383553744643a',1,'astaroth_random.h']]],
+  ['raytracing_5fdirections_3',['raytracing_directions',['../static__analysis_8h.html#a7ebc83c4a87825676c2c50f4d91e2f1f',1,'static_analysis.h']]],
+  ['raytracing_5fnumber_5fof_5fdirections_4',['raytracing_number_of_directions',['../static__analysis_8h.html#a7d26f9bd41966d960a75bbbb1f1ae3a6',1,'static_analysis.h']]],
+  ['raytracing_5fstep_5fdirection_5',['raytracing_step_direction',['../static__analysis_8h.html#a59583bd6b0400e76bfc0e2356b276a70',1,'raytracing_step_direction(const AcKernel kernel):&#160;static_analysis.h'],['../astaroth__analysis__helpers_8h.html#a5f9a470b5212204f1c56f021126233ae',1,'raytracing_step_direction(const KernelAnalysisInfo info):&#160;astaroth_analysis_helpers.h']]],
+  ['reduce_5fop_5fto_5fname_6',['reduce_op_to_name',['../warp__reduce_8h.html#a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8',1,'warp_reduce.h']]],
+  ['return_7',['return',['../math__utils_8h.html#af28c338d1b41b0afdb721bb95af102d8',1,'math_utils.h']]]
 ];

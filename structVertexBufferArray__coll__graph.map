@@ -1,21 +1,17 @@
 <map id="VertexBufferArray" name="VertexBufferArray">
-<area shape="rect" id="Node000001" title=" " alt="" coords="297,387,436,412"/>
-<area shape="rect" id="Node000002" href="$structAcMeshDims.html" title=" " alt="" coords="5,269,112,295"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,305,92,335,120,360,151,372,196,380,298,391,297,397,195,386,149,377,117,365,88,339,68,308"/>
-<area shape="rect" id="Node000003" href="$structVolume.html" title=" " alt="" coords="23,93,94,119"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="61,132,61,269,56,269,56,132"/>
-<area shape="rect" id="Node000004" href="$structDeviceVertexBufferArray.html" title=" " alt="" coords="137,269,319,295"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="249,303,277,332,310,361,346,384,343,389,306,365,273,335,245,307"/>
-<area shape="rect" id="Node000005" href="$structProfileBufferArray.html" title=" " alt="" coords="139,93,277,119"/>
-<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="214,132,229,269,224,269,208,133"/>
-<area shape="rect" id="Node000006" href="$structint3.html" title=" " alt="" coords="301,93,347,119"/>
-<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="324,133,313,188,301,219,285,247,271,261,255,272,252,267,267,257,281,244,297,216,308,186,319,132"/>
-<area shape="rect" id="Node000007" href="$structAcScratchpadStates.html" title=" " alt="" coords="343,269,494,295"/>
-<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="410,308,374,388,369,386,405,306"/>
-<area shape="rect" id="Node000008" href="$structAcReduceBuffer.html" title=" " alt="" coords="519,269,644,295"/>
-<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="574,309,558,338,532,365,510,378,486,387,437,398,436,392,484,382,508,373,529,361,553,335,570,306"/>
-<area shape="rect" id="Node000009" href="$structAcBuffer.html" title=" " alt="" coords="543,93,620,119"/>
-<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="584,132,584,269,579,269,579,132"/>
-<area shape="rect" id="Node000010" href="$structAcShape.html" title=" " alt="" coords="542,5,621,31"/>
-<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="584,45,584,93,579,93,579,45"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="297,313,436,339"/>
+<area shape="rect" id="Node000002" href="$structAcMeshDims.html" title=" " alt="" coords="5,196,112,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,232,92,262,120,287,151,298,196,307,298,318,297,323,195,312,149,303,117,292,88,265,68,235"/>
+<area shape="rect" id="Node000003" href="$structDeviceVertexBufferArray.html" title=" " alt="" coords="137,196,319,221"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="249,230,277,258,310,287,346,311,343,315,306,291,273,262,245,233"/>
+<area shape="rect" id="Node000004" href="$structProfileBufferArray.html" title=" " alt="" coords="159,93,297,119"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="231,133,231,196,225,196,225,133"/>
+<area shape="rect" id="Node000005" href="$structAcScratchpadStates.html" title=" " alt="" coords="343,196,494,221"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="410,235,374,314,369,312,405,233"/>
+<area shape="rect" id="Node000006" href="$structAcReduceBuffer.html" title=" " alt="" coords="519,196,644,221"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="574,235,558,265,532,291,510,304,486,314,437,324,436,319,484,309,508,299,529,287,553,262,570,233"/>
+<area shape="rect" id="Node000007" href="$structAcBuffer.html" title=" " alt="" coords="543,93,620,119"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="584,133,584,196,579,196,579,133"/>
+<area shape="rect" id="Node000008" href="$structAcShape.html" title=" " alt="" coords="542,5,621,31"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="584,45,584,93,579,93,579,45"/>
 </map>

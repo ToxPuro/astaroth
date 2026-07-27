@@ -2,19 +2,9 @@ var searchData=
 [
   ['larger_5finput_0',['larger_input',['../structacAnalysisBCInfo.html#a7313ed75a2ca0b9d257fbd9ca26692c6',1,'acAnalysisBCInfo']]],
   ['larger_5foutput_1',['larger_output',['../structacAnalysisBCInfo.html#abfa29e34f8c45d1b3de148bdf5ebfb63',1,'acAnalysisBCInfo']]],
-  ['launch_5fregion_2',['launch_region',['../classTask.html#aff0932e9478641ff09c735cddf899c6d',1,'Task']]],
-  ['lengths_3',['lengths',['../structAcGridInfo.html#abb4e6ace4ec5c96bc874579dbaf3fd6e',1,'AcGridInfo::lengths'],['../memory_8cc.html#a67f1f511c7193232af1b2d7652a07af6',1,'lengths:&#160;memory.cc']]],
-  ['leq_5fstr_4',['LEQ_STR',['../codegen_8c.html#a0ed432ad4cc98aceed3018f35229d301',1,'codegen.c']]],
-  ['less_5fstr_5',['LESS_STR',['../codegen_8c.html#a4bc9b7b8fc58aaaab0651b9838fe84b5',1,'codegen.c']]],
-  ['lhs_6',['lhs',['../structASTNode.html#a182b0fe7dc1423c4a85c85df6e47040f',1,'ASTNode']]],
-  ['line_7',['line',['../cuda_8cc.html#a93346abb21c5f2298d56b7e25479ce45',1,'line:&#160;cuda.cc'],['../string__vec_8h.html#a6d574f3bbd7bbcb2515d234be74beaa4',1,'line:&#160;string_vec.h']]],
-  ['load_5ffunc_8',['load_func',['../structKernelParameters.html#ab0312ea74894ef281926b6a0557ab4f8',1,'KernelParameters']]],
-  ['load_5fkernel_5fparams_5ffunc_9',['load_kernel_params_func',['../structAcTaskDefinition.html#adee3564bb24d472690c0796f1770159b',1,'AcTaskDefinition']]],
-  ['loader_10',['loader',['../structLoadKernelParamsFunc.html#a68b2264dbc8b1384650d1a0bffcb3399',1,'LoadKernelParamsFunc::loader'],['../structKernelCall.html#a2e1e65314ca21e9c1a4da652883cb557',1,'KernelCall::loader']]],
-  ['local_5fconfig_11',['local_config',['../structdevice__s.html#a7146ada002873f0bc1a09a3469ddf6d1',1,'device_s']]],
-  ['local_5fdims_12',['local_dims',['../structAcDecompositionInfo.html#a5643723bda2e3b116ea80a5f31885260',1,'AcDecompositionInfo']]],
-  ['log2_5fcapacity_13',['log2_capacity',['../structhashmap__t.html#aa2f30705f95eaa6a6c5cefcbc8fd8341',1,'hashmap_t']]],
-  ['lookup_14',['lookup',['../structstate.html#ab6e60877bc5b7942473d7965775188f5',1,'state']]],
-  ['lookup_5flen_15',['lookup_len',['../structstate.html#a08a3ee1e049fc017fea97958e3fc20d6',1,'state']]],
-  ['loop_5fcntr_16',['loop_cntr',['../classTask.html#a8cd810db83a7fdc37acc35d9c4891776',1,'Task']]]
+  ['lengths_2',['lengths',['../structAcGridInfo.html#abb4e6ace4ec5c96bc874579dbaf3fd6e',1,'AcGridInfo']]],
+  ['lhs_3',['lhs',['../structASTNode.html#a182b0fe7dc1423c4a85c85df6e47040f',1,'ASTNode']]],
+  ['line_4',['line',['../string__vec_8h.html#a6d574f3bbd7bbcb2515d234be74beaa4',1,'string_vec.h']]],
+  ['load_5fkernel_5fparams_5ffunc_5',['load_kernel_params_func',['../structAcTaskDefinition.html#adee3564bb24d472690c0796f1770159b',1,'AcTaskDefinition']]],
+  ['log2_5fcapacity_6',['log2_capacity',['../structhashmap__t.html#aa2f30705f95eaa6a6c5cefcbc8fd8341',1,'hashmap_t']]]
 ];

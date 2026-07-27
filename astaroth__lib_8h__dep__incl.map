@@ -1,17 +1,5 @@
 <map id="include/astaroth_lib.h" name="include/astaroth_lib.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="493,5,656,31"/>
-<area shape="rect" id="Node000002" href="$astaroth__utils_8h.html" title="Functions for loading and updating AcMeshInfo." alt="" coords="487,79,662,104"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="577,44,577,79,572,79,572,44"/>
-<area shape="rect" id="Node000003" href="$config__loader_8cc.html" title=" " alt="" coords="5,159,187,185"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="486,109,199,155,158,162,157,157,198,149,486,103"/>
-<area shape="rect" id="Node000004" href="$memory_8cc.html" title=" " alt="" coords="211,159,359,185"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="520,110,328,162,327,157,519,105"/>
-<area shape="rect" id="Node000005" href="$modelreduce_8cc.html" title=" " alt="" coords="383,159,563,185"/>
-<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="550,115,490,161,487,157,547,111"/>
-<area shape="rect" id="Node000006" href="$modelsolver-legacy-do-not-modify_8c.html" title=" " alt="" coords="588,152,764,192"/>
-<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="602,110,653,150,650,154,599,114"/>
-<area shape="rect" id="Node000007" href="$modelsolver_8cc.html" title=" " alt="" coords="789,159,963,185"/>
-<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="632,105,833,157,831,162,631,110"/>
-<area shape="rect" id="Node000008" href="$verification_8cc.html" title=" " alt="" coords="988,159,1156,185"/>
-<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="673,103,976,149,1016,157,1015,162,976,155,672,108"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="11,5,174,31"/>
+<area shape="rect" id="Node000002" href="$astaroth__utils_8h.html" title="Functions for loading and updating AcMeshInfo." alt="" coords="5,79,180,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,44,95,79,90,79,90,44"/>
 </map>

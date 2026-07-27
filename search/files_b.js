@@ -1,10 +1,5 @@
 var searchData=
 [
-  ['kernels_2ecu_0',['kernels.cu',['../kernels_8cu.html',1,'']]],
-  ['kernels_2eh_1',['kernels.h',['../kernels_8h.html',1,'']]],
-  ['kiss_5ffft_2ec_2',['kiss_fft.c',['../kiss__fft_8c.html',1,'']]],
-  ['kiss_5ffft_2eh_3',['kiss_fft.h',['../kiss__fft_8h.html',1,'']]],
-  ['kiss_5ffft_5flog_2eh_4',['kiss_fft_log.h',['../kiss__fft__log_8h.html',1,'']]],
-  ['kiss_5ffftnd_2ec_5',['kiss_fftnd.c',['../kiss__fftnd_8c.html',1,'']]],
-  ['kiss_5ffftnd_2eh_6',['kiss_fftnd.h',['../kiss__fftnd_8h.html',1,'']]]
+  ['random_2ecuh_0',['random.cuh',['../random_8cuh.html',1,'']]],
+  ['readme_2emd_1',['readme.md',['../acc-runtime_2README_8md.html',1,'(Global Namespace)'],['../README_8md.html',1,'(Global Namespace)']]]
 ];

@@ -817,10 +817,10 @@ $(document).ready(function(){initNavTree('3d__caching__implementations_8h_source
 <div class="line"><a id="l00723" name="l00723"></a><span class="lineno">  723</span>  <span class="keyword">const</span> <span class="keywordtype">int</span> BLOCK_SIZE = <a class="code hl_define" href="implementation_8h.html#aea2549cd8df91125a4af7b1134949656">EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE</a>;</div>
 <div class="line"><a id="l00724" name="l00724"></a><span class="lineno">  724</span>  <span class="keyword">const</span> <span class="keywordtype">int</span> NUM_BLOCKS = (NUM_ALL_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;</div>
 <div class="line"><a id="l00725" name="l00725"></a><span class="lineno">  725</span>  <span class="keywordflow">if</span> (BLOCK_SIZE * NUM_BLOCKS &lt; NUM_ALL_FIELDS)</div>
-<div class="line"><a id="l00726" name="l00726"></a><span class="lineno">  726</span>    <a class="code hl_function" href="stencilgen_01copy_8c.html#ac0936afc55e496b4835d9a141bb31ac0">raise_error</a>(</div>
+<div class="line"><a id="l00726" name="l00726"></a><span class="lineno">  726</span>    raise_error(</div>
 <div class="line"><a id="l00727" name="l00727"></a><span class="lineno">  727</span>        <span class="stringliteral">&quot;Invalid NUM_BLOCKS computed in stencilgen.c (rolling pingpong)&quot;</span>);</div>
 <div class="line"><a id="l00728" name="l00728"></a><span class="lineno">  728</span>  <span class="keywordflow">if</span> (BLOCK_SIZE &gt; NUM_ALL_FIELDS)</div>
-<div class="line"><a id="l00729" name="l00729"></a><span class="lineno">  729</span>    <a class="code hl_function" href="stencilgen_01copy_8c.html#ac0936afc55e496b4835d9a141bb31ac0">raise_error</a>(</div>
+<div class="line"><a id="l00729" name="l00729"></a><span class="lineno">  729</span>    raise_error(</div>
 <div class="line"><a id="l00730" name="l00730"></a><span class="lineno">  730</span>        <span class="stringliteral">&quot;Invalid EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE. Must be &lt;= NUM_ALL_FIELDS&quot;</span>);</div>
 <div class="line"><a id="l00731" name="l00731"></a><span class="lineno">  731</span>  printf(<span class="stringliteral">&quot;extern __shared__ AcReal smem[];&quot;</span>);</div>
 <div class="line"><a id="l00732" name="l00732"></a><span class="lineno">  732</span>  printf(<span class="stringliteral">&quot;const int sx = blockDim.x + STENCIL_WIDTH - 1;&quot;</span>);</div>
@@ -1035,10 +1035,10 @@ $(document).ready(function(){initNavTree('3d__caching__implementations_8h_source
 <div class="line"><a id="l00947" name="l00947"></a><span class="lineno">  947</span>  <span class="keyword">const</span> <span class="keywordtype">int</span> BLOCK_SIZE = <a class="code hl_define" href="implementation_8h.html#aea2549cd8df91125a4af7b1134949656">EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE</a>;</div>
 <div class="line"><a id="l00948" name="l00948"></a><span class="lineno">  948</span>  <span class="keyword">const</span> <span class="keywordtype">int</span> NUM_BLOCKS = (NUM_ALL_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;</div>
 <div class="line"><a id="l00949" name="l00949"></a><span class="lineno">  949</span>  <span class="keywordflow">if</span> (BLOCK_SIZE * NUM_BLOCKS &lt; NUM_ALL_FIELDS)</div>
-<div class="line"><a id="l00950" name="l00950"></a><span class="lineno">  950</span>    <a class="code hl_function" href="stencilgen_01copy_8c.html#ac0936afc55e496b4835d9a141bb31ac0">raise_error</a>(</div>
+<div class="line"><a id="l00950" name="l00950"></a><span class="lineno">  950</span>    raise_error(</div>
 <div class="line"><a id="l00951" name="l00951"></a><span class="lineno">  951</span>        <span class="stringliteral">&quot;Invalid NUM_BLOCKS computed in stencilgen.c (rolling pingpong)&quot;</span>);</div>
 <div class="line"><a id="l00952" name="l00952"></a><span class="lineno">  952</span>  <span class="keywordflow">if</span> (BLOCK_SIZE &gt; NUM_ALL_FIELDS)</div>
-<div class="line"><a id="l00953" name="l00953"></a><span class="lineno">  953</span>    <a class="code hl_function" href="stencilgen_01copy_8c.html#ac0936afc55e496b4835d9a141bb31ac0">raise_error</a>(</div>
+<div class="line"><a id="l00953" name="l00953"></a><span class="lineno">  953</span>    raise_error(</div>
 <div class="line"><a id="l00954" name="l00954"></a><span class="lineno">  954</span>        <span class="stringliteral">&quot;Invalid EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE. Must be &lt;= NUM_ALL_FIELDS&quot;</span>);</div>
 <div class="line"><a id="l00955" name="l00955"></a><span class="lineno">  955</span>  printf(<span class="stringliteral">&quot;extern __shared__ AcReal smem[];&quot;</span>);</div>
 <div class="line"><a id="l00956" name="l00956"></a><span class="lineno">  956</span>  printf(<span class="stringliteral">&quot;const int sx = blockDim.x + STENCIL_WIDTH - 1;&quot;</span>);</div>
@@ -1165,10 +1165,10 @@ $(document).ready(function(){initNavTree('3d__caching__implementations_8h_source
 <div class="line"><a id="l01080" name="l01080"></a><span class="lineno"> 1080</span>  printf(<span class="stringliteral">&quot;// BLOCK_SIZE = %d\n&quot;</span>, BLOCK_SIZE);</div>
 <div class="line"><a id="l01081" name="l01081"></a><span class="lineno"> 1081</span>  printf(<span class="stringliteral">&quot;// NUM_BLOCKS = %d\n&quot;</span>, NUM_BLOCKS);</div>
 <div class="line"><a id="l01082" name="l01082"></a><span class="lineno"> 1082</span>  <span class="keywordflow">if</span> (BLOCK_SIZE * NUM_BLOCKS &lt; NUM_ALL_FIELDS)</div>
-<div class="line"><a id="l01083" name="l01083"></a><span class="lineno"> 1083</span>    <a class="code hl_function" href="stencilgen_01copy_8c.html#ac0936afc55e496b4835d9a141bb31ac0">raise_error</a>(</div>
+<div class="line"><a id="l01083" name="l01083"></a><span class="lineno"> 1083</span>    raise_error(</div>
 <div class="line"><a id="l01084" name="l01084"></a><span class="lineno"> 1084</span>        <span class="stringliteral">&quot;Invalid NUM_BLOCKS computed in stencilgen.c (rolling pingpong)&quot;</span>);</div>
 <div class="line"><a id="l01085" name="l01085"></a><span class="lineno"> 1085</span>  <span class="keywordflow">if</span> (BLOCK_SIZE &gt; NUM_ALL_FIELDS)</div>
-<div class="line"><a id="l01086" name="l01086"></a><span class="lineno"> 1086</span>    <a class="code hl_function" href="stencilgen_01copy_8c.html#ac0936afc55e496b4835d9a141bb31ac0">raise_error</a>(</div>
+<div class="line"><a id="l01086" name="l01086"></a><span class="lineno"> 1086</span>    raise_error(</div>
 <div class="line"><a id="l01087" name="l01087"></a><span class="lineno"> 1087</span>        <span class="stringliteral">&quot;Invalid EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE. Must be &lt;= NUM_ALL_FIELDS&quot;</span>);</div>
 <div class="line"><a id="l01088" name="l01088"></a><span class="lineno"> 1088</span>  printf(<span class="stringliteral">&quot;extern __shared__ AcReal smem[];&quot;</span>);</div>
 <div class="line"><a id="l01089" name="l01089"></a><span class="lineno"> 1089</span>  printf(<span class="stringliteral">&quot;const int sx = blockDim.x + STENCIL_WIDTH - 1;&quot;</span>);</div>
@@ -1318,7 +1318,6 @@ $(document).ready(function(){initNavTree('3d__caching__implementations_8h_source
 <div class="line"><a id="l01233" name="l01233"></a><span class="lineno"> 1233</span>}</div>
 <div class="line"><a id="l01234" name="l01234"></a><span class="lineno"> 1234</span><span class="preprocessor">#endif</span></div>
 <div class="ttc" id="aimplementation_8h_html_aea2549cd8df91125a4af7b1134949656"><div class="ttname"><a href="implementation_8h.html#aea2549cd8df91125a4af7b1134949656">EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE</a></div><div class="ttdeci">#define EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE</div><div class="ttdef"><b>Definition</b> implementation.h:18</div></div>
-<div class="ttc" id="astencilgen_01copy_8c_html_ac0936afc55e496b4835d9a141bb31ac0"><div class="ttname"><a href="stencilgen_01copy_8c.html#ac0936afc55e496b4835d9a141bb31ac0">raise_error</a></div><div class="ttdeci">void raise_error(const char *str)</div><div class="ttdef"><b>Definition</b> stencilgen copy.c:54</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

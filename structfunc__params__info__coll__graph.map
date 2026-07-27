@@ -1,9 +1,0 @@
-<map id="func_params_info" name="func_params_info">
-<area shape="rect" id="Node000001" title=" " alt="" coords="26,181,165,207"/>
-<area shape="rect" id="Node000002" href="$structstring__vec.html" title=" " alt="" coords="5,93,95,119"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="61,131,72,156,88,179,83,182,68,159,56,133"/>
-<area shape="rect" id="Node000003" href="$structnode__vec.html" title=" " alt="" coords="119,93,203,119"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="146,131,107,182,102,179,141,128"/>
-<area shape="rect" id="Node000004" href="$structASTNode.html" title=" " alt="" coords="120,5,201,31"/>
-<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="163,45,163,93,158,93,158,45"/>
-</map>
