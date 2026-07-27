@@ -51,7 +51,7 @@ option(PACKED_DATA_TRANSFERS      "Enables kernel for packed data transfers" OFF
 option(PROFILING_ENABLED          "Whether to enable profiling and link to the vendor profiling libraries" ON)
 option(RUNTIME_COMPILATION        "Compile version of Astaroth compiled at runtime" OFF)
 option(SINGLEPASS_INTEGRATION     "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" OFF)
-option(SUPPORT_OLD_ARCHITECTURES  "To support old CUDA architectures" ON)
+option(SUPPORT_MAJOR_ARCHITECTURES  "To support old CUDA architectures" ON)
 option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astaroth" OFF)
 option(USE_DISTRIBUTED_IO         "Use distributed IO (one file per process) instead of collective" ON)
 option(USE_HIP                    "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
