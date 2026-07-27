@@ -39,12 +39,10 @@
 #include "errchk.h"
 #include "kernels.h"
 #include "math_utils.h"
-#include "random.cuh"
 #include "static_analysis.h"
 
 // clang-format off
 #include "kernel_reduce_info.h"
-#include "user_defines_runtime_lib.h"
 // clang-format on
 
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
@@ -68,6 +66,8 @@ static int3 max_tpb_for_reduce_kernels{100, 100, 100};
 static int3 set_tpb{0, 0, 0};
 
 #define USE_COMPRESSIBLE_MEMORY (0)
+
+extern __device__ AcReal __attribute__((unused)) stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH];
 
 // TP: unfortunately cannot use color output since it might not be supported in
 // each env
@@ -451,64 +451,11 @@ acGetRealScratchpadSize(const size_t i)
 #define fatal_error_message(error,message) 
 #define ac_dummy_write(field,x,y,z) 
 
-__device__
-AcReal
-safe_access(const AcReal* arr, const int dims, const int index, const char* name)
-{
-	if (arr == NULL)
-	{
-		printf("Trying to access %s which is NULL!\n",name);
-		//TP: assert is not defined on Mahti :(
-		//assert(false);
-		return 0.0;
-	}
-	else if (index < 0 || index >= dims)
-	{
-		printf("Trying to access %s out of bounds!: %d\n",name,index);
-		//TP: assert is not defined on Mahti :(
-		//assert(false);
-		return 0.0;
-	}
-	return arr[index];
-}
-__device__ UNUSED
-AcReal
-safe_access(const AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
-{
-	return safe_access(arr,dims,index,real_array_names__device__[param]);
-}
-
 #include "device_fields_info.h"
 #include "device_output_info.h"
 
-static __device__ UNUSED
-int3
-ac_get_field_halos(const Field& field)
-{
-	if (vtxbuf_compile_time_device_halos[field] != (int3){-1,-1,-1})
-	{
-		return vtxbuf_compile_time_device_halos[field];
-	}
-	return VAL(vtxbuf_run_time_device_halos[field]);
-}
-
-static __device__ UNUSED
-bool
-ac_field_has_default_dims(const Field& field)
-{
-	return vtxbuf_device_dims[field] == AC_mlocal;
-}
-
-static __device__ UNUSED 
-bool
-ac_is_global(const AcRealOutputParam& param)
-{
-	return real_output_is_global_device[param];
-}
-
 #define postprocess_reduce_result(DST,OP)
 
-#include "user_kernels.h"
 #undef size
 #undef longlong
 

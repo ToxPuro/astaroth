@@ -88,7 +88,7 @@ else()
 endif()
   
 if (NOT RUNTIME_COMPILATION)
-	set(DSL_HEADERS "user_kernels.h"
+	set(DSL_HEADERS "user_kernel_declarations.h"
 	                "user_defines.h"
 	                "user_declarations.h"
 	                "stencil_accesses.h"
@@ -99,7 +99,7 @@ if (NOT RUNTIME_COMPILATION)
 			)
 else()
 	set(DSL_HEADERS 
-			"user_kernels.h"
+			"user_kernel_declarations.h"
 	                "user_defines.h"
 	                "user_declarations.h"
 			)
@@ -108,7 +108,10 @@ endif()
 set(ACC_GENERATED_SOURCES
     "memcpy_from_gmem_arrays.cpp"
     "memcpy_to_gmem_arrays.cpp"
-    "reduce_helpers.cu")
+    "reduce_helpers.cu"
+    "user_kernels.cu")
+
+set(ACC_GENERATED_ANALYSIS_KERNELS "${CMAKE_CURRENT_BINARY_DIR}/user_analysis_kernels.cpp")
 
 if (USE_HIP)
 	set_source_files_properties(${ACC_GENERATED_SOURCES} PROPERTIES LANGUAGE HIP)
@@ -180,15 +183,21 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
     add_library(acc-runtime STATIC acc_runtime.cu)
+    set_target_properties(
+        acc-runtime
+        PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    )
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(acc-runtime astaroth_helpers acc-runtime-headers acc-runtime-driver)
 
     if (CPU_BUILD)
-	  set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE CXX)
+	  set_source_files_properties(${acc-runtime-sources} PROPERTIES LANGUAGE CXX)
     else()
       if (USE_HIP)
-          set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE HIP)
+          set_source_files_properties(${acc-runtime-sources} PROPERTIES LANGUAGE HIP)
           set_property(TARGET acc-runtime PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
       else()
           set_property(TARGET acc-runtime PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})

@@ -144,7 +144,7 @@ get_field_output_name(const int field)
 }
 
 void
-gen_stencil_definitions(void)
+gen_stencil_definitions(bool static_stencils)
 {
   if (!NUM_ALL_FIELDS)
   {
@@ -156,28 +156,35 @@ gen_stencil_definitions(void)
     raise_error("Must declare at least one Stencil in the DSL code!");
   }
 
-    printf(
-        "static __device__ __attribute__((unused)) /*const*/ AcReal /*__restrict__*/ "
-        "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
-    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+  const char *stencils_decl = "__device__ __attribute__((unused)) /*const*/ "
+                              "AcReal /*__restrict__*/ "
+                              "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_"
+                              "HEIGHT][STENCIL_WIDTH] = {";
+  if (static_stencils)
+    printf("static %s\n", stencils_decl);
+  else
+    printf("%s\n", stencils_decl);
+
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    printf("{");
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       printf("{");
-      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         printf("{");
-        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-          printf("{");
-          for (int width = 0; width < STENCIL_WIDTH; ++width) {
-            //const char* coeff = stencils[stencil][depth][height][width];
-	    //printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff : "AcReal(NAN)");
-	    //TP: always have initially nans in the stencils to ensure stencils are always loaded at runtime
-	    printf("AcReal(NAN),");
-          }
-          printf("},");
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          // const char* coeff = stencils[stencil][depth][height][width];
+          // printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff :
+          // "AcReal(NAN)"); TP: always have initially nans in the stencils to
+          // ensure stencils are always loaded at runtime
+          printf("AcReal(NAN),");
         }
         printf("},");
       }
       printf("},");
     }
-    printf("};");
+    printf("},");
+    }
+    printf("};\n");
   FILE* stencil_coeffs_file= fopen("coeffs.h", "w");
   fprintf(stencil_coeffs_file,
       "AcReal "
@@ -2923,7 +2930,11 @@ main(int argc, char** argv)
 
   // Generate stencil definitions
   if (argc == 2 && !strcmp(argv[1], "-definitions")) {
-    gen_stencil_definitions();
+    gen_stencil_definitions(false);
+  }
+  // Generate stencil definitions for analysis
+  else if (argc == 2 && !strcmp(argv[1], "-definitions-analysis")) {
+    gen_stencil_definitions(true);
   }
   // Generate memory accesses for the DSL kernels
   else if (argc == 2 && !strcmp(argv[1], "-mem-accesses")) {

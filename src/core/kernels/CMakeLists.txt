@@ -90,7 +90,7 @@ else()
     		$<TARGET_OBJECTS:acc-runtime-driver>
 	)
 
-	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
+	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers acc-runtime-driver)
 	add_library(kernels 
     		$<TARGET_OBJECTS:kernels_obj>
     		$<TARGET_OBJECTS:ac_fft>
@@ -98,7 +98,7 @@ else()
     		$<TARGET_OBJECTS:ac_reindex>
     		$<TARGET_OBJECTS:acc-runtime-driver>
 	)
-	target_link_libraries(kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
+	target_link_libraries(kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers acc-runtime-driver)
 endif()
 
 set_target_properties(
