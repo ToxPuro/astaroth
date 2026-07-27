@@ -586,9 +586,9 @@ max(const AcReal3& v, const AcReal& s)
 {
         return (AcReal3)
         {
-                max(v.x,s),
-                max(v.y,s),
-                max(v.z,s)
+                __ac__max(v.x,s),
+                __ac__max(v.y,s),
+                __ac__max(v.z,s)
         };
 }
 
@@ -597,9 +597,9 @@ max(const AcReal& s, const AcReal3& v)
 {
         return (AcReal3)
         {
-                max(v.x,s),
-                max(v.y,s),
-                max(v.z,s)
+                __ac__max(v.x,s),
+                __ac__max(v.y,s),
+                __ac__max(v.z,s)
         };
 }
 
