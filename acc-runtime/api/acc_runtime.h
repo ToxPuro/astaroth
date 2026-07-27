@@ -392,6 +392,52 @@ AC_BEGIN_C_DECLARATIONS
   }
 #endif
 
+static UNUSED size_t
+prof_count(const Profile prof, const size3_t counts)
+{
+    if(NUM_PROFILES == 0) return 0;
+    return 
+	    	prof_types[prof] == PROFILE_X  ? counts.x  :
+	    	prof_types[prof] == PROFILE_Y  ? counts.y  :
+	    	prof_types[prof] == PROFILE_Z  ? counts.z  :
+	    	prof_types[prof] == PROFILE_XY ? counts.x*counts.y  :
+	    	prof_types[prof] == PROFILE_XZ ? counts.x*counts.z  :
+	    	prof_types[prof] == PROFILE_YX ? counts.y*counts.x  :
+	    	prof_types[prof] == PROFILE_YZ ? counts.y*counts.z  :
+	    	prof_types[prof] == PROFILE_ZX ? counts.z*counts.x  :
+	    	prof_types[prof] == PROFILE_ZY ? counts.z*counts.y  :
+		0;
+}
+static UNUSED size_t
+prof_size(const Profile prof, const size3_t counts)
+{
+    return prof_count(prof,counts)*sizeof(AcReal);
+}
+
+AcReal**
+ac_allocate_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
+int**
+ac_allocate_scratchpad_int(const size_t i, const size_t new_bytes, const AcReduceOp state);
+float**
+ac_allocate_scratchpad_float(const size_t i, const size_t new_bytes, const AcReduceOp state);
+
+void
+ac_free_scratchpad_real(const size_t i);
+void
+ac_free_scratchpad_int(const size_t i);
+void
+ac_free_scratchpad_float(const size_t i);
+
+const size_t*
+ac_get_scratchpad_size_real(const size_t i);
+const size_t*
+ac_get_scratchpad_size_int(const size_t i);
+const size_t*
+ac_get_scratchpad_size_float(const size_t i);
+
+void
+ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
+
 AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
@@ -764,50 +810,3 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 
 #endif
   #endif
-
-static UNUSED size_t
-prof_count(const Profile prof, const size3_t counts)
-{
-    if(NUM_PROFILES == 0) return 0;
-    return 
-	    	prof_types[prof] == PROFILE_X  ? counts.x  :
-	    	prof_types[prof] == PROFILE_Y  ? counts.y  :
-	    	prof_types[prof] == PROFILE_Z  ? counts.z  :
-	    	prof_types[prof] == PROFILE_XY ? counts.x*counts.y  :
-	    	prof_types[prof] == PROFILE_XZ ? counts.x*counts.z  :
-	    	prof_types[prof] == PROFILE_YX ? counts.y*counts.x  :
-	    	prof_types[prof] == PROFILE_YZ ? counts.y*counts.z  :
-	    	prof_types[prof] == PROFILE_ZX ? counts.z*counts.x  :
-	    	prof_types[prof] == PROFILE_ZY ? counts.z*counts.y  :
-		0;
-}
-static UNUSED size_t
-prof_size(const Profile prof, const size3_t counts)
-{
-    return prof_count(prof,counts)*sizeof(AcReal);
-}
-
-AcReal**
-ac_allocate_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
-int**
-ac_allocate_scratchpad_int(const size_t i, const size_t new_bytes, const AcReduceOp state);
-float**
-ac_allocate_scratchpad_float(const size_t i, const size_t new_bytes, const AcReduceOp state);
-
-void
-ac_free_scratchpad_real(const size_t i);
-void
-ac_free_scratchpad_int(const size_t i);
-void
-ac_free_scratchpad_float(const size_t i);
-
-const size_t*
-ac_get_scratchpad_size_real(const size_t i);
-const size_t*
-ac_get_scratchpad_size_int(const size_t i);
-const size_t*
-ac_get_scratchpad_size_float(const size_t i);
-
-void
-ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
-

@@ -29,8 +29,13 @@
     If there are issues, try compiling with -std=gnu11 -lrt
  */
 #pragma once
+
 #include <stdio.h> // perror
 #include <time.h>
+
+#include "func_define.h"
+
+AC_BEGIN_C_DECLARATIONS
 
 typedef struct timespec Timer;
 // Contains at least the following members:
@@ -61,3 +66,5 @@ timer_diff_print(const Timer t)
 {
     printf("Time elapsed: %g ms\n", timer_diff_nsec(t) / 1e6);
 }
+
+AC_END_C_DECLARATIONS
