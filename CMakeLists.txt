@@ -5,7 +5,7 @@
 # V3.21 required for first-class HIP support
 # V3.23 required for 'all-major' CUDA_ARCHITECTURES
 # V3.24 required for native CUDA architecture support
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 ## Project settings
 project(astaroth)
