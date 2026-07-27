@@ -3947,7 +3947,7 @@ void
 gen_kernel_num_of_combinations(const ASTNode* root, param_combinations combinations, string_vec* user_kernels_with_input_params,string_vec* user_kernel_combinatorial_params)
 {
 
-	string_vec user_kernel_combinatorial_params_options[MAX_PARAMS*MAX_KERNELS] = { [0 ... MAX_PARAMS*MAX_KERNELS-1] = VEC_INITIALIZER};
+	string_vec user_kernel_combinatorial_params_options[MAX_PARAMS*MAX_KERNELS] = { 0 };
 	gen_kernel_num_of_combinations_recursive(root,combinations,user_kernels_with_input_params,(combinatorial_params){user_kernel_combinatorial_params,user_kernel_combinatorial_params_options});
 }
 
