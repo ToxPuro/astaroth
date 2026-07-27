@@ -555,7 +555,7 @@ extern "C"
 //#include "user_constants.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define tid  ((int3){0,0,0})
-#include "user_kernel_declarations.h"
+#include "user_analysis_kernel_declarations.h"
 
 constexpr AcMeshInfo
 get_d_mesh_info()
@@ -929,7 +929,7 @@ fatal_error_message(const bool error, const char* message)
 	}
 }
 
-#include "user_cpu_kernels.h"
+#include "user_analysis_kernels.h"
 #undef  constexpr
 #undef size
 

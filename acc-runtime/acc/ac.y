@@ -555,6 +555,7 @@ reset_all_files()
     "user_field_has_stencil_op.bin",
     "user_input_typedefs.h",
     "user_kernel_declarations.h",
+    "user_analysis_kernel_declarations.h",
     "user_kernel_ifs.h",
     "user_kernels.h",
     "user_kernels.h.raw",
@@ -704,7 +705,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	{
   		format_source("user_kernels.h.raw","user_kernels.h");
 		copy_file("user_kernels.h","user_kernels_backup.h");
-		copy_file("user_kernels.h","user_cpu_kernels.h");
+		copy_file("user_kernels.h","user_analysis_kernels.h");
 	}
 
 	if(OPTIMIZE_MEM_ACCESSES)

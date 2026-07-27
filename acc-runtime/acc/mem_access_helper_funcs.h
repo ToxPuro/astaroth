@@ -30,6 +30,12 @@ kernel_reads_profile(const int curr_kernel)
 	return false;
 }
 static bool
+kernel_has_block_loops(const int curr_kernel)
+{
+	return has_mem_access_info && kernel_reduces_profile(curr_kernel);
+}
+/**
+static bool
 kernel_is_pure_reduce_kernel(const int curr_kernel)
 {
 	if(!has_mem_access_info) return false;
@@ -38,8 +44,4 @@ kernel_is_pure_reduce_kernel(const int curr_kernel)
 	if(kernel_reduces_profile(curr_kernel)) return true;
 	return false;
 }
-static bool
-kernel_has_block_loops(const int curr_kernel)
-{
-	return has_mem_access_info && kernel_reduces_profile(curr_kernel);
-}
+**/
