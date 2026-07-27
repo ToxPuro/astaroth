@@ -857,8 +857,8 @@ acLoadUniform(const P param, const V value)
   	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
-#include "memcpy_to_gmem_arrays.h"
-#include "memcpy_from_gmem_arrays.h"
+#include "memcpy_to_gmem_arrays_decls.h"
+#include "memcpy_from_gmem_arrays_decls.h"
 
 template <typename P, typename V>
 AcResult
