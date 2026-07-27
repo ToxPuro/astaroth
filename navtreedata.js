@@ -150,16 +150,16 @@ var NAVTREEINDEX =
 "astaroth__helpers_8h.html#a3477d84dd3113141a4ad2200c8dfd474",
 "classTask.html#a7d523906581fa4be895cd525ea56a2dc",
 "codegen_8c.html#a7966d57301e963a5a22d2fb95682c1fa",
-"codegen_8c.html#af6c0d0d0f2384d981370a6157f1e772e",
-"decomposition_8cc.html#a6df488bcff1561ae5c0ca2fc534f240e",
-"functions_~.html",
-"hip_8h.html#a3400f4dfb02c31aaea9adf5e539c8041",
-"math__utils_8h.html#aec9fa432f925924deeb289a7287be4b7",
-"rocfft_8cc.html#a5b6e24381dd03553e89c1aa8fb441160",
-"string__vec_8h.html#a03cbd7543ad334167af12654f70f567e",
-"structHaloMessage.html",
-"structkiss__fftnd__state.html#a350067f9bd33fc47d9506094f4ef90ca",
-"vba_8cc.html#ab6a419ec7d62681031188172dbb854eb"
+"codegen_8c.html#af5580bb3ca3b60d73149586fba2efa2b",
+"decomposition_8cc.html#a67e86817a6c8b4e89b46b349996f4f1b",
+"functions_z.html",
+"hip_8h.html#a33617c801be71c10412c55826db2660b",
+"math__utils_8h.html#ae56c2367da268bdb962b7fbf13028a82",
+"rocfft_8cc.html#a5533a4e4ab7dc6cf5230063f6643fe33",
+"string__vec_8h.html",
+"structGridDims.html#a820d9d37fa8dd5c12642f484c06000db",
+"structkiss__fftnd__state.html",
+"vba_8cc.html#aaf53c6e4675bd63f3359d7d1dc763aa4"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

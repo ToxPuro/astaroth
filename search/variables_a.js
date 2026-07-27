@@ -7,9 +7,10 @@ var searchData=
   ['kernel_5fcombinatorial_5fparams_4',['kernel_combinatorial_params',['../structcombinatorial__params__info.html#a3d8d444fd17f022503041a2909825345',1,'combinatorial_params_info']]],
   ['kernel_5fenum_5',['kernel_enum',['../structAcTaskDefinition.html#a31c5eb7bb5411cd1cd9ef0ce23d4259c',1,'AcTaskDefinition::kernel_enum'],['../structKernelParameters.html#a2d5db4fe5348c388367fd1826fdb0233',1,'KernelParameters::kernel_enum']]],
   ['kernel_5finput_5fparams_6',['kernel_input_params',['../structDeviceVertexBufferArray.html#ab437e01366748a0e8df8dd9340756c5b',1,'DeviceVertexBufferArray']]],
-  ['kernel_5frunning_5freduce_5foffsets_7',['kernel_running_reduce_offsets',['../acc__runtime_8cu.html#a76181f18fcf24f32a590ed76d38e1acc',1,'acc_runtime.cu']]],
-  ['kernel_5fstr_8',['KERNEL_STR',['../codegen_8c.html#a0ee8698b77c138c1acfbb35dbb4de92b',1,'codegen.c']]],
-  ['kernels_5fwith_5finput_5fparams_9',['kernels_with_input_params',['../structcombinatorial__params__info.html#a78238cff38a44824b94c3f3276a0c08d',1,'combinatorial_params_info']]],
-  ['key_10',['key',['../structhashmap__element__t.html#a9780dac974e65b153da7996d8f6e3123',1,'hashmap_element_t']]],
-  ['key_5flen_11',['key_len',['../structhashmap__element__t.html#af842ceb5fbbaed8c176088db464d9fb8',1,'hashmap_element_t']]]
+  ['kernel_5fname_5fprefix_7',['KERNEL_NAME_PREFIX',['../codegen_8c.html#aa7ac02565f183c341c3b2590631efe0f',1,'codegen.c']]],
+  ['kernel_5frunning_5freduce_5foffsets_8',['kernel_running_reduce_offsets',['../acc__runtime_8cu.html#a76181f18fcf24f32a590ed76d38e1acc',1,'acc_runtime.cu']]],
+  ['kernel_5fstr_9',['KERNEL_STR',['../codegen_8c.html#a0ee8698b77c138c1acfbb35dbb4de92b',1,'codegen.c']]],
+  ['kernels_5fwith_5finput_5fparams_10',['kernels_with_input_params',['../structcombinatorial__params__info.html#a78238cff38a44824b94c3f3276a0c08d',1,'combinatorial_params_info']]],
+  ['key_11',['key',['../structhashmap__element__t.html#a9780dac974e65b153da7996d8f6e3123',1,'hashmap_element_t']]],
+  ['key_5flen_12',['key_len',['../structhashmap__element__t.html#af842ceb5fbbaed8c176088db464d9fb8',1,'hashmap_element_t']]]
 ];

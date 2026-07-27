@@ -465,6 +465,7 @@ var codegen_8c =
     [ "INPUT_STR", "codegen_8c.html#a4bf864039d66d4a265c1fa4aa792cabf", null ],
     [ "INT3_STR", "codegen_8c.html#ae10ae2291a0b1233cffdbe5ed599445e", null ],
     [ "INTRINSIC_STR", "codegen_8c.html#addf704bdfb1ffbba3f55ad17958e3943", null ],
+    [ "KERNEL_NAME_PREFIX", "codegen_8c.html#aa7ac02565f183c341c3b2590631efe0f", null ],
     [ "KERNEL_STR", "codegen_8c.html#a0ee8698b77c138c1acfbb35dbb4de92b", null ],
     [ "LEQ_STR", "codegen_8c.html#a0ed432ad4cc98aceed3018f35229d301", null ],
     [ "LESS_STR", "codegen_8c.html#a4bc9b7b8fc58aaaab0651b9838fe84b5", null ],

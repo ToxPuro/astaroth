@@ -23,7 +23,7 @@ var searchData=
   ['errchk_5fcuda_5falways_20',['ERRCHK_CUDA_ALWAYS',['../errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee',1,'errchk.h']]],
   ['errchk_5fcuda_5fkernel_21',['ERRCHK_CUDA_KERNEL',['../errchk_8h.html#a989344a6ffee89d48309fea92999e6cd',1,'errchk.h']]],
   ['errchk_5fcuda_5fkernel_5falways_22',['ERRCHK_CUDA_KERNEL_ALWAYS',['../errchk_8h.html#a5b1648923d10009d9101dba333776cf7',1,'errchk.h']]],
-  ['error_23',['error',['../structError.html',1,'Error'],['../vecs_8h.html#ab70064e6ae258de4a1d0811824412152',1,'error:&#160;vecs.h'],['../kiss__fft__log_8h.html#a8fe83ac76edc595f6b98cd4a4127aed5',1,'ERROR:&#160;kiss_fft_log.h'],['../errchk_8h.html#a39b3cc118c8339855e5578335a0b2417',1,'ERROR:&#160;errchk.h']]],
+  ['error_23',['error',['../structError.html',1,'Error'],['../kiss__fft__log_8h.html#a8fe83ac76edc595f6b98cd4a4127aed5',1,'ERROR:&#160;kiss_fft_log.h'],['../errchk_8h.html#a39b3cc118c8339855e5578335a0b2417',1,'ERROR:&#160;errchk.h'],['../vecs_8h.html#ab70064e6ae258de4a1d0811824412152',1,'error:&#160;vecs.h']]],
   ['error_5fmessage_24',['error_message',['../stencil__accesses_8cpp.html#a7cf4c8f827d7b621f7def33a9598083e',1,'error_message(const bool error, const char *message):&#160;stencil_accesses.cpp'],['../acc__runtime_8cu.html#a690f8ad21232a5ea0bfb62b8887d46f0',1,'error_message:&#160;acc_runtime.cu']]],
   ['eval_5fands_25',['eval_ands',['../codegen_8c.html#aad5eb3edd24b5ec5617ea64bb8cbfea9',1,'codegen.c']]],
   ['eval_5fcomparisons_26',['eval_comparisons',['../codegen_8c.html#a93fc5861aaf256331f15e8dff4d790e7',1,'codegen.c']]],

@@ -1,5 +1,6 @@
 var NAVTREEINDEX13 =
 {
+"structGridDims.html#a820d9d37fa8dd5c12642f484c06000db":[7,0,53,1],
 "structHaloMessage.html":[7,0,55],
 "structHaloMessage.html#a09a139b7984a36398227a744fd52fcdb":[7,0,55,16],
 "structHaloMessage.html#a0b4633baa2ad1a025b6c4b0fde0cbc7f":[7,0,55,10],
@@ -87,8 +88,8 @@ var NAVTREEINDEX13 =
 "structKeyEqual.html#aea9225579b4758b26fb207b5cec9a81e":[7,0,71,1],
 "structKeyEqual.html#aea9225579b4758b26fb207b5cec9a81e":[7,0,71,0],
 "structKeyHash.html":[7,0,72],
-"structKeyHash.html#af289f229b17fada870ba234c91cc8dd9":[7,0,72,0],
 "structKeyHash.html#af289f229b17fada870ba234c91cc8dd9":[7,0,72,1],
+"structKeyHash.html#af289f229b17fada870ba234c91cc8dd9":[7,0,72,0],
 "structLoadKernelParamsFunc.html":[7,0,83],
 "structLoadKernelParamsFunc.html#a68b2264dbc8b1384650d1a0bffcb3399":[7,0,83,0],
 "structParamLoadingInfo.html":[7,0,89],
@@ -248,6 +249,5 @@ var NAVTREEINDEX13 =
 "structkiss__fft__state.html#a6b9c4f1326ee803892126780583d93ef":[7,0,74,3],
 "structkiss__fft__state.html#a738fd9e2422fa2e0463afdd34b4def8c":[7,0,74,1],
 "structkiss__fft__state.html#a753de5393d0c4a95c22f1cf3bd5a7758":[7,0,74,2],
-"structkiss__fft__state.html#a9c3b2561ac00f03a08dacaf6a7957281":[7,0,74,0],
-"structkiss__fftnd__state.html":[7,0,75]
+"structkiss__fft__state.html#a9c3b2561ac00f03a08dacaf6a7957281":[7,0,74,0]
 };
