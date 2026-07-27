@@ -540,6 +540,7 @@ ExpSum Stencil sld_get_front_exp
 	[1][0][0] = 1
 }
 
+/**
 get_x_interpolated_characteristic_speeds(Field characteristic_speed)
 {
 	return sld_flux(
@@ -567,6 +568,30 @@ get_z_interpolated_characteristic_speeds(Field characteristic_speed)
 			+characteristic_speed[vertexIdx.x][vertexIdx.y][vertexIdx.z+1])
 		    )
 }
+**/
+
+get_x_interpolated_characteristic_speeds(Field characteristic_speed)
+{
+        return sld_flux(
+                        interpolate_middle_left(characteristic_speed),
+                        interpolate_middle_right(characteristic_speed)
+                    )
+}
+get_y_interpolated_characteristic_speeds(Field characteristic_speed)
+{
+        return sld_flux(
+                        interpolate_middle_down(characteristic_speed),
+                        interpolate_middle_up(characteristic_speed)
+                    )
+}
+get_z_interpolated_characteristic_speeds(Field characteristic_speed)
+{
+        return sld_flux(
+                        interpolate_middle_back(characteristic_speed),
+                        interpolate_middle_front(characteristic_speed)
+                    )
+}
+
 get_left_slope(Field f, bool ln_field)
 {
 	if (ln_field) return minmod_alt(sld_diff_left_left_exp(f),sld_diff_left_exp(f))
