@@ -581,7 +581,27 @@ is_valid(const AcReal2& a)
 //  };
 //}
 
+static HOST_DEVICE_INLINE const AcReal3
+max(const AcReal3& v, const AcReal& s)
+{
+        return (AcReal3)
+        {
+                max(v.x,s),
+                max(v.y,s),
+                max(v.z,s)
+        };
+}
 
+static HOST_DEVICE_INLINE const AcReal3
+max(const AcReal& s, const AcReal3& v)
+{
+        return (AcReal3)
+        {
+                max(v.x,s),
+                max(v.y,s),
+                max(v.z,s)
+        };
+}
 
 static HOST_DEVICE_INLINE AcReal
 sum(const AcReal3& a)
