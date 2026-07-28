@@ -3,7 +3,7 @@ description: 'Builds and tests an Astaroth build using scripts in the given buil
 
 inputs:
   build-configuration-dir:
-    description: 'Path to a directory with an Astaroth build.sh script'
+    description: 'Path to a directory with an Astaroth build and test configuration.'
     required: true
 
 runs:
@@ -13,9 +13,11 @@ runs:
     - name: Run build.sh script
       shell: bash
       run: |
-        source sourceme.sh
-        cd ${{ inputs.build-configuration-dir }}
-        ./build.sh
+        if [ -f "${{ inputs.build-configuration-dir }}/build.sh" ]; then
+          source sourceme.sh
+          cd ${{ inputs.build-configuration-dir }}
+          ./build.sh
+        fi
       env:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
