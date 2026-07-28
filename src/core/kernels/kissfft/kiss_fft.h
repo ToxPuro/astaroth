@@ -31,7 +31,9 @@
 # define KISS_FFT_API
 #endif
 
-AC_BEGIN_C_DECLARATIONS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  ATTENTION!
@@ -153,6 +155,8 @@ int KISS_FFT_API kiss_fft_next_fast_size(int n);
 #define kiss_fftr_next_fast_size_real(n) \
         (kiss_fft_next_fast_size( ((n)+1)>>1)<<1)
 
-AC_END_C_DECLARATIONS
+#ifdef __cplusplus
+}
+#endif
 
 #endif

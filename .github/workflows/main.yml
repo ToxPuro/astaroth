@@ -66,5 +66,5 @@ jobs:
       - name: Build and test
         run: |
           . ./sourceme.sh
-          ./test/run_all_tests.sh
+          ./test/run_all_tests.sh --cpu
 

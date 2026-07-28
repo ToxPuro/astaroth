@@ -3815,12 +3815,13 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
         const int3 offset = info[AC_multigpu_offset]; // Without halo
-        char filepath[4096];
+	const size_t file_size = 4096;
+        char filepath[file_size];
 #if USE_DISTRIBUTED_IO
-        sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[i], offset.x,
+        snprintf(filepath,file_size, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[i], offset.x,
                 offset.y, offset.z, label);
 #else
-        sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[i], label);
+        snprintf(filepath,file_size,"%s/%s-%s.mesh", dir, vtxbuf_names[i], label);
 #endif
 
         const auto write_async = [filepath, offset, i](const AcMeshInfo info_in,
@@ -3925,7 +3926,7 @@ acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const A
     ac_write_slice_metadata(step_number,simulation_time);
     constexpr size_t label_size = 20000;
     char label[label_size];
-    sprintf(label,"step_%012d",step_number);
+    snprintf(label,label_size,"step_%012d",step_number);
 
     const Device device       = grid.device;
     const AcMeshInfo info     = acDeviceGetLocalConfig(device);
@@ -3973,10 +3974,10 @@ acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const A
 
         char filepath[2*label_size];
 #if USE_DISTRIBUTED_IO
-        sprintf(filepath, "%s/%s-segment-at_%ld_%ld_%d-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field],
+        snprintf(filepath, 2*label_size,"%s/%s-segment-at_%ld_%ld_%d-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field],
                 global_pos_min.x, global_pos_min.y, global_z, local_nn.x, local_nn.y, label);
 #else
-        sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field], global_nn.x,
+        snprintf(filepath, 2*label_size,"%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field], global_nn.x,
                 global_nn.y, label);
 #endif
 
@@ -4112,7 +4113,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
 
     constexpr size_t label_size = 20000;
     char label[label_size];
-    sprintf(label,"step_%012d",step_number);
+    snprintf(label,label_size,"step_%012d",step_number);
 
     const Device device       = grid.device;
     const AcMeshInfo info     = acDeviceGetLocalConfig(device);
@@ -4159,7 +4160,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
             acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
         char filepath[2*label_size];
-        sprintf(filepath, "%s/%s-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field], global_nn.x,
+        snprintf(filepath, 2*label_size,"%s/%s-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field], global_nn.x,
                 global_nn.y, label);
 
         // if (color != MPI_UNDEFINED)
@@ -4277,8 +4278,9 @@ acGridDiskAccessLaunch(const AccessType type)
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(i));
         acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
-        char path[4096] = "";
-        sprintf(path, "%s.out", vtxbuf_names[i]);
+	const size_t path_len = 4096;
+        char path[path_len] = "";
+        snprintf(path,path_len,"%s.out", vtxbuf_names[i]);
 
         const int3 offset = info[AC_multigpu_offset]; // Without halo
 #if USE_DISTRIBUTED_IO
@@ -4404,10 +4406,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     const size_t buflen = 4096;
     char filepath[buflen];
 #if USE_DISTRIBUTED_IO
-    sprintf(filepath, "%s/%s-segment-%ld-%ld-%ld-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
+    snprintf(filepath,buflen, "%s/%s-segment-%ld-%ld-%ld-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
             offset.y, offset.z, label);
 #else
-    sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
+    snprintf(filepath,buflen, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
 #endif
 
 #if AC_VERBOSE
@@ -4592,7 +4594,7 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     const size_t buflen = 4096;
     char filepath[buflen];
-    sprintf(filepath, "%s/%s-segment-%ld-%ld-%ld-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
+    snprintf(filepath,buflen, "%s/%s-segment-%ld-%ld-%ld-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
             offset.y, offset.z, label);
 #if AC_VERBOSE
     fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
@@ -4700,7 +4702,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
     const size_t buflen = 4096;
     char filepath[buflen];
-    sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
+    snprintf(filepath,buflen, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
 #if AC_VERBOSE
     fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
 #endif

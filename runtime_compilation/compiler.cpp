@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+const size_t max_string_size = 20000;
+
 #include "config_helpers.h"
 
 #if AC_MPI_ENABLED
@@ -136,7 +138,7 @@ void
 check_for_cmake()
 {
    char cmd[2*10000];
-   sprintf(cmd,"cmake --help > /dev/null");
+   snprintf(cmd,max_string_size,"cmake --help > /dev/null");
    const int retval = system(cmd);
    if(retval)
    {
@@ -174,7 +176,7 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   
   char cmd[2*10000];
   const char* options = get_cmake_options(user_cmake_options);
-  sprintf(cmd,"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options);
+  snprintf(cmd,max_string_size,"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options);
 #if AC_USE_HIP
 #else
   //TP: needed to ensure nvcc does not write under /tmp which on compute nodes does not have enough memory
@@ -197,7 +199,7 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   	fflush(stderr);
 	return AC_FAILURE;
   }
-  sprintf(cmd,"echo %s > %s", get_cmake_options(user_cmake_options), previous_cmake_options_path().c_str());
+  snprintf(cmd,max_string_size,"echo %s > %s", get_cmake_options(user_cmake_options), previous_cmake_options_path().c_str());
   const int echo_retval = system(cmd);
   if(echo_retval)
   {
@@ -214,23 +216,23 @@ AcResult
 acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
 	acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);
-	char cmd[2*10000];
+	char cmd[2*20000];
 	char cwd[5024];
 	if (getcwd(cwd, sizeof(cwd)) == NULL) {
 		fprintf(stderr,"Failed to get current working directory!\n");
 		exit(EXIT_FAILURE);
 	}
-	char log_buffer[10024];
+	char log_buffer[20024];
 
 	if(mesh_info.runtime_compilation_log_dst == NULL)
-		sprintf(log_buffer,"%s","/dev/stderr");
+		snprintf(log_buffer,max_string_size,"%s","/dev/stderr");
 	else if (mesh_info.runtime_compilation_log_dst[0] == '/')
-		sprintf(log_buffer,"%s",mesh_info.runtime_compilation_log_dst);
+		snprintf(log_buffer,max_string_size,"%s",mesh_info.runtime_compilation_log_dst);
 	else
-		sprintf(log_buffer,"%s/%s",cwd,mesh_info.runtime_compilation_log_dst);
+		snprintf(log_buffer,max_string_size,"%s/%s",cwd,mesh_info.runtime_compilation_log_dst);
 	const char* log_dst =  (mesh_info.runtime_compilation_log_dst == NULL) ? NULL : log_buffer;
 	check_for_cmake();
-	sprintf(cmd,"diff tmp_astaroth_run_consts.h %s",ac_overrides_path().c_str());
+	snprintf(cmd,max_string_size,"diff tmp_astaroth_run_consts.h %s",ac_overrides_path().c_str());
 	const bool runtime_build_existed = file_exists(runtime_astaroth_build_path().c_str());
 	const bool previous_build_exists = file_exists(ac_overrides_path().c_str()) && runtime_build_existed;
 	const bool loaded_different = 
@@ -238,17 +240,17 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 				? system(cmd) : true;
 	system("rm tmp_astaroth_run_consts.h");
 	const bool stored_cmake = file_exists(previous_cmake_options_path().c_str());
-	sprintf(cmd,"echo %s | diff - %s",get_cmake_options(user_cmake_options),previous_cmake_options_path().c_str());
+	snprintf(cmd,max_string_size,"echo %s | diff - %s",get_cmake_options(user_cmake_options),previous_cmake_options_path().c_str());
 	const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
 	const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
 	char logging_to_message[100000];
 	if(mesh_info.runtime_compilation_skip_autotuning)
 	{
-		char autotune_csv_filename[10000];
-		sprintf(autotune_csv_filename, "%s/acc-runtime/api/autotune.csv",runtime_astaroth_build_path().c_str());
+		char autotune_csv_filename[20004];
+		snprintf(autotune_csv_filename,max_string_size, "%s/acc-runtime/api/autotune.csv",runtime_astaroth_build_path().c_str());
 		if(file_exists(autotune_csv_filename))
 		{
-			sprintf(cmd,"mv %s .",autotune_csv_filename);
+			snprintf(cmd,max_string_size+1000,"mv %s .",autotune_csv_filename);
 			int retval = system(cmd);
 			if(previous_build_exists && retval)
 			{
@@ -258,8 +260,8 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 			}
 		}
 	}
-	if(log_dst) sprintf(logging_to_message," logging to %s",log_dst);
-	else        sprintf(logging_to_message,"%s","");
+	if(log_dst) snprintf(logging_to_message,max_string_size+1000," logging to %s",log_dst);
+	else        snprintf(logging_to_message,max_string_size,"%s","");
 	if(!previous_build_exists)
 	{
 		fprintf(stderr,"acCompile: Compiling Astaroth;%s\n",logging_to_message);
@@ -274,7 +276,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 		{
 			fprintf(stderr,"acCompile: Gave different cmake options; recompiling;%s\n",logging_to_message);
 		}
-		sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path().c_str());
+		snprintf(cmd,max_string_size,"rm -rf %s",runtime_astaroth_build_path().c_str());
 		int retval = system(cmd);
 		if(retval)
 		{
@@ -284,7 +286,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 			return AC_FAILURE;
 		}
 
-		sprintf(cmd,"mkdir -p %s",runtime_astaroth_build_path().c_str());
+		snprintf(cmd,max_string_size,"mkdir -p %s",runtime_astaroth_build_path().c_str());
 		retval = system(cmd);
 		if(retval)
 		{
@@ -305,7 +307,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 		}
 		fprintf(stderr,"acCompile: No changes in input; running make in case DSL code has changed;%s\n",logging_to_message);
 	}
-	sprintf(cmd,"cd %s",
+	snprintf(cmd,max_string_size,"cd %s",
 	       runtime_astaroth_build_path().c_str());
 	int retval = system(cmd);
 	if(retval)
@@ -317,11 +319,11 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 	}
 	if(log_dst)
 	{
-		sprintf(cmd,"cd %s && make %s -j >> %s 2>&1",runtime_astaroth_build_path().c_str(),target,log_dst);
+		snprintf(cmd,max_string_size+1000,"cd %s && make %s -j >> %s 2>&1",runtime_astaroth_build_path().c_str(),target,log_dst);
 	}
 	else
 	{
-		sprintf(cmd,"cd %s && make %s -j",runtime_astaroth_build_path().c_str(),target);
+		snprintf(cmd,max_string_size,"cd %s && make %s -j",runtime_astaroth_build_path().c_str(),target);
 	}
 	retval = system(cmd);
 	if(retval)
@@ -338,10 +340,10 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 	if(mesh_info.runtime_compilation_skip_autotuning)
 	{
 		char autotune_csv_filename[100000];
-		sprintf(autotune_csv_filename, "autotune.csv");
+		snprintf(autotune_csv_filename,max_string_size, "autotune.csv");
 		if(file_exists(autotune_csv_filename))
 		{
-			sprintf(cmd,"mv autotune.csv %s/acc-runtime/api",runtime_astaroth_build_path().c_str());
+			snprintf(cmd,max_string_size,"mv autotune.csv %s/acc-runtime/api",runtime_astaroth_build_path().c_str());
 			if(system(cmd) && previous_build_exists)
 			{
 				fflush(stdout);
