@@ -335,7 +335,7 @@ generateHelicalForcingParams(const AcReal relhel, const AcReal magnitude, const 
         .k_force   = make_acreal3(k),
         .ff_hel_re = make_acreal3(f_k.real()),
         .ff_hel_im = make_acreal3(f_k.imag()),
-        .phase     = phi,
+        .phase     = static_cast<AcReal>(phi),
         .kaver     = (kmax - kmin) / 2 + kmin,
     };
 }
