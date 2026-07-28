@@ -9,6 +9,7 @@
 #ifndef KISS_FFTND_H
 #define KISS_FFTND_H
 
+#include "func_define.h"
 #include "kiss_fft.h"
 
 AC_BEGIN_C_DECLARATIONS
