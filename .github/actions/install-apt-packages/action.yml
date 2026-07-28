@@ -15,6 +15,7 @@ runs:
     # filename is needed to force it to be read after the offending
     # configuration files.
     - name: Ensure that APT does not purge its cache
+      shell: bash
       run: |
         cat <<EOF > /etc/apt/apt.conf.d/zzz-apt-cache
         #clear DPkg::Post-Invoke;
@@ -31,6 +32,7 @@ runs:
         key: ${{ runner.os }}-apt-cache
 
     - name: Install Ubuntu dependencies
+      shell: bash
       run: |
         export DEBIAN_FRONTEND=noninteractive
         apt-get update

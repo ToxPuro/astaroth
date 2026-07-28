@@ -11,6 +11,7 @@ runs:
 
   steps:
     - name: Run build.sh script
+      shell: bash
       run: |
         source sourceme.sh
         cd ${{ inputs.build-configuration-dir }}
@@ -20,6 +21,7 @@ runs:
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
 
     - name: Run test.sh script (if present)
+      shell: bash
       run: |
         if [ -f "${{ inputs.build-configuration-dir }}/test.sh" ]; then
           source sourceme.sh
