@@ -1,0 +1,43 @@
+name: 'Install packages using APT'
+description: 'Installs packages using APT and uses actions/cache to minimize the need to pull archives from remote servers.'
+
+inputs:
+  packages:
+    description: 'A list of packages to install.'
+    required: true
+
+runs:
+  using: "composite"
+
+  steps:
+    # The NVIDIA-provided Ubuntu image disables all caching in APT. While good
+    # for distributing OCI images it is not good for use in CI. The weird
+    # filename is needed to force it to be read after the offending
+    # configuration files.
+    - name: Ensure that APT does not purge its cache
+      run: |
+        cat <<EOF > /etc/apt/apt.conf.d/zzz-apt-cache
+        #clear DPkg::Post-Invoke;
+        #clear APT::Update::Post-Invoke;
+        #Dir::Cache::pkgcache "pkgcache.bin";
+        #Dir::Cache::srcpkgcache "srcpkgcache.bin";
+        EOF
+
+    - name: Restore APT cache (if available)
+      id: apt-cache-restore
+      uses: actions/cache/restore@v6
+      with:
+        path: /var/cache/apt/
+        key: ${{ runner.os }}-apt-cache
+
+    - name: Install Ubuntu dependencies
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get install -y ${{ inputs.packages }}
+
+    - name: Save APT cache
+      uses: actions/cache/save@v6
+      with:
+        path: /var/cache/apt/
+        key: ${{ steps.apt-cache-restore.outputs.cache-primary-key }}

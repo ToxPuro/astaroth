@@ -1,4 +1,4 @@
-name: CI with CUDA
+name: Build and test all build configurations
 
 on:
   push:
@@ -6,65 +6,82 @@ on:
       - develop
 
 jobs:
-  linux:
+  define-matrices:
     runs-on: ubuntu-latest
-    container:
-      image: nvidia/cuda:13.3.0-devel-ubuntu26.04
-
-    timeout-minutes: 180
+    outputs:
+      test-builds-matrix: ${{ steps.matrices.outputs.test-builds-matrix }}
+      test-matrix: ${{ steps.matrices.outputs.test-matrix }}
     steps:
-      - name: Set timezone
-        run: ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Define matrices
+        id: matrices
         run: |
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update
-          apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
-          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
-          apt-add-repository 'deb https://apt.kitware.com/ubuntu/ noble main'
-          apt-get update
-          apt-get install -y cmake libgsl-dev flex bison openmpi-bin libopenmpi-dev gfortran git python3 python3-numpy python3-pandas
+          echo "test-builds-matrix=$(find ./test-builds -mindepth 1 -maxdepth 1 -type d -exec realpath {} ";" | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
+          echo "test-matrix=$(find ./test -mindepth 1 -maxdepth 1 -type d -exec realpath {} ";" | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
 
+  compile-base-builds:
+    runs-on: ${{ matrix.platform.os }}
+    container:
+      image: ${{ matrix.platform.container-image }}
+    needs: define-matrices
+    strategy:
+      matrix:
+        platform:
+          - os: ubuntu-latest
+            container-image: &ubuntu-container nvidia/cuda:13.3.0-devel-ubuntu26.04
+          - os: macos-latest
+        build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-builds-matrix) }}
+    timeout-minutes: 180
+
+    steps: &build-and-test-steps
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: true
 
-      - name: Start SSH agent and add key
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Install Ubuntu dependencies
+        if: ${{ contains(matrix.platform.os, 'ubuntu') }}
+        uses: ./.github/actions/install-apt-packages
         with:
-          ssh-private-key: ${{ secrets.CI_CD_KEY }}
+          packages: cmake libgsl-dev flex bison openmpi-bin libopenmpi-dev gfortran git python3 python3-numpy python3-pandas
 
-
-      - name: Build and test
-        run: |
-          . ./sourceme.sh
-          ./test/run_all_tests.sh
-  mac:
-    runs-on: macos-latest
-
-    timeout-minutes: 180
-    steps:
-      - name: Install dependencies
+      - name: Install macOS dependencies
+        if: ${{ contains(matrix.platform.os, 'macos') }}
         run: |
           brew install cmake gsl open-mpi bison flex python3 python3-pandas python3-numpy
           #Makes mac to use the Bison 3.*
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
+      - name: Force CPU build on macOS
+        if: ${{ contains(matrix.platform.os, 'macos') }}
+        run: echo AC_CPU_BUILD=ON >> "$GITHUB_ENV"
 
       - name: Start SSH agent and add key
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.CI_CD_KEY }}
 
+      - name: Compile builds and run tests
+        uses: ./.github/actions/build-test-astaroth
+        with:
+          build-configuration-dir: ${{ matrix.build-configuration-dir }}
 
-      - name: Build and test
-        run: |
-          . ./sourceme.sh
-          ./test/run_all_tests.sh --cpu
+  compile-and-run-tests:
+    runs-on: ${{ matrix.platform.os }}
+    container:
+      image: ${{ matrix.platform.container-image }}
+    needs:
+      - define-matrices
+      - compile-base-builds
+    strategy:
+      matrix:
+        platform:
+          - os: ubuntu-latest
+            container-image: *ubuntu-container
+          - os: macos-latest
+        build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-matrix) }}
+    timeout-minutes: 180
 
+    steps: *build-and-test-steps
