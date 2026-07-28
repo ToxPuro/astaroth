@@ -13,11 +13,13 @@ runs:
     - name: Run build.sh script
       shell: bash
       run: |
+        echo "::group::Build Astaroth project"
         if [ -f "${{ inputs.build-configuration-dir }}/build.sh" ]; then
           source sourceme.sh
           cd ${{ inputs.build-configuration-dir }}
           ./build.sh
         fi
+        echo "::endgroup::"
       env:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
@@ -25,11 +27,13 @@ runs:
     - name: Run test.sh script (if present)
       shell: bash
       run: |
+        echo "::group::Test Astaroth project"
         if [ -f "${{ inputs.build-configuration-dir }}/test.sh" ]; then
           source sourceme.sh
           cd ${{ inputs.build-configuration-dir }}
           ./test.sh
         fi
+        echo "::endgroup::"
       env:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
