@@ -7,7 +7,7 @@ on:
 
 jobs:
   define-matrices:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       test-builds-matrix: ${{ steps.matrices.outputs.test-builds-matrix }}
       test-matrix: ${{ steps.matrices.outputs.test-matrix }}
