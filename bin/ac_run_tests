@@ -27,7 +27,7 @@ build_project() {
     # Run test script if it exists and is executable
     if [ -x "run.sh" ]; then
         echo "Running $test_name"
-        ./run.sh &>> $log
+	./run.sh >> "$log" 2>&1
         exit_code=$?
 
         if [ $exit_code -ne 0 ]; then

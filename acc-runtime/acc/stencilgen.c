@@ -2432,6 +2432,7 @@ typedef struct {
   uint64_t x, y, z;
 } uint3_64;
 
+/**
 static inline uint64_t
 nearest_power_of_to_above(const uint64_t i)
 {
@@ -2469,6 +2470,7 @@ morton3(const uint64_t pid)
   }
   return (uint3_64){i, j, k};
 }
+**/
 
 uint64_t
 max(const uint64_t a, const uint64_t b)
