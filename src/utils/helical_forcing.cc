@@ -316,7 +316,9 @@ gen_phi()
 static AcReal3
 make_acreal3(const vec3& vec)
 {
-    return AcReal3{vec[0], vec[1], vec[2]};
+    return AcReal3{static_cast<AcReal>(vec[0]), 
+	    	   static_cast<AcReal>(vec[1]), 
+		   static_cast<AcReal>(vec[2])};
 }
 
 ForcingParams
