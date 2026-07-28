@@ -7,15 +7,6 @@
 // clang-format on
 
 static bool
-kernel_has_stencil_call(const int curr_kernel)
-{
-	//Skip one since it is the value stencil
-	for(int i = 1; i < NUM_STENCILS; ++i)
-		for(int j = 0; j < NUM_ALL_FIELDS; ++j)
-			if(stencils_accessed[curr_kernel][j][i]) return true;
-	return false;
-}
-static bool
 kernel_reduces_profile(const int curr_kernel)
 {
 	for(int j = 0; j < NUM_PROFILES; ++j)
@@ -34,6 +25,18 @@ kernel_has_block_loops(const int curr_kernel)
 {
 	return has_mem_access_info && kernel_reduces_profile(curr_kernel);
 }
+/**
+static bool
+kernel_has_stencil_call(const int curr_kernel)
+{
+	//Skip one since it is the value stencil
+	for(int i = 1; i < NUM_STENCILS; ++i)
+		for(int j = 0; j < NUM_ALL_FIELDS; ++j)
+			if(stencils_accessed[curr_kernel][j][i]) return true;
+	return false;
+}
+**/
+
 /**
 static bool
 kernel_is_pure_reduce_kernel(const int curr_kernel)
