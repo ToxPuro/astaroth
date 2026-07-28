@@ -46,9 +46,6 @@ jobs:
 
     timeout-minutes: 180
     steps:
-      - name: Set timezone
-        run: ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
-
       - name: Install dependencies
         run: |
           brew install cmake gsl open-mpi bison flex
