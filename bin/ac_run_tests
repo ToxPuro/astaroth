@@ -57,11 +57,11 @@ done
 
 wait
 
-if [ ! -f $TEST_DIR/*/FAIL ]; then
-    echo "[SUCCESS] All tests completed successfully!"
-    exit 0  # Success
-else
+if find "$TEST_DIR" -name FAIL -print -quit | grep -q .; then
     echo "[ERROR] Some tests failed. Check run_log.txt for details."
-    exit 1  # Failure
+    exit 1
+else
+    echo "[SUCCESS] All tests completed successfully!"
+    exit 0
 fi
 
