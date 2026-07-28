@@ -13,7 +13,7 @@ jobs:
       test-matrix: ${{ steps.matrices.outputs.test-matrix }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Define matrices
         id: matrices
@@ -37,7 +37,7 @@ jobs:
 
     steps: &build-and-test-steps
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: true
 
