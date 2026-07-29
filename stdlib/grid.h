@@ -117,7 +117,7 @@ factorial(const int n)
 //Apple's libc++ does not implement the associated Legendre polynomials even though they
 //are part of the C++17 standard :(
 //So as a fallback use the GSL implementation on MAC.
-#if __APPLED__
+#ifdef __APPLE__
 #include <gsl/gsl_sf_legendre.h>
 #endif
 
