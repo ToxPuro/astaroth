@@ -337,11 +337,12 @@ AC_BEGIN_C_DECLARATIONS
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
   static UNUSED void* acLoadRunTime(FILE* stream, const AcMeshInfo info)
   {
-	char original_runtime_astaroth_runtime_path[40000];
+	const size_t len = 40000;
+	char original_runtime_astaroth_runtime_path[len];
 #ifdef __APPLE__
-	sprintf(original_runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.dylib",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+	snprintf(original_runtime_astaroth_runtime_path,len,"%s/runtime_build/src/core/kernels/libkernels.dylib",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 #else
-	sprintf(original_runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+	snprintf(original_runtime_astaroth_runtime_path,len,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 #endif
 	static int counter = 0;
 	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,info.comm);

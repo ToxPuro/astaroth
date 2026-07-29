@@ -205,7 +205,7 @@ acLaunchCooperativeKernel(void*,dim3,dim3,void**,size_t,cudaStream_t)
 cudaError_t
 acDeviceGetPCIBusId(char* pciBusId, int, int)
 {
-	sprintf(pciBusId,"CPU-BUILD");
+	snprintf(pciBusId,100,"CPU-BUILD");
 	return cudaSuccess;
 }
 

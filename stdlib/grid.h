@@ -114,11 +114,26 @@ factorial(const int n)
 	return n*factorial(n-1);
 }
 
+//Apple's libc++ does not implement the associated Legendre polynomials even though they
+//are part of the C++17 standard :(
+//So as a fallback use the GSL implementation on MAC.
+#if __APPLED__
+#include <gsl/gsl_sf_legendre.h>
+#endif
+
 AcReal
 ac_get_plm(const AcReal x, const unsigned int l, const unsigned int m)
 {
-	return std::assoc_legendre(l,m,x);
+#ifdef __APPLE__
+	AcReal res = std::assoc_legendre(l,m,x);
+	//Condon-Shortley phase term which is not included in the stdlib implementation
+	if(m != 0 && m %2 == 1) res *= -1;
+	return res;
+#else
+	return static_cast<AcReal>(gsl_sf_legendre_Plm(l, m, static_cast<double>(x)));
+#endif
 }
+
 AcReal
 ac_get_normalized_plm(const AcReal x, const int l, const int m)
 {
@@ -127,8 +142,6 @@ ac_get_normalized_plm(const AcReal x, const int l, const int m)
 	const AcReal fact_2 = AcReal(factorial(l+m));
 	AcReal res = sqrt(((2.0*l+1.0)/(4.0*AC_REAL_PI))*(fact_1/fact_2))*plm;
 	if(m != 0) res *= sqrt(2.0);
-	//Condon-Shortley phase term which is not included in the stdlib implementation
-	if(m != 0 && m %2 == 1) res *= -1;
 	return res;
 }
 

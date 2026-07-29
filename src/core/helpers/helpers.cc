@@ -40,8 +40,9 @@ const char*
 acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm)
 {
 	if(counter == 0) return library;
-	static char new_library[40000];
-	sprintf(new_library,"%s_v%d",library,counter);
+	const size_t new_library_len = 40000
+	static char new_library[new_library_len];
+	snprintf(new_library,new_library_len,"%s_v%d",library,counter);
 	int pid = 0;
 #if AC_MPI_ENABLED
 	ERRCHK_ALWAYS(comm != NULL && comm->handle != MPI_COMM_NULL);
@@ -51,8 +52,9 @@ acLibraryVersion(const char* library, const int counter, const AcCommunicator* c
 #endif
 	if(pid == 0)
 	{
-		char cmd[60000];
-		sprintf(cmd,"cp %s %s",library,new_library);
+		const size_t cmd_len = 60000;
+		char cmd[cmd_len];
+		snprintf(cmd,cmd_len,"cp %s %s",library,new_library);
 		int ret = system(cmd);
 		if(ret != 0)
 		{
