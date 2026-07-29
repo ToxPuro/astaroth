@@ -24,14 +24,32 @@ runs:
         #Dir::Cache::srcpkgcache "srcpkgcache.bin";
         EOF
 
-    # The NVIDIA-provided Ubuntu image does not have 'sudo' installed which is
-    # used by the awalsh128/cache-apt-pkgs-actions action. Let's mock it by
-    # providing a shim binary.
-    - name: Add shim for the 'sudo' command
+    - name: Restore APT cache (if available)
+      id: apt-cache-restore
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          /var/cache/apt/
+          /var/lib/apt/lists
+        key: ${{ runner.os }}-apt-cache
+
+    # The awalsh128/cache-apt-pkgs-action action requires these tools to be
+    # installed. They should be cheaper to install than any other requested
+    # package, so the extra steps could still be worth it.
+    - name: Install Ubuntu dependencies
       shell: bash
       run: |
-        echo -e '#!/bin/sh\n\nexec $@' >/usr/bin/sudo
-        chmod +x /usr/bin/sudo
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get install -y sudo curl
+
+    - name: Save APT cache
+      uses: actions/cache/save@v6
+      with:
+        path: |
+          /var/cache/apt/
+          /var/lib/apt/lists
+        key: ${{ steps.apt-cache-restore.outputs.cache-primary-key }}
 
     - name: Install Ubuntu dependencies
       uses: awalsh128/cache-apt-pkgs-action@v1
