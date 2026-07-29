@@ -3,4 +3,4 @@ set(DSL_BUILTIN_SOURCES
     "intrinsics.h"
     "kernels.h"
     "typedefs.h"
-    "varaiebls.h")
+    "variables.h")
