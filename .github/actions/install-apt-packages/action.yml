@@ -28,7 +28,7 @@ runs:
       id: apt-cache-restore
       uses: actions/cache/restore@v6
       with:
-        path: |
+        path: &apt-cached-dirs |
           /var/cache/apt/
           /var/lib/apt/lists
         key: ${{ runner.os }}-apt-cache
@@ -58,7 +58,5 @@ runs:
         ) }}
       uses: actions/cache/save@v6
       with:
-        path: |
-          /var/cache/apt/
-          /var/lib/apt/lists
+        path: *apt-cached-dirs
         key: ${{ steps.apt-cache-restore.outputs.cache-primary-key }}
