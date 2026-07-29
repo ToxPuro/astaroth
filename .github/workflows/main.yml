@@ -45,7 +45,7 @@ jobs:
         if: ${{ runner.os == 'macOS' }}
         uses: ./.github/actions/install-brew-packages
         with:
-          packages: gsl open-mpi bison flexo
+          packages: gsl open-mpi bison flex
 
       # Restore and save pip cache on macOS.
       - uses: actions/cache@v6
