@@ -55,3 +55,5 @@ runs:
       uses: awalsh128/cache-apt-pkgs-action@v1.6.3
       with:
         packages: ${{ inputs.packages }}
+        version: 1
+        execute_install_scripts: true
