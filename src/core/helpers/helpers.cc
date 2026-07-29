@@ -40,7 +40,7 @@ const char*
 acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm)
 {
 	if(counter == 0) return library;
-	const size_t new_library_len = 40000
+	const size_t new_library_len = 40000;
 	static char new_library[new_library_len];
 	snprintf(new_library,new_library_len,"%s_v%d",library,counter);
 	int pid = 0;
