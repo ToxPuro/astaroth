@@ -21,7 +21,7 @@ runs:
     - name: Get checksum of Homebrew cache (before install)
       id: brew-checksum-before
       shell: bash
-      run: echo "checksum=$(find ~/Library/Caches/Homebrew/downloads -type f -print0 | xargs -0 -P $(nproc) md5sum | sort | md5sum)" >> "$GITHUB_OUTPUT"
+      run: echo "checksum=$(find ~/Library/Caches/Homebrew/downloads -type f -print0 | xargs -0 -P $(sysctl -n hw.logicalcpu) md5sum | sort | md5sum)" >> "$GITHUB_OUTPUT"
 
     - name: Install packages using Homebrew
       shell: bash
@@ -31,7 +31,7 @@ runs:
     - name: Get checksum of Homebrew cache (after install)
       id: brew-checksum-after
       shell: bash
-      run: echo "checksum=$(find ~/Library/Caches/Homebrew/downloads -type f -print0 | xargs -0 -P $(nproc) md5sum | sort | md5sum)" >> "$GITHUB_OUTPUT"
+      run: echo "checksum=$(find ~/Library/Caches/Homebrew/downloads -type f -print0 | xargs -0 -P $(sysctl -n hw.logicalcpu) md5sum | sort | md5sum)" >> "$GITHUB_OUTPUT"
 
     - name: Save Homebrew cache
       if: |-
