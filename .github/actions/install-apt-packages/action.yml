@@ -43,5 +43,7 @@ runs:
     - name: Save APT cache
       uses: actions/cache/save@v6
       with:
-        path: /var/cache/apt/
+        path: |
+          /var/cache/apt/
+          /var/lib/apt/lists
         key: ${{ steps.apt-cache-restore.outputs.cache-primary-key }}
