@@ -108,12 +108,12 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
   static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream, const AcMeshInfo info)
   {
-	  const size_t len = 20000;
+	const size_t len = 20000;
 	char original_runtime_astaroth_path[len];
 #ifdef __APPLE__
 	snprintf(original_runtime_astaroth_path,len,"%s/runtime_build/src/core/libastaroth_core.dylib",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 #else
-	sprintf(original_runtime_astaroth_path,len,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+	snprintf(original_runtime_astaroth_path,len,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 #endif
 	kernelsLibHandle=acLoadRunTime(stream,info);
 	static int counter = 0;

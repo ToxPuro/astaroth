@@ -125,12 +125,12 @@ AcReal
 ac_get_plm(const AcReal x, const unsigned int l, const unsigned int m)
 {
 #ifdef __APPLE__
+	return static_cast<AcReal>(gsl_sf_legendre_Plm(l, m, static_cast<double>(x)));
+#else
 	AcReal res = std::assoc_legendre(l,m,x);
 	//Condon-Shortley phase term which is not included in the stdlib implementation
 	if(m != 0 && m %2 == 1) res *= -1;
 	return res;
-#else
-	return static_cast<AcReal>(gsl_sf_legendre_Plm(l, m, static_cast<double>(x)));
 #endif
 }
 
