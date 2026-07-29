@@ -28,7 +28,9 @@ runs:
       id: apt-cache-restore
       uses: actions/cache/restore@v6
       with:
-        path: /var/cache/apt/
+        path: |
+          /var/cache/apt/
+          /var/lib/apt/lists
         key: ${{ runner.os }}-apt-cache
 
     - name: Install Ubuntu dependencies
