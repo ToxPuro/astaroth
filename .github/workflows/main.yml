@@ -41,10 +41,20 @@ jobs:
         with:
           packages: cmake libgsl-dev flex bison openmpi-bin libopenmpi-dev gfortran git python3 python3-numpy python3-pandas
 
-      - name: Install macOS dependencies
+      - name: Install macOS dependencies using Homebrew
         if: ${{ runner.os == 'macOS' }}
-        run: |
-          brew install gsl open-mpi bison flex
+        uses: ./.github/actions/install-brew-packages
+        with:
+          packages: gsl open-mpi bison flexo
+
+      # Restore and save pip cache on macOS.
+      - uses: actions/cache@v6
+        if: ${{ runner.os == 'macOS' }}
+        with:
+          path: ~/Library/Caches/pip
+          key: ${{ runner.os }}-pip-cache
+
+      - name: Set-up other dependencies on macOS
           # Makes mac to use the Bison 3.*
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           # Since Python 3.11 installing packages globally is not permitted by default (see PEP 668).

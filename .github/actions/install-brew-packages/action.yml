@@ -1,0 +1,37 @@
+name: 'Install packages using Homebrew'
+description: 'Installs packages using Homebrew and uses actions/cache to minimize the need to pull archives from remote servers.'
+
+inputs:
+  packages:
+    description: 'A list of packages to install.'
+    required: true
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Restore Homebrew cache (if available)
+      id: brew-cache-restore
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          ~/Library/Caches/Homebrew/
+          /opt/homebrew/
+          /usr/local/Cellar/
+          /usr/local/Caskroom/
+        key: ${{ runner.os }}-brew-cache
+
+    - name: Install packages using Homebrew
+      shell: bash
+      run: |
+        brew install ${{ inputs.packages }}
+
+    - name: Save Homebrew cache
+      uses: actions/cache/save@v6
+      with:
+        path: |
+          ~/Library/Caches/Homebrew/
+          /opt/homebrew/
+          /usr/local/Cellar/
+          /usr/local/Caskroom/
+        key: ${{ steps.brew-cache-restore.outputs.cache-primary-key }}
