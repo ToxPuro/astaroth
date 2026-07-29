@@ -55,6 +55,8 @@ jobs:
           key: ${{ runner.os }}-pip-cache
 
       - name: Set-up other dependencies on macOS
+        if: ${{ runner.os == 'macOS' }}
+        run: |
           # Makes mac to use the Bison 3.*
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           # Since Python 3.11 installing packages globally is not permitted by default (see PEP 668).
