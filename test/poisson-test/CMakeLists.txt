@@ -2,6 +2,6 @@
 add_executable(poisson-test main.cc)
 target_link_libraries(poisson-test astaroth_core astaroth_utils)
 find_package(GSL)
-if(TARGET GSL::GSL)
+if(TARGET GSL::gsl)
   target_link_libraries(poisson-test GSL::gsl)
 endif()
