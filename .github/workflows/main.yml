@@ -21,17 +21,13 @@ jobs:
           echo "test-builds-matrix=$(find ./test-builds -mindepth 1 -maxdepth 1 -type d  | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
           echo "test-matrix=$(find ./test -mindepth 1 -maxdepth 1 -type d | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
 
-  compile-base-builds:
-    runs-on: ${{ matrix.platform.os }}
+  compile-base-builds-ubuntu:
+    runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.platform.container-image }}
+      image: &ubuntu-container nvidia/cuda:13.3.0-devel-ubuntu26.04
     needs: define-matrices
     strategy:
       matrix:
-        platform:
-          - os: ubuntu-latest
-            container-image: &ubuntu-container nvidia/cuda:13.3.0-devel-ubuntu26.04
-          - os: macos-latest
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-builds-matrix) }}
     timeout-minutes: 180
 
@@ -74,19 +70,37 @@ jobs:
         with:
           build-configuration-dir: $GITHUB_WORKSPACE/${{ matrix.build-configuration-dir }}
 
-  compile-and-run-tests:
-    runs-on: ${{ matrix.platform.os }}
+  compile-and-run-tests-ubuntu:
+    runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.platform.container-image }}
+      image: *ubuntu-container
     needs:
       - define-matrices
-      - compile-base-builds
+      - compile-base-builds-ubuntu
     strategy:
       matrix:
-        platform:
-          - os: ubuntu-latest
-            container-image: *ubuntu-container
-          - os: macos-latest
+        build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-matrix) }}
+    timeout-minutes: 180
+
+    steps: *build-and-test-steps
+
+  compile-base-builds-macos:
+    runs-on: macos-latest
+    needs: define-matrices
+    strategy:
+      matrix:
+        build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-builds-matrix) }}
+    timeout-minutes: 180
+
+    steps: *build-and-test-steps
+
+  compile-and-run-tests-macos:
+    runs-on: macos-latest
+    needs:
+      - define-matrices
+      - compile-base-builds-macos
+    strategy:
+      matrix:
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-matrix) }}
     timeout-minutes: 180
 
