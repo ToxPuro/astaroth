@@ -44,7 +44,7 @@ jobs:
       - name: Install macOS dependencies
         if: ${{ runner.os == 'macOS' }}
         run: |
-          brew install cmake gsl open-mpi bison flex python3
+          brew install gsl open-mpi bison flex
           # Makes mac to use the Bison 3.*
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           # Since Python 3.11 installing packages globally is not permitted by default (see PEP 668).
