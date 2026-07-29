@@ -15,10 +15,7 @@ runs:
       uses: actions/cache/restore@v6
       with:
         path: |
-          ~/Library/Caches/Homebrew/
-          /opt/homebrew/
-          /usr/local/Cellar/
-          /usr/local/Caskroom/
+          ~/Library/Caches/Homebrew/downloads
         key: ${{ runner.os }}-brew-cache
 
     - name: Install packages using Homebrew
@@ -30,8 +27,5 @@ runs:
       uses: actions/cache/save@v6
       with:
         path: |
-          ~/Library/Caches/Homebrew/
-          /opt/homebrew/
-          /usr/local/Cellar/
-          /usr/local/Caskroom/
+          ~/Library/Caches/Homebrew/downloads
         key: ${{ steps.brew-cache-restore.outputs.cache-primary-key }}
