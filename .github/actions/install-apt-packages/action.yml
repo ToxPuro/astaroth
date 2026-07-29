@@ -33,6 +33,11 @@ runs:
           /var/lib/apt/lists
         key: ${{ runner.os }}-apt-cache
 
+    - name: Get checksum of APT cache (before install)
+      id: apt-checksum-before
+      shell: bash
+      run: &get-apt-checksum echo "checksum=$(find /var/cache/apt /var/lib/apt/lists -type f -print0 | xargs -0 -P $(nproc) md5sum | sort | md5sum)" >> "$GITHUB_OUTPUT"
+
     - name: Install Ubuntu dependencies
       shell: bash
       run: |
@@ -40,7 +45,17 @@ runs:
         apt-get update
         apt-get install -y --no-install-recommends --no-upgrade ${{ inputs.packages }}
 
+    - name: Get checksum of APT cache (after install)
+      id: apt-checksum-after
+      shell: bash
+      run: *get-apt-checksum
+
     - name: Save APT cache
+      if: |-
+        ${{ always() && (
+          steps.apt-cache-restore.outputs.cache-hit != 'true' ||
+          steps.apt-checksum-before.outputs.checksum != steps.apt-checksum-after.outputs.checksum
+        ) }}
       uses: actions/cache/save@v6
       with:
         path: |
