@@ -308,8 +308,8 @@ printForcingParams(const ForcingParams forcing_params)
            "            : %lf\n"
            " k aver: %lf\n"
            "\n",
-           forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
-           forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
-           forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
-           forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
+           static_cast<double>(forcing_params.magnitude), static_cast<double>(forcing_params.phase), static_cast<double>(forcing_params.k_force.x),
+           static_cast<double>(forcing_params.k_force.y),   static_cast<double>(forcing_params.k_force.z),   static_cast<double>(forcing_params.ff_hel_re.x),
+           static_cast<double>(forcing_params.ff_hel_re.y), static_cast<double>(forcing_params.ff_hel_re.z), static_cast<double>(forcing_params.ff_hel_im.x),
+           static_cast<double>(forcing_params.ff_hel_im.y), static_cast<double>(forcing_params.ff_hel_im.z), static_cast<double>(forcing_params.kaver));
 }
