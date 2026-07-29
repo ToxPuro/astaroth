@@ -18,12 +18,27 @@ runs:
           ~/Library/Caches/Homebrew/downloads
         key: ${{ runner.os }}-brew-cache
 
+    - name: Get checksum of Homebrew cache (before install)
+      id: brew-checksum-before
+      shell: bash
+      run: echo "checksum=$(find ~/Library/Caches/Homebrew/downloads -type f -print0 | xargs -0 -P $(nproc) md5sum | sort | md5sum)" >> "$GITHUB_OUTPUT"
+
     - name: Install packages using Homebrew
       shell: bash
       run: |
         brew install ${{ inputs.packages }}
 
+    - name: Get checksum of Homebrew cache (after install)
+      id: brew-checksum-after
+      shell: bash
+      run: echo "checksum=$(find ~/Library/Caches/Homebrew/downloads -type f -print0 | xargs -0 -P $(nproc) md5sum | sort | md5sum)" >> "$GITHUB_OUTPUT"
+
     - name: Save Homebrew cache
+      if: |-
+        ${{ always() && (
+          steps.brew-cache-restore.outputs.cache-hit != 'true' ||
+          steps.brew-checksum-before.outputs.checksum != steps.brew-checksum-after.outputs.checksum
+        ) }}
       uses: actions/cache/save@v6
       with:
         path: |
