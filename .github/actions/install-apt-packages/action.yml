@@ -38,7 +38,7 @@ runs:
       run: |
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        apt-get install -y ${{ inputs.packages }}
+        apt-get install -y --no-install-recommends --no-upgrade ${{ inputs.packages }}
 
     - name: Save APT cache
       uses: actions/cache/save@v6
