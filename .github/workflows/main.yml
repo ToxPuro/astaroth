@@ -47,13 +47,6 @@ jobs:
         with:
           packages: gsl open-mpi bison flex
 
-      # Restore and save pip cache on macOS.
-      - uses: actions/cache@v6
-        if: ${{ runner.os == 'macOS' }}
-        with:
-          path: ~/Library/Caches/pip
-          key: ${{ runner.os }}-pip-cache
-
       - name: Set-up other dependencies on macOS
         if: ${{ runner.os == 'macOS' }}
         run: |
