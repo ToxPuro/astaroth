@@ -36,12 +36,12 @@ runs:
     # The awalsh128/cache-apt-pkgs-action action requires these tools to be
     # installed. They should be cheaper to install than any other requested
     # package, so the extra steps could still be worth it.
-    - name: Install Ubuntu dependencies
+    - name: Install dependencies for APT install & cache action
       shell: bash
       run: |
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        apt-get install -y sudo curl
+        apt-get install -y sudo curl wget
 
     - name: Save APT cache
       uses: actions/cache/save@v6
@@ -52,6 +52,6 @@ runs:
         key: ${{ steps.apt-cache-restore.outputs.cache-primary-key }}
 
     - name: Install Ubuntu dependencies
-      uses: awalsh128/cache-apt-pkgs-action@v1
+      uses: awalsh128/cache-apt-pkgs-action@v1.6.3
       with:
         packages: ${{ inputs.packages }}
