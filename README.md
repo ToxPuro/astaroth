@@ -8,7 +8,9 @@ Astaroth is licenced under the terms of the GNU General Public Licence, version 
 (see [LICENCE.txt](LICENCE.md)). For contributing guidelines,
 see [Contributing](CONTRIBUTING.md).
 
-Astaroth is tested against its test suite after every commit. You can find the success of the latest test suite [here](https://github.com/ToxPuro/astaroth/actions). You can the test suite yourself locally by first sourcing Astaroth with `. ./sourceme.sh` and then `./test/run_all_tests.sh`
+Astaroth is tested against its test suite after every commit. You can find the success of the latest test suite [here](https://github.com/ToxPuro/astaroth/actions). You can the test suite yourself locally by first sourcing Astaroth with `. ./sourceme.sh` and then `./test/run_all_tests.sh`. To run the tests on CPUs pass the flag `--cpu` to `./test/run_all_tests.sh`.
+
+> **Note:** Some tests in the full auto-test require pandas to be loaded (to check the correctness of the timeseries data) and expect to be used with OpenMPI due to using --oversubscribe flag. This is to be improved but on MPICH you can search and replace to get rid of the --oversubscribe flag (at the moment we are looking into the best way to support both OpenMPI and MPICH).
 
 ## Getting started
 * For a hello world example for physical simulations see `samples/advection-example`
@@ -229,5 +231,6 @@ How do I contribute?
 
 Reporting issues and seeking help
 
-> This section is to be expanded, but for reporting issues and for seeking help you can always contact one of the main developers: touko.puro@aalto.fi. For issues and bug reports, please describe them in enough detail for them to be reproducible, and best if you have clear description on how to invoke the problem. For seeking help on syntax, APIs, etc. please first check does the documentation already answer your problem.
+> This section is to be expanded, but for reporting issues and for seeking help you can make issues on the [github mirror](https://github.com/ToxPuro/astaroth) of `Astaroth`. Optionally you can always contact one of the main developers: touko.puro@aalto.fi. 
+For issues and bug reports, please describe them in enough detail for them to be reproducible, and best if you have clear description on how to invoke the problem. Sharing the commands of how did you build and run the program are very much appreciated. For seeking help on syntax, APIs, etc. please first check does the documentation already answer your problem.
 
