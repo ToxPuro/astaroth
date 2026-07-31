@@ -10,6 +10,11 @@ runs:
   using: "composite"
 
   steps:
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        create-symlink: true
+
     - name: Run build.sh script
       shell: bash
       run: |
