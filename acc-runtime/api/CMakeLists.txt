@@ -63,28 +63,26 @@ endif()
 ## Collect DSL files at build configuration-time
 ## Note: New/removed files are not taken into account until the build is
 ##       reconfigured.
-aux_source_directory(DSL_MODULE_DIR DSL_MODULE_SOURCES)
+file(GLOB_RECURSE DSL_MODULE_SOURCES CONFIGURE_DEPENDS ${DSL_MODULE_DIR}/*.ac)
 
 ## Generate acc-runtime-headers
 set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
 
 if (NOT DEFINED DSL_MODULE_FILE)
   set(DSL_SOURCES ${DSL_MODULE_SOURCES}
+                  ${DSL_BUILTIN_SOURCES}
+                  ${DSL_STDLIB_SOURCES}
+                  ${DSL_EXT_SOURCES}
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-  		${DSL_BUILTIN_SOURCES}
-  		${DSL_STDLIB_SOURCES}
-  		${DSL_EXT_SOURCES}
-  		)
+                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp")
 else()
   set(DSL_SOURCES ${DSL_MODULE_SOURCES}
+                  ${DSL_BUILTIN_SOURCES}
+                  ${DSL_MODULE_DIR}/${DSL_MODULE_FILE}
+                  ${DSL_STDLIB_SOURCES}
+                  ${DSL_EXT_SOURCES}
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-  		${DSL_BUILTIN_SOURCES}
-		${DSL_MODULE_DIR}/${DSL_MODULE_FILE}
-  		${DSL_STDLIB_SOURCES}
-  		${DSL_EXT_SOURCES}
-  		)
+                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp")
 endif()
   
 if (NOT RUNTIME_COMPILATION)
@@ -105,20 +103,26 @@ else()
 			)
 endif()
 
+file(GLOB ACC_GENERATED_KERNELS_SOURCES
+    CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/*.cu
+)
+
 set(ACC_GENERATED_SOURCES
     "memcpy_from_gmem_arrays.cpp"
     "memcpy_to_gmem_arrays.cpp"
     "reduce_helpers.cu"
-    "user_kernels.cu")
+    "${ACC_GENERATED_KERNELS_SOURCES}"
+)
 
 set(ACC_GENERATED_ANALYSIS_KERNELS "${CMAKE_CURRENT_BINARY_DIR}/user_analysis_kernels.cpp")
 
 if (USE_HIP)
-	set_source_files_properties(${ACC_GENERATED_SOURCES} PROPERTIES LANGUAGE HIP)
+	set_source_files_properties(${ACC_GENERATED_SOURCES} random.cu PROPERTIES LANGUAGE HIP)
 endif()
 
 if (CPU_BUILD)
-	set_source_files_properties(${ACC_GENERATED_SOURCES} PROPERTIES LANGUAGE CXX)
+	set_source_files_properties(${ACC_GENERATED_SOURCES} random.cu PROPERTIES LANGUAGE CXX)
 endif()
 
 if (NOT DEFINED DSL_MODULE_FILE)
@@ -141,7 +145,7 @@ else()
 endif()
   add_custom_command (
       COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
-      COMMAND  "${ACC_COMPILER}" ${ACC_COMPILER_ARGS}
+      COMMAND $<TARGET_FILE:acc> ${ACC_COMPILER_ARGS}
       DEPENDS ${DSL_SOURCES} acc
       OUTPUT ${DSL_HEADERS} ${ACC_GENERATED_SOURCES}
   )
@@ -157,6 +161,7 @@ if(NOT RUNTIME_COMPILATION)
 		    vba.cc
 		    common_kernels.cc
 		    static_analysis.cc
+		    random.cu
 		    ${ACC_GENERATED_SOURCES})
 	set_target_properties(
 		acc-runtime-driver

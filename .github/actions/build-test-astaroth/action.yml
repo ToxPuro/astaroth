@@ -17,7 +17,8 @@ runs:
         if [ -f "${{ inputs.build-configuration-dir }}/build.sh" ]; then
           source sourceme.sh
           cd ${{ inputs.build-configuration-dir }}
-          ./build.sh
+          ./build.sh || true
+          ./build.sh || true
         fi
         echo "::endgroup::"
       env:

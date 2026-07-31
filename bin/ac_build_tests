@@ -32,7 +32,9 @@ build_project() {
     # Run test script if it exists and is executable
     if [ -x "build.sh" ]; then
         echo "Building $test_name"
-	./build.sh >> "$log" 2>&1
+	if ! ./build.sh >> "$log" 2>&1; then
+	    ./build.sh >> "$log" 2>&1
+        fi
         exit_code=$?
 
         if [ $exit_code -ne 0 ]; then

@@ -124,6 +124,8 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 endif()
 
+find_package(Python3)
+
 set(USE_CUDA OFF)
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)

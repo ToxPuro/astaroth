@@ -37,7 +37,8 @@ void acc_source_function_set_qualifiers(AccSourceFunction* self,
 typedef enum AccSourceFlags {
   ACC_SRC_CPP         = (1 << 0),
   ACC_SRC_HEADER_ONLY = (1 << 1),
-  ACC_SRC_DEVICE      = (1 << 2),
+  ACC_SRC_SOURCE_ONLY = (1 << 2),
+  ACC_SRC_DEVICE      = (1 << 3),
 } AccSourceFlags;
 
 typedef enum AccSourceFunctionFlags {

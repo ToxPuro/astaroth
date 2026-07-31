@@ -20,6 +20,12 @@ endif()
 ## Project options
 option(USE_HIP "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
 
+include(FetchContent)
+FetchContent_Declare(acc
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/acc
+    OVERRIDE_FIND_PACKAGE
+)
+
 #TP: enables building of acc-runtime lib without rest of the lib
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 	add_definitions(-DBUILD_ACC_RUNTIME_LIBRARY=1)
@@ -112,11 +118,11 @@ else()
     add_compile_definitions(GPU_API_INCLUDES="${include_args}")
 endif()
 
+FetchContent_MakeAvailable(acc)
+
 ## Subdirectories
 add_subdirectory(built-in)
 add_subdirectory(stdlib)
-
-add_subdirectory(acc)
 add_subdirectory(api)
 #add_subdirectory(transpilers)
 

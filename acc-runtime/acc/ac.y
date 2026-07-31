@@ -2,13 +2,17 @@
 //#define _GNU_SOURCE
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <hash.h>
 #include <libgen.h>  // dirname
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <wordexp.h>
 
 #include "ast.h"
@@ -840,6 +844,70 @@ populate_global_strings()
 	DIV_STR = intern("/");
 }
 
+static void
+split_user_kernels()
+{
+  DIR *ac_kernels_dir = opendir("ac_kernels");
+  if (errno == ENOENT) {
+    mkdir("ac_kernels", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+    ac_kernels_dir = opendir("ac_kernels");
+  }
+
+  int fd = open("user_kernels.cu", O_RDONLY);
+  assert(fd >= 0);
+
+  struct stat st;
+  fstat(fd, &st);
+
+  if (st.st_size == 0)
+  return;
+  char *user_kernels_cu = mmap(NULL, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+  assert(user_kernels_cu != MAP_FAILED);
+
+  char *kernel_start = strstr(user_kernels_cu, "__global__ void");
+  while (kernel_start != NULL) {
+    char *kernel_name = strstr(kernel_start, "\nKERNEL_");
+    char *kernel_name_end = strchr(kernel_name, '(');
+    char backup = *kernel_name_end;
+    *kernel_name_end = '\0';
+
+    char filename[BUFFER_SIZE] = {0};
+    snprintf(filename, BUFFER_SIZE, "%s.cu", kernel_name + 1);
+
+    *kernel_name_end = backup;
+
+    FILE *stream = fdopen(
+      openat(
+        dirfd(ac_kernels_dir),
+        filename,
+        O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+      ),
+      "w"
+    );
+    assert(stream != NULL);
+
+    fprintf(stream, "#include \"user_kernel.h\"\n\n");
+
+    char *kernel_end = strstr(kernel_start + 1, "__global__ void");
+    if (kernel_end != NULL) {
+      backup = *kernel_end;
+      *kernel_end = '\0';
+    }
+
+    fprintf(stream, "%s\n", kernel_start);
+    if (kernel_end != NULL)
+      *kernel_end = backup;
+
+    fclose(stream);
+
+    kernel_start = kernel_end;
+  }
+
+  munmap(user_kernels_cu, st.st_size);
+  close(fd);
+  closedir(ac_kernels_dir);
+}
+
 int
 main(int argc, char** argv)
 {
@@ -894,6 +962,8 @@ main(int argc, char** argv)
 
     // Writes all the source files managed by the sources manager onto disk.
     acc_sources_manager_flush(acc_sources_manager_singleton());
+
+    split_user_kernels();
 
     return EXIT_SUCCESS;
 }
