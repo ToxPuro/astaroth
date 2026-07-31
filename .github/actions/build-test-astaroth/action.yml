@@ -22,9 +22,9 @@ runs:
       shell: bash
       run: |
         echo "::group::Build Astaroth project"
-        if [ -f "${{ $GITHUB_WORKSPACE/inputs.build-configuration-dir }}/build.sh" ]; then
+        if [ -f "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/build.sh" ]; then
           source sourceme.sh
-          cd ${{ $GITHUB_WORKSPACE/inputs.build-configuration-dir }}
+          cd $GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}
           ./build.sh
         fi
         echo "::endgroup::"
@@ -36,9 +36,9 @@ runs:
       shell: bash
       run: |
         echo "::group::Test Astaroth project"
-        if [ -f "${{ $GITHUB_WORKSPACE/inputs.build-configuration-dir }}/test.sh" ]; then
+        if [ -f "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/test.sh" ]; then
           source sourceme.sh
-          cd ${{ $GITHUB_WORKSPACE/inputs.build-configuration-dir }}
+          cd $GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}
           ./test.sh
         fi
         echo "::endgroup::"
