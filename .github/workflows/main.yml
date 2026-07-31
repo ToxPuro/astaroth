@@ -18,8 +18,8 @@ jobs:
       - name: Define matrices
         id: matrices
         run: |
-          echo "test-builds-matrix=$(find ./test-builds -mindepth 1 -maxdepth 1 -type d  | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
-          echo "test-matrix=$(find ./test -mindepth 1 -maxdepth 1 -type d | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
+          echo "test-builds-matrix=$(find test-builds -mindepth 1 -maxdepth 1 -type d  | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
+          echo "test-matrix=$(find test -mindepth 1 -maxdepth 1 -type d | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
 
   compile-base-builds-ubuntu:
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
       - name: Compile builds and run tests
         uses: ./.github/actions/build-test-astaroth
         with:
-          build-configuration-dir: $GITHUB_WORKSPACE/${{ matrix.build-configuration-dir }}
+          build-configuration-dir: ${{ matrix.build-configuration-dir }}
 
   compile-and-run-tests-ubuntu:
     runs-on: ubuntu-latest
