@@ -13,7 +13,9 @@ runs:
     - name: Set up ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
+        append-timestamp: false
         create-symlink: true
+        key: ${{ runner.os }}
 
     - name: Run build.sh script
       shell: bash
