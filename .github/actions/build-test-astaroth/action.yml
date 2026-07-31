@@ -15,7 +15,8 @@ runs:
       with:
         append-timestamp: false
         create-symlink: true
-        key: ${{ runner.os }}
+        key: ${{ runner.os }}-${{ github.job }}
+        max-size: 50MB
 
     - name: Run build.sh script
       shell: bash
