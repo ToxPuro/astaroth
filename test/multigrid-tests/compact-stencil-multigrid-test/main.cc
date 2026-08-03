@@ -71,6 +71,7 @@ main(int argc, char* argv[])
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig("mg.conf", &info);
+    //acPushToConfig(info,AC_GMG_SMOOTHER,RED_BLACK_SMOOTHER);
     acPushToConfig(info,AC_ds,
     (AcReal3){
     	    (2.0*AC_REAL_PI)/info[AC_ngrid].x,
@@ -82,11 +83,6 @@ main(int argc, char* argv[])
     	info[AC_ds]
     );
 
-    //1.2 works better for GMG and 1.8 works better for plain SOR
-    acPushToConfig(info,AC_SOR_omega,
-		    1.2
-		    //1.8
-    );
 
     acPushToConfig(info,AC_periodic_grid,
     (AcBool3){
@@ -122,6 +118,12 @@ main(int argc, char* argv[])
     }
     gmg_populate_central_coeffients(&info);
     acGridInit(info);
+    acDeviceSetInput(acGridGetDevice(),AC_SOR_omega,
+		    //1.0
+		    1.15
+		    //1.15
+		    //1.8
+    );
     gmg_setup(&info);
     //Test that can build test ComputeSteps
     const auto initcond_graph = acGetOptimizedDSLTaskGraph(initcond);

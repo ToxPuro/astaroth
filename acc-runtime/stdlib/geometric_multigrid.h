@@ -2808,7 +2808,7 @@ fixed_boundary Kernel gmg_sor_black(real omega, GMG_LEVEL level)
 	gmg_poisson_sor_red_black(SOR_BLACK,level,omega)
 }
 
-Kernel gmg_red_smoother_kernel(GMG_LEVEL level)
+Kernel gmg_red_smoother_kernel(GMG_LEVEL level, real omega)
 {
 	Field u = GMG_SOLUTIONS[level]
 	Field r = GMG_RESIDUALS[level]
@@ -2816,7 +2816,7 @@ Kernel gmg_red_smoother_kernel(GMG_LEVEL level)
 	real r_value = value(r)
 	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == 0)
 	{
-		res = u + r_value/(-gmg_laplace_central_coeff(level))
+		res = u + omega*r_value/(-gmg_laplace_central_coeff(level))
 		write(u,res)
 	}
 	else
@@ -2825,7 +2825,7 @@ Kernel gmg_red_smoother_kernel(GMG_LEVEL level)
 	}
 }
 
-Kernel gmg_black_smoother_kernel(GMG_LEVEL level)
+Kernel gmg_black_smoother_kernel(GMG_LEVEL level, real omega)
 {
 	Field u = GMG_SOLUTIONS[level]
 	Field r = GMG_RESIDUALS[level]
@@ -2833,7 +2833,7 @@ Kernel gmg_black_smoother_kernel(GMG_LEVEL level)
 	real r_value = value(r)
 	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == 1)
 	{
-		res = u + r_value/(-gmg_laplace_central_coeff(level))
+		res = u + omega*r_value/(-gmg_laplace_central_coeff(level))
 		write(u,res)
 	}
 	else
@@ -2846,10 +2846,10 @@ ComputeSteps
 gmg_rb_smoother(gmg_boundconds)
 {
 	gmg_residual_kernel(AC_GMG_LEVEL)
-        gmg_red_smoother_kernel(AC_GMG_LEVEL)
+        gmg_red_smoother_kernel(AC_GMG_LEVEL,AC_SOR_omega)
 
 	gmg_residual_kernel(AC_GMG_LEVEL)
-        gmg_black_smoother_kernel(AC_GMG_LEVEL)
+        gmg_black_smoother_kernel(AC_GMG_LEVEL,AC_SOR_omega)
 }
 
 
