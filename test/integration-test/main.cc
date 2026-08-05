@@ -278,9 +278,10 @@ main(int argc, char* argv[])
 			{
 	    			if(pid == 0) 
 				{
-					fprintf(stderr,"Interpolating E_P went over the array on the right!\nMake sure your tabulated data covers the integration range");
+					fprintf(stderr,"Interpolating E_P went over the array on the right!\nMake sure your tabulated data covers the integration range\n");
 					fprintf(stderr,"P: %.14e\n",p_pos);
 					fprintf(stderr,"Maximum tabulated p: %.14e\n",info[P_TABULATED][AC_N_tabulated-1]);
+					fprintf(stderr,"Tabulated array had %d points!\n",info[AC_N_tabulated]);
 				}
 				fflush(stderr);
 	    			exit(EXIT_FAILURE);
@@ -329,9 +330,10 @@ main(int argc, char* argv[])
 			{
 	    			if(pid == 0) 
 				{
-					fprintf(stderr,"Interpolating E_PTILDE went over the array on the left!\nMake sure your tabulated data covers the integration range");
+					fprintf(stderr,"Interpolating E_PTILDE went over the array on the left!\nMake sure your tabulated data covers the integration range\n");
 					fprintf(stderr,"Ptilde: %.14e\n",ptilde);
 					fprintf(stderr,"Minimum tabulated p: %.14e\n",info[P_TABULATED][0]);
+					fprintf(stderr,"Tabulated array had %d points!\n",info[AC_N_tabulated]);
 				}
 				fflush(stderr);
 	    			exit(EXIT_FAILURE);
