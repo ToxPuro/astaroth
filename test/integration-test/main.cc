@@ -320,7 +320,7 @@ main(int argc, char* argv[])
 	        AcReal z_pos = info[AC_integration_start_y] + info[AC_ds].y*z;
 		if(info[AC_logspace_y]) z_pos = exp(z_pos);
 
-		AcReal ptilde = sqrt(p_pos*p_pos + info[AC_k]*info[AC_k] - 2*p*info[AC_k]*z_pos);
+		AcReal ptilde = sqrt(p_pos*p_pos + info[AC_k]*info[AC_k] - 2*p_pos*info[AC_k]*z_pos);
 		while(ptilde < pos_left)
 		{
 			pos_right = pos_left;
