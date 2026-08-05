@@ -274,7 +274,7 @@ main(int argc, char* argv[])
 	          	pos_left = pos_right;
 	          	val_left = val_right;
 	          	i_right++;
-			if(i_right == AC_N_tabulated)
+			if(i_right == info[AC_N_tabulated])
 			{
 	    			if(pid == 0) 
 				{
