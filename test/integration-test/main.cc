@@ -274,14 +274,19 @@ main(int argc, char* argv[])
 	          	pos_left = pos_right;
 	          	val_left = val_right;
 	          	i_right++;
-	          	pos_right = info[P_TABULATED][i_right];
-	          	val_right = info[E_P_TABULATED][i_right];
 			if(i_right == AC_N_tabulated)
 			{
-	    			if(pid == 0) fprintf(stderr,"Interpolating E_P went over the array on the right!\nMake sure your tabulated data covers the integration range");
+	    			if(pid == 0) 
+				{
+					fprintf(stderr,"Interpolating E_P went over the array on the right!\nMake sure your tabulated data covers the integration range");
+					fprintf(stderr,"P: %.14e\n",p_pos);
+					fprintf(stderr,"Maximum tabulated p: %.14e\n",info[P_TABULATED][AC_N_tabulated-1]);
+				}
 				fflush(stderr);
 	    			exit(EXIT_FAILURE);
 			}
+	          	pos_right = info[P_TABULATED][i_right];
+	          	val_right = info[E_P_TABULATED][i_right];
 	          }
 	          res[p] = linear_interpol(pos_left,pos_right,val_left,val_right,p_pos);
 		  fprintf(fp_p,"%.14e,",p_pos);
@@ -320,14 +325,19 @@ main(int argc, char* argv[])
 			pos_right = pos_left;
 			val_right = val_left;
 			i_right--;
-			pos_left = info[P_TABULATED][i_right-1];
-			val_left = info[E_P_TABULATED][i_right-1];
 			if(i_right == 0)
 			{
-	    			if(pid == 0) fprintf(stderr,"Interpolating E_PTILDE went over the array on the left!\nMake sure your tabulated data covers the integration range");
+	    			if(pid == 0) 
+				{
+					fprintf(stderr,"Interpolating E_PTILDE went over the array on the left!\nMake sure your tabulated data covers the integration range");
+					fprintf(stderr,"Ptilde: %.14e\n",ptilde);
+					fprintf(stderr,"Minimum tabulated p: %.14e\n",info[P_TABULATED][0]);
+				}
 				fflush(stderr);
 	    			exit(EXIT_FAILURE);
 			}
+			pos_left = info[P_TABULATED][i_right-1];
+			val_left = info[E_P_TABULATED][i_right-1];
 		}
 		res[p + n_x*z] = linear_interpol(pos_left,pos_right,val_left,val_right,ptilde);
 	      }
