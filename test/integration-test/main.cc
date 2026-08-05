@@ -276,6 +276,12 @@ main(int argc, char* argv[])
 	          	i_right++;
 	          	pos_right = info[P_TABULATED][i_right];
 	          	val_right = info[E_P_TABULATED][i_right];
+			if(i_right == AC_N_tabulated)
+			{
+	    			if(pid == 0) fprintf(stderr,"Interpolating E_P went over the array on the right!\nMake sure your tabulated data covers the integration range");
+				fflush(stderr);
+	    			exit(EXIT_FAILURE);
+			}
 	          }
 	          res[p] = linear_interpol(pos_left,pos_right,val_left,val_right,p_pos);
 		  fprintf(fp_p,"%.14e,",p_pos);
@@ -308,7 +314,7 @@ main(int argc, char* argv[])
 	        AcReal z_pos = info[AC_integration_start_y] + info[AC_ds].y*z;
 		if(info[AC_logspace_y]) z_pos = exp(z_pos);
 
-		AcReal ptilde = sqrt(p*p + info[AC_k]*info[AC_k] - 2*p*info[AC_k]*z_pos);
+		AcReal ptilde = sqrt(p_pos*p_pos + info[AC_k]*info[AC_k] - 2*p*info[AC_k]*z_pos);
 		while(ptilde < pos_left)
 		{
 			pos_right = pos_left;
@@ -316,6 +322,12 @@ main(int argc, char* argv[])
 			i_right--;
 			pos_left = info[P_TABULATED][i_right-1];
 			val_left = info[E_P_TABULATED][i_right-1];
+			if(i_right == 0)
+			{
+	    			if(pid == 0) fprintf(stderr,"Interpolating E_PTILDE went over the array on the left!\nMake sure your tabulated data covers the integration range");
+				fflush(stderr);
+	    			exit(EXIT_FAILURE);
+			}
 		}
 		res[p + n_x*z] = linear_interpol(pos_left,pos_right,val_left,val_right,ptilde);
 	      }
