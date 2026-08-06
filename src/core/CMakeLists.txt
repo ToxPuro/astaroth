@@ -86,14 +86,22 @@ target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include)
 set_property(TARGET astaroth_core_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
 ac_link_mpi(astaroth_core_obj)
 
-add_library(astaroth_core empty.cc)
+add_library(astaroth_core
+  $<TARGET_OBJECTS:acc_runtime_compiler>
+  $<TARGET_OBJECTS:ac_decomposition>
+  $<TARGET_OBJECTS:ac_update_params>
+  $<TARGET_OBJECTS:ac_cuda_wrappers>
+  $<TARGET_OBJECTS:astaroth_helpers>
+  $<TARGET_OBJECTS:acc_runtime_compiler>
+)
+
 set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(astaroth_core PUBLIC astaroth_core_obj)
 if (NOT RUNTIME_COMPILATION)
-	target_link_libraries(astaroth_core PUBLIC static_kernels acc_runtime_compiler)
+	target_link_libraries(astaroth_core PUBLIC static_kernels)
 else()
 	set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
-	target_link_libraries(astaroth_core PUBLIC acc_runtime_compiler acc-runtime-headers dl)
+	target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl)
 endif()
 
 if (USE_HIP)
@@ -121,5 +129,4 @@ else()
     	target_link_libraries(astaroth_core PUBLIC CUDA::cudart_static)
     endif()
 endif()
-target_link_libraries(astaroth_core PUBLIC ac_decomposition ac_update_params ac_cuda_wrappers astaroth_helpers)
 target_include_directories(astaroth_core PUBLIC ${AC_BASE_PATH}/3rdparty/eigen)
