@@ -130,7 +130,14 @@ endif()
       OUTPUT ${DSL_HEADERS}
   )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
-target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(acc-runtime-headers
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+
+        $<INSTALL_INTERFACE:include>
+)
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
@@ -138,7 +145,11 @@ if(NOT RUNTIME_COMPILATION)
 	add_library(acc-runtime-driver OBJECT arrays.cc vba.cc common_kernels.cc static_analysis.cc)
 	set_property(TARGET acc-runtime-driver PROPERTY POSITION_INDEPENDENT_CODE ON)
 	target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers astaroth_helpers)
-	target_include_directories(acc-runtime-driver PUBLIC ${AC_BASE_PATH}/include)
+	target_include_directories(acc-runtime-driver 
+		PUBLIC
+		$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        	$<INSTALL_INTERFACE:include>
+	)
 	target_include_directories(acc-runtime-driver PUBLIC ${AC_BASE_PATH}/src/core/kernels)
 endif()
 

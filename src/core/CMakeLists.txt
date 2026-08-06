@@ -98,7 +98,14 @@ add_library(astaroth_core
 
 set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(astaroth_core PUBLIC acc-runtime-headers )
-target_include_directories(astaroth_core PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src ${AC_BASE_PATH}/src/core/kernels)
+target_include_directories(astaroth_core
+    PUBLIC
+        $<BUILD_INTERFACE:${AC_BASE_PATH}/include>
+        $<BUILD_INTERFACE:${AC_BASE_PATH}/src>
+        $<BUILD_INTERFACE:${AC_BASE_PATH}/src/core/kernels>
+
+        $<INSTALL_INTERFACE:include>
+)
 if (NOT RUNTIME_COMPILATION)
 	target_link_libraries(astaroth_core PUBLIC static_kernels)
 else()
@@ -131,4 +138,8 @@ else()
     	target_link_libraries(astaroth_core PUBLIC CUDA::cudart_static)
     endif()
 endif()
-target_include_directories(astaroth_core PUBLIC ${AC_BASE_PATH}/3rdparty/eigen)
+target_include_directories(astaroth_core
+    PUBLIC
+        $<BUILD_INTERFACE:${AC_BASE_PATH}/3rdparty/eigen>
+        $<INSTALL_INTERFACE:include/eigen>
+)
