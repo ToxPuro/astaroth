@@ -59,6 +59,7 @@ typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
   (AcComplex) { x, y }
 static bool initialized = false;
 static AcBool3 dimension_inactive{};
+static bool no_null_array_checks = false;
 static bool uneven_grid_decomp{};
 static int3 raytracing_subblock{};
 static int x_ray_shared_mem_block_size{};
@@ -557,6 +558,7 @@ acRuntimeInit(const AcMeshInfo config)
   ERRCHK_ALWAYS(initialized == false);
   dimension_inactive = config[AC_dimension_inactive];
   sparse_autotuning  = config[AC_sparse_autotuning];
+  no_null_array_checks = config[AC_no_null_array_checks];
   raytracing_subblock = config[AC_raytracing_block_factors];
   x_ray_shared_mem_block_size = config[AC_x_ray_shared_mem_block_size];
   z_ray_shared_mem_block_size = config[AC_z_ray_shared_mem_block_size];
@@ -905,7 +907,7 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 		if (!is_alive(array)) return AC_NOT_ALLOCATED;
 		auto dst_ptr = get_empty_pointer(array);
 		acMemcpyFromGmemArray(array,dst_ptr);
-		if (dst_ptr == nullptr)
+		if (dst_ptr == nullptr && !no_null_array_checks)
 		{
 			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform when loading: %s\n",get_name(array));
 			fprintf(stderr,"%s was null!\n",get_name(array));

@@ -17,13 +17,13 @@ struct allocate_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(config[array] == nullptr && is_accessed(array))
+			if(config[array] == nullptr && is_accessed(array) && !config[AC_no_null_array_checks])
 			{
 				fprintf(stderr,"Passed %s as NULL but it is accessed in kernels!!\n",get_name(array));
 				fflush(stderr);
 				ERRCHK_ALWAYS(config[array] != nullptr);
 			}
-			if (config[array] != nullptr && !is_dconst(array) && is_alive(array))
+			if ((config[array] != nullptr || config[AC_no_null_array_checks]) && !is_dconst(array) && is_alive(array))
 			{
 				const size_t len = get_array_length(array,config);
 #if AC_VERBOSE

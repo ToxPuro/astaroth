@@ -901,11 +901,17 @@ acGridInitBase(const AcMesh user_mesh)
     if(devices_per_node == 0) fatal("%s", "acGridInit: No devices found!\n");
 
     const int pid = ac_pid();
-    acLogFromRootProc(pid, "acGridInit: n[xyz]grid: (%d,%d,%d) n[xyz]local (%d,%d,%d)\n",
-    		    submesh_info[AC_ngrid].x,submesh_info[AC_ngrid].y,submesh_info[AC_ngrid].z,
-    		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
-    		    );
-    acLogFromRootProc(pid, "acGridInit: Creating device\n");
+    if(!submesh_info[AC_no_logs])
+    {
+      acLogFromRootProc(pid, "acGridInit: n[xyz]grid: (%d,%d,%d) n[xyz]local (%d,%d,%d)\n",
+      		    submesh_info[AC_ngrid].x,submesh_info[AC_ngrid].y,submesh_info[AC_ngrid].z,
+      		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
+      		    );
+    }
+    if(!submesh_info[AC_no_logs])
+    {
+      acLogFromRootProc(pid, "acGridInit: Creating device\n");
+    }
     acVerboseLogFromRootProc(pid,"memusage before acDeviceCreate = %f MBytes\n",acMemUsage()/1024.0);
 
     Device device;
@@ -918,14 +924,20 @@ acGridInitBase(const AcMesh user_mesh)
     grid.device        = device;
     grid.submesh       = create_grid_submesh(submesh_info, user_mesh);
     grid.decomposition = get_decomp(info);
-    acLogFromRootProc(ac_pid(), "acGridInit: decomp: (%ld,%ld,%ld)\n",
-		    grid.decomposition.x,
-		    grid.decomposition.y,
-		    grid.decomposition.z
-		    );
-    acLogFromRootProc(ac_pid(), "acGridInit: Stencil order: %d\n",
-		    NGHOST*2
-		    );
+    if(!submesh_info[AC_no_logs])
+    {
+      acLogFromRootProc(ac_pid(), "acGridInit: decomp: (%ld,%ld,%ld)\n",
+  		    grid.decomposition.x,
+  		    grid.decomposition.y,
+  		    grid.decomposition.z
+  		    );
+    }
+    if(!submesh_info[AC_no_logs])
+    {
+      acLogFromRootProc(ac_pid(), "acGridInit: Stencil order: %d\n",
+  		    NGHOST*2
+  		    );
+    }
 
     if((int)(grid.decomposition.x*grid.decomposition.y*grid.decomposition.z) != (int)ac_nprocs())
     {
@@ -998,7 +1010,10 @@ acGridInitBase(const AcMesh user_mesh)
     fflush(stderr);
 
     gen_postprocessing_metadata();
-    acLogFromRootProc(ac_pid(), "acGridInit: Done\n");
+    if(!submesh_info[AC_no_logs])
+    {
+      acLogFromRootProc(ac_pid(), "acGridInit: Done\n");
+    }
     ac_restore_floating_point_exceptions();
     AcCommunicator comm{astaroth_comm};
     const int3 global_offset = acGridGetLocalMeshInfo()[AC_multigpu_offset];
