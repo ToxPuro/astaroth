@@ -34,7 +34,7 @@
 #include "astaroth_device.h"
 #include "builtin_enums.h"
 #include "common_kernels.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 #include "kernels/kernels.h"

@@ -1,5 +1,5 @@
 #include "host_datatypes.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "device_details.h"
 #include "ac_helpers.h"
 #include "transpose.h"

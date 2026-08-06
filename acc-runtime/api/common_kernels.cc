@@ -7,7 +7,7 @@
 #include "astaroth_cuda_wrappers.h"
 #include "builtin_enums.h"
 #include "datatypes.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 #include "math_utils.h"

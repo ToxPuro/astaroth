@@ -1,4 +1,4 @@
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "acreal.h"
 #include <cstring>
 #include <stdio.h>

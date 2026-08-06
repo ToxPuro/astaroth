@@ -4,7 +4,7 @@ option(OPENMP_ENABLED "Enables OPENMP (used in modelsolver for now)" ON)
 
 if(RUNTIME_COMPILATION)
 	add_library(astaroth_utils config_loader.cc)
-	target_link_libraries(astaroth_utils astaroth_core)
+	target_link_libraries(astaroth_utils PUBLIC astaroth_core)
 else()
 	add_library(astaroth_utils memory.cc verification.cc modelreduce.cc modelsolver.cc profiles.cc config_loader.cc)
 	target_link_libraries(astaroth_utils PUBLIC astaroth_core)

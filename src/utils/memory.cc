@@ -24,7 +24,7 @@
 #include "astaroth_base.h"
 #include "astaroth_utils.h"
 #include "builtin_enums.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 

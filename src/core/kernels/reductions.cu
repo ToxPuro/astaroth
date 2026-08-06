@@ -26,7 +26,7 @@
 #include "acreal.h"
 #include "astaroth_cuda_wrappers.h"
 #include "builtin_enums.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "func_attributes.h"
 #include "host_datatypes.h"

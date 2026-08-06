@@ -9,7 +9,7 @@
 #include "astaroth_cuda_wrappers.h"
 #include "builtin_enums.h"
 #include "common_kernels.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "func_attributes.h"
 #include "host_datatypes.h"

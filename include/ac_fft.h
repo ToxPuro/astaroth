@@ -1,7 +1,7 @@
 #pragma once
 
 #include "func_define.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "host_datatypes.h"
 
 AC_BEGIN_C_DECLARATIONS

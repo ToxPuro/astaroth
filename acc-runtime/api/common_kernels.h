@@ -3,7 +3,7 @@
 #include <stddef.h>
 
 #include "acreal.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "func_define.h"
 #include "host_datatypes.h"
 

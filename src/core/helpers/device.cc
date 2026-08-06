@@ -3,7 +3,7 @@
 #include "ac_helpers.h"
 #include "acreal.h"
 #include "astaroth_cuda_wrappers.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 

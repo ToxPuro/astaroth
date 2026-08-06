@@ -5,7 +5,7 @@
 
 #include "acreal.h"
 #include "builtin_enums.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 

@@ -17,6 +17,7 @@ else()
   add_library(astaroth_core_obj OBJECT device.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp analysis_helpers.cc)
   target_link_libraries(astaroth_core_obj PRIVATE acc-runtime-headers )
   target_include_directories(astaroth_core_obj PRIVATE ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src ${AC_BASE_PATH}/src/core/kernels)
+
   
   
   # JP: disabled due to being error-prone, verbose, and not using modern CMake practices
@@ -104,7 +105,8 @@ target_include_directories(astaroth_core
         $<BUILD_INTERFACE:${AC_BASE_PATH}/src>
         $<BUILD_INTERFACE:${AC_BASE_PATH}/src/core/kernels>
 
-        $<INSTALL_INTERFACE:include>
+        $<INSTALL_INTERFACE:astaroth/include>
+        $<INSTALL_INTERFACE:astaroth/acc-runtime/api>
 )
 if (NOT RUNTIME_COMPILATION)
 	target_link_libraries(astaroth_core PUBLIC static_kernels)
@@ -139,7 +141,6 @@ else()
     endif()
 endif()
 target_include_directories(astaroth_core
-    PUBLIC
+  	PUBLIC 
         $<BUILD_INTERFACE:${AC_BASE_PATH}/3rdparty/eigen>
-        $<INSTALL_INTERFACE:include/eigen>
 )

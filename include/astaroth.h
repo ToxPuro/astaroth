@@ -35,7 +35,8 @@
 #include "astaroth_node.h"
 #include "astaroth_runtime_compilation.h"
 #include "builtin_enums.h"
-#include "device_headers.h"
+//The device headers are not needed for interfacing with Astaroth
+#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "func_define.h"
 #include "host_datatypes.h"

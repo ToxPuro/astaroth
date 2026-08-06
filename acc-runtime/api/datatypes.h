@@ -25,7 +25,7 @@
 
 #include "acreal.h"
 #include "builtin_enums.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 
 #define VOLUME_DEFINED
 #define COMPLEX_DEFINED

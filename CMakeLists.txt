@@ -93,6 +93,8 @@ else()
     add_definitions(-DPROFILING_ENABLED=0)
 endif()
 
+add_definitions(-DAC_BUILDING_LIB=1)
+
 #TP: If CPU_BUILD is explicitly asked for it takes presedence over env variable.
 #    The command line argument should anyways always takes presedence but the CMake code
 #    for it seems unnecessary ugly/verbose so implemented the more important case for now
@@ -358,3 +360,43 @@ endif()
 if(EXTRA_SOURCES_DIR)
     add_subdirectory(${EXTRA_SOURCES_DIR} ${EXTRA_SOURCES_DIR}/cmake)
 endif()
+
+#Installation
+install(TARGETS
+    astaroth_core
+    astaroth_utils
+    acc-runtime-headers
+    static_kernels
+    EXPORT AstarothTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+install(
+    DIRECTORY include/
+    DESTINATION astaroth/include
+)
+install(
+    DIRECTORY acc-runtime/api/
+    DESTINATION astaroth/acc-runtime/api/
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(
+    EXPORT AstarothTargets
+    FILE AstarothTargets.cmake
+    NAMESPACE Astaroth::
+    DESTINATION lib/cmake/Astaroth
+)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    cmake/AstarothConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/AstarothConfig.cmake"
+    INSTALL_DESTINATION lib/cmake/Astaroth
+)
+
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/AstarothConfig.cmake"
+    DESTINATION lib/cmake/Astaroth
+)

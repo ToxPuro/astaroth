@@ -3,7 +3,7 @@
 #include <stddef.h>
 
 #include "astaroth_cuda_wrappers.h"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 #include "math_utils_base.h"

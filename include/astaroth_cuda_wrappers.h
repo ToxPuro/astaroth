@@ -1,5 +1,5 @@
 #pragma once
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "func_define.h"
 
 AC_BEGIN_C_DECLARATIONS

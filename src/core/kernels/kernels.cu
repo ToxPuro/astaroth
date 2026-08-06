@@ -18,7 +18,7 @@
 */
 #include "ac_fft.h"
 #include "acc_runtime.cu"
-#include "device_headers.h"
+#include "astaroth_device_headers.h"
 #include "host_datatypes.h"
 #include "kernels.h"
 #include "packing.cuh"

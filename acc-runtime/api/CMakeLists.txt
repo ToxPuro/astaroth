@@ -130,13 +130,19 @@ endif()
       OUTPUT ${DSL_HEADERS}
   )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
+install(
+    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/
+    DESTINATION include/astaroth/generated
+    FILES_MATCHING PATTERN "*.h"
+)
+
 target_include_directories(acc-runtime-headers
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-
         $<INSTALL_INTERFACE:include>
+	$<INSTALL_INTERFACE:include/astaroth/generated>
 )
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
