@@ -25,4 +25,5 @@ else()
 	endif()
 endif()
 
+ac_link_mpi(astaroth_utils)
 set_property(TARGET astaroth_utils PROPERTY POSITION_INDEPENDENT_CODE ON)

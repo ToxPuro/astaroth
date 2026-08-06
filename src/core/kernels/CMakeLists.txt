@@ -82,17 +82,19 @@ else()
     		$<TARGET_OBJECTS:ac_transpose>
     		$<TARGET_OBJECTS:ac_reindex>
     		$<TARGET_OBJECTS:acc-runtime-driver>
+    		$<TARGET_OBJECTS:ac_cuda_wrappers>
+    		$<TARGET_OBJECTS:astaroth_helpers>
 	)
 
-	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
 	add_library(kernels 
     		$<TARGET_OBJECTS:kernels_obj>
     		$<TARGET_OBJECTS:ac_fft>
     		$<TARGET_OBJECTS:ac_transpose>
     		$<TARGET_OBJECTS:ac_reindex>
     		$<TARGET_OBJECTS:acc-runtime-driver>
+    		$<TARGET_OBJECTS:ac_cuda_wrappers>
+    		$<TARGET_OBJECTS:astaroth_helpers>
 	)
-	target_link_libraries(kernels PUBLIC ac_fft ac_transpose ac_reindex ac_cuda_wrappers astaroth_helpers)
 endif()
 
 set_property(TARGET static_kernels PROPERTY POSITION_INDEPENDENT_CODE ON)
