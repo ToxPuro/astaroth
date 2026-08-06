@@ -125,7 +125,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="preprocessor">#include &quot;builtin_enums.h&quot;</span></div>
 <div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="preprocessor">#include &quot;<a class="code" href="common__kernels_8h.html">common_kernels.h</a>&quot;</span></div>
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span><span class="preprocessor">#include &quot;<a class="code" href="datatypes_8h.html">datatypes.h</a>&quot;</span></div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#include &quot;<a class="code" href="device__headers_8h.html">device_headers.h</a>&quot;</span></div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#include &quot;<a class="code" href="astaroth__device__headers_8h.html">astaroth_device_headers.h</a>&quot;</span></div>
 <div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="preprocessor">#include &quot;<a class="code" href="errchk_8h.html">errchk.h</a>&quot;</span></div>
 <div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#include &quot;<a class="code" href="func__define_8h.html">func_define.h</a>&quot;</span></div>
 <div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
@@ -388,7 +388,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>} <a class="code hl_struct" href="structAcAutotuneMeasurement.html">AcAutotuneMeasurement</a>;</div>
 </div>
 <div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span> </div>
-<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span><span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> int3</div>
+<div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span><span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> int3</div>
 <div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>acGetFieldHalos(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
 <div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>{</div>
 <div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span> </div>
@@ -470,7 +470,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00335" name="l00335"></a><span class="lineno">  335</span><span class="preprocessor">#if AC_RUNTIME_COMPILATION</span></div>
 <div class="line"><a id="l00336" name="l00336"></a><span class="lineno">  336</span><span class="preprocessor">#define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&amp;FUNC_NAME) = dlsym(handle,#FUNC_NAME); \</span></div>
 <div class="line"><a id="l00337" name="l00337"></a><span class="lineno">  337</span><span class="preprocessor">                 if(!FUNC_NAME &amp;&amp; STREAM) fprintf(STREAM,&quot;Astaroth warning: was not able to load %s\n&quot;,#FUNC_NAME);</span></div>
-<div class="line"><a id="l00338" name="l00338"></a><span class="lineno">  338</span>  <span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keywordtype">void</span>* acLoadRunTime(FILE* stream, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info)</div>
+<div class="line"><a id="l00338" name="l00338"></a><span class="lineno">  338</span>  <span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keywordtype">void</span>* acLoadRunTime(FILE* stream, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info)</div>
 <div class="line"><a id="l00339" name="l00339"></a><span class="lineno">  339</span>  {</div>
 <div class="line"><a id="l00340" name="l00340"></a><span class="lineno">  340</span>    <span class="keyword">const</span> <span class="keywordtype">size_t</span> len = 40000;</div>
 <div class="line"><a id="l00341" name="l00341"></a><span class="lineno">  341</span>    <span class="keywordtype">char</span> original_runtime_astaroth_runtime_path[len];</div>
@@ -528,7 +528,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00393" name="l00393"></a><span class="lineno">  393</span>  }</div>
 <div class="line"><a id="l00394" name="l00394"></a><span class="lineno">  394</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00395" name="l00395"></a><span class="lineno">  395</span> </div>
-<div class="line"><a id="l00396" name="l00396"></a><span class="lineno">  396</span><span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keywordtype">size_t</span></div>
+<div class="line"><a id="l00396" name="l00396"></a><span class="lineno">  396</span><span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keywordtype">size_t</span></div>
 <div class="line"><a id="l00397" name="l00397"></a><span class="lineno">  397</span>prof_count(<span class="keyword">const</span> Profile prof, <span class="keyword">const</span> <a class="code hl_typedef" href="host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f">size3_t</a> counts)</div>
 <div class="line"><a id="l00398" name="l00398"></a><span class="lineno">  398</span>{</div>
 <div class="line"><a id="l00399" name="l00399"></a><span class="lineno">  399</span>    <span class="keywordflow">if</span>(NUM_PROFILES == 0) <span class="keywordflow">return</span> 0;</div>
@@ -544,7 +544,7 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00409" name="l00409"></a><span class="lineno">  409</span>            prof_types[prof] == <a class="code hl_enumvalue" href="host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88a0b92292bdfe9e60ab755e077bc589391">PROFILE_ZY</a> ? counts.z*counts.y  :</div>
 <div class="line"><a id="l00410" name="l00410"></a><span class="lineno">  410</span>        0;</div>
 <div class="line"><a id="l00411" name="l00411"></a><span class="lineno">  411</span>}</div>
-<div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span><span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keywordtype">size_t</span></div>
+<div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span><span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keywordtype">size_t</span></div>
 <div class="line"><a id="l00413" name="l00413"></a><span class="lineno">  413</span>prof_size(<span class="keyword">const</span> Profile prof, <span class="keyword">const</span> <a class="code hl_typedef" href="host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f">size3_t</a> counts)</div>
 <div class="line"><a id="l00414" name="l00414"></a><span class="lineno">  414</span>{</div>
 <div class="line"><a id="l00415" name="l00415"></a><span class="lineno">  415</span>    <span class="keywordflow">return</span> prof_count(prof,counts)*<span class="keyword">sizeof</span>(<a class="code hl_typedef" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>);</div>
@@ -646,20 +646,20 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00515" name="l00515"></a><span class="lineno">  515</span>      <span class="keywordflow">return</span> (array_info){};</div>
 <div class="line"><a id="l00516" name="l00516"></a><span class="lineno">  516</span>  }</div>
 <div class="line"><a id="l00517" name="l00517"></a><span class="lineno">  517</span> </div>
-<div class="line"><a id="l00518" name="l00518"></a><span class="lineno">  518</span>  <span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
+<div class="line"><a id="l00518" name="l00518"></a><span class="lineno">  518</span>  <span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
 <div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>  get_name(<span class="keyword">const</span> AcRealOutputParam&amp; param)</div>
 <div class="line"><a id="l00520" name="l00520"></a><span class="lineno">  520</span>  {</div>
 <div class="line"><a id="l00521" name="l00521"></a><span class="lineno">  521</span>      <span class="keywordflow">if</span> <span class="keyword">constexpr</span>(NUM_REAL_OUTPUTS == 0) <span class="keywordflow">return</span> <span class="stringliteral">&quot;NO REAL OUTPUTS&quot;</span>;</div>
 <div class="line"><a id="l00522" name="l00522"></a><span class="lineno">  522</span>          <span class="keywordflow">return</span> real_output_names[param];</div>
 <div class="line"><a id="l00523" name="l00523"></a><span class="lineno">  523</span>  }</div>
-<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>  <span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
+<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>  <span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
 <div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span>  get_name(<span class="keyword">const</span> AcIntOutputParam&amp; param)</div>
 <div class="line"><a id="l00526" name="l00526"></a><span class="lineno">  526</span>  {</div>
 <div class="line"><a id="l00527" name="l00527"></a><span class="lineno">  527</span>      <span class="keywordflow">if</span> <span class="keyword">constexpr</span>(NUM_INT_OUTPUTS == 0) <span class="keywordflow">return</span> <span class="stringliteral">&quot;NO INT OUTPUTS&quot;</span>;</div>
 <div class="line"><a id="l00528" name="l00528"></a><span class="lineno">  528</span>      <span class="keywordflow">else</span> <span class="keywordflow">return</span> int_output_names[param];</div>
 <div class="line"><a id="l00529" name="l00529"></a><span class="lineno">  529</span>  }</div>
 <div class="line"><a id="l00530" name="l00530"></a><span class="lineno">  530</span><span class="preprocessor">#if AC_DOUBLE_PRECISION</span></div>
-<div class="line"><a id="l00531" name="l00531"></a><span class="lineno">  531</span>  <span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
+<div class="line"><a id="l00531" name="l00531"></a><span class="lineno">  531</span>  <span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
 <div class="line"><a id="l00532" name="l00532"></a><span class="lineno">  532</span>  get_name(<span class="keyword">const</span> AcFloatOutputParam&amp; param)</div>
 <div class="line"><a id="l00533" name="l00533"></a><span class="lineno">  533</span>  {</div>
 <div class="line"><a id="l00534" name="l00534"></a><span class="lineno">  534</span>      <span class="keywordflow">if</span> <span class="keyword">constexpr</span>(NUM_FLOAT_OUTPUTS == 0) <span class="keywordflow">return</span> <span class="stringliteral">&quot;NO FLOAT OUTPUTS&quot;</span>;</div>
@@ -667,14 +667,14 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="line"><a id="l00536" name="l00536"></a><span class="lineno">  536</span>  }</div>
 <div class="line"><a id="l00537" name="l00537"></a><span class="lineno">  537</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00538" name="l00538"></a><span class="lineno">  538</span>  </div>
-<div class="line"><a id="l00539" name="l00539"></a><span class="lineno">  539</span>  <span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
+<div class="line"><a id="l00539" name="l00539"></a><span class="lineno">  539</span>  <span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
 <div class="line"><a id="l00540" name="l00540"></a><span class="lineno">  540</span>  get_name(<span class="keyword">const</span> Profile&amp; param)</div>
 <div class="line"><a id="l00541" name="l00541"></a><span class="lineno">  541</span>  {</div>
 <div class="line"><a id="l00542" name="l00542"></a><span class="lineno">  542</span>      <span class="keywordflow">if</span> <span class="keyword">constexpr</span>(NUM_PROFILES==0) <span class="keywordflow">return</span> <span class="stringliteral">&quot;NO_PROFILES&quot;</span>;</div>
 <div class="line"><a id="l00543" name="l00543"></a><span class="lineno">  543</span>      <span class="keywordflow">else</span> <span class="keywordflow">return</span> profile_names[param];</div>
 <div class="line"><a id="l00544" name="l00544"></a><span class="lineno">  544</span>  }</div>
 <div class="line"><a id="l00545" name="l00545"></a><span class="lineno">  545</span> </div>
-<div class="line"><a id="l00546" name="l00546"></a><span class="lineno">  546</span>  <span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
+<div class="line"><a id="l00546" name="l00546"></a><span class="lineno">  546</span>  <span class="keyword">static</span> <a class="code hl_define" href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> <span class="keyword">const</span> <span class="keywordtype">char</span>* </div>
 <div class="line"><a id="l00547" name="l00547"></a><span class="lineno">  547</span>  get_name(<span class="keyword">const</span> Field&amp; param)</div>
 <div class="line"><a id="l00548" name="l00548"></a><span class="lineno">  548</span>  {</div>
 <div class="line"><a id="l00549" name="l00549"></a><span class="lineno">  549</span>          <span class="keywordflow">return</span> field_names[param];</div>
@@ -990,13 +990,13 @@ $(document).ready(function(){initNavTree('acc__runtime_8h_source.html',''); init
 <div class="ttc" id="aacc__runtime_8h_html_af45b1f0ed8e2fdf944b127b47208d8a1"><div class="ttname"><a href="acc__runtime_8h.html#af45b1f0ed8e2fdf944b127b47208d8a1">ac_get_scratchpad_size_real</a></div><div class="ttdeci">const size_t * ac_get_scratchpad_size_real(const size_t i)</div></div>
 <div class="ttc" id="aacc__runtime_8h_html_af8622a7bea9af574bf25ab30d90646c0"><div class="ttname"><a href="acc__runtime_8h.html#af8622a7bea9af574bf25ab30d90646c0">acFreeArrays</a></div><div class="ttdeci">AcResult acFreeArrays(const AcMeshInfo config)</div></div>
 <div class="ttc" id="aacreal_8h_html_a682ddafb17af19aa8f6e413da6625de0"><div class="ttname"><a href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a></div><div class="ttdeci">float AcReal</div><div class="ttdef"><b>Definition</b> acreal.h:11</div></div>
+<div class="ttc" id="aastaroth__base_8h_html_addf5ec070e9499d36b7f2009ce736076"><div class="ttname"><a href="astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a></div><div class="ttdeci">#define UNUSED</div><div class="ttdef"><b>Definition</b> astaroth_base.h:41</div></div>
+<div class="ttc" id="aastaroth__device__headers_8h_html"><div class="ttname"><a href="astaroth__device__headers_8h.html">astaroth_device_headers.h</a></div></div>
 <div class="ttc" id="aastaroth__utils_8h_html_a67414ecb24200d9f1a60f2923f1cfa7b"><div class="ttname"><a href="astaroth__utils_8h.html#a67414ecb24200d9f1a60f2923f1cfa7b">config</a></div><div class="ttdeci">AcResult AcMeshInfo * config</div><div class="ttdef"><b>Definition</b> astaroth_utils.h:148</div></div>
 <div class="ttc" id="acommon__kernels_8h_html"><div class="ttname"><a href="common__kernels_8h.html">common_kernels.h</a></div></div>
 <div class="ttc" id="adatatypes_8h_html"><div class="ttname"><a href="datatypes_8h.html">datatypes.h</a></div></div>
-<div class="ttc" id="adevice__headers_8h_html"><div class="ttname"><a href="device__headers_8h.html">device_headers.h</a></div></div>
 <div class="ttc" id="aerrchk_8h_html"><div class="ttname"><a href="errchk_8h.html">errchk.h</a></div><div class="ttdoc">Brief info.</div></div>
 <div class="ttc" id="aerrchk_8h_html_ac61a83f1e8c5a2ef1d6222d2ebd67698"><div class="ttname"><a href="errchk_8h.html#ac61a83f1e8c5a2ef1d6222d2ebd67698">ERRCHK_ALWAYS</a></div><div class="ttdeci">#define ERRCHK_ALWAYS(retval)</div><div class="ttdef"><b>Definition</b> errchk.h:86</div></div>
-<div class="ttc" id="afunc__attributes_8h_html_addf5ec070e9499d36b7f2009ce736076"><div class="ttname"><a href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a></div><div class="ttdeci">#define UNUSED</div><div class="ttdef"><b>Definition</b> func_attributes.h:4</div></div>
 <div class="ttc" id="afunc__define_8h_html"><div class="ttname"><a href="func__define_8h.html">func_define.h</a></div></div>
 <div class="ttc" id="afunc__define_8h_html_a647edb5f42c181fd2443f4d9e556b3a9"><div class="ttname"><a href="func__define_8h.html#a647edb5f42c181fd2443f4d9e556b3a9">AC_BEGIN_C_DECLARATIONS</a></div><div class="ttdeci">#define AC_BEGIN_C_DECLARATIONS</div><div class="ttdef"><b>Definition</b> func_define.h:13</div></div>
 <div class="ttc" id="afunc__define_8h_html_ac083955fb77e3fb56cef11c97df9f246"><div class="ttname"><a href="func__define_8h.html#ac083955fb77e3fb56cef11c97df9f246">AC_END_C_DECLARATIONS</a></div><div class="ttdeci">#define AC_END_C_DECLARATIONS</div><div class="ttdef"><b>Definition</b> func_define.h:14</div></div>

@@ -12,7 +12,7 @@ var searchData=
   ['ac_5findex_5forder_9',['AC_INDEX_ORDER',['../acc__runtime_8h.html#a50320f580cc090b7957072655702cebb',1,'acc_runtime.h']]],
   ['ac_5fmag_10',['AC_MAG',['../astaroth__utils_8h.html#abff3646821f28edb7b37a0794667aa34',1,'astaroth_utils.h']]],
   ['ac_5fmpi_5fh_11',['AC_MPI_H',['../ac__mpi_8h.html#ab9f579fab0900c660a31f80ce648063d',1,'ac_mpi.h']]],
-  ['ac_5fread_5fonly_5fload_12',['AC_READ_ONLY_LOAD',['../device__headers_8h.html#a4bb8cfd1342e90908812f78adb9d6571',1,'device_headers.h']]],
+  ['ac_5fread_5fonly_5fload_12',['AC_READ_ONLY_LOAD',['../astaroth__device__headers_8h.html#a4bb8cfd1342e90908812f78adb9d6571',1,'astaroth_device_headers.h']]],
   ['ac_5freal_5fepsilon_13',['AC_REAL_EPSILON',['../acreal_8h.html#a4f628d9fa3e98b599e4925cd8404abbe',1,'acreal.h']]],
   ['ac_5freal_5finvalid_5fvalue_14',['AC_REAL_INVALID_VALUE',['../acreal_8h.html#aef22a1da2c971f634f8316433d7422c7',1,'acreal.h']]],
   ['ac_5freal_5fmax_15',['AC_REAL_MAX',['../acreal_8h.html#a1efb95df159b413320c7a780a559a650',1,'acreal.h']]],

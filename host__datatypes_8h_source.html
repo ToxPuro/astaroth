@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Astaroth: acc-runtime/api/host_datatypes.h Source File</title>
+<title>Astaroth: include/host_datatypes.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -105,7 +105,7 @@ $(document).ready(function(){initNavTree('host__datatypes_8h_source.html',''); i
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span> </div>
 <div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#include &quot;<a class="code" href="acreal_8h.html">acreal.h</a>&quot;</span></div>
 <div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#include &quot;builtin_enums.h&quot;</span></div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="preprocessor">#include &quot;<a class="code" href="device__headers_8h.html">device_headers.h</a>&quot;</span></div>
+<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="preprocessor">#include &quot;<a class="code" href="astaroth__device__headers_8h.html">astaroth_device_headers.h</a>&quot;</span></div>
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span> </div>
 <div class="line"><a id="l00010" name="l00010"></a><span class="lineno"><a class="line" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da9fd47a52eddf507ba682403bd3a4728a">   10</a></span><span class="keyword">typedef</span> <span class="keyword">enum</span> { <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a> = 0, <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da9fd47a52eddf507ba682403bd3a4728a">AC_FAILURE</a> = 1, <a class="code hl_enumvalue" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da9b51e2a7724f469bff938d8ae0be49c4">AC_NOT_ALLOCATED</a> = 2} <a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>;</div>
 <div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span> </div>
@@ -169,28 +169,28 @@ $(document).ready(function(){initNavTree('host__datatypes_8h_source.html',''); i
 <div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span><span class="keyword">typedef</span> <span class="keyword">struct</span></div>
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>{</div>
 <div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a9336ebf25087d91c818ee6e9ec29f8c1">x</a>,<a class="code hl_variable" href="math__utils_8h.html#a3f8e7111f89d7df32598a55fa9034805">y</a>,<a class="code hl_variable" href="math__utils_8h.html#a317a3bac73c52152afe78bc6a300c1c8">z</a>;</div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>} int3;</div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>} <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">int3</a>;</div>
 <div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span><span class="keyword">typedef</span> <span class="keyword">struct</span></div>
 <div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>{</div>
 <div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>        <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a9336ebf25087d91c818ee6e9ec29f8c1">x</a>,<a class="code hl_variable" href="math__utils_8h.html#a3f8e7111f89d7df32598a55fa9034805">y</a>,<a class="code hl_variable" href="math__utils_8h.html#a317a3bac73c52152afe78bc6a300c1c8">z</a>,w;</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>} int4;</div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>} <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">int4</a>;</div>
 <div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span><span class="preprocessor">#define INT3_DEFINED</span></div>
 <div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span> </div>
 <div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span><span class="keyword">typedef</span> <span class="keyword">struct</span></div>
 <div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>{</div>
 <div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>    <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a9336ebf25087d91c818ee6e9ec29f8c1">x</a>, <a class="code hl_variable" href="math__utils_8h.html#a3f8e7111f89d7df32598a55fa9034805">y</a>, <a class="code hl_variable" href="math__utils_8h.html#a317a3bac73c52152afe78bc6a300c1c8">z</a>;</div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>} dim3;</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>} <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">dim3</a>;</div>
 <div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span> </div>
 <div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span><span class="keyword">typedef</span> <span class="keyword">struct</span></div>
 <div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>{</div>
 <div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>    <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a9336ebf25087d91c818ee6e9ec29f8c1">x</a>, <a class="code hl_variable" href="math__utils_8h.html#a3f8e7111f89d7df32598a55fa9034805">y</a>, <a class="code hl_variable" href="math__utils_8h.html#a317a3bac73c52152afe78bc6a300c1c8">z</a>;</div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>} uint3;</div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>} <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">uint3</a>;</div>
 <div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span> </div>
 <div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span><span class="preprocessor">#include &quot;user_typedefs.h&quot;</span></div>
 <div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span> </div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno"><a class="line" href="host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f">   85</a></span><span class="keyword">typedef</span> Volume <a class="code hl_typedef" href="host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f">size3_t</a>;</div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno"><a class="line" href="host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f">   85</a></span><span class="keyword">typedef</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">Volume</a> <a class="code hl_typedef" href="host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f">size3_t</a>;</div>
 <div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span> </div>
 <div class="foldopen" id="foldopen00087" data-start="{" data-end="};">
 <div class="line"><a id="l00087" name="l00087"></a><span class="lineno"><a class="line" href="structAcMeshDims.html">   87</a></span><span class="keyword">typedef</span> <span class="keyword">struct </span>{</div>
@@ -201,7 +201,7 @@ $(document).ready(function(){initNavTree('host__datatypes_8h_source.html',''); i
 <div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>} <a class="code hl_struct" href="structAcMeshDims.html">AcMeshDims</a>;</div>
 </div>
 <div class="ttc" id="aacreal_8h_html"><div class="ttname"><a href="acreal_8h.html">acreal.h</a></div></div>
-<div class="ttc" id="adevice__headers_8h_html"><div class="ttname"><a href="device__headers_8h.html">device_headers.h</a></div></div>
+<div class="ttc" id="aastaroth__device__headers_8h_html"><div class="ttname"><a href="astaroth__device__headers_8h.html">astaroth_device_headers.h</a></div></div>
 <div class="ttc" id="ahost__datatypes_8h_html_a4fbe89db7871cf2ab32327a60eb4520f"><div class="ttname"><a href="host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f">size3_t</a></div><div class="ttdeci">Volume size3_t</div><div class="ttdef"><b>Definition</b> host_datatypes.h:85</div></div>
 <div class="ttc" id="ahost__datatypes_8h_html_a601254ccb5bcc54c209aeea4ac24e43d"><div class="ttname"><a href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a></div><div class="ttdeci">AcResult</div><div class="ttdef"><b>Definition</b> host_datatypes.h:10</div></div>
 <div class="ttc" id="ahost__datatypes_8h_html_a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf"><div class="ttname"><a href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43da355a7d54573a78fac8fd20d5bc27badf">AC_SUCCESS</a></div><div class="ttdeci">@ AC_SUCCESS</div><div class="ttdef"><b>Definition</b> host_datatypes.h:10</div></div>
@@ -239,6 +239,7 @@ $(document).ready(function(){initNavTree('host__datatypes_8h_source.html',''); i
 <div class="ttc" id="ahost__datatypes_8h_html_aff8ab01b729f9e2b740d40e091a63d35"><div class="ttname"><a href="host__datatypes_8h.html#aff8ab01b729f9e2b740d40e091a63d35">Z_ORDER_INT</a></div><div class="ttdeci">#define Z_ORDER_INT</div><div class="ttdef"><b>Definition</b> host_datatypes.h:15</div></div>
 <div class="ttc" id="amath__utils_8h_html_a317a3bac73c52152afe78bc6a300c1c8"><div class="ttname"><a href="math__utils_8h.html#a317a3bac73c52152afe78bc6a300c1c8">z</a></div><div class="ttdeci">AcReal z</div><div class="ttdef"><b>Definition</b> math_utils.h:1066</div></div>
 <div class="ttc" id="amath__utils_8h_html_a3f8e7111f89d7df32598a55fa9034805"><div class="ttname"><a href="math__utils_8h.html#a3f8e7111f89d7df32598a55fa9034805">y</a></div><div class="ttdeci">AcReal y</div><div class="ttdef"><b>Definition</b> math_utils.h:1062</div></div>
+<div class="ttc" id="amath__utils_8h_html_a4d348ec60ddcabc4d3429057f3889815"><div class="ttname"><a href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">val</a></div><div class="ttdeci">constexpr const AcReal &amp; val</div><div class="ttdef"><b>Definition</b> math_utils.h:1090</div></div>
 <div class="ttc" id="amath__utils_8h_html_a9336ebf25087d91c818ee6e9ec29f8c1"><div class="ttname"><a href="math__utils_8h.html#a9336ebf25087d91c818ee6e9ec29f8c1">x</a></div><div class="ttdeci">x</div><div class="ttdef"><b>Definition</b> math_utils.h:1059</div></div>
 <div class="ttc" id="astructAcCommunicator_html"><div class="ttname"><a href="structAcCommunicator.html">AcCommunicator</a></div><div class="ttdef"><b>Definition</b> ac_mpi.h:9</div></div>
 <div class="ttc" id="astructAcMeshDims_html"><div class="ttname"><a href="structAcMeshDims.html">AcMeshDims</a></div><div class="ttdef"><b>Definition</b> host_datatypes.h:87</div></div>
@@ -253,7 +254,7 @@ $(document).ready(function(){initNavTree('host__datatypes_8h_source.html',''); i
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="dir_2dc8787002676dc565357b7cfa0121df.html">acc-runtime</a></li><li class="navelem"><a class="el" href="dir_baf4bc5b9097ff9e9c19bf0a5b16f14e.html">api</a></li><li class="navelem"><a class="el" href="host__datatypes_8h.html">host_datatypes.h</a></li>
+    <li class="navelem"><a class="el" href="dir_d44c64559bbebec7f509842c48db8b23.html">include</a></li><li class="navelem"><a class="el" href="host__datatypes_8h.html">host_datatypes.h</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
   </ul>
 </div>
