@@ -34,6 +34,10 @@ struct VolumeHash {
 
 #define check_rocfft_status(expression) { const auto _status_ = expression; print_rocfft_error(_status_); ERRCHK_ALWAYS(_status_ == rocfft_status_success); }
 
+#if AC_MPI_ENABLED
+static MPI_Comm communicator{};
+#endif
+
 void
 check_if_distributed()
 {
