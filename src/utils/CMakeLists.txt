@@ -27,3 +27,10 @@ endif()
 
 ac_link_mpi(astaroth_utils)
 set_property(TARGET astaroth_utils PROPERTY POSITION_INDEPENDENT_CODE ON)
+install(TARGETS
+    astaroth_utils
+    EXPORT AstarothTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)

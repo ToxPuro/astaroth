@@ -111,5 +111,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 else()
 	target_compile_definitions(static_kernels PRIVATE -DACC_ARRAY_BOUND_CHECKS=0)
 endif()
-
-
+install(TARGETS
+    ac_fft
+    ac_cuda_wrappers
+    static_kernels
+    EXPORT AstarothTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)

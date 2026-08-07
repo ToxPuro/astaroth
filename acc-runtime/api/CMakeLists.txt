@@ -188,3 +188,10 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
     endif()
 
 endif()
+install(TARGETS
+    acc-runtime-headers
+    EXPORT AstarothTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)

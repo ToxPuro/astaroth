@@ -144,3 +144,11 @@ target_include_directories(astaroth_core
   	PUBLIC 
         $<BUILD_INTERFACE:${AC_BASE_PATH}/3rdparty/eigen>
 )
+
+install(TARGETS
+    astaroth_core
+    EXPORT AstarothTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)

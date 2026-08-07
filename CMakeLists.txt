@@ -361,32 +361,6 @@ if(EXTRA_SOURCES_DIR)
 endif()
 
 #Installation
-if (BUILD_UTILS)
-  install(TARGETS
-      astaroth_core
-      astaroth_utils
-      acc-runtime-headers
-      static_kernels
-      ac_fft
-      ac_cuda_wrappers
-      EXPORT AstarothTargets
-      LIBRARY DESTINATION lib
-      ARCHIVE DESTINATION lib
-      RUNTIME DESTINATION bin
-  )
-else()
-  install(TARGETS
-      astaroth_core
-      acc-runtime-headers
-      static_kernels
-      ac_fft
-      ac_cuda_wrappers
-      EXPORT AstarothTargets
-      LIBRARY DESTINATION lib
-      ARCHIVE DESTINATION lib
-      RUNTIME DESTINATION bin
-  )
-endif()
 install(
     DIRECTORY include/
     DESTINATION astaroth/include
