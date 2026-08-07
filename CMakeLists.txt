@@ -39,6 +39,7 @@ option(BUILD_SHARED_LIBS           "Build Astaroth as a collection of shared lib
 option(BUILD_STANDALONE            "Build the standalone_mpi executable to run standard simulation." ON)
 option(BUILD_TESTS                 "Builds tests in test subdirectory." OFF)
 option(BUILD_UTILS                 "Builds the utility library" ON)
+option(BUILD_INTEGRATOR            "Whether to build integrator" OFF)
 option(CPU_BUILD                   "To build CPU-only build" OFF)
 option(DEBUG_SYNC                  "Whether to sync after all tasks in default ops" OFF)
 option(DOUBLE_PRECISION            "Generates double precision code." ON)
@@ -251,6 +252,11 @@ if (INCLUDE_3RD_PARTIES)
     add_subdirectory(3rdparty/inih)
 endif()
 
+if(BUILD_INTEGRATOR)
+   set(DSL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/integrator/DSL")
+   add_subdirectory(integrator)
+endif()
+
 # Astaroth modules
 add_subdirectory(src/core/helpers)
 add_subdirectory(src/core/decomposition)
@@ -359,6 +365,7 @@ endif()
 if(EXTRA_SOURCES_DIR)
     add_subdirectory(${EXTRA_SOURCES_DIR} ${EXTRA_SOURCES_DIR}/cmake)
 endif()
+
 
 #Installation
 install(
