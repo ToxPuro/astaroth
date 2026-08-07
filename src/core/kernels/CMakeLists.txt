@@ -96,6 +96,13 @@ else()
 	#TP: this is important if kernels and astaroth_core are an .so to get the correct linking flags
 	target_link_libraries(kernels PUBLIC ac_fft)
 	target_link_libraries(static_kernels PUBLIC ac_fft)
+        install(TARGETS
+            ac_fft
+            EXPORT AstarothTargets
+            LIBRARY DESTINATION lib
+            ARCHIVE DESTINATION lib
+            RUNTIME DESTINATION bin
+         )
 endif()
 
 set_property(TARGET static_kernels PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -112,7 +119,6 @@ else()
 	target_compile_definitions(static_kernels PRIVATE -DACC_ARRAY_BOUND_CHECKS=0)
 endif()
 install(TARGETS
-    ac_fft
     ac_cuda_wrappers
     static_kernels
     EXPORT AstarothTargets
