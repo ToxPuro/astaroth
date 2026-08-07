@@ -1,9 +1,0 @@
-<map id="include/astaroth_device.h" name="include/astaroth_device.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="97,5,286,31"/>
-<area shape="rect" id="Node000002" href="$astaroth_8h.html" title=" " alt="" coords="122,79,261,104"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="194,44,194,79,189,79,189,44"/>
-<area shape="rect" id="Node000003" href="$astaroth__utils_8h.html" title="Functions for loading and updating AcMeshInfo." alt="" coords="5,152,180,177"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="166,114,110,154,107,150,163,110"/>
-<area shape="rect" id="Node000004" href="$device__detail_8h.html" title=" " alt="" coords="204,152,376,177"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="220,110,275,150,272,154,216,114"/>
-</map>

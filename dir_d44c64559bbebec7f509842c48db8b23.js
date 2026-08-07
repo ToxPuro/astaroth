@@ -8,7 +8,6 @@ var dir_d44c64559bbebec7f509842c48db8b23 =
     [ "astaroth_base.h", "astaroth__base_8h.html", "astaroth__base_8h" ],
     [ "astaroth_cuda_wrappers.h", "astaroth__cuda__wrappers_8h.html", "astaroth__cuda__wrappers_8h" ],
     [ "astaroth_debug.h", "astaroth__debug_8h.html", "astaroth__debug_8h" ],
-    [ "astaroth_device.h", "astaroth__device_8h.html", "astaroth__device_8h" ],
     [ "astaroth_forcing.h", "astaroth__forcing_8h.html", "astaroth__forcing_8h" ],
     [ "astaroth_grid.h", "astaroth__grid_8h.html", "astaroth__grid_8h" ],
     [ "astaroth_helpers.h", "astaroth__helpers_8h.html", "astaroth__helpers_8h" ],
