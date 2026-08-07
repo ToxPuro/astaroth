@@ -79,13 +79,23 @@ else()
 
 	add_library(static_kernels STATIC 
     		$<TARGET_OBJECTS:kernels_obj>
-    		$<TARGET_OBJECTS:ac_fft>
     		$<TARGET_OBJECTS:ac_transpose>
     		$<TARGET_OBJECTS:ac_reindex>
     		$<TARGET_OBJECTS:acc-runtime-driver>
     		$<TARGET_OBJECTS:ac_cuda_wrappers>
     		$<TARGET_OBJECTS:astaroth_helpers>
 	)
+	add_library(kernels 
+    		$<TARGET_OBJECTS:kernels_obj>
+    		$<TARGET_OBJECTS:ac_transpose>
+    		$<TARGET_OBJECTS:ac_reindex>
+    		$<TARGET_OBJECTS:acc-runtime-driver>
+    		$<TARGET_OBJECTS:ac_cuda_wrappers>
+    		$<TARGET_OBJECTS:astaroth_helpers>
+	)
+	#TP: this is important if kernels and astaroth_core are an .so to get the correct linking flags
+	target_link_libraries(kernels PUBLIC ac_fft)
+	target_link_libraries(static_kernels PUBLIC ac_fft)
 endif()
 
 set_property(TARGET static_kernels PROPERTY POSITION_INDEPENDENT_CODE ON)

@@ -367,6 +367,8 @@ if (BUILD_UTILS)
       astaroth_utils
       acc-runtime-headers
       static_kernels
+      ac_fft
+      ac_cuda_wrappers
       EXPORT AstarothTargets
       LIBRARY DESTINATION lib
       ARCHIVE DESTINATION lib
@@ -377,6 +379,8 @@ else()
       astaroth_core
       acc-runtime-headers
       static_kernels
+      ac_fft
+      ac_cuda_wrappers
       EXPORT AstarothTargets
       LIBRARY DESTINATION lib
       ARCHIVE DESTINATION lib
