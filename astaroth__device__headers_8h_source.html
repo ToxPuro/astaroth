@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Astaroth: include/astaroth_device_headers.h Source File</title>
+<title>Astaroth: acc-runtime/api/astaroth_device_headers.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -107,7 +107,7 @@ $(document).ready(function(){initNavTree('astaroth__device__headers_8h_source.ht
 <div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#include &lt;limits.h&gt;</span></div>
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="preprocessor">#include &lt;stdint.h&gt;</span></div>
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span> </div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="keyword">typedef</span> <span class="keywordtype">float</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">__half</a>;</div>
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="keyword">typedef</span> <span class="keywordtype">float</span> __half;</div>
 <div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="keyword">typedef</span> <span class="keywordtype">int</span> <a class="code hl_define" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a>;</div>
 <div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="keyword">typedef</span> <span class="keywordtype">int</span> <a class="code hl_define" href="hip_8h.html#af47e582d1110438a837fc3394f6791ab">cudaError_t</a>;</div>
 <div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="keyword">typedef</span> <span class="keywordtype">int</span> <a class="code hl_define" href="hip_8h.html#afe3a2a06ed6140d2f41c4a5d41d392f9">cudaSharedMemConfig</a>;</div>
@@ -116,25 +116,25 @@ $(document).ready(function(){initNavTree('astaroth__device__headers_8h_source.ht
 <div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="keyword">typedef</span> <span class="keywordtype">int</span> <a class="code hl_define" href="hip_8h.html#a32b4c230cc7c3a66496a02734d96ed4f">cudaEvent_t</a>;</div>
 <div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="keyword">typedef</span> <span class="keyword">struct</span></div>
 <div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>{</div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">warpSize</a>;</div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">multiProcessorCount</a>;</div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">maxThreadsPerBlock</a>;</div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">sharedMemPerBlock</a>;</div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>    <span class="keywordtype">int</span> warpSize;</div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>    <span class="keywordtype">int</span> multiProcessorCount;</div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>    <span class="keywordtype">int</span> maxThreadsPerBlock;</div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>    <span class="keywordtype">int</span> sharedMemPerBlock;</div>
 <div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>    <span class="keyword">const</span> <span class="keywordtype">char</span>* name;</div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">major</a>,<a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">minor</a>;</div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>    <span class="keywordtype">double</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">clockRate</a>;</div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">singleToDoublePrecisionPerfRatio</a>;</div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">computeMode</a>;</div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">memoryClockRate</a>;</div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">memoryBusWidth</a>;</div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>    <span class="keywordtype">int</span>   <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">ECCEnabled</a>;</div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>    <span class="keywordtype">double</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">totalGlobalMem</a>;</div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">localL1CacheSupported</a>;</div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">globalL1CacheSupported</a>;</div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">l2CacheSize</a>;</div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">regsPerBlock</a>;</div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">streamPrioritiesSupported</a>;</div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">maxThreadsDim</a>[3];</div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>    <span class="keywordtype">int</span> major,minor;</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>    <span class="keywordtype">double</span> clockRate;</div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>    <span class="keywordtype">int</span> singleToDoublePrecisionPerfRatio;</div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>    <span class="keywordtype">int</span> computeMode;</div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>    <span class="keywordtype">int</span> memoryClockRate;</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>    <span class="keywordtype">int</span> memoryBusWidth;</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>    <span class="keywordtype">int</span>   ECCEnabled;</div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>    <span class="keywordtype">double</span> totalGlobalMem;</div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>    <span class="keywordtype">int</span> localL1CacheSupported;</div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>    <span class="keywordtype">int</span> globalL1CacheSupported;</div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span>    <span class="keywordtype">int</span> l2CacheSize;</div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>    <span class="keywordtype">int</span> regsPerBlock;</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>    <span class="keywordtype">int</span> streamPrioritiesSupported;</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>    <span class="keywordtype">int</span> maxThreadsDim[3];</div>
 <div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>} <a class="code hl_define" href="hip_8h.html#a96105a2e43b036236409e7d00e20ff57">cudaDeviceProp</a>; </div>
 <div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="keyword">typedef</span> <span class="keywordtype">int</span> <a class="code hl_define" href="hip_8h.html#ad4d59cbc3775c38a8e05df8fb1c3b956">cudaDeviceAttr</a>;</div>
 <div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="preprocessor">#define cudaStreamNonBlocking (0)</span></div>
@@ -233,13 +233,12 @@ $(document).ready(function(){initNavTree('astaroth__device__headers_8h_source.ht
 <div class="ttc" id="ahip_8h_html_af319507e914f356729654a2251ed7843"><div class="ttname"><a href="hip_8h.html#af319507e914f356729654a2251ed7843">cudaMemcpyKind</a></div><div class="ttdeci">#define cudaMemcpyKind</div><div class="ttdef"><b>Definition</b> hip.h:52</div></div>
 <div class="ttc" id="ahip_8h_html_af47e582d1110438a837fc3394f6791ab"><div class="ttname"><a href="hip_8h.html#af47e582d1110438a837fc3394f6791ab">cudaError_t</a></div><div class="ttdeci">#define cudaError_t</div><div class="ttdef"><b>Definition</b> hip.h:31</div></div>
 <div class="ttc" id="ahip_8h_html_afe3a2a06ed6140d2f41c4a5d41d392f9"><div class="ttname"><a href="hip_8h.html#afe3a2a06ed6140d2f41c4a5d41d392f9">cudaSharedMemConfig</a></div><div class="ttdeci">#define cudaSharedMemConfig</div><div class="ttdef"><b>Definition</b> hip.h:29</div></div>
-<div class="ttc" id="amath__utils_8h_html_a4d348ec60ddcabc4d3429057f3889815"><div class="ttname"><a href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">val</a></div><div class="ttdeci">constexpr const AcReal &amp; val</div><div class="ttdef"><b>Definition</b> math_utils.h:1090</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="dir_d44c64559bbebec7f509842c48db8b23.html">include</a></li><li class="navelem"><a class="el" href="astaroth__device__headers_8h.html">astaroth_device_headers.h</a></li>
+    <li class="navelem"><a class="el" href="dir_2dc8787002676dc565357b7cfa0121df.html">acc-runtime</a></li><li class="navelem"><a class="el" href="dir_baf4bc5b9097ff9e9c19bf0a5b16f14e.html">api</a></li><li class="navelem"><a class="el" href="astaroth__device__headers_8h.html">astaroth_device_headers.h</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
   </ul>
 </div>
