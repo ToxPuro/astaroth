@@ -1,5 +1,7 @@
 @PACKAGE_INIT@
-find_package(OpenMP)
+find_package(OpenMP QUIET)
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
 if(@MPI_ENABLED@)
   set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
   add_compile_definitions(OMPI_SKIP_MPICXX)
