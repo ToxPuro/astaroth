@@ -99,13 +99,11 @@ typedef int cudaDeviceAttr;
 #endif
 #else
 
-#ifdef AC_BUILDING_LIB
 #if PROFILING_ENABLED
 #include <cuda_profiler_api.h> // Profiling
 #endif
 #include <cuda_runtime_api.h>  // Streams
 #include <cuda_fp16.h>         // Half-precision floats
-#endif
 #endif
 
 #define KERNEL_LAUNCH(func,bgp,tpb,...) \

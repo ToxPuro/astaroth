@@ -93,7 +93,6 @@ else()
     add_definitions(-DPROFILING_ENABLED=0)
 endif()
 
-add_definitions(-DAC_BUILDING_LIB=1)
 
 #TP: If CPU_BUILD is explicitly asked for it takes presedence over env variable.
 #    The command line argument should anyways always takes presedence but the CMake code
