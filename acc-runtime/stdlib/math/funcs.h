@@ -88,3 +88,18 @@ quintic_step(real x, real x0, real width)
 {
 	return quintic_step(x,x0,width,0.0)
 }
+/**
+  Returns random number following a Gaussian
+  distribution with zero mean and unit variance.
+
+  Unfortunately we cannot make use of the 
+  other random number ampl*r*cos(2*pi*u2)
+  since we return only a single number
+**/
+box_muller_transform(ampl)
+{
+  u1 = rand_uniform()
+  u2 = rand_uniform()
+  r = sqrt(-2*log(u1))
+  return ampl*r*sin(2*AC_REAL_PI*u2)
+}
