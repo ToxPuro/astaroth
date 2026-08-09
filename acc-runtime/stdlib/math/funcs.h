@@ -93,13 +93,13 @@ quintic_step(real x, real x0, real width)
   distribution with zero mean and unit variance.
 
   Unfortunately we cannot make use of the 
-  other random number ampl*r*cos(2*pi*u2)
+  other random number r*cos(2*pi*u2)
   since we return only a single number
 **/
-box_muller_transform(ampl)
+box_muller_transform()
 {
   u1 = rand_uniform()
   u2 = rand_uniform()
   r = sqrt(-2*log(u1))
-  return ampl*r*sin(2*AC_REAL_PI*u2)
+  return r*sin(2*AC_REAL_PI*u2)
 }
