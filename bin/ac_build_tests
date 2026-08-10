@@ -2,6 +2,7 @@
 TEST_DIR=$PWD
 parallel=0
 cpu_build=OFF
+no_clean=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --parallel)
@@ -10,6 +11,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --cpu)
             cpu_build=ON
+            shift
+            ;;
+        --no-clean)
+            no_clean=1
             shift
             ;;
         *)
@@ -53,7 +58,9 @@ build_project() {
 export -f build_project
 for dir in "$TEST_DIR"/*/; do
     #TP: Multithreading suppressed for bitbucket pipelines since it runs out of memory
-    rm -rf "$dir/build"
+    if [ ${no_clean} == 0 ]; then
+        rm -rf "$dir/build"
+    fi
     if [ $parallel == 1 ]; then
     	build_project "$dir" &
     else
