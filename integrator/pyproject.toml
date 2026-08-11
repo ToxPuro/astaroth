@@ -40,5 +40,3 @@ cache-keys = [
     { file = "./**/*.{h,c,hpp,cpp,cc,cu,cuh,ac}" },
     { file = "./**/CMakeLists.txt" },
 ]
-
-[tool.uv.workspace]
