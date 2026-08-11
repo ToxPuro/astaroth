@@ -933,7 +933,7 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 
 //TP: best would be to use carriage return to have a single line that keeps growing but that seems not always to be supported in SLURM environments. 
 // Or at least requires actions from the user.
-void printProgressBar(FILE* stream, const int progress) {
+static void printProgressBar(FILE* stream, const int progress) {
 
     int barWidth = 50;
     fprintf(stream,"[");  // Start a new line
@@ -956,7 +956,7 @@ void printProgressBar(FILE* stream, const int progress) {
     	fprintf(stream,"] %d%%", progress);
 }
 
-void
+static void
 printAutotuningStatus(const AcKernel kernel, const float best_time, const int progress)
 {
    FILE *fp = fopen("ac_autotuning.log","a");
@@ -969,7 +969,7 @@ printAutotuningStatus(const AcKernel kernel, const float best_time, const int pr
    fclose(fp);
 }
 
-void
+static void
 logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKernel kernel, const float best_time)
 {
     const AcReal percent_of_num_samples = AcReal(num_samples)/AcReal(100.0);
@@ -988,7 +988,7 @@ gather_best_measurement(const AcAutotuneMeasurement local_best)
 	return gather_func(local_best);
 }
 
-void
+static void
 make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel)
 {
   //TP: have to set reduce offset zero since it might not be
