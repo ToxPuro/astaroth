@@ -19,23 +19,28 @@
 /**
     Running: mpirun -np <num processes> <executable>
 */
-#include "astaroth.h"
-#include "astaroth_utils.h"
-#include "user_constants.h"
-#include "errchk.h"
-#include <gsl/gsl_integration.h>
+
+#include <stdio.h>
+#include <stdlib.h>
 
 #if AC_MPI_ENABLED
 
+#include <gsl/gsl_integration.h>
 #include <mpi.h>
+
+#include <iostream>
 #include <vector>
+
+#include "astaroth.h"
+#include "astaroth_utils.h"
+#include "errchk.h"
+#include "user_constants.h"
 
 #define NUM_INTEGRATION_STEPS (2)
 
 static bool finalized = false;
 static int nprocs, pid;
 
-#include <stdlib.h>
 void
 acAbort(void)
 {
@@ -72,8 +77,6 @@ linear_interpol(const AcReal& x0, const AcReal& x1, const AcReal& y0, const AcRe
 {
 	return (y0*(x1-x) + y1*(x-x0))/(x1-x0);
 }
-
-#include <iostream>
 
 bool
 mpi_initialized()
@@ -435,9 +438,11 @@ integrate_main(AcMeshInfo info, AcReal* dst)
     acGridQuit();
     return 0;
 }
+
 #ifdef PYTHON_BINDINGS
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+
 namespace py = pybind11;
 
 enum class ParamType { Real, Int, Bool };
@@ -606,4 +611,4 @@ main(void)
            "cmake -DMPI_ENABLED=ON .. to enable.\n");
     return EXIT_FAILURE;
 }
-#endif // AC_MPI_ENABLES
+#endif // AC_MPI_ENABLED
