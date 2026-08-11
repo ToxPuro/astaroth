@@ -21,7 +21,6 @@
 #include "taskgraph_kernels.h"
 #include "taskgraph_bc_handles.h"
 #include "taskgraph_kernel_bcs.h"
-#include "user_constants.h"
 // clang-format on
 
 static AcMeshInfo
