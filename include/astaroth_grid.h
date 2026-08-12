@@ -1,5 +1,7 @@
 #pragma once
 
+#include "astaroth_device.h"
+#include "astaroth_helpers.h"
 #include "func_define.h"
 
 #ifndef UNUSED
@@ -388,6 +390,7 @@ FUNC_DEFINE(bool, acGridInitialized, ());
 AC_END_C_DECLARATIONS
 
 #if __cplusplus
+
 static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {
@@ -419,7 +422,540 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,
                        (const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
                         Field fields_in[], const size_t num_fields_in, Field fields_out[],
                         const size_t num_fields_out, KernelParamsLoader loader));
+
+static UNUSED AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
+{
+    return acGetOptimizedDSLTaskGraphWithBounds(graph, start, end, false,
+                                                acGetComputeStepsBCs(graph));
+}
+
+static UNUSED AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end,
+                           const bool globally_imposed_bcs)
+{
+    return acGetOptimizedDSLTaskGraphWithBounds(graph, start, end, true,
+                                                acGetComputeStepsBCs(graph));
+}
+
+static UNUSED AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs)
+{
+    return acGetOptimizedDSLTaskGraphWithBounds(graph,
+                                                acGetMinNN(
+                                                    acDeviceGetLocalConfig(acGridGetDevice())),
+                                                acGetMaxNN(
+                                                    acDeviceGetLocalConfig(acGridGetDevice())),
+                                                globally_imposed_bcs, acGetComputeStepsBCs(graph));
+}
+
+static UNUSED AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs,
+                           const AcDSLTaskGraph bc_graph)
+{
+    return acGetOptimizedDSLTaskGraphWithBounds(graph,
+                                                acGetMinNN(
+                                                    acDeviceGetLocalConfig(acGridGetDevice())),
+                                                acGetMaxNN(
+                                                    acDeviceGetLocalConfig(acGridGetDevice())),
+                                                globally_imposed_bcs, bc_graph);
+}
+
+/** Backwards compatible interface, input fields = output fields*/
+template <size_t num_fields>
+static AcTaskDefinition
+acCompute(AcKernel kernel, Field (&fields)[num_fields])
+{
+    return BASE_FUNC_NAME(acCompute)(kernel, fields, num_fields, fields, num_fields, NULL, 0, NULL,
+                                     0);
+}
+static UNUSED AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields)
+{
+    return BASE_FUNC_NAME(acCompute)(kernel, fields.data(), fields.size(), fields.data(),
+                                     fields.size(), NULL, 0, NULL, 0);
+}
+
+static UNUSED AcTaskDefinition
+acRayUpdate(AcKernel kernel, const int3 ray_direction, std::vector<Field> fields,
+            KernelParamsLoader loader)
+{
+    return BASE_FUNC_NAME(acRayUpdate)(kernel, BOUNDARY_XYZ, ray_direction, fields.data(),
+                                       fields.size(), fields.data(), fields.size(), loader);
+}
+
+static UNUSED AcTaskDefinition
+acRayUpdate(AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
+            std::vector<Field> fields, KernelParamsLoader loader)
+{
+    return BASE_FUNC_NAME(acRayUpdate)(kernel, boundary, ray_direction, fields.data(),
+                                       fields.size(), fields.data(), fields.size(), loader);
+}
+
+static UNUSED AcTaskDefinition
+acRayUpdate(AcKernel kernel, const int3 ray_direction, std::vector<Field> fields)
+{
+    KernelParamsLoader loader = [&](ParamLoadingInfo p) { (void)p; };
+    return BASE_FUNC_NAME(acRayUpdate)(kernel, BOUNDARY_XYZ, ray_direction, fields.data(),
+                                       fields.size(), fields.data(), fields.size(),
+                                       (KernelParamsLoader){});
+}
+
+static UNUSED AcTaskDefinition
+acRayUpdate(AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
+            std::vector<Field> fields)
+{
+    KernelParamsLoader loader = [&](ParamLoadingInfo p) { (void)p; };
+    return BASE_FUNC_NAME(acRayUpdate)(kernel, boundary, ray_direction, fields.data(),
+                                       fields.size(), fields.data(), fields.size(),
+                                       (KernelParamsLoader){});
+}
+
+template <size_t num_fields>
+static AcTaskDefinition
+acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], KernelParamsLoader loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields, num_fields, fields, num_fields, NULL,
+                                               0, NULL, 0, (Volume){0, 0, 0}, (Volume){0, 0, 0}, 1,
+                                               loader);
+}
+
+template <size_t num_fields_in, size_t num_fields_out>
+static AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields_in)[num_fields_in],
+                    Field (&fields_out)[num_fields_out],
+                    std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(aBoundaryCondition)(boundary, kernel, fields_in, num_fields_in,
+                                              fields_out, num_fields_out, loader);
+}
+
+template <size_t num_fields>
+static AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields)[num_fields],
+                    std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields, num_fields, fields,
+                                               num_fields, loader);
+}
+
+template <size_t num_fields_in, size_t num_fields_out>
+static AcTaskDefinition
+acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out])
+{
+    return BASE_FUNC_NAME(acCompute)(kernel, fields_in, num_fields_in, fields_out, num_fields_out);
+}
+
+template <size_t num_fields_in, size_t num_fields_out>
+static AcTaskDefinition
+acComputeWithParams(AcKernel kernel, Field (&fields_in)[num_fields_in],
+                    Field (&fields_out)[num_fields_out],
+                    std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out,
+                                               num_fields_out, 1, loader);
+}
+
+static inline AcTaskDefinition
+acComputeWithParams(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out,
+                    std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(),
+                                               fields_out.data(), fields_out.size(), NULL, 0, NULL,
+                                               0, NULL, 0, NULL, 0, NULL, 0, (Volume){0, 0, 0},
+                                               (Volume){0, 0, 0}, 1, loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out,
+          std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(),
+                                               fields_out.data(), fields_out.size(), NULL, 0, NULL,
+                                               0, NULL, 0, NULL, 0, NULL, 0, (Volume){0, 0, 0},
+                                               (Volume){0, 0, 0}, 1, loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out,
+          std::vector<Profile> profile_in, std::vector<Profile> profile_out,
+          std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(
+        acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(),
+                             fields_out.size(), profile_in.data(), profile_in.size(),
+                             profile_out.data(), profile_out.size(), NULL, 0, NULL, 0, NULL, 0,
+                             (Volume){0, 0, 0}, (Volume){0, 0, 0}, 1, loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out,
+          std::vector<Profile> profile_in, std::vector<Profile> profile_reduce_out,
+          std::vector<Profile> profile_write_out, std::vector<KernelReduceOutput> reduce_outputs_in,
+          std::vector<KernelReduceOutput> reduce_outputs_out, const Volume start, const Volume end,
+          std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(),
+                                               fields_out.data(), fields_out.size(),
+                                               profile_in.data(), profile_in.size(),
+                                               profile_reduce_out.data(), profile_reduce_out.size(),
+                                               profile_write_out.data(), profile_write_out.size(),
+                                               reduce_outputs_in.data(), reduce_outputs_in.size(),
+                                               reduce_outputs_out.data(), reduce_outputs_out.size(),
+                                               start, end, 1, loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out,
+          std::vector<Profile> profile_in, std::vector<Profile> profile_reduce_out,
+          std::vector<Profile> profile_write_out, std::vector<KernelReduceOutput> reduce_outputs_in,
+          std::vector<KernelReduceOutput> reduce_outputs_out, const Volume start, const Volume end,
+          const int onion_level, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(),
+                                               fields_out.data(), fields_out.size(),
+                                               profile_in.data(), profile_in.size(),
+                                               profile_reduce_out.data(), profile_reduce_out.size(),
+                                               profile_write_out.data(), profile_write_out.size(),
+                                               reduce_outputs_in.data(), reduce_outputs_in.size(),
+                                               reduce_outputs_out.data(), reduce_outputs_out.size(),
+                                               start, end, onion_level, loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out)
+{
+    return BASE_FUNC_NAME(acCompute)(kernel, fields_in.data(), fields_in.size(), fields_out.data(),
+                                     fields_out.size(), NULL, 0, NULL, 0);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(),
+                                               fields.size(), NULL, 0, NULL, 0, NULL, 0, NULL, 0,
+                                               NULL, 0, (Volume){0, 0, 0}, (Volume){0, 0, 0}, 1,
+                                               loader);
+}
+
+template <size_t num_fields_in, size_t num_fields_out>
+static AcTaskDefinition
+acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out],
+          std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out,
+                                               num_fields_out, NULL, 0, NULL, 0, NULL, 0, NULL, 0,
+                                               (Volume){0, 0, 0}, (Volume){0, 0, 0}, 1, loader);
+}
+
+template <size_t num_fields>
+static AcTaskDefinition
+acHaloExchange(Field (&fields)[num_fields])
+{
+    return BASE_FUNC_NAME(acHaloExchange)(fields, num_fields);
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields)
+{
+    return BASE_FUNC_NAME(acHaloExchange)(fields.data(), fields.size());
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, std::vector<facet_class_range> halo_types)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, (int3){0, 0, 0}, true,
+                                    true, BOUNDARY_XYZ, false, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acScan(std::vector<Field> fields, const int3 ray_direction)
+{
+    return BASE_FUNC_NAME(acScan)(fields.data(), fields.size(), ray_direction);
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end)
+{
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, (int3){0, 0, 0}, true,
+                                    true, BOUNDARY_XYZ, false, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end,
+               const int3 ray_direction, const bool sending, const bool receiving)
+{
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, ray_direction,
+                                    sending, receiving, BOUNDARY_XYZ, false, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const int3 ray_direction, const bool sending,
+               const bool receiving)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, ray_direction,
+                                    sending, receiving, BOUNDARY_XYZ, false, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const int3 ray_direction, const bool sending,
+               const bool receiving, const AcBoundary boundary)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, ray_direction,
+                                    sending, receiving, boundary, false, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end,
+               const int3 ray_direction, const bool sending, const bool receiving,
+               const AcBoundary boundary)
+{
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, ray_direction,
+                                    sending, receiving, boundary, false, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end,
+               const int3 ray_direction, const bool sending, const bool receiving,
+               const AcBoundary boundary, const std::vector<facet_class_range> halo_types)
+{
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, ray_direction,
+                                    sending, receiving, boundary, false, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end,
+               const int3 ray_direction, const bool sending, const bool receiving,
+               const AcBoundary boundary, const std::vector<facet_class_range> halo_types,
+               const Volume halo_size)
+{
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, ray_direction,
+                                    sending, receiving, boundary, false, halo_types.data(),
+                                    halo_size);
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const int3 ray_direction, const AcBoundary boundary)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, ray_direction, true,
+                                    true, boundary, false, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acHaloExchange(std::vector<Field> fields, const int3 ray_direction, const AcBoundary boundary,
+               const bool include_boundaries)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acHaloExchangeWithBounds(fields.data(), fields.size(), start, end, ray_direction, true,
+                                    true, boundary, include_boundaries, halo_types.data(),
+                                    (Volume){NGHOST, NGHOST, NGHOST});
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,
+                    std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(),
+                                               fields.data(), fields.size(), loader);
+}
+template <typename T>
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,
+                    const T param)
+{
+    auto loader = [&](ParamLoadingInfo p) {
+        auto config = acDeviceGetLocalConfig(p.device);
+        acLoadKernelParams(*p.params, kernel, p.vtxbuf, config[param]);
+    };
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(),
+                                               fields.data(), fields.size(), loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,
+                    const std::vector<facet_class_range> halo_types)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(),
+                                         fields.data(), fields.size(), start, end,
+                                         halo_types.data(), (int3){0, 0, 0}, loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in,
+                    std::vector<Field> fields_out)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields_in.data(), fields_in.size(),
+                                               fields_out.data(), fields_out.size(), loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in,
+                    std::vector<Field> fields_out, const Volume start, const Volume end)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields_out.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(),
+                                         fields_out.data(), fields_out.size(), start, end,
+                                         halo_types.data(), (int3){0, 0, 0}, loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in,
+                    std::vector<Field> fields_out, const Volume start, const Volume end,
+                    const int3 id)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields_out.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(),
+                                         fields_out.data(), fields_out.size(), start, end,
+                                         halo_types.data(), id, loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in,
+                    std::vector<Field> fields_out, const Volume start, const Volume end,
+                    const std::vector<facet_class_range> halo_types)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(),
+                                         fields_out.data(), fields_out.size(), start, end,
+                                         halo_types.data(), (int3){0, 0, 0}, loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in,
+                    std::vector<Field> fields_out, const Volume start, const Volume end,
+                    const std::vector<facet_class_range> halo_types, const int3 id)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(),
+                                         fields_out.data(), fields_out.size(), start, end,
+                                         halo_types.data(), id, loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,
+                    const Volume start, const Volume end)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    std::vector<facet_class_range> halo_types{};
+    for (size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1, 2});
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(),
+                                         fields.data(), fields.size(), start, end,
+                                         halo_types.data(), (int3){0, 0, 0}, loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,
+                    const Volume start, const Volume end,
+                    const std::vector<facet_class_range> halo_types)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(),
+                                         fields.data(), fields.size(), start, end,
+                                         halo_types.data(), (int3){0, 0, 0}, loader);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p) { (void)p; };
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(),
+                                               fields.data(), fields.size(), loader);
+}
+
+template <size_t n_ops>
+static AcTaskGraph*
+acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraph)(ops, n_ops);
+}
+
+static UNUSED AcTaskGraph*
+acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraph)(ops.data(), ops.size());
+}
+
+template <size_t n_ops>
+static AcTaskGraph*
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition (&ops)[n_ops], const Volume start,
+                               const Volume end)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops, n_ops, start, end, false);
+}
+
+static UNUSED AcTaskGraph*
+acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start, const Volume end)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops.data(), ops.size(), start, end,
+                                                          false);
+}
+
+template <size_t n_ops>
+static AcTaskGraph*
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition (&ops)[n_ops], const Volume start,
+                               const Volume end, const bool globally_imposed_bcs)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops, n_ops, start, end,
+                                                          globally_imposed_bcs);
+}
+
+static UNUSED AcTaskGraph*
+acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start, const Volume end,
+                     const bool globally_imposed_bcs)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops.data(), ops.size(), start, end,
+                                                          globally_imposed_bcs);
+}
+
+#if AC_RUNTIME_COMPILATION
+static UNUSED AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+{
+    return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
+}
+#endif
+
 #else
+
 FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,
             (const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
              Field fields_out[], const size_t num_fields_out, Profile profiles_in[],
@@ -443,6 +979,7 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,
                         Field fields_in[], const size_t num_fields_in, Field fields_out[],
                         const size_t num_fields_out,
                         void (*load_func)(ParamLoadingInfo step_info)));
+
 #endif
 
 #endif // AC_MPI_ENABLED

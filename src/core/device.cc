@@ -32,6 +32,7 @@
 #include "astaroth_base.h"
 #include "astaroth_cuda_wrappers.h"
 #include "astaroth_device.h"
+#include "astaroth_grid.h"
 #include "builtin_enums.h"
 #include "common_kernels.h"
 #include "astaroth_device_headers.h"

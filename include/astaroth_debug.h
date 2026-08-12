@@ -1,3 +1,6 @@
+#pragma once
+
+#include "astaroth_grid.h"
 #include "func_define.h"
 
 AC_BEGIN_C_DECLARATIONS
