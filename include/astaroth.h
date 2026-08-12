@@ -29,14 +29,14 @@
 #include "astaroth_analysis.h"
 #include "astaroth_base.h"
 #include "astaroth_device.h"
+// The device headers are not needed for interfacing with Astaroth
+#include "astaroth_device_headers.h"
+#include "astaroth_grid.h"
 #include "astaroth_helpers.h"
 #include "astaroth_legacy.h"
-#include "astaroth_grid.h"
 #include "astaroth_node.h"
 #include "astaroth_runtime_compilation.h"
 #include "builtin_enums.h"
-//The device headers are not needed for interfacing with Astaroth
-#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "func_define.h"
 #include "host_datatypes.h"
