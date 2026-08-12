@@ -319,7 +319,6 @@ AC_BEGIN_C_DECLARATIONS
   FUNC_DEFINE(int, acGetKernelReduceScratchPadSize,(const AcKernel kernel));
 
   FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
-  FUNC_DEFINE(size_t,  acGetSmallestRealReduceScratchPadSizeBytes,());
   FUNC_DEFINE(bool, acRuntimeIsInitialized,());
   FUNC_DEFINE(AcResult, acRuntimeInit,(const AcMeshInfo config));
   FUNC_DEFINE(AcResult, acRuntimeQuit, ());

@@ -1726,13 +1726,10 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	        "acStoreUniform(const cudaStream_t stream, const %sParam param, %s* value) { return acStore%sUniform(stream,param,value);}\n"
 		"static AcResult __attribute ((unused))"
 	        "acStoreUniform(const %sArrayParam param, %s* values, const size_t length) { return acStore%sArrayUniform(param,values,length);}\n"
-	        //"static AcResult __attribute ((unused)) "
-		//"acLoadOutput(const cudaStream_t stream, const %sOutputParam param, const %s value) { return acLoad%sOutput(stream,param,value);}\n"
 		,enum_name, datatype_scalar, upper_case_name
 		,enum_name, datatype_scalar, upper_case_name
 		,enum_name, datatype_scalar, upper_case_name
 		,enum_name, datatype_scalar, upper_case_name
-		//,enum_name, datatype_scalar, upper_case_name
 		);
 
 
@@ -1741,7 +1738,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	 	"AcResult acLoad%sArrayUniform(const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length) { return acLoadArrayUniform(param ,values, length); }\n"
 	 	"AcResult acStore%sUniform(const cudaStream_t, const %sParam param, %s* value) { return acStoreUniform(param,value); }\n"
 	 	"AcResult acStore%sArrayUniform(const %sArrayParam param, %s* values, const size_t length) { return acStoreArrayUniform(param ,values, length); }\n"
-	 	//"AcResult acLoad%sOutput (const cudaStream_t stream, const %sOutputParam param, const %s value) { return acLoadOutput(stream,param,value); }\n"
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
@@ -1753,11 +1749,9 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	fprintf_filename("load_and_store_uniform_header.h",
 		"FUNC_DEFINE(AcResult, acLoad%sUniform,(const cudaStream_t, const %sParam param, const %s value));\n"
-		"FUNC_DEFINE(AcResult, acLoad%sOutput ,(const cudaStream_t, const %sOutputParam param, const %s value));\n"
 		"FUNC_DEFINE(AcResult, acLoad%sArrayUniform, (const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length));\n"
 		"FUNC_DEFINE(AcResult, acStore%sUniform,(const cudaStream_t, const %sParam param, %s* value));\n"
 		"FUNC_DEFINE(AcResult, acStore%sArrayUniform, (const %sArrayParam param, %s* values, const size_t length));\n"
-	    	,upper_case_name, enum_name, datatype_scalar
 	    	,upper_case_name, enum_name, datatype_scalar
 	    	,upper_case_name, enum_name, datatype_scalar
 	    	,upper_case_name, enum_name, datatype_scalar
