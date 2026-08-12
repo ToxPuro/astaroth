@@ -9,9 +9,5 @@ var astaroth_8h =
     [ "acGetNumFields", "astaroth_8h.html#a99e2a4b03e2a3cd1e07a0c8c236ef0b1", null ],
     [ "acGetPid", "astaroth_8h.html#a3febae4b954afff54cdf691799db824f", null ],
     [ "acGetPid3D", "astaroth_8h.html#a9c896ccd2e5be0c5f3cb100d09dd23ce", null ],
-    [ "acHostInitProfileToCosineWave", "astaroth_8h.html#a3f0dcc3ee5a5ba566640ae6d38d433b2", null ],
-    [ "acHostInitProfileToSineWave", "astaroth_8h.html#aa370bc8887141f4f027e2a63f35f6222", null ],
-    [ "acHostInitProfileToValue", "astaroth_8h.html#ae64e6fe27cc569df86aa8ffc691b98d3", null ],
-    [ "acHostWriteProfileToFile", "astaroth_8h.html#a9173f42484da171e615b1e89e084acb1", null ],
     [ "AcMeshInfo", "astaroth_8h.html#a521aa7a5d2fd9af367c99841b5058394", null ]
 ];

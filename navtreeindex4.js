@@ -1,11 +1,5 @@
 var NAVTREEINDEX4 =
 {
-"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88a618c3d05df2893d887d66e94b05e3095":[6,0,2,22,11,5],
-"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88a895e5c1a6c4f1f5b4421af1d945123df":[6,0,2,22,11,3],
-"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88aaa2c0412d9da1e06b915191a589a1b25":[6,0,2,22,11,2],
-"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88aabd40d231a3fb6818d77db0a54d53d9f":[6,0,2,22,11,7],
-"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88ab5deb5ccef445a25ea74605b121bf78d":[6,0,2,22,11,4],
-"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88ac4978dfeda8fcc48a84988716f21fbef":[6,0,2,22,11,8],
 "host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d":[6,0,2,22,11,1],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1":[6,0,2,22,10],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a0c75015db91d2767bd7ccae7958d9a80":[6,0,2,22,10,3],
@@ -249,5 +243,11 @@ var NAVTREEINDEX4 =
 "structAcMeshInfo.html#a959603532564950b86e55db5df44c2d1":[5,0,13,1],
 "structAcMeshInfo.html#a9935de019a6d487e00d46089c14b1c5b":[5,0,13,0],
 "structAcMeshInfo.html#abd7fc33a74349fa320000f6a84740015":[5,0,13,2],
-"structAcMeshInfo.html#ace9034660847ff1a3ae0fd4710b6ea76":[5,0,13,8]
+"structAcMeshInfo.html#ace9034660847ff1a3ae0fd4710b6ea76":[5,0,13,8],
+"structAcMeshInfoLoadedInfo.html":[5,0,14],
+"structAcMeshInfoScalars.html":[5,0,15],
+"structAcReduceBuffer.html":[5,0,16],
+"structAcReduceBuffer.html#a8a10ca099bd09f31e28137de38454650":[5,0,16,2],
+"structAcReduceBuffer.html#a9f8eb812bca05b78fb8ee54a1734b0fa":[5,0,16,3],
+"structAcReduceBuffer.html#abc58b9c57a916b5a957f52f42f51f4d4":[5,0,16,0]
 };

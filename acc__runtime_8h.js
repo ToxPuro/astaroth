@@ -45,7 +45,6 @@ var acc__runtime_8h =
     [ "acGetOptimTPB", "acc__runtime_8h.html#ae260677b7348fc80a733aba3590d777a", null ],
     [ "acGetProfileReduceScratchPadDims", "acc__runtime_8h.html#a93b9fbcee9024a47049013b5a634fe86", null ],
     [ "acGetRealScratchpadSize", "acc__runtime_8h.html#a5db6ebddb3447b11be2c0b0ca7839747", null ],
-    [ "acGetSmallestRealReduceScratchPadSizeBytes", "acc__runtime_8h.html#a863da46458c340af7ecda877b21f06b2", null ],
     [ "acInitializeRuntimeMPI", "acc__runtime_8h.html#ad7cf00fd7a73b01ad7271631a6414473", null ],
     [ "acKernelFlush", "acc__runtime_8h.html#a76ca6f022d3e8ade4bb6e0abba130d85", null ],
     [ "acKernelFlushComplex", "acc__runtime_8h.html#a32995a39817ab4509d97ec90f7383ec4", null ],
