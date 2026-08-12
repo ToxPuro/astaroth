@@ -29,6 +29,7 @@
 
 #include "acreal.h"
 #include "astaroth.h"
+#include "astaroth_utils.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 
