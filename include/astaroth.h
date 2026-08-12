@@ -369,24 +369,6 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
   static AcResult __attribute__((unused)) acCloseLibrary() {return AC_FAILURE;}
 #endif
 
-/** Inits the profile to cosine wave */
-AcResult acHostInitProfileToCosineWave(const AcReal spacing, const AcReal initial_pos,
-                                       const AcReal amplitude, const AcReal wavenumber,
-                                       const size_t mz, AcReal* profile);
-
-/** Inits the profile to sine wave */
-AcResult acHostInitProfileToSineWave(const AcReal spacing, const AcReal initial_pos,
-                                     const AcReal amplitude, const AcReal wavenumber,
-                                     const size_t mz, AcReal* profile);
-
-/** Initialize a profile to a constant value */
-AcResult acHostInitProfileToValue(const long double value, const size_t profile_count,
-                                  AcReal* profile);
-
-/** Writes the host profile to a file */
-AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
-                                  const size_t profile_count);
-
 AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
