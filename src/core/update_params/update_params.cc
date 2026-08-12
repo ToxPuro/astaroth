@@ -6,6 +6,7 @@
 #include "acc_runtime.h"
 #include "acreal.h"
 #include "astaroth.h"
+#include "astaroth_grid.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 
