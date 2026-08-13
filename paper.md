@@ -59,24 +59,20 @@ While stencils are the core of `Astaroth`, it also accelerates other operations 
 
 # Statement of need
 
-Much of the software used for scientific computing is written for CPUs, and has
-to be ported to GPUs to run larger problems with decent times-to-solution.
-`Astaroth` has been developed to solve this problem for the subset of
-scientific software that relies heavily on stencil computations and compared to existing solutions is
-specifically optimized for computations needed in multiphysics simulations.
-`Astaroth`'s domain specific language (DSL) is designed to enable researchers to rewrite existing PDE solvers or to write
-completely new ones.
+Due to the expense and ubiquity of stencil computations a common library for computing them
+efficiently on GPUs is needed, more so because high-performance codes require portability across 
+multiple different computing platforms. Furthermore, such a library is both needed for accelerating existing codes and writing new ones. 
+Thus, both APIs for good integration with existing code and for writing new code are needed.
 
-As examples of this, `Astaroth` has been used to write a partial differential equation (PDE) solver for astrophysical
-plasma simulations [@vaisala2023exploring], which scales to thousands of GPUs with a weak scaling
-efficiency \>90% [@pekkila_graphicsprocessors_2026, and has also been used to accelerate the widely used astrophysics
-framework `Pencil Code`.
+`Astaroth` strives to be this library, encapsulating the core steps and structures of stencil computations
+in its domain specific language (DSL), which enables researches in different domains to write their
+stencil computations to run efficiently on GPUs. This encapsulation allows `Astaroth` to provide
+the needed execution platform for different application cases, predominantly for writing or accelerating existing partial differential equation (PDE) solvers, but also for image processing and numerical linear algebra.
 
-Of course, `Astaroth`'s PDE solver is not limited to astrophysics, and neither
-is `Astaroth` limited to PDEs.
-As an example, many image processing techniques, like edge detection and
-convolutions, are stencil operations and stencil operations are widely used in numerical linear algebra.
-
+Multiphysics simulations especially pose computationally challenging stencil calculations due to the need of
+having values of many fields in working memory at the same time, and accelerating them was the original need
+for which `Astaroth` was developed. As an example of this use case, `Astaroth` has been used to accelerate
+the widely used astrophysics framework `Pencil Code`, for which existing solutions were not fit.
 
 # State of the field
 
@@ -144,9 +140,9 @@ Other special functionality is also provided through the API, such as distribute
 
 ## Solver
 
-`Astaroth` also includes a standalone finite-difference PDE solver [@pekkila2022scalable], which takes full advantage of the DSL and the multi-GPU API, and can be used to write new simulation models.
-It also works as a testbed for performance research.
-This solver uses an astrophysical magnetohydrodynamical setup (`acc-runtime/samples/mhd_modular`) by default, but can be configured to run any DSL code.
+`Astaroth` also includes a standalone finite-difference PDE solver [@pekkila2022scalable], which takes full advantage of the DSL and the multi-GPU API, and can be used to write new simulation models. The solver scales to thousands of GPUs with a weak scaling efficiency \>90% [@pekkila_graphicsprocessors_2026] and also works as a testbed for performance research.
+
+The solver uses an astrophysical magnetohydrodynamical setup (`acc-runtime/samples/mhd_modular`) by default, but can be configured to run any DSL code.
 The samples directory also includes other production-ready setups, e.g. `tfm-mpi` for the test-field method [@pekkila_graphicsprocessors_2026].
 
 The solver handles distributed initial conditions, domain decomposition, simulation diagnostics, and logging.
