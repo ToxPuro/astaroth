@@ -59,18 +59,18 @@ While stencils are the core of `Astaroth`, it also accelerates other operations 
 
 # Statement of need
 
-Due to the expense and ubiquity of stencil computations a common library for computing them
-efficiently on GPUs is needed, more so because high-performance codes require portability across 
-multiple different computing platforms. Furthermore, such a library is both needed for accelerating existing codes and writing new ones. 
-Thus, both APIs for good integration with existing code and for writing new code are needed.
+Due to the ubiquity and expense of stencil computations, a common library for implementing them
+efficiently on GPUs is needed, more so because high-performance codes require portability across
+multiple different computing platforms. Such a library is both needed for accelerating existing codes and writing new ones.
+Thus, its API has to enable good integration with existing and easy writing of new code.
 
 `Astaroth` strives to be this library, encapsulating the core steps and structures of stencil computations
-in its domain specific language (DSL), which enables researches in different domains to write their
-stencil computations to run efficiently on GPUs. This encapsulation allows `Astaroth` to provide
-the needed execution platform for different application cases, predominantly for writing or accelerating existing partial differential equation (PDE) solvers, but also for image processing and numerical linear algebra.
+in its domain specific language (DSL), which enables researchers in different domains to write their
+stencil computations in a compact and obvious way. This encapsulation allows `Astaroth` to provide
+the needed execution platform for different application cases, predominantly for partial differential equation (PDE) solvers, but also for image processing and numerical linear algebra.
 
-Multiphysics simulations especially pose computationally challenging stencil calculations due to the need of
-having values of many fields in working memory at the same time, and accelerating them was the original need
+Multiphysics simulations in particular pose computationally challenging stencil calculations due to the need of
+holding values of many fields in working memory at the same time, and accelerating them was the original need
 for which `Astaroth` was developed. As an example of this use case, `Astaroth` has been used to accelerate
 the widely used astrophysics framework `Pencil Code`, for which existing solutions were not fit.
 
