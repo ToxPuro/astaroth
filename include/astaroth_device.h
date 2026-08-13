@@ -251,4 +251,69 @@ FUNC_DEFINE(AcResult, acDeviceMemGetInfo,(const Device device, size_t* free_mem,
 AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
                                  const char* filepath);
 
+#include "device_set_input_decls.h"
+#include "device_get_output_decls.h"
+#include "device_get_input_decls.h"
+
 AC_END_C_DECLARATIONS
+
+#ifdef __cplusplus
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
+{
+	return acDeviceFinishReduceInt(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
+{
+	return acDeviceFinishReduceIntStream(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
+{
+	return acDeviceFinishReduceReal(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
+{
+	return acDeviceFinishReduceRealStream(device,stream,result,kernel,reduce_op,output);
+}
+
+#if AC_DOUBLE_PRECISION
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output)
+{
+	return acDeviceFinishReduceFloat(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output)
+{
+	return acDeviceFinishReduceFloatStream(device,stream,result,kernel,reduce_op,output);
+}
+#endif
+
+static UNUSED AcBuffer
+acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
+{
+	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
+}
+
+#define OVERLOAD_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	static UNUSED AcResult acDeviceStore(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) { return acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform(device,stream,param,value); }
+#define OVERLOAD_DEVICE_STORE_ARRAY(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	static UNUSED AcResult acDeviceStore(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) { return acDeviceStore##VAL_TYPE_UPPER_CASE##Array(device,stream,param,value); }
+#define OVERLOAD_DEVICE_LOAD_ARRAY(ENUM,DEF_NAME) \
+	static UNUSED AcResult acDeviceLoad(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array) { return acDeviceLoad##DEF_NAME##Array(device,stream,host_info,array);}
+
+#include "device_store_overloads.h"
+#include "device_load_uniform_overloads.h"
+#include "device_set_input_overloads.h"
+#include "device_get_input_overloads.h"
+#include "device_get_output_overloads.h"
+
+#endif
