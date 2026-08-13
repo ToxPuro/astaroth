@@ -51,35 +51,6 @@
 
 AC_BEGIN_C_DECLARATIONS
 
-/*
- * =============================================================================
- * Legacy interface
- * =============================================================================
- */
-
-FUNC_DEFINE(AcResult, acCheckDeviceAvailability,(void));
-FUNC_DEFINE(int, acGetNumDevicesPerNode,(void));
-
-/** Returns the number of fields (vertexbuffer handles). */
-FUNC_DEFINE(size_t, acGetNumFields,(void));
-
-/** Gets the field handle corresponding to a null-terminated `str` and stores the result in
- * `handle`.
- *
- * Returns AC_SUCCESS on success.
- * Returns AC_FAILURE if the field was not found and sets `handle` to SIZE_MAX.
- *
- * Example usage:
- * ```C
- * size_t handle;
- * AcResult res = acGetFieldHandle("VTXBUF_LNRHO", &handle);
- * if (res != AC_SUCCESS)
- *  fprintf(stderr, "Handle not found\n");
- * ```
- *  */
-FUNC_DEFINE(AcResult, acGetFieldHandle,(const char* field, size_t* handle));
-FUNC_DEFINE(const char*,acGetFieldName,(const Field field));
-
 FUNC_DEFINE(Node, acGetNode,(void));
 
 /*
