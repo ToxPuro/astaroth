@@ -108,12 +108,10 @@ target_include_directories(astaroth_core
         $<INSTALL_INTERFACE:astaroth/include>
         $<INSTALL_INTERFACE:astaroth/acc-runtime/api>
 )
-if (NOT RUNTIME_COMPILATION)
-	target_link_libraries(astaroth_core PUBLIC static_kernels)
-else()
-	set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
-	target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl)
-endif()
+
+target_link_libraries(astaroth_core PUBLIC static_kernels)
+set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl)
 
 if (USE_HIP)
     # May need to link to hip::host at some point

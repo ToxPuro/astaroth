@@ -14,10 +14,29 @@ if (CPU_BUILD)
 	set_source_files_properties(kernels.cu reductions.cu reindex.cu PROPERTIES LANGUAGE CXX)
 endif()
 
+if(CPU_BUILD)
+	add_library(ac_transpose OBJECT transpose.cc)
+else()
+	add_library(ac_transpose OBJECT transpose.cu)
+endif()
+
+add_library(ac_reindex OBJECT reindex.cu)
+set_property(TARGET ac_reindex PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_include_directories(ac_reindex PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
+target_link_libraries(ac_reindex PRIVATE ac_cuda_wrappers acc-runtime-headers)
+
+set_property(TARGET ac_transpose PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+target_include_directories(ac_transpose PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
+target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers acc-runtime-headers)
+
 
 
 if (RUNTIME_COMPILATION)
-	add_library(static_kernels STATIC empty.cc)
+	add_library(static_kernels STATIC 
+    		$<TARGET_OBJECTS:ac_transpose>
+    		$<TARGET_OBJECTS:ac_reindex>
+	)
 	add_library(kernels empty.cc)
 	target_link_libraries(kernels PUBLIC static_kernels)
 else()
@@ -25,21 +44,8 @@ else()
 	set_property(TARGET kernels_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
         target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
 	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
-	if(CPU_BUILD)
-		add_library(ac_transpose OBJECT transpose.cc)
-	else()
-		add_library(ac_transpose OBJECT transpose.cu)
-	endif()
 
-	set_property(TARGET ac_transpose PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-	target_include_directories(ac_transpose PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-	target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers acc-runtime-headers)
 	
-	add_library(ac_reindex OBJECT reindex.cu)
-	set_property(TARGET ac_reindex PROPERTY POSITION_INDEPENDENT_CODE ON)
-	target_include_directories(ac_reindex PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-	target_link_libraries(ac_reindex PRIVATE ac_cuda_wrappers acc-runtime-headers)
 	if(FFT_ENABLED)
 		if(CPU_BUILD)
 			add_library(ac_fft OBJECT kissfft/kiss_fft.c kissfft/kiss_fftnd.c cpufft.cc)
