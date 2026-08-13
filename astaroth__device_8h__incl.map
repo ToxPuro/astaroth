@@ -1,11 +1,17 @@
 <map id="include/astaroth_device.h" name="include/astaroth_device.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="149,5,339,31"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="433,5,623,31"/>
 <area shape="rect" id="Node000002" href="$func__define_8h.html" title=" " alt="" coords="31,86,140,111"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="222,33,122,82,119,78,220,28"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="439,33,304,53,154,81,138,85,137,80,153,76,303,48,438,28"/>
 <area shape="rect" id="Node000005" title=" " alt="" coords="165,79,323,119"/>
-<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="247,31,247,65,241,65,241,31"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="487,33,326,78,325,72,486,28"/>
 <area shape="rect" id="Node000006" title=" " alt="" coords="348,79,511,119"/>
-<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="272,28,373,71,371,76,270,33"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="515,33,465,72,462,68,512,29"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="535,86,721,111"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="544,29,604,75,601,79,541,33"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="745,86,940,111"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="574,28,784,80,783,85,573,33"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="964,86,1151,111"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="616,28,952,76,982,81,981,86,952,81,615,33"/>
 <area shape="rect" id="Node000003" title=" " alt="" coords="5,167,72,192"/>
 <area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="81,113,55,156,50,153,76,110"/>
 <area shape="rect" id="Node000004" title=" " alt="" coords="97,167,167,192"/>
