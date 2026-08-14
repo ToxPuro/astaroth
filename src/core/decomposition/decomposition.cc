@@ -737,19 +737,20 @@ acVerifyDecomposition(const uint3_64 decomp, const AcProcMappingStrategy proc_ma
     }
 }
 
-extern "C" int3
+int3
 acDecompose(const uint64_t target, const AcMeshInfo info)
 {
 	if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_EXTERNAL) return info[AC_domain_decomposition];
 	return (int3)decompose(target,info[AC_decompose_strategy]);
 }
-extern "C" int3
+
+int3
 acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info)
 {
 	return getPid3D(pid,decomp,info[AC_proc_mapping_strategy]);
 }
 
-extern "C" int
+int
 acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info)
 {
 	return getPid(pid,decomp,info[AC_proc_mapping_strategy]);
