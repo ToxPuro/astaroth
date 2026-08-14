@@ -157,8 +157,7 @@ get_cmake_options(const char* user_cmake_options)
     asprintf(&options,
              "%s -DCMAKE_BUILD_TYPE=%s -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON "
              "-DOPENMP_ENABLED=OFF -DCPU_BUILD=%s -DDSL_MODULE_DIR=%s "
-             "-DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s "
-             "-DAC_STENCIL_ORDER=%d %s",
+             "-DACC_COMPILER_PATH=%s -DAC_STENCIL_ORDER=%d %s",
              command_line_options,
 #ifdef NDEBUG
              "Release",
