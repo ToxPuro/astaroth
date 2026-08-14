@@ -34,6 +34,7 @@
 #include "astaroth_grid.h"
 #include "astaroth_helpers.h"
 #include "astaroth_legacy.h"
+#include "astaroth_logging.h"
 #include "astaroth_node.h"
 #include "astaroth_runtime_compilation.h"
 #include "builtin_enums.h"
@@ -52,14 +53,6 @@
 AC_BEGIN_C_DECLARATIONS
 
 FUNC_DEFINE(Node, acGetNode,(void));
-
-/*
- * =============================================================================
- * Logging functions
- * =============================================================================
- */
-
-#include "astaroth_logging.h"
 
 int3
 acDecompose(const uint64_t target, const AcMeshInfo info);
