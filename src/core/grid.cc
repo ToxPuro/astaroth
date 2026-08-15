@@ -472,7 +472,7 @@ initialize_random_number_generation(const AcMeshInfo submesh_info)
     // const auto global_offset = submesh_info[AC_multigpu_offset];
     // acRandInit(1234UL, to_volume(local_m), to_volume(global_m), to_volume(global_offset));
     const size_t count = acVertexBufferCompdomainSize(submesh_info);
-    acRandInitAlt(1234UL, count, ac_pid());
+    ERRCHK_ALWAYS(acRandInitAlt(1234UL, count, ac_pid()) == AC_SUCCESS);
 }
 static UNUSED void
 log_grid_debug_info(const AcMeshInfo info)
@@ -596,7 +596,7 @@ static void
 check_that_device_allocation_valid()
 {
     int device_count = -1;
-    acGetDeviceCount(&device_count);
+    ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&device_count));
     if (device_count > ac_nprocs()) {
         WARNING("\n\nMore devices than MPI tasks: Non-optimal usage!!\n \n")
 	fprintf(stderr,"%d devices and %d MPI tasks!!\n",device_count,ac_nprocs());
