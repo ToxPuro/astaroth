@@ -713,9 +713,9 @@ gen_kernel_common_prefix()
 
     printf(
         "const int3 localCompdomainVertexIdx = (int3){"
-        "static_cast<int>(threadIdx.x + current_block_idx.x * blockDim.x + start.x - VAL(AC_nlocal).x),"
-        "static_cast<int>(threadIdx.y + current_block_idx.y * blockDim.y + start.y - VAL(AC_nlocal).y),"
-        "static_cast<int>(threadIdx.z + current_block_idx.z * blockDim.z + start.z - VAL(AC_nlocal).z),"
+        "static_cast<int>(threadIdx.x + current_block_idx.x * blockDim.x + start.x - VAL(AC_nmin).x),"
+        "static_cast<int>(threadIdx.y + current_block_idx.y * blockDim.y + start.y - VAL(AC_nmin).y),"
+        "static_cast<int>(threadIdx.z + current_block_idx.z * blockDim.z + start.z - VAL(AC_nmin).z),"
         "};");
   printf("const int local_compdomain_idx = "
          "LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx);");
