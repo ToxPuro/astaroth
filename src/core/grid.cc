@@ -3823,12 +3823,12 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         AcReal* out = vba.on_device.out[non_auxiliary_vtxbuf];
 	const Volume out_offset = {0, 0, 0,};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
-        acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
-                           out_volume);
-        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+        ERRCHK_CUDA(acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume));
+        ERRCHK_CUDA(acDeviceSynchronizeStream(device, STREAM_DEFAULT));
 
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(i));
-        acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
+        ERRCHK_CUDA(acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost));
 
         const int3 offset = info[AC_multigpu_offset]; // Without halo
 	const size_t file_size = 4096;
@@ -3986,7 +3986,7 @@ acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const A
         const size_t count  = slice_volume.x * slice_volume.y * slice_volume.z;
         const size_t bytes  = sizeof(host_buffer[0]) * count;
         if (color != MPI_UNDEFINED)
-            acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
+            ERRCHK_CUDA(acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost));
 
         char filepath[2*label_size];
 #if USE_DISTRIBUTED_IO
@@ -4173,7 +4173,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
         const size_t count  = slice_volume.x * slice_volume.y * slice_volume.z;
         const size_t bytes  = sizeof(host_buffer[0]) * count;
         if (color != MPI_UNDEFINED)
-            acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
+            ERRCHK_CUDA(acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost));
 
         char filepath[2*label_size];
         snprintf(filepath, 2*label_size,"%s/%s-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field], global_nn.x,
@@ -4292,7 +4292,7 @@ acGridDiskAccessLaunch(const AccessType type)
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(i));
-        acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
+        ERRCHK_CUDA(acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost));
 
 	const size_t path_len = 4096;
         char path[path_len] = "";
@@ -4448,7 +4448,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 // Buffer through CPU
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
-        acMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
+        ERRCHK_CUDA(acMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost));
 #endif
         // ----------------------------------------
     }
@@ -4568,7 +4568,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
         // ---------------------------------------
         // Buffer through CPU
         const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
-        acMemcpy(in, arr, count, cudaMemcpyHostToDevice);
+        ERRCHK_CUDA(acMemcpy(in, arr, count, cudaMemcpyHostToDevice));
         //  ----------------------------------------
 #endif
 
@@ -4632,7 +4632,7 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 // Buffer through CPU
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
-        acMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
+        ERRCHK_CUDA(acMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost));
 #endif
         // ----------------------------------------
     }
@@ -4676,7 +4676,7 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
         // ---------------------------------------
         // Buffer through CPU
         const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
-        acMemcpy(in, arr, count, cudaMemcpyHostToDevice);
+        ERRCHK_CUDA(acMemcpy(in, arr, count, cudaMemcpyHostToDevice));
         //  ----------------------------------------
 #endif
 
@@ -4739,7 +4739,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 // Buffer through CPU
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
-        acMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
+        ERRCHK_CUDA(acMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost));
 #endif
         // ----------------------------------------
     }
@@ -4811,18 +4811,18 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
         // ---------------------------------------
         // Buffer through CPU
         const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
-        acMemcpy(in, arr, count, cudaMemcpyHostToDevice);
+        ERRCHK_CUDA(acMemcpy(in, arr, count, cudaMemcpyHostToDevice));
         //  ----------------------------------------
 #endif
 
         // DEBUG hotfix START
         // TODO better solution (need to recheck all acDevice functions)
-        acDeviceSynchronize();             // This sync *is* needed
-        acGridSynchronizeStream(STREAM_ALL); // This sync may not be needed
+        ERRCHK_CUDA(acDeviceSynchronize());             // This sync *is* needed
+        ERRCHK_CUDA(acGridSynchronizeStream(STREAM_ALL)); // This sync may not be needed
         // DEBUG hotfix END
 
-        acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
-                           out_volume);
+        ERRCHK(acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume));
         // Apply boundconds and sync
         if(grid.submesh.info[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
         // acDeviceSynchronizeStream(device, STREAM_ALL);
@@ -4917,7 +4917,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(field));
-        acMemcpy(in, host_buffer, bytes, cudaMemcpyHostToDevice);
+        ERRCHK_CUDA(acMemcpy(in, host_buffer, bytes, cudaMemcpyHostToDevice));
         retval = acDeviceVolumeCopy(device, (Stream)field, in, in_offset, in_volume, out, out_offset,
                                     out_volume);
         ERRCHK_ALWAYS(retval == AC_SUCCESS);
