@@ -393,7 +393,8 @@ elemental smooth(Field f)
 {
 	return smooth_xyz_stencil(f)
 }
-#else
+#endif
+#if STENCIL_ORDER >= 6
 
 Stencil smooth_xyz_stencil {
 [-3][-3][-3] = SMOOTH_XM3_YM3_ZM3,
