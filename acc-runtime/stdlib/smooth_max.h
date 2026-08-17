@@ -1306,7 +1306,8 @@ elemental max5(Field f)
 {
 	return max5_xyz_stencil_r1(f)
 }
-#else
+#endif
+#if STENCIL_ORDER >= 6
 Max Stencil max5_xyz_stencil_r2 {
 	[-2][-2][-2] = 1,
 	[-2][-2][-1] = 1,
