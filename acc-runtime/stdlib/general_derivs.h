@@ -860,6 +860,9 @@ derz_upwind_front(Field f)
 
 #if STENCIL_ORDER == 4
 
+#undef UPWIND_FACTOR
+#define UPWIND_FACTOR (1.0/12.0)
+
 #undef DER1_2
 #undef DER1_1
 #undef DER1_0
@@ -4172,7 +4175,11 @@ derx_upwd(Field f)
 #if STENCIL_ORDER == 2
 		return derxx_stencil(f)*grid_factor
 #else
+#if STENCIL_ORDER == 4
+		return der4x_stencil(f)*grid_factor
+#else
 		return der6x_stencil(f)*grid_factor
+#endif
 #endif
 	}
 }
@@ -4206,9 +4213,13 @@ dery_upwd(Field f)
 			grid_factor *= AC_inv_ds.y
 		}
 #if STENCIL_ORDER == 2
-		return deryy_stencil(f)*coordinate_factor*grid_factor
+		return deryy_stencil(f)*grid_factor*coordinate_factor
 #else
-		return der6y_stencil(f)*coordinate_factor*grid_factor
+#if STENCIL_ORDER == 4
+		return der4y_stencil(f)*grid_factor*coordinate_factor
+#else
+		return der6y_stencil(f)*grid_factor*coordinate_factor
+#endif
 #endif
 	}
 }
@@ -4237,9 +4248,13 @@ derz_upwd(Field f)
 			grid_factor *= AC_inv_ds.z
 		}
 #if STENCIL_ORDER == 2
-		return derzz_stencil(f)*coordinate_factor*grid_factor
+		return derzz_stencil(f)*grid_factor*coordinate_factor
 #else
-		return der6z_stencil(f)*coordinate_factor*grid_factor
+#if STENCIL_ORDER == 4
+		return der4z_stencil(f)*grid_factor*coordinate_factor
+#else
+		return der6z_stencil(f)*grid_factor*coordinate_factor
+#endif
 #endif
 	}
 }
