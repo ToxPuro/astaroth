@@ -37,8 +37,9 @@ if (RUNTIME_COMPILATION)
     		$<TARGET_OBJECTS:ac_transpose>
     		$<TARGET_OBJECTS:ac_reindex>
 	)
-	add_library(kernels empty.cc)
-	target_link_libraries(kernels PUBLIC static_kernels)
+	#TP: kernels lib not needed anymore
+	#add_library(kernels empty.cc)
+	#target_link_libraries(kernels PUBLIC static_kernels)
 else()
 	add_library(kernels_obj OBJECT kernels.cu reductions.cu)
 	set_property(TARGET kernels_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -91,16 +92,17 @@ else()
     		$<TARGET_OBJECTS:ac_cuda_wrappers>
     		$<TARGET_OBJECTS:astaroth_helpers>
 	)
-	add_library(kernels 
-    		$<TARGET_OBJECTS:kernels_obj>
-    		$<TARGET_OBJECTS:ac_transpose>
-    		$<TARGET_OBJECTS:ac_reindex>
-    		$<TARGET_OBJECTS:acc-runtime-driver>
-    		$<TARGET_OBJECTS:ac_cuda_wrappers>
-    		$<TARGET_OBJECTS:astaroth_helpers>
-	)
+	#TP: kernels lib not used anymore
+	#add_library(kernels 
+    	#	$<TARGET_OBJECTS:kernels_obj>
+    	#	$<TARGET_OBJECTS:ac_transpose>
+    	#	$<TARGET_OBJECTS:ac_reindex>
+    	#	$<TARGET_OBJECTS:acc-runtime-driver>
+    	#	$<TARGET_OBJECTS:ac_cuda_wrappers>
+    	#	$<TARGET_OBJECTS:astaroth_helpers>
+	#)
 	#TP: this is important if kernels and astaroth_core are an .so to get the correct linking flags
-	target_link_libraries(kernels PUBLIC ac_fft)
+	#target_link_libraries(kernels PUBLIC ac_fft)
 	target_link_libraries(static_kernels PUBLIC ac_fft)
         install(TARGETS
             ac_fft
