@@ -78,7 +78,7 @@ struct device_s {
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
                            const int3 end)                                                         \
     {                                                                                              \
-        acSetDevice(device->id);                                                                 \
+        ERRCHK_CUDA(acSetDevice(device->id));                                                      \
         return acKernel_##ID(KernelParameters{device->streams[stream], 0, start, end},             \
                              device->vba);                                                         \
     }
@@ -91,7 +91,7 @@ acDevicePrintInfo(const Device device)
 	    printf("Running on CPU!\n");
 	    return AC_SUCCESS;
     }
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     const int device_id = device->id;
 
     cudaDeviceProp props;
@@ -167,7 +167,7 @@ template <typename T, typename P>
 static AcResult
 acDeviceLoadUniform(const Device device, const Stream stream, const P param, const T value)
 {
-	acSetDevice(device->id);
+	ERRCHK_CUDA(acSetDevice(device->id));
 	device->local_config[param] = value;
 	return acLoadUniform(device->streams[stream], param, value);
 }
@@ -189,7 +189,7 @@ AcResult
 acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
                           const AcReal value)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     device->local_config[param] = value;
     return acDeviceLoadUniform(device,stream,param,value);
 }
@@ -198,7 +198,7 @@ AcResult
 acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
                           const AcReal3 value)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     device->local_config[param] = value;
     return acDeviceLoadUniform(device,stream,param,value);
 }
@@ -209,7 +209,7 @@ AcResult
 acDeviceStoreScalarUniform(const Device device, const Stream stream, const AcRealParam param,
                            AcReal* value)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     return acStoreRealUniform(device->streams[stream], param, value);
 }
 
@@ -217,7 +217,7 @@ AcResult
 acDeviceStoreVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
                            AcReal3* value)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     return acStoreReal3Uniform(device->streams[stream], param, value);
 }
 
@@ -276,7 +276,7 @@ template <typename P, typename V>
 static AcResult
 acDeviceStoreUniform(const Device device, const Stream stream, const P param, V* value)
 {
-	acSetDevice(device->id);
+	ERRCHK_CUDA(acSetDevice(device->id));
 	if constexpr (IsArrayParam(param))
 	{
 		const size_t len = get_array_length(param,device->local_config);
@@ -321,7 +321,7 @@ acDeviceUpdate(Device device, const AcMeshInfo config)
 AcResult
 acDeviceLoadRealReduceRes(const Device device, const Stream stream, const AcRealOutputParam param, const AcReal value)
 {
-        acSetDevice(device->id);                                                                 \
+        ERRCHK_CUDA(acSetDevice(device->id)); 
 	acLoadRealReduceRes(device->streams[stream],param,&value);
 	return AC_SUCCESS;
 }
@@ -348,7 +348,7 @@ acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo hos
 		return dst;
 	};
 
-	acSetDevice(device->id);
+	ERRCHK_CUDA(acSetDevice(device->id));
 	if(device->local_config[AC_host_has_row_memory_order])
 	{
 		auto* values = row_to_column_order();
@@ -394,7 +394,7 @@ struct load_all_arrays_uniform
 AcResult
 acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     AcMeshInfo device_config = config;
     acHostUpdateParams(&device_config);
@@ -415,7 +415,7 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 AcResult
 acDeviceSynchronizeStream(const Device device, const Stream stream)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     if (stream == STREAM_ALL) {
 	acDeviceSynchronize();
     }
@@ -429,7 +429,7 @@ AcResult
 acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
                     const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     return acLoadStencil(stencil, device->streams[stream], data);
 }
 
@@ -513,7 +513,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acGetDeviceCount(&count);
     ERRCHK_ALWAYS(id < count);
 
-    acSetDevice(id);
+    ERRCHK_CUDA(acSetDevice(id));
 #if AC_DOUBLE_PRECISION
     acDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 #endif
@@ -603,7 +603,7 @@ acDeviceDestroy(Device* device_ptr)
 {
     Device device = *device_ptr;
     if(device == NULL) return AC_SUCCESS;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 #if AC_VERBOSE
     printf("Destroying device %d (%p)\n", device->id, device);
 #endif
@@ -634,7 +634,7 @@ acDeviceDestroy(Device* device_ptr)
 AcResult
 acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     AcReal* tmp             = device->vba.on_device.in[handle];
     device->vba.on_device.in[handle]  = device->vba.on_device.out[handle];
@@ -654,7 +654,7 @@ acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle)
 AcResult
 acDeviceSwapBuffers(const Device device)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     int retval = AC_SUCCESS;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
@@ -670,7 +670,7 @@ acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, con
     //TP: to still allow loading the whole mesh even though some VertexBuffers are dead, loading dead VertexBuffers is a no-op
     if (!vtxbuf_is_alive[vtxbuf_handle] || vtxbuf_is_device_only[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     if (host_mesh.vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, host_mesh.info,vtxbuf_handle);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, device->local_config,vtxbuf_handle);
 
@@ -749,7 +749,7 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
                         const AcReal value)
 {
     if(!vtxbuf_is_alive[handle]) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     const size_t count = acVertexBufferSize(device->local_config,handle);
     AcReal* data       = (AcReal*)calloc(count, sizeof(AcReal));
@@ -772,7 +772,7 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
 AcResult
 acDeviceFlushOutputBuffers(const Device device, const Stream stream)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     int retval = 0;
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
@@ -793,7 +793,7 @@ acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
     //TP: to still allow storing the whole mesh back from the Device storing dead VertexBuffers is a no-op
     if(!vtxbuf_is_alive[vtxbuf_handle] || vtxbuf_is_device_only[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     if (host_mesh->vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, device->local_config,vtxbuf_handle);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, host_mesh->info,vtxbuf_handle);
 
@@ -860,7 +860,7 @@ acDeviceTransferVertexBufferWithOffset(const Device src_device, const Stream str
 {
     //TP: to still allow transfering the whole mesh between devices transfering dead VertexBuffers is a no-op
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
-    acSetDevice(src_device->id);
+    ERRCHK_CUDA(acSetDevice(src_device->id));
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, src_device->local_config,vtxbuf_handle);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, dst_device->local_config,vtxbuf_handle);
 
@@ -910,14 +910,14 @@ AcResult
 acDeviceSetReduceOffset(const Device device, const AcKernel kernel,
                      const Volume start, const Volume end)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     return acSetReduceOffset(kernel, start, end, device->vba);
 }
 AcResult
 acDeviceLaunchKernel(const Device device, const Stream stream, const AcKernel kernel,
                      const Volume start, const Volume end)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
 }
 
@@ -926,7 +926,7 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const AcKernel ke
 AcResult
 acDeviceBenchmarkKernel(const Device device, const AcKernel kernel, const int3 start, const int3 end)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     return acBenchmarkKernel(kernel, start, end, device->vba);
 }
 
@@ -934,7 +934,7 @@ AcResult
 acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
                      AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     return acStoreStencil(stencil, device->streams[stream], data);
 }
 AcResult
@@ -943,7 +943,7 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 {
 #ifdef AC_INTEGRATION_ENABLED
     const AcReal current_time = device->local_config[AC_current_time];
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
 #ifdef AC_SINGLEPASS_INTEGRATION
     device->vba.on_device.kernel_input_params.singlepass_solve.step_num = step_number;
@@ -1000,7 +1000,7 @@ acDevicePeriodicBoundcondStep(const Device device, const Stream stream,
                               const VertexBufferHandle vtxbuf_handle, const Volume start,
                               const Volume end)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     acLoadKernelParams(device->vba.on_device.kernel_input_params,BOUNDCOND_PERIODIC_DEVICE,vtxbuf_handle); 
     return acDeviceLaunchKernel(device, stream, BOUNDCOND_PERIODIC_DEVICE,start,end);
@@ -1022,7 +1022,7 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream ,
                              const Volume , const AcMeshInfo , const int3 )
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     fprintf(stderr,"acDeviceGenerelBoundCondStep NOT ANYMORE SUPPORTED\n");
     exit(EXIT_FAILURE);
 }
@@ -1045,7 +1045,7 @@ acDeviceGeneralBoundconds(const Device device, const Stream stream, const Volume
 AcResult
 acDeviceSwapProfileBuffer(const Device device, const Profile handle)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     AcReal* tmp                      = device->vba.on_device.profiles.in[handle];
     device->vba.on_device.profiles.in[handle]  = device->vba.on_device.profiles.out[handle];
@@ -1079,7 +1079,7 @@ acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t
                     const Profile profile)
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     ERRCHK_ALWAYS(hostprofile_count == device->vba.profile_count);
     ERRCHK_CUDA(acMemcpy(device->vba.on_device.profiles.in[profile], hostprofile,
                            sizeof(device->vba.on_device.profiles.in[profile][0]) * device->vba.profile_count,
@@ -1093,7 +1093,7 @@ AcResult
 acDeviceStoreProfile(const Device device, const Profile profile, AcMesh* host_mesh)
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     ERRCHK_CUDA(acMemcpy(host_mesh->profile[profile], device->vba.on_device.profiles.in[profile],
                            prof_size(profile,device->vba.profile_dims[profile].m1),
                            cudaMemcpyDeviceToHost));
@@ -1127,7 +1127,7 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
                    const AcReal* in, const Volume in_offset, const Volume in_volume, //
                    AcReal* out, const Volume out_offset, const Volume out_volume)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
                               out_volume);
 }
@@ -1136,7 +1136,7 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
 AcResult
 acDeviceResetMesh(const Device device, const Stream stream)
 {
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     acDeviceSynchronizeStream(device, stream);
     return acVBAReset(device->streams[stream], &device->vba);
 }
@@ -1371,7 +1371,7 @@ acDeviceReduceScalNoPostProcessing(const Device device, const Stream stream, con
                               const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     const Volume start = acGetMinNN(device->local_config);
     const Volume end   = acGetMaxNN(device->local_config);
@@ -1418,7 +1418,7 @@ acDeviceReduceVecNoPostProcessing(const Device device, const Stream stream, cons
     if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     const Volume start = acGetMinNN(device->local_config);
     const Volume end   = acGetMaxNN(device->local_config);
@@ -1452,7 +1452,7 @@ acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
     if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
 
     const Volume start = acGetMinNN(device->local_config);
     const Volume end   = acGetMaxNN(device->local_config);
@@ -1484,7 +1484,7 @@ acDeviceReduceXY(const Device device, const Stream stream, const Field field,
                         const Profile profile, const AcReduction reduction)
 {
     if (profile >= 0 && profile < NUM_PROFILES) {
-        acSetDevice(device->id);
+        ERRCHK_CUDA(acSetDevice(device->id));
         acDeviceSynchronizeStream(device, stream);
 
         const AcMeshDims dims = acGetMeshDims(device->local_config);
@@ -1597,7 +1597,7 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     // NOTE: Revisit this
     const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
     const size_t gny = as_size_t(device->local_config.int3_params[AC_global_grid_n].y);
-    acSetDevice(device->id);
+    ERRCHK_CUDA(acSetDevice(device->id));
     acMultiplyInplace(1. / (gnx * gny), num_compute_profiles * device->vba.profile_count,
                       device->vba.on_device.profiles.in[0]);
 
@@ -1675,7 +1675,7 @@ AcResult
 acDeviceMemGetInfo(const Device device, size_t* free_mem, size_t* total_mem)
 {
 	ERRCHK_ALWAYS(device != NULL);
-	acSetDevice(device->id);
+        ERRCHK_CUDA(acSetDevice(device->id));
 	return acMemGetInfo(free_mem,total_mem) == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
