@@ -56,10 +56,6 @@ jobs:
           python3 -m pip config set global.break-system-packages true
           python3 -m pip install pandas numpy
 
-      - name: Force CPU build on macOS
-        if: ${{ runner.os == 'macOS' }}
-        run: echo AC_CPU_BUILD=ON >> "$GITHUB_ENV"
-
       - name: Start SSH agent and add key
         uses: webfactory/ssh-agent@v0.10.0
         with:
@@ -74,6 +70,7 @@ jobs:
         uses: ./.github/actions/build-test-astaroth
         with:
           build-configuration-dir: ${{ matrix.build-configuration-dir }}
+          cpu-only: ${{ runner.os == 'macOS' && true || false }}
 
   compile-and-run-tests-ubuntu:
     runs-on: ubuntu-latest

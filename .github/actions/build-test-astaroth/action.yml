@@ -5,6 +5,10 @@ inputs:
   build-configuration-dir:
     description: 'Path to a directory with an Astaroth build and test configuration.'
     required: true
+  cpu-only:
+    description: 'Run the build with AC_CPU_BUILD=ON to force not using CUDA or HIP.'
+    required: false
+    default: false
 
 runs:
   using: "composite"
@@ -28,6 +32,21 @@ runs:
       env:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
+        AC_CPU_BUILD: ${{ inputs.cpu-only && 'ON' || 'OFF' }}
+
+    - name: Run build.sh script (CPU-only build)
+      shell: bash
+      if: ${{ ! inputs.cpu-only }}
+      run: |
+        if [ -f "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/build.sh" ]; then
+          source sourceme.sh
+          cd $GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}
+          ./build.sh
+        fi
+      env:
+        OMPI_ALLOW_RUN_AS_ROOT: 1
+        OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
+        AC_CPU_BUILD: 'ON'
 
     - name: Run run.sh script (if present)
       shell: bash
