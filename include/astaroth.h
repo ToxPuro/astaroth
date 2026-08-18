@@ -112,7 +112,6 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 #else
 	snprintf(original_runtime_astaroth_path,len,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 #endif
-	kernelsLibHandle=acLoadRunTime(stream,info);
 	static int counter = 0;
 	const char* runtime_astaroth_path = acLibraryVersion(original_runtime_astaroth_path,counter,info.comm);
 	++counter;
@@ -334,6 +333,41 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acVerifyCompatibility,stream);
 	LOAD_DSYM(acStoreConfig,stream);
 	LOAD_DSYM(acDeviceLoadRealReduceRes,stream);
+	//Runtime functions
+	LOAD_DSYM(acKernelFlush,stream);
+	LOAD_DSYM(acVBAReset,stream);
+	LOAD_DSYM(acVBACreate,stream);
+	LOAD_DSYM(acAllocateArrays,stream);
+	LOAD_DSYM(acUpdateArrays,stream);
+	LOAD_DSYM(acVBADestroy,stream);
+	LOAD_DSYM(acRandInitAlt,stream);
+	LOAD_DSYM(acRandQuit,stream);
+	LOAD_DSYM(acLaunchKernel,stream);
+	LOAD_DSYM(acBenchmarkKernel,stream);
+	LOAD_DSYM(acLoadStencil,stream);
+	LOAD_DSYM(acStoreStencil,stream);
+	LOAD_DSYM(acLoadRealUniform,stream);
+	LOAD_DSYM(acLoadRealArrayUniform,stream);
+	LOAD_DSYM(acLoadReal3Uniform,stream);
+	LOAD_DSYM(acLoadIntUniform,stream)
+	LOAD_DSYM(acLoadIntUniform,stream)
+	LOAD_DSYM(acLoadIntArrayUniform,stream)
+	LOAD_DSYM(acLoadBoolUniform,stream)
+	LOAD_DSYM(acLoadIntArrayUniform,stream)
+	LOAD_DSYM(acLoadInt3Uniform,stream)
+	LOAD_DSYM(acStoreRealUniform,stream)
+	LOAD_DSYM(acStoreReal3Uniform,stream)
+	LOAD_DSYM(acStoreIntUniform,stream)
+	LOAD_DSYM(acStoreBoolUniform,stream)
+	LOAD_DSYM(acStoreInt3Uniform,stream)
+	LOAD_DSYM(acKernelLaunchGetLastTPB,stream)
+	LOAD_DSYM(acGetOptimizedKernel,stream)
+	LOAD_DSYM(acGetKernelReduceScratchPadSize,stream)
+	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream)
+	LOAD_DSYM(acGetKernels,stream)
+	LOAD_DSYM(acGetOptimTPB,stream);
+        LOAD_DSYM(acRuntimeQuit,stream);
+	LOAD_DSYM(acGetRealScratchpadSize,stream);
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);
 //#else
@@ -352,13 +386,10 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	const int success_closing_ac_lib = (astarothLibHandle != NULL) ? dlclose(astarothLibHandle) : 0;
 	if(success_closing_ac_lib) astarothLibHandle = NULL;
 
-	const int success_closing_kernels_lib = (kernelsLibHandle != NULL) ? dlclose(kernelsLibHandle) : 0;
-	if(success_closing_kernels_lib) kernelsLibHandle = NULL;
-
 	const int success_closing_utils_lib = (utilsLibHandle != NULL) ? dlclose(utilsLibHandle) : 0;
 	if(success_closing_utils_lib) utilsLibHandle = NULL;
 
-	return  (success_closing_ac_lib || success_closing_kernels_lib || success_closing_utils_lib) == 0 ? AC_SUCCESS : AC_FAILURE;
+	return  (success_closing_ac_lib || success_closing_utils_lib) == 0 ? AC_SUCCESS : AC_FAILURE;
   }
 #else
   static AcResult __attribute__((unused)) acLoadLibrary(FILE*, const AcMeshInfo) {return AC_FAILURE;}
