@@ -31,14 +31,14 @@ runs:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
 
-    - name: Run test.sh script (if present)
+    - name: Run run.sh script (if present)
       shell: bash
       run: |
         echo "::group::Test Astaroth project"
-        if [ -f "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/test.sh" ]; then
+        if [ -f "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/run.sh" ]; then
           source sourceme.sh
           cd $GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}
-          ./test.sh
+          ./run.sh
         fi
         echo "::endgroup::"
       env:
