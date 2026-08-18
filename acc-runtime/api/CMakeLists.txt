@@ -63,28 +63,26 @@ endif()
 ## Collect DSL files at build configuration-time
 ## Note: New/removed files are not taken into account until the build is
 ##       reconfigured.
-aux_source_directory(DSL_MODULE_DIR DSL_MODULE_SOURCES)
+file(GLOB_RECURSE DSL_MODULE_SOURCES CONFIGURE_DEPENDS ${DSL_MODULE_DIR}/*.ac)
 
 ## Generate acc-runtime-headers
 set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
 
 if (NOT DEFINED DSL_MODULE_FILE)
   set(DSL_SOURCES ${DSL_MODULE_SOURCES}
+                  ${DSL_BUILTIN_SOURCES}
+                  ${DSL_STDLIB_SOURCES}
+                  ${DSL_EXT_SOURCES}
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-  		${DSL_BUILTIN_SOURCES}
-  		${DSL_STDLIB_SOURCES}
-  		${DSL_EXT_SOURCES}
-  		)
+                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp")
 else()
   set(DSL_SOURCES ${DSL_MODULE_SOURCES}
+                  ${DSL_BUILTIN_SOURCES}
+                  ${DSL_MODULE_DIR}/${DSL_MODULE_FILE}
+                  ${DSL_STDLIB_SOURCES}
+                  ${DSL_EXT_SOURCES}
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-  		${DSL_BUILTIN_SOURCES}
-		${DSL_MODULE_DIR}/${DSL_MODULE_FILE}
-  		${DSL_STDLIB_SOURCES}
-  		${DSL_EXT_SOURCES}
-  		)
+                  "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp")
 endif()
   
 if (NOT RUNTIME_COMPILATION)
