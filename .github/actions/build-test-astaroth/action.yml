@@ -49,6 +49,7 @@ runs:
         AC_CPU_BUILD: 'ON'
 
     - name: Run run.sh script (if present)
+      id: test
       shell: bash
       run: |
         if [ -f "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/run.sh" ]; then
@@ -59,3 +60,10 @@ runs:
       env:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
+
+    - name: Upload runtime compilation log
+      uses: actions/upload-artifact@v7
+      if: ${{ failure() && steps.test.conclusion == 'failure' }}
+      with:
+        path: "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/ac_compilation_log"
+        archive: false
