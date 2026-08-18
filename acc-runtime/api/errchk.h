@@ -132,10 +132,10 @@ cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 #ifdef NDEBUG
 #undef ERRCHK
 #undef WARNCHK
-#define ERRCHK(params) (void)params
-#define WARNCHK(params) (void)params
-#define ERRCHK_CUDA(params) (void)params
-#define WARNCHK_CUDA(params) params
+#define ERRCHK(params) (void)(params)
+#define WARNCHK(params) (void)(params)
+#define ERRCHK_CUDA(params) (void)(params)
+#define WARNCHK_CUDA(params) (void)(params)
 #define ERRCHK_CUDA_KERNEL()                                                   \
   {                                                                            \
   }
