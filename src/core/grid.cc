@@ -3823,9 +3823,9 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         AcReal* out = vba.on_device.out[non_auxiliary_vtxbuf];
 	const Volume out_offset = {0, 0, 0,};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
-        ERRCHK_CUDA(acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
-                           out_volume));
-        ERRCHK_CUDA(acDeviceSynchronizeStream(device, STREAM_DEFAULT));
+        ERRCHK(acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume) == AC_SUCCESS);
+        ERRCHK(acDeviceSynchronizeStream(device, STREAM_DEFAULT) == AC_SUCCESS);
 
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(i));
         ERRCHK_CUDA(acMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost));
