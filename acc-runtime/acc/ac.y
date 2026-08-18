@@ -11,6 +11,7 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <wordexp.h>
+#include <sys/resource.h>
 
 #include "ast.h"
 #include "codegen.h"
