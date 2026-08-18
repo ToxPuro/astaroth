@@ -18,6 +18,8 @@
 #include "codegen.h"
 
 #include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
 #include <hash.h>
 #include <hashtable.h>
 #include <limits.h>
@@ -26,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "ast.h" // Needs to come before tab.h to have the definition of ASTNode.
@@ -11224,9 +11227,20 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
   FILE* proc = popen(stencilgen_cmd, "r");
   assert(proc);
 
+  opendir("ac_kernels");
+  if (errno == ENOENT) {
+    mkdir("ac_kernels", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+  }
+  FILE *tmp = gen_mem_accesses ? NULL : fopen("./ac_kernels/stencils.cu", "w");
+if (!gen_mem_accesses) {
+		assert(tmp != NULL);
+	fprintf(tmp, "#include \"user_kernel.h\"\n\n");
+	}
   char buf[4096] = {0};
   while (fgets(buf, sizeof(buf), proc))
-    fprintf(stream, "%s", buf);
+    fprintf(gen_mem_accesses ? stream : tmp, "%s", buf);
+  if (!gen_mem_accesses)
+    fclose(tmp);
 
   pclose(proc);
 }
@@ -11725,9 +11739,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_profile_reads(root,gen_mem_accesses);
 
   generate_error_messages();
-
-  // Generate user_kernels.cu
-  fprintf(stream, "#include \"user_kernel.h\"\n\n");
 
   generate_fields_info(root);
   symboltable_reset();

@@ -103,11 +103,26 @@ else()
 			)
 endif()
 
+# OM: For now the number of kernel source files is hardcoded. Ideally this
+# would not be the case but it's just simpler to get done than a more generic
+# solution. Baby steps :).
+set(ACC_GENERATED_KERNELS_SOURCES
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_0.cu
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_1.cu
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_2.cu
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_3.cu
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_4.cu
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_5.cu
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_6.cu
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_7.cu
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/stencils.cu
+)
+
 set(ACC_GENERATED_SOURCES
     "memcpy_from_gmem_arrays.cu"
     "memcpy_to_gmem_arrays.cu"
     "reduce_helpers.cu"
-    "user_kernels.cu"
+    "${ACC_GENERATED_KERNELS_SOURCES}"
 )
 
 set(ACC_GENERATED_ANALYSIS_KERNELS "${CMAKE_CURRENT_BINARY_DIR}/user_analysis_kernels.cpp")
