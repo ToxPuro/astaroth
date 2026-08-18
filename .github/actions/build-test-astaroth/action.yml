@@ -20,13 +20,11 @@ runs:
     - name: Run build.sh script
       shell: bash
       run: |
-        echo "::group::Build Astaroth project"
         if [ -f "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/build.sh" ]; then
           source sourceme.sh
           cd $GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}
           ./build.sh
         fi
-        echo "::endgroup::"
       env:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
@@ -34,13 +32,11 @@ runs:
     - name: Run run.sh script (if present)
       shell: bash
       run: |
-        echo "::group::Test Astaroth project"
         if [ -f "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/run.sh" ]; then
           source sourceme.sh
           cd $GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}
           ./run.sh
         fi
-        echo "::endgroup::"
       env:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
