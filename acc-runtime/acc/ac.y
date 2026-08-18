@@ -842,6 +842,13 @@ main(int argc, char** argv)
         puts("Usage: ./acc [source file]");
         return EXIT_FAILURE;
     }
+
+    //Ask for maximum stack space
+    struct rlimit rlim;
+    getrlimit(RLIMIT_STACK, &rlim);
+    rlim.rlim_cur = rlim.rlim_max;
+    setrlimit(RLIMIT_STACK, &rlim);
+
     atexit(&cleanup);
     char* file = NULL;
     ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-1]);
