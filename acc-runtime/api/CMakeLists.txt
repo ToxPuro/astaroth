@@ -113,11 +113,11 @@ set(ACC_GENERATED_SOURCES
 set(ACC_GENERATED_ANALYSIS_KERNELS "${CMAKE_CURRENT_BINARY_DIR}/user_analysis_kernels.cpp")
 
 if (USE_HIP)
-	set_source_files_properties(${ACC_GENERATED_SOURCES} PROPERTIES LANGUAGE HIP)
+	set_source_files_properties(${ACC_GENERATED_SOURCES} random.cu PROPERTIES LANGUAGE HIP)
 endif()
 
 if (CPU_BUILD)
-	set_source_files_properties(${ACC_GENERATED_SOURCES} PROPERTIES LANGUAGE CXX)
+	set_source_files_properties(${ACC_GENERATED_SOURCES} random.cu PROPERTIES LANGUAGE CXX)
 endif()
 
 if (NOT DEFINED DSL_MODULE_FILE)
@@ -169,6 +169,7 @@ if(NOT RUNTIME_COMPILATION)
 		    vba.cc
 		    common_kernels.cc
 		    static_analysis.cc
+		    random.cu
 		    ${ACC_GENERATED_SOURCES}
 	)
 	set_target_properties(
