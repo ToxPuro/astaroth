@@ -70,5 +70,6 @@ runs:
       uses: actions/upload-artifact@v7
       if: ${{ failure() && steps.test.conclusion == 'failure' }}
       with:
-        path: "$GITHUB_WORKSPACE/${{ inputs.build-configuration-dir }}/ac_compilation_log"
+        path: "${{ github.workspace }}/${{ inputs.build-configuration-dir }}/ac_compilation_log"
         archive: false
+        if-no-files-found: error
