@@ -32,7 +32,7 @@ runs:
       env:
         OMPI_ALLOW_RUN_AS_ROOT: 1
         OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
-        AC_CPU_BUILD: ${{ inputs.cpu-only && 'ON' || 'OFF' }}
+        AC_CPU_BUILD: ${{ case(inputs.cpu-only, 'ON', 'OFF') }}
 
     - name: Run build.sh script (CPU-only build)
       shell: bash
