@@ -70,7 +70,7 @@ jobs:
         uses: ./.github/actions/build-test-astaroth
         with:
           build-configuration-dir: ${{ matrix.build-configuration-dir }}
-          cpu-only: ${{ case(runner.os == 'macOS', true, false) }}
+          cpu-build: ${{ case(runner.os == 'macOS', 'ON', 'OFF') }}
 
   compile-and-run-tests-ubuntu-cuda:
     runs-on: ubuntu-latest
