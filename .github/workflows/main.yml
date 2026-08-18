@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - develop
+      # OM: Temporary! Just to see if there is any effect on the CI runtime.
+      #This work is still quite experimental.
+      - wip/martymichal/context-based-includes
 
 jobs:
   define-matrices:
