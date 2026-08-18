@@ -121,7 +121,7 @@ get_rocfft_field(const Volume domain_size, const Volume subdomain_size)
 
     rocfft_brick brick_layout = nullptr;
     int device_id = -1;
-    acGetDevice(&device_id);
+    ERRCHK_CUDA(acGetDevice(&device_id));
     check_rocfft_status(rocfft_brick_create(
                       &brick_layout,
                       lower,
