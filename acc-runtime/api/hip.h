@@ -18,14 +18,6 @@
 */
 #pragma once
 
-#ifndef __HIP_PLATFORM_HCC__
-#define __HIP_PLATFORM_HCC__
-#endif
-
-#ifndef __HIP_PLATFORM_AMD__
-#define __HIP_PLATFORM_AMD__
-#endif
-
 #define cudaSharedMemConfig hipSharedMemConfig
 #define CUresult hipError_t
 #define cudaError_t hipError_t
