@@ -1576,6 +1576,9 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
 	if(kernel_calls.size() == 0) return std::vector<AcTaskDefinition>{};
+	bool all_null = true;
+        for(auto& kernel : kernel_calls) { all_null &= (kernel == AC_NULL_KERNEL); }
+        if(all_null) return std::vector<AcTaskDefinition>{};
 	const auto info = get_dynamic_info(graph);
 	const FieldBCs  field_boundconds = get_field_boundconds(bc_graph,optimized);
 	std::vector<AcTaskDefinition> res{};
