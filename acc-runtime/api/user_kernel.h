@@ -43,6 +43,7 @@
 
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 extern __device__ __constant__ AcMeshInfoScalars d_mesh_info;
+extern __device__ AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH];
 
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
 
