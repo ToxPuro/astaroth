@@ -90,6 +90,14 @@ typedef int cudaDeviceAttr;
 #else 
 
 #if AC_USE_HIP
+
+#ifndef __HIP_PLATFORM_HCC__
+#define __HIP_PLATFORM_HCC__
+#endif
+
+#ifndef __HIP_PLATFORM_AMD__
+#define __HIP_PLATFORM_AMD__
+#endif
 #include <hip/hip_fp16.h>         // Half-precision floats
 #include <hip/hip_runtime_api.h>  // Streams
 
