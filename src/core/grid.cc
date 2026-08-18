@@ -4818,7 +4818,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
         // DEBUG hotfix START
         // TODO better solution (need to recheck all acDevice functions)
         ERRCHK_CUDA(acDeviceSynchronize());             // This sync *is* needed
-        ERRCHK_CUDA(acGridSynchronizeStream(STREAM_ALL)); // This sync may not be needed
+        ERRCHK(acGridSynchronizeStream(STREAM_ALL) == AC_SUCCESS); // This sync may not be needed
         // DEBUG hotfix END
 
         ERRCHK(acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
