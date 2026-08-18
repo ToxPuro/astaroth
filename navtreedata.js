@@ -142,8 +142,8 @@ var NAVTREEINDEX =
 "astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78a08bb143a0b28c4876ee060d4feb17a44",
 "astaroth__grid_8h.html#aecb3a6f182e8c6592c9b8c53d7543652",
 "func__define_8h.html#a647edb5f42c181fd2443f4d9e556b3a9",
-"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d",
-"structAcReduceBuffer.html#ad1e82adc51e7ca1eb0dca35a3b58d0ee"
+"host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a0c75015db91d2767bd7ccae7958d9a80",
+"structAcReduction.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

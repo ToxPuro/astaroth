@@ -1,7 +1,5 @@
 var hip_8h =
 [
-    [ "__HIP_PLATFORM_AMD__", "hip_8h.html#ac564497d9952b6cc98197be56507f45a", null ],
-    [ "__HIP_PLATFORM_HCC__", "hip_8h.html#a69073f48a1171fa0b948f4b50e63ad1a", null ],
     [ "cudaDevAttrClockRate", "hip_8h.html#a3400f4dfb02c31aaea9adf5e539c8041", null ],
     [ "cudaDevAttrComputeMode", "hip_8h.html#aa6135265fd88022851f41431b2ca4bb3", null ],
     [ "cudaDevAttrCooperativeLaunch", "hip_8h.html#a8424920780a97b5927a38ecd47d41118", null ],

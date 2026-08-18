@@ -1,7 +1,5 @@
 var NAVTREEINDEX5 =
 {
-"structAcReduceBuffer.html#ad1e82adc51e7ca1eb0dca35a3b58d0ee":[5,0,16,4],
-"structAcReduceBuffer.html#aecb927b0a24d609b682e67e94cefa888":[5,0,16,1],
 "structAcReduction.html":[5,0,17],
 "structAcReduction.html#a29a3bf94741cd64340c6384374bd236c":[5,0,17,5],
 "structAcReduction.html#a30da1a72b6ae1bb593e3d85351e6c27a":[5,0,17,3],

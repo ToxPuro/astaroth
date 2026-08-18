@@ -1,7 +1,5 @@
 var NAVTREEINDEX4 =
 {
-"host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d":[6,0,2,22,11,1],
-"host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1":[6,0,2,22,10],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a0c75015db91d2767bd7ccae7958d9a80":[6,0,2,22,10,3],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a2f40244b989825fc009f5862f7ecc00c":[6,0,2,22,10,1],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a5f37dd57f20f263fd5a5f742265800ea":[6,0,2,22,10,5],
@@ -26,8 +24,8 @@ var NAVTREEINDEX4 =
 "implementation_8h.html#ae35a3b4f6bd975325531cbbde50c9d7b":[6,0,0,0,8,2],
 "implementation_8h.html#aea2549cd8df91125a4af7b1134949656":[6,0,0,0,8,8],
 "implementation_8h_source.html":[6,0,0,0,8],
-"index.html":[],
 "index.html":[0],
+"index.html":[],
 "index.html#autotoc_md0":[0,0],
 "index.html#autotoc_md1":[0,1],
 "index.html#autotoc_md10":[0,8,0],
@@ -249,5 +247,7 @@ var NAVTREEINDEX4 =
 "structAcReduceBuffer.html":[5,0,16],
 "structAcReduceBuffer.html#a8a10ca099bd09f31e28137de38454650":[5,0,16,2],
 "structAcReduceBuffer.html#a9f8eb812bca05b78fb8ee54a1734b0fa":[5,0,16,3],
-"structAcReduceBuffer.html#abc58b9c57a916b5a957f52f42f51f4d4":[5,0,16,0]
+"structAcReduceBuffer.html#abc58b9c57a916b5a957f52f42f51f4d4":[5,0,16,0],
+"structAcReduceBuffer.html#ad1e82adc51e7ca1eb0dca35a3b58d0ee":[5,0,16,4],
+"structAcReduceBuffer.html#aecb927b0a24d609b682e67e94cefa888":[5,0,16,1]
 };

@@ -10,7 +10,7 @@ var searchData=
   ['errchk_5fcuda_5falways_7',['ERRCHK_CUDA_ALWAYS',['../errchk_8h.html#aacc2999a0b262af663f89af1c50bd9ee',1,'errchk.h']]],
   ['errchk_5fcuda_5fkernel_8',['ERRCHK_CUDA_KERNEL',['../errchk_8h.html#a989344a6ffee89d48309fea92999e6cd',1,'errchk.h']]],
   ['errchk_5fcuda_5fkernel_5falways_9',['ERRCHK_CUDA_KERNEL_ALWAYS',['../errchk_8h.html#a5b1648923d10009d9101dba333776cf7',1,'errchk.h']]],
-  ['error_10',['error',['../errchk_8h.html#a39b3cc118c8339855e5578335a0b2417',1,'ERROR:&#160;errchk.h'],['../vecs_8h.html#ab70064e6ae258de4a1d0811824412152',1,'error:&#160;vecs.h'],['../structError.html',1,'Error']]],
+  ['error_10',['error',['../vecs_8h.html#ab70064e6ae258de4a1d0811824412152',1,'error:&#160;vecs.h'],['../errchk_8h.html#a39b3cc118c8339855e5578335a0b2417',1,'ERROR:&#160;errchk.h'],['../structError.html',1,'Error']]],
   ['example_20template_11',['Simple example template',['../index.html#autotoc_md5',1,'']]],
   ['example_3a_12',['example:',['../md_CONTRIBUTING.html#autotoc_md18',1,'Header example:'],['../md_CONTRIBUTING.html#autotoc_md19',1,'Source example:']]],
   ['exp_13',['exp',['../math__utils_8h.html#afd8bf2ee8004f952446a6df0cbec3dc4',1,'math_utils.h']]],
