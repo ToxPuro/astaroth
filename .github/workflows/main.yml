@@ -21,10 +21,10 @@ jobs:
           echo "test-builds-matrix=$(find test-builds -mindepth 1 -maxdepth 1 -type d  | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
           echo "test-matrix=$(find test -mindepth 1 -maxdepth 1 -type d | jq -Rsc 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
 
-  compile-base-builds-ubuntu:
+  compile-base-builds-ubuntu-cuda:
     runs-on: ubuntu-latest
     container:
-      image: &ubuntu-container nvidia/cuda:13.3.0-devel-ubuntu26.04
+      image: &ubuntu-cuda-container nvidia/cuda:13.3.0-devel-ubuntu26.04
     needs: define-matrices
     strategy:
       matrix:
@@ -72,13 +72,40 @@ jobs:
           build-configuration-dir: ${{ matrix.build-configuration-dir }}
           cpu-only: ${{ case(runner.os == 'macOS', true, false) }}
 
-  compile-and-run-tests-ubuntu:
+  compile-and-run-tests-ubuntu-cuda:
     runs-on: ubuntu-latest
     container:
-      image: *ubuntu-container
+      image: *ubuntu-cuda-container
     needs:
       - define-matrices
-      - compile-base-builds-ubuntu
+      - compile-base-builds-ubuntu-cuda
+    strategy:
+      matrix:
+        build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-matrix) }}
+    timeout-minutes: 180
+
+    steps: *build-and-test-steps
+
+  compile-base-builds-ubuntu-rocm:
+    runs-on: ubuntu-latest
+    container:
+      image: &ubuntu-rocm-container rocm/dev-ubuntu-26.04:7.14.0-full
+    needs:
+      - define-matrices
+    strategy:
+      matrix:
+        build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-builds-matrix) }}
+    timeout-minutes: 180
+
+    steps: *build-and-test-steps
+
+  compile-and-run-tests-ubuntu-rocm:
+    runs-on: ubuntu-latest
+    container:
+      image: *ubuntu-rocm-container
+    needs:
+      - define-matrices
+      - compile-base-builds-ubuntu-rocm
     strategy:
       matrix:
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-matrix) }}
