@@ -55,7 +55,7 @@ var searchData=
   ['cudamemcpypeerasync_52',['cudaMemcpyPeerAsync',['../hip_8h.html#a907e459d06acfe4a52f21b945a2ff665',1,'hip.h']]],
   ['cudamemcpytosymbol_53',['cudaMemcpyToSymbol',['../hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c',1,'hip.h']]],
   ['cudamemcpytosymbolasync_54',['cudaMemcpyToSymbolAsync',['../hip_8h.html#a790ef41641e10e7c33050d449bc04e18',1,'hip.h']]],
-  ['cudamemgetinfo_55',['cudamemgetinfo',['../hip_8h.html#a68147b1f43961aadc69e1f9b7cc6938a',1,'cudaMemGetInfo:&#160;hip.h'],['../hip_8h.html#a68147b1f43961aadc69e1f9b7cc6938a',1,'cudaMemGetInfo:&#160;hip.h']]],
+  ['cudamemgetinfo_55',['cudaMemGetInfo',['../hip_8h.html#a68147b1f43961aadc69e1f9b7cc6938a',1,'cudaMemGetInfo:&#160;hip.h'],['../hip_8h.html#a910109729418cbbc489d4a6f36822ed0',1,'cudaMemGetInfo:&#160;hip.h']]],
   ['cudamemset_56',['cudaMemset',['../hip_8h.html#a66d1015175ec4b34c2be0930fe4849ec',1,'hip.h']]],
   ['cudaoccupancymaxactiveblockspermultiprocessor_57',['cudaOccupancyMaxActiveBlocksPerMultiprocessor',['../hip_8h.html#a4575cc4e1c0b7bf9edfdf6588ae847d8',1,'hip.h']]],
   ['cudapeekatlasterror_58',['cudaPeekAtLastError',['../hip_8h.html#a6cd9aab525acff23679daf961e31869b',1,'hip.h']]],

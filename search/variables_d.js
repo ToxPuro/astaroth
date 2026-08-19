@@ -7,7 +7,7 @@ var searchData=
   ['n_5freduce_5foutputs_4',['n_reduce_outputs',['../structKernelAnalysisInfo.html#a5536d59c7d94f94af084acd8ab52c399',1,'KernelAnalysisInfo']]],
   ['name_5',['name',['../structte__variable.html#a94cf978c87b0c7da037d9cb70fd29987',1,'te_variable::name'],['../structAcReduction.html#a30da1a72b6ae1bb593e3d85351e6c27a',1,'AcReduction::name']]],
   ['new_5fqualifier_6',['new_qualifier',['../ast_8h.html#a08187fcca9bba11b127584ec4e70318a',1,'ast.h']]],
-  ['nn_7',['nn',['../structAcMeshDims.html#ada484de17a3282a7cd7a79fb8e3a79a1',1,'AcMeshDims::nn'],['../structAcGridInfo.html#aa64b4a5ffc1f0602038d1ac0a4b01f71',1,'AcGridInfo::nn']]],
+  ['nn_7',['nn',['../structAcGridInfo.html#aa64b4a5ffc1f0602038d1ac0a4b01f71',1,'AcGridInfo::nn'],['../structAcMeshDims.html#ada484de17a3282a7cd7a79fb8e3a79a1',1,'AcMeshDims::nn']]],
   ['no_5fauto_8',['no_auto',['../structASTNode.html#ab8719eeef207e38eadb32f89dfb1b527',1,'ASTNode']]],
   ['num_5fdevices_9',['num_devices',['../structDeviceConfiguration.html#a822500914b4a435ddea6c517fbad4650',1,'DeviceConfiguration']]],
   ['num_5ffields_5fin_10',['num_fields_in',['../structAcTaskDefinition.html#a8bd6206e58db8767ff2372515587a84b',1,'AcTaskDefinition']]],

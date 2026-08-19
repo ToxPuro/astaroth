@@ -52,7 +52,7 @@ var hip_8h =
     [ "cudaMemcpyPeerAsync", "hip_8h.html#a907e459d06acfe4a52f21b945a2ff665", null ],
     [ "cudaMemcpyToSymbol", "hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c", null ],
     [ "cudaMemcpyToSymbolAsync", "hip_8h.html#a790ef41641e10e7c33050d449bc04e18", null ],
-    [ "cudaMemGetInfo", "hip_8h.html#a68147b1f43961aadc69e1f9b7cc6938a", null ],
+    [ "cudaMemGetInfo", "hip_8h.html#a910109729418cbbc489d4a6f36822ed0", null ],
     [ "cudaMemGetInfo", "hip_8h.html#a68147b1f43961aadc69e1f9b7cc6938a", null ],
     [ "cudaMemset", "hip_8h.html#a66d1015175ec4b34c2be0930fe4849ec", null ],
     [ "cudaOccupancyMaxActiveBlocksPerMultiprocessor", "hip_8h.html#a4575cc4e1c0b7bf9edfdf6588ae847d8", null ],

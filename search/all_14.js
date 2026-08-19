@@ -24,7 +24,7 @@ var searchData=
   ['kernel_5fwrites_5fto_5foutput_21',['kernel_writes_to_output',['../astaroth__analysis__helpers_8h.html#a07d8462e72b661b295e29492d788beb3',1,'astaroth_analysis_helpers.h']]],
   ['kernelanalysisinfo_22',['KernelAnalysisInfo',['../structKernelAnalysisInfo.html',1,'']]],
   ['kernelreduceoutput_23',['KernelReduceOutput',['../structKernelReduceOutput.html',1,'']]],
-  ['kernels_24',['kernels',['../md_acc-runtime_2README.html#autotoc_md66',1,'Kernels'],['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md101',1,'Kernels']]],
+  ['kernels_24',['Kernels',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md89',1,'']]],
   ['key_25',['key',['../structhashmap__element__t.html#a9780dac974e65b153da7996d8f6e3123',1,'hashmap_element_t']]],
   ['key_5flen_26',['key_len',['../structhashmap__element__t.html#af842ceb5fbbaed8c176088db464d9fb8',1,'hashmap_element_t']]]
 ];

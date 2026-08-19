@@ -8,7 +8,7 @@ var searchData=
   ['hashmap_5fget_5',['hashmap_get',['../hashtable_8h.html#a4ee339d17abdce2e3cc45c70880c4a66',1,'hashtable.h']]],
   ['hashmap_5fhash_5fhelper_6',['hashmap_hash_helper',['../hashtable_8h.html#ad31b9e210e7506da30493743d3db6a4f',1,'hashtable.h']]],
   ['hashmap_5fhash_5fhelper_5fint_5fhelper_7',['hashmap_hash_helper_int_helper',['../hashtable_8h.html#a184e524b9bb850a10d61bc47a6cc2637',1,'hashtable.h']]],
-  ['hashmap_5fiterate_8',['hashmap_iterate',['../hashtable_8h.html#a71099a5a554403308fcb98f9e8a9f4b5',1,'hashmap_iterate(const struct hashmap_s *const hashmap, int(*iterator)(void *const context, void *const value), void *const context):&#160;hashtable.h'],['../hashtable_8h.html#aa081438924e604833c71b7917bfccedb',1,'hashmap_iterate(const struct hashmap_s *const m, int(*f)(void *const, void *const), void *const context):&#160;hashtable.h']]],
+  ['hashmap_5fiterate_8',['hashmap_iterate',['../hashtable_8h.html#a0f6182200c64eac28749ee1959ddf42d',1,'hashtable.h']]],
   ['hashmap_5fiterate_5fpairs_9',['hashmap_iterate_pairs',['../hashtable_8h.html#ad31e3d3284cac1d13897705b08b652d2',1,'hashtable.h']]],
   ['hashmap_5fnum_5fentries_10',['hashmap_num_entries',['../hashtable_8h.html#ad7fe4dc7386303dc9eb91019d5271b82',1,'hashtable.h']]],
   ['hashmap_5fput_11',['hashmap_put',['../hashtable_8h.html#a8d7292c67c004675172a4a0e31bd4cb4',1,'hashtable.h']]],

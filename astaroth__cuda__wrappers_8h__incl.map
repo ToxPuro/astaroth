@@ -1,15 +1,15 @@
 <map id="include/astaroth_cuda_wrappers.h" name="include/astaroth_cuda_wrappers.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="219,5,385,45"/>
-<area shape="rect" id="Node000002" href="$astaroth__device__headers_8h.html" title=" " alt="" coords="115,93,313,119"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="282,48,239,86,236,82,279,44"/>
-<area shape="rect" id="Node000005" href="$func__define_8h.html" title=" " alt="" coords="337,93,446,119"/>
-<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="325,44,370,82,366,86,322,48"/>
-<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,156,192"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="194,121,116,162,113,158,191,116"/>
-<area shape="rect" id="Node000004" title=" " alt="" coords="181,167,282,192"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="219,118,228,153,223,154,214,120"/>
-<area shape="rect" id="Node000006" title=" " alt="" coords="341,167,407,192"/>
-<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="391,120,383,154,377,153,386,118"/>
-<area shape="rect" id="Node000007" title=" " alt="" coords="432,167,503,192"/>
-<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="405,117,447,155,443,159,402,121"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="218,5,382,50"/>
+<area shape="rect" id="Node000002" href="$astaroth__device__headers_8h.html" title=" " alt="" coords="114,98,310,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="279,49,239,89,236,85,275,52"/>
+<area shape="rect" id="Node000005" href="$func__define_8h.html" title=" " alt="" coords="334,98,442,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="324,48,365,87,360,87,322,53"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,174,155,201"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="191,126,118,168,116,163,186,127"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="179,174,280,201"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="217,124,225,159,220,157,213,128"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="338,174,403,201"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="387,125,379,160,375,157,383,128"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="428,174,497,201"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="402,124,441,163,436,162,400,129"/>
 </map>

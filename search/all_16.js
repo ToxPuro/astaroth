@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['m_0',['m',['../math__utils_8h.html#acced267c878075c127af78992dd378fa',1,'m:&#160;math_utils.h'],['../structGridDims.html#a21efdd6e712ca67005f17d514901cbc6',1,'GridDims::m']]],
+  ['m_0',['m',['../structGridDims.html#a21efdd6e712ca67005f17d514901cbc6',1,'GridDims::m'],['../math__utils_8h.html#acced267c878075c127af78992dd378fa',1,'m:&#160;math_utils.h']]],
   ['m0_1',['m0',['../structAcMeshDims.html#af46eba6589050163a4ef5a894b8bf2a2',1,'AcMeshDims']]],
   ['m1_2',['m1',['../structAcMeshDims.html#a67874332670c807fab5fa0851cd34d11',1,'AcMeshDims']]],
   ['magnitude_3',['magnitude',['../structForcingParams.html#a0e0103a7b8dc344cc1a309ae74e13b18',1,'ForcingParams']]],
@@ -18,10 +18,10 @@ var searchData=
   ['max_15',['max',['../structfacet__class__range.html#a5727ca988e7bfe26d815b5c7662ffcff',1,'facet_class_range']]],
   ['maximum_5fmagnitude_16',['maximum_magnitude',['../structError.html#ad64d9985ef2690cbd1c1a2118b915c55',1,'Error']]],
   ['maybe_5funused_17',['MAYBE_UNUSED',['../acc__runtime_8h.html#a07d932791f722cd5b75c111e51ef2023',1,'acc_runtime.h']]],
-  ['md_20for_20the_20astaroth_203_200_20dsl_20syntax_18',['Astaroth Domain-Specific Language 2.0 (&lt;strong&gt;DEPRECATED&lt;/strong&gt;. See acc-runtime/README.md for the Astaroth 3.0 DSL syntax)',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md96',1,'']]],
+  ['md_20for_20the_20astaroth_203_200_20dsl_20syntax_18',['Astaroth Domain-Specific Language 2.0 (&lt;b&gt;DEPRECATED&lt;/b&gt;. See acc-runtime/README.md for the Astaroth 3.0 DSL syntax)',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md84',1,'']]],
   ['mem_5faccess_5fhelper_5ffuncs_2eh_19',['mem_access_helper_funcs.h',['../mem__access__helper__funcs_8h.html',1,'']]],
   ['mem_5forder_20',['mem_order',['../structAcReduceBuffer.html#a8a10ca099bd09f31e28137de38454650',1,'AcReduceBuffer']]],
-  ['meshes_21',['Meshes',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md95',1,'']]],
+  ['meshes_21',['Meshes',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md83',1,'']]],
   ['min_22',['min',['../structfacet__class__range.html#a8c4935743d02318de67c0bf4e933f648',1,'facet_class_range']]],
   ['minimum_5fmagnitude_23',['minimum_magnitude',['../structError.html#aa30ca34d53e8032db1905faaed8901c4',1,'Error']]],
   ['model_24',['model',['../structError.html#adfccb9f79211ac3ba36bfc2a58f91743',1,'Error']]],

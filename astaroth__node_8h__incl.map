@@ -1,9 +1,9 @@
 <map id="include/astaroth_node.h" name="include/astaroth_node.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,184,31"/>
-<area shape="rect" id="Node000002" href="$func__define_8h.html" title=" " alt="" coords="40,79,149,104"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,31,97,65,92,65,92,31"/>
-<area shape="rect" id="Node000003" title=" " alt="" coords="15,152,81,177"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="89,106,65,142,61,139,85,103"/>
-<area shape="rect" id="Node000004" title=" " alt="" coords="106,152,177,177"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="105,103,128,139,124,142,100,106"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,183,33"/>
+<area shape="rect" id="Node000002" href="$func__define_8h.html" title=" " alt="" coords="40,81,148,109"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,31,97,66,91,65,93,36"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="16,157,81,184"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="88,108,67,145,63,142,84,111"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="106,157,175,184"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="104,107,127,144,122,144,101,112"/>
 </map>
