@@ -62,8 +62,8 @@
 
 #define AC_SIZE(arr) sizeof(arr)/sizeof(arr[0])
 
-  //copied from the sample setup
-#ifdef __cplusplus
+// If using C++ or C at version 23 or higher.
+#if defined(__cplusplus) || (__STDC_VERSION__ >= 202311L)
 #define CONSTEXPR constexpr
 #define MAYBE_UNUSED [[maybe_unused]]
 #else
