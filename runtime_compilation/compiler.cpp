@@ -392,6 +392,7 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 	}
 #if AC_MPI_ENABLED
 	MPI_Barrier(mesh_info.comm->handle);
+	MPI_Bcast(&res, 1, MPI_INT, 0, mesh_info.comm->handle);
 #endif
         ac_restore_floating_point_exceptions();
 	return res;
