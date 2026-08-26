@@ -31,15 +31,8 @@ endif()
 ## Options
 option(2D                          "Compile Astaroth for 2D simulation" OFF)
 option(BUILD_ACM                   "Whether to build to the Astaroth Communication Module (ACM)." OFF)
-option(BUILD_ADVECTION_EXAMPLE     "Builds hello world example" OFF)
-option(BUILD_INTEGRATOR            "Whether to build integrator" OFF)
-option(BUILD_MHD_SAMPLES           "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
-option(BUILD_MLLIB_SAMPLES         "Builds samples that use cuDNN or MIOpen" OFF)
-option(BUILD_SAMPLES               "Builds projects in samples subdirectory." ON)
 option(BUILD_SHARED_LIBS           "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
 option(BUILD_STANDALONE            "Build the standalone_mpi executable to run standard simulation." ON)
-option(BUILD_TESTS                 "Builds tests in test subdirectory. Make sure to set DSL_MODULE_DIR and
-DSL_MODULE_FILE accordingly and build only a specific test taget." OFF)
 option(BUILD_UTILS                 "Builds the utility library" ON)
 option(CPU_BUILD                   "To build CPU-only build" OFF)
 option(DEBUG_SYNC                  "Whether to sync after all tasks in default ops" OFF)
@@ -61,6 +54,14 @@ option(USE_PERFSTUBS               "Build with perfstubs" OFF)
 option(USE_POSIX_IO                "Uses POSIX I/O less error prone, but increased overheads." ON)
 option(USE_VENDORED_PERFSTUBS      "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(VERBOSE                     "Enables various status and warning messages" OFF)
+
+# Non-boolean options
+set(BUILD_SAMPLE_DEFAULT "group:mhd-modular")
+set(BUILD_SAMPLE_DISABLED "NO")
+set(BUILD_TEST_DISABLED "NO")
+
+set(BUILD_SAMPLE ${BUILD_SAMPLE_DEFAULT} CACHE STRING "???")
+set(BUILD_TEST ${BUILD_TEST_DISABLED} CACHE STRING "???")
 
 ## Project-wide compilation flags
 # To allow compiling device HIP code across multiple translation units (TUs) we
@@ -101,36 +102,10 @@ set(AC_BINARY_PATH "${CMAKE_BINARY_DIR}")
 add_definitions(-DAC_BINARY_PATH="${AC_BINARY_PATH}")
 add_definitions(-DRUNTIME_CMAKE_FLAGS="{$RUNTIME_CMAKE_FLAGS}")
 
-if (RUNTIME_COMPILATION)
-    add_definitions(-DAC_RUNTIME_COMPILATION=1)
-else()
-    add_definitions(-DAC_RUNTIME_COMPILATION=0)
-endif()
+set(AC_DEFAULT_CONFIG "${CMAKE_SOURCE_DIR}/config/astaroth.conf")
+add_definitions(-DAC_DEFAULT_CONFIG="${AC_DEFAULT_CONFIG}")
 
-if (LAGRANGIAN_GRID)
-    add_definitions(-DAC_LAGRANGIAN_GRID=1)
-else()
-    add_definitions(-DAC_LAGRANGIAN_GRID=0)
-endif()
-if(PROFILING_ENABLED)
-    add_definitions(-DPROFILING_ENABLED=1)
-else()
-    add_definitions(-DPROFILING_ENABLED=0)
-endif()
-
-
-#TP: If CPU_BUILD is explicitly asked for it takes presedence over env variable.
-#    The command line argument should anyways always takes presedence but the CMake code
-#    for it seems unnecessary ugly/verbose so implemented the more important case for now
-if (NOT CPU_BUILD AND DEFINED ENV{AC_CPU_BUILD})
-    set(CPU_BUILD $ENV{AC_CPU_BUILD})
-    message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
-endif()
-
-if (SUPPORT_MAJOR_ARCHITECTURES AND DEFINED ENV{AC_SUPPORT_MAJOR_ARCHITECTURES})
-    set(SUPPORT_MAJOR_ARCHITECTURES $ENV{AC_SUPPORT_MAJOR_ARCHITECTURES})
-    message("Set SUPPORT_MAJOR_ARCHITECTURES=${SUPPORT_MAJOR_ARCHITECTURES} from ENV value")
-endif()
+## Global flags
 
 if(NOT SUPPRESS_COMPILER_WARNINGS)
 add_compile_options(# C/CXX/CUDA/HIP
@@ -148,6 +123,147 @@ add_compile_options(# C/CXX/CUDA/HIP
                     # Workaround: MPI_CXX_SKIP_MPICXX not applied properly for some reason
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-DOMPI_SKIP_MPICXX>
 )
+endif()
+
+macro(update_compiler_definition_values)
+    if (RUNTIME_COMPILATION)
+        add_definitions(-DAC_RUNTIME_COMPILATION=1)
+    else()
+        add_definitions(-DAC_RUNTIME_COMPILATION=0)
+    endif()
+
+    if (LAGRANGIAN_GRID)
+        add_definitions(-DAC_LAGRANGIAN_GRID=1)
+    else()
+        add_definitions(-DAC_LAGRANGIAN_GRID=0)
+    endif()
+
+    if(PROFILING_ENABLED)
+        add_definitions(-DPROFILING_ENABLED=1)
+    else()
+        add_definitions(-DPROFILING_ENABLED=0)
+    endif()
+
+    if (USE_HIP)
+        add_definitions(-DAC_USE_HIP=1)
+    endif()
+
+    if (DOUBLE_PRECISION)
+        add_definitions(-DAC_DOUBLE_PRECISION=1)
+    else()
+        add_definitions(-DAC_DOUBLE_PRECISION=0)
+    endif()
+
+    if (VERBOSE)
+        add_definitions(-DAC_VERBOSE=1)
+    endif ()
+
+    if (MPI_ENABLED)
+        add_definitions(-DAC_MPI_ENABLED=1)
+    else()
+        add_definitions(-DAC_MPI_ENABLED=0)
+    endif ()
+
+    if (FFT_ENABLED)
+        add_definitions(-DAC_FFT_ENABLED=1)
+    else()
+        add_definitions(-DAC_FFT_ENABLED=0)
+    endif()
+
+    if (USE_POSIX_IO)
+        add_definitions(-DUSE_POSIX_IO=1)
+    endif()
+
+    if (MULTIGPU_ENABLED)
+        add_definitions(-DAC_MULTIGPU_ENABLED=1)
+    endif()
+
+    if (SINGLEPASS_INTEGRATION)
+        add_definitions(-DAC_SINGLEPASS_INTEGRATION)
+    endif()
+
+    if (USE_DISTRIBUTED_IO)
+        add_definitions(-DUSE_DISTRIBUTED_IO=1)
+    endif()
+
+    if (USE_PERFSTUBS)
+        add_definitions(-DUSE_PERFSTUBS=1)
+        include(${PROJECT_SOURCE_DIR}/cmake/configure_perfstubs.cmake)
+    endif()
+
+    if (DEBUG_SYNC)
+        add_definitions(-DDEBUG_SYNC)
+    endif()
+
+    if (2D)
+        add_definitions(-DTWO_D=1)
+    else () 
+        add_definitions(-DTWO_D=0)
+    endif ()
+
+    if(CPU_BUILD)
+        add_definitions(-DAC_CPU_BUILD=1)
+    else()
+        add_definitions(-DAC_CPU_BUILD=0)
+    endif()
+endmacro()
+
+function(ac_link_mpi target)
+    if (MPI_ENABLED)
+        set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
+        find_package(MPI REQUIRED COMPONENTS C)
+        target_link_libraries(${target} PUBLIC MPI::MPI_C)
+        target_include_directories(${target} PUBLIC ${MPI_INCLUDE_PATH})
+    endif()
+endfunction()
+
+if (NOT BUILD_TEST STREQUAL ${BUILD_TEST_DISABLED} AND NOT BUILD_SAMPLE STREQUAL ${BUILD_SAMPLE_DISABLED})
+    message(WARNING "VALUES ${BUILD_TEST} and ${BUILD_SAMPLE}")
+    message(FATAL_ERROR
+"The BUILD_TEST and BUILD_SAMPLE options are mutually exclusive. Make sure to \
+configure your build with only of these options set to an accepted value. See \
+the README document for more information.
+")
+endif()
+
+update_compiler_definition_values()
+
+if (NOT BUILD_TEST STREQUAL ${BUILD_TEST_DISABLED})
+    add_subdirectory(test)
+endif()
+
+if (NOT BUILD_SAMPLE STREQUAL ${BUILD_SAMPLE_DISABLED})
+    add_subdirectory(samples)
+endif()
+
+# User-specified program modules
+if (PROGRAM_MODULE_DIR)
+    get_filename_component(resolved_program_dir "${PROGRAM_MODULE_DIR}" ABSOLUTE
+                           BASE_DIR ${CMAKE_SOURCE_DIR})
+    message("Resolved program module dir: " ${resolved_program_dir})
+
+    add_subdirectory(${resolved_program_dir})
+endif()
+
+update_compiler_definition_values()
+
+## Have this as a separate option when no other "samples" are needed.
+## Useful e.g. when compilation time is long e.g. with shock viscosity.
+if (BUILD_STANDALONE AND BUILD_TEST STREQUAL ${BUILD_TEST_DISABLED})
+    add_subdirectory(samples/standalone_mpi)
+endif()
+
+#TP: If CPU_BUILD is explicitly asked for it takes presedence over env variable.
+#    The command line argument should anyways always takes presedence but the CMake code
+#    for it seems unnecessary ugly/verbose so implemented the more important case for now
+if (NOT CPU_BUILD AND DEFINED ENV{AC_CPU_BUILD})
+    set(CPU_BUILD $ENV{AC_CPU_BUILD})
+    message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
+endif()
+
+if (SUPPORT_MAJOR_ARCHITECTURES AND DEFINED ENV{AC_SUPPORT_MAJOR_ARCHITECTURES})
+    set(SUPPORT_MAJOR_ARCHITECTURES $ENV{AC_SUPPORT_MAJOR_ARCHITECTURES})
+    message("Set SUPPORT_MAJOR_ARCHITECTURES=${SUPPORT_MAJOR_ARCHITECTURES} from ENV value")
 endif()
 
 set(USE_CUDA OFF)
@@ -209,77 +325,7 @@ else()
     message(WARNING "Did not find CUDA or HIP; Reverting to CPU-only build")
 endif()
 
-if(CPU_BUILD)
-    add_definitions(-DAC_CPU_BUILD=1)
-else()
-    add_definitions(-DAC_CPU_BUILD=0)
-endif()
-
 include(FetchContent)
-
-## Global flags
-if (USE_HIP)
-    add_definitions(-DAC_USE_HIP=1)
-endif()
-
-if (DOUBLE_PRECISION)
-    add_definitions(-DAC_DOUBLE_PRECISION=1)
-else()
-    add_definitions(-DAC_DOUBLE_PRECISION=0)
-endif()
-
-if (VERBOSE)
-    add_definitions(-DAC_VERBOSE=1)
-endif ()
-
-if (MPI_ENABLED)
-    add_definitions(-DAC_MPI_ENABLED=1)
-else()
-    add_definitions(-DAC_MPI_ENABLED=0)
-endif ()
-
-function(ac_link_mpi target)
-    if (MPI_ENABLED)
-        set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
-        find_package(MPI REQUIRED COMPONENTS C)
-        target_link_libraries(${target} PUBLIC MPI::MPI_C)
-        target_include_directories(${target} PUBLIC ${MPI_INCLUDE_PATH})
-    endif()
-endfunction()
-
-if (FFT_ENABLED)
-    add_definitions(-DAC_FFT_ENABLED=1)
-else()
-    add_definitions(-DAC_FFT_ENABLED=0)
-endif()
-if (USE_POSIX_IO)
-    add_definitions(-DUSE_POSIX_IO=1)
-endif()
-if (MULTIGPU_ENABLED)
-  add_definitions(-DAC_MULTIGPU_ENABLED=1)
-endif()
-if (SINGLEPASS_INTEGRATION)
-    add_definitions(-DAC_SINGLEPASS_INTEGRATION)
-endif()
-if (USE_DISTRIBUTED_IO)
-    add_definitions(-DUSE_DISTRIBUTED_IO=1)
-endif()
-if (USE_PERFSTUBS)
-    add_definitions(-DUSE_PERFSTUBS=1)
-    include(${PROJECT_SOURCE_DIR}/cmake/configure_perfstubs.cmake)
-endif()
-if (DEBUG_SYNC)
-    add_definitions(-DDEBUG_SYNC)
-endif()
-
-if (2D)
-    add_definitions(-DTWO_D=1)
-else () 
-    add_definitions(-DTWO_D=0)
-endif ()
-
-set(AC_DEFAULT_CONFIG "${CMAKE_SOURCE_DIR}/config/astaroth.conf")
-add_definitions(-DAC_DEFAULT_CONFIG="${AC_DEFAULT_CONFIG}")
 
 ## Subdirectories
 
@@ -297,32 +343,11 @@ add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
 add_subdirectory(acc-runtime)
 
-if (BUILD_TESTS)
-    message(WARNING
-"When using the BUILD_TESTS option make sure to set the DSL_MODULE_DIR and \
-DSL_MODULE_FILE options accordingly and to only build a target that matches \
-those options. Compiling all targets is expected to fail due to the way DSL is \
-handled by the build system.
-")
-
-    add_subdirectory(test)
-endif()
-
 if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
 
 add_subdirectory(runtime_compilation)
-## Have this as a separate option when no other "samples" are needed.
-
-## Useful e.g. when compilation time is long e.g. with shock viscosity. 
-if (BUILD_STANDALONE AND NOT BUILD_TESTS)
-    add_subdirectory(samples/standalone_mpi)
-endif()
-
-if (BUILD_ADVECTION_EXAMPLE)
-    add_subdirectory(samples/advection-example)
-endif()
 
 if (MPI_ENABLED AND BUILD_ACM)
     if (CPU_BUILD)
@@ -331,22 +356,9 @@ if (MPI_ENABLED AND BUILD_ACM)
     add_subdirectory(acc-comm)
 endif()
 
-if (BUILD_SAMPLES)
-    add_subdirectory(samples)
-endif()
-
-# User-specified program modules
-if (PROGRAM_MODULE_DIR)
-    get_filename_component(resolved_program_dir "${PROGRAM_MODULE_DIR}" ABSOLUTE
-                           BASE_DIR ${CMAKE_SOURCE_DIR})
-    add_subdirectory(${resolved_program_dir})
-    message("Resolved program module dir: " ${resolved_program_dir})
-endif()
-
 if(EXTRA_SOURCES_DIR)
     add_subdirectory(${EXTRA_SOURCES_DIR} ${EXTRA_SOURCES_DIR}/cmake)
 endif()
-
 
 #Installation
 install(

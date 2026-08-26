@@ -1,6 +1,6 @@
 Field IMAGE0
 
-#include "../../stdlib/map.h"
+#include "$AC_HOME/acc-runtime/stdlib/map.h"
 
 #define COEFF (1. / 7.)
 

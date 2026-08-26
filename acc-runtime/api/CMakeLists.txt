@@ -29,6 +29,8 @@ else()
 	set(ELIMINATE_CONDITIONALS_VAL 0)
 endif()
 
+message("project source dir ${PROJECT_SOURCE_DIR}")
+
 ## DSL module dir
 
 # NOTE: Manually defined DSL_MODULE_DIR must be set relative to the project root, not the actual
@@ -36,7 +38,6 @@ endif()
 # NO! ../acc/mhd_solver
 # YES! acc/mhd_solver
 #
-
 
 set(DSL_MODULE $ENV{DSL_MODULE})
 if (DEFINED DSL_MODULE)
@@ -57,17 +58,13 @@ else()
     set(DSL_MODULE_DIR ${resolved_module_dir})
 endif()
 
-set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
-if(DEFINED ACC_COMPILER_PATH)
-	set(ACC_COMPILER ${ACC_COMPILER_PATH})
-else()
-	set(ACC_COMPILER ${PROJECT_BINARY_DIR}/acc/acc)
-endif()
-
 ## Collect DSL files at build configuration-time
-## Note: New/removed files are not taken into account until the build is
-##       reconfigured.
-file(GLOB_RECURSE DSL_MODULE_SOURCES CONFIGURE_DEPENDS ${DSL_MODULE_DIR}/*.ac)
+file(
+	GLOB_RECURSE
+	DSL_MODULE_SOURCES
+	CONFIGURE_DEPENDS
+	LIST_DIRECTORIES false
+	${DSL_MODULE_DIR}/*.ac)
 
 ## Generate acc-runtime-headers
 if (DEFINED ENV{DSL_MODULE_FILE})
@@ -82,6 +79,12 @@ if (DEFINED DSL_MODULE_FILE)
         BASE_DIRECTORY ${DSL_MODULE_DIR}
     )
 endif()
+
+if (EXISTS ${DSL_MODULE_FILE})
+	set(DSL_MODULE_SOURCES "${DSL_MODULE_FILE}")
+endif()
+message(WARNING "SRC DIR |${DSL_MODULE_DIR}|")
+message(WARNING "SOURCES |${DSL_MODULE_SOURCES}|")
 
 if (NOT DEFINED DSL_MODULE_FILE)
   set(DSL_SOURCES ${DSL_MODULE_SOURCES}
@@ -128,29 +131,27 @@ if (CPU_BUILD)
 	set_source_files_properties(${ACC_GENERATED_SOURCES} PROPERTIES LANGUAGE CXX)
 endif()
 
-if (NOT DEFINED DSL_MODULE_FILE)
-	set(ACC_COMPILER_ARGS 
-		"${DSL_MODULE_DIR}/*.ac" 
-		"${ELIMINATE_CONDITIONALS_VAL}" 
-		"${READ_OVERRIDES_VAL}"  
-		"${RUNTIME_COMPILATION_VAL}" 
-		"${AC_BINARY_PATH}/overrides.h"
-	)
+set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
+if(DEFINED ACC_COMPILER_PATH)
+	set(ACC_COMPILER ${ACC_COMPILER_PATH})
 else()
-	set(ACC_COMPILER_ARGS
-		"${DSL_MODULE_FILE}"
-		"${ELIMINATE_CONDITIONALS_VAL}"
-		"${READ_OVERRIDES_VAL}"
-		"${RUNTIME_COMPILATION_VAL}"
-		"${AC_BINARY_PATH}/overrides.h"
-	)
+	set(ACC_COMPILER ${PROJECT_BINARY_DIR}/acc/acc)
 endif()
-  add_custom_command (
-      COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
-      COMMAND  "${ACC_COMPILER}" ${ACC_COMPILER_ARGS}
-      DEPENDS ${DSL_SOURCES} acc
-      OUTPUT ${DSL_HEADERS} ${ACC_GENERATED_SOURCES}
-  )
+
+set(ACC_COMPILER_ARGS 
+	"${DSL_MODULE_SOURCES}"
+	"${ELIMINATE_CONDITIONALS_VAL}"
+	"${READ_OVERRIDES_VAL}"
+	"${RUNTIME_COMPILATION_VAL}"
+	"${AC_BINARY_PATH}/overrides.h"
+)
+
+add_custom_command (
+	COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
+	COMMAND  "${ACC_COMPILER}" ${ACC_COMPILER_ARGS}
+	DEPENDS ${DSL_SOURCES} acc
+	OUTPUT ${DSL_HEADERS} ${ACC_GENERATED_SOURCES}
+)
 
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 install(
@@ -201,8 +202,6 @@ if (USE_HIP)
 else()
     set_property(TARGET acc-runtime-headers PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 endif()
-
-message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)

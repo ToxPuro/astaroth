@@ -1,62 +1,18 @@
-if (NOT BUILD_TESTS)
-    add_subdirectory(ctest)
-    add_subdirectory(cpptest)
+# If the option is prefixed with "group:" we want to build a group of related
+# samples that share their DSL code and thus can be compiled using the same
+# build configuration.
+string(FIND ${BUILD_SAMPLE} "group:" build_sample_has_group_prefix)
 
-    #TP: we should make a wrapper functions for the CUDA calls
-    add_subdirectory(benchmark-device)
-    add_subdirectory(benchmark)
+if (NOT build_sample_has_group_prefix EQUAL -1)
+    string(REPLACE "group:" "" build_sample_group ${BUILD_SAMPLE})
 
-    add_subdirectory(mpi-io)
-    add_subdirectory(mpi-io-multithreaded)
-    add_subdirectory(pc-varfile-import)
-
-    #add_subdirectory(stress)
-    #add_subdirectory(standalone)
-    #add_subdirectory(standalone_mpi)
-    #add_subdirectory(ctest)
-    #add_subdirectory(cpptest)
-    #add_subdirectory(mpitest)
-    #add_subdirectory(taskgraph_example)
-    #add_subdirectory(taskgraph_print)
-    #add_subdirectory(taskgraph_trace)
-    #add_subdirectory(taskgraph_test)
-    #add_subdirectory(mpi_fullgriderror_test)
-    #add_subdirectory(benchmark)
-    #add_subdirectory(benchmark-device)
-    #add_subdirectory(boundcond_test)
-
-    #add_subdirectory(mpi-io)
-    #add_subdirectory(genbenchmarkscripts)
-    #add_subdirectory(mpi_reduce_bench)
-    #add_subdirectory(fortrantest)
-
-    if (NOT RUNTIME_COMPILATION)
-        add_subdirectory(benchmark-node)
+    if (build_sample_group STREQUAL "mhd-modular")
+        # add_subdirectory(standalone)
+        # add_subdirectory(standalone_mpi)
+        add_subdirectory(mpitest)
+        add_subdirectory(devicetest)
+        #add_subdirectory(stencil-loader)
     endif()
-
-    if (NOT CPU_BUILD)
-        add_subdirectory(microbenchmark)
-    endif()
-
-    #if (MPI_ENABLED)
-    #  add_subdirectory(bwtest)
-    #endif()
-endif()
-
-if (BUILD_MLLIB_SAMPLES)
-    # Workaround for finding miopen on Triton
-    link_directories(/opt/rocm/miopen/lib/)
-    add_subdirectory(microbenchmark-nn)
-endif ()
-
-if (BUILD_MHD_SAMPLES)
-    # add_subdirectory(standalone)
-    # add_subdirectory(standalone_mpi)
-    add_subdirectory(mpitest)
-    add_subdirectory(devicetest)
-    #add_subdirectory(stencil-loader)
-endif()
-
-if (BUILD_INTEGRATOR)
-    add_subdirectory(integrator)
+else()
+    add_subdirectory(${BUILD_SAMPLE})
 endif()
