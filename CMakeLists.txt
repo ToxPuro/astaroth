@@ -135,7 +135,7 @@ endif()
 if(NOT SUPPRESS_COMPILER_WARNINGS)
 add_compile_options(# C/CXX/CUDA/HIP
                     # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
-                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
+                    # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wall>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wdouble-promotion>
