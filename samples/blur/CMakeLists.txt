@@ -1,4 +1,10 @@
 ## benchmark
+set(BUILD_STANDALONE OFF CACHE BOOL "" FORCE)
+set(DOUBLE_PRECISION ON CACHE BOOL "" FORCE)
+set(DSL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/DSL" CACHE PATH "" FORCE)
+set(MPI_ENABLED ON CACHE BOOL "" FORCE)
+set(OPTIMIZE_MEM_ACCESSES OFF CACHE BOOL "" FORCE)
+
 add_executable(blur main.c)
 set_property(TARGET blur PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(blur astaroth_core astaroth_utils)
