@@ -35,6 +35,6 @@ var astaroth__utils_8h =
     [ "acVerifyMesh", "astaroth__utils_8h.html#ae5c97e68f39fb8b61864030d4589039b", null ],
     [ "acVerifyMeshCompDomain", "astaroth__utils_8h.html#a6805566dfb61774edf1e7919dcf0f493", null ],
     [ "acVerifyMeshWithMaximumError", "astaroth__utils_8h.html#a7658c8ba71d8dd3261ced859e90edf49", null ],
-    [ "AcMeshInfo", "astaroth__utils_8h.html#aa2a6e180fc7607b552a9cef04eea9eed", null ],
-    [ "config", "astaroth__utils_8h.html#a67414ecb24200d9f1a60f2923f1cfa7b", null ]
+    [ "config", "astaroth__utils_8h.html#a67414ecb24200d9f1a60f2923f1cfa7b", null ],
+    [ "info", "astaroth__utils_8h.html#a4b9cd1b0bd64a7385b458e7ba75ae12b", null ]
 ];

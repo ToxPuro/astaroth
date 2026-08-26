@@ -1,8 +1,8 @@
 var astaroth__base_8h =
 [
     [ "AcMesh", "structAcMesh.html", "structAcMesh" ],
-    [ "GridDims", "structGridDims.html", "structGridDims" ],
     [ "DeviceConfiguration", "structDeviceConfiguration.html", "structDeviceConfiguration" ],
+    [ "GridDims", "structGridDims.html", "structGridDims" ],
     [ "AC_FOR_INIT_TYPES", "astaroth__base_8h.html#a480a090f8741bbd3cad88cc508f8d90e", null ],
     [ "AC_GEN_ID", "astaroth__base_8h.html#a715d17598fa37df82308eb17f736b791", null ],
     [ "AC_GEN_STR", "astaroth__base_8h.html#ac7f86c76a4d3ce7b11f00fcfdba809b8", null ],

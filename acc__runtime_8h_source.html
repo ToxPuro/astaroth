@@ -375,7 +375,7 @@ $(function(){initNavTree('acc__runtime_8h_source.html','',''); });
 </div>
 <div class="line"><a id="l00244" name="l00244"></a><span class="lineno">  244</span> </div>
 <div class="line"><a id="l00245" name="l00245"></a><span class="lineno">  245</span><span class="keyword">static</span> <a class="code hl_define" href="func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076">UNUSED</a> int3</div>
-<div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>acGetFieldHalos(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>acGetFieldHalos(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
 <div class="line"><a id="l00247" name="l00247"></a><span class="lineno">  247</span>{</div>
 <div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span> </div>
 <div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>    <span class="keywordflow">if</span>(     vtxbuf_compile_time_halos[vtxbuf].<a class="code hl_variable" href="math__utils_8h.html#a9336ebf25087d91c818ee6e9ec29f8c1">x</a> != -1</div>
@@ -385,7 +385,7 @@ $(function(){initNavTree('acc__runtime_8h_source.html','',''); });
 <div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>    {</div>
 <div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>        <span class="keywordflow">return</span> vtxbuf_compile_time_halos[vtxbuf];</div>
 <div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>    }</div>
-<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>    <span class="keywordflow">return</span> info.int3_params[vtxbuf_run_time_halos[vtxbuf]];</div>
+<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>    <span class="keywordflow">return</span> <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>.int3_params[vtxbuf_run_time_halos[vtxbuf]];</div>
 <div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>}</div>
 <div class="line"><a id="l00258" name="l00258"></a><span class="lineno">  258</span> </div>
 <div class="line"><a id="l00259" name="l00259"></a><span class="lineno"><a class="line" href="acc__runtime_8h.html#a6847c8ebb7b2d105a6342c92c78ef6bc">  259</a></span><span class="keyword">typedef</span> <a class="code hl_struct" href="structAcAutotuneMeasurement.html">AcAutotuneMeasurement</a> (*<a class="code hl_typedef" href="acc__runtime_8h.html#a6847c8ebb7b2d105a6342c92c78ef6bc">AcMeasurementGatherFunc</a>)(<span class="keyword">const</span> <a class="code hl_struct" href="structAcAutotuneMeasurement.html">AcAutotuneMeasurement</a>);</div>
@@ -531,7 +531,7 @@ $(function(){initNavTree('acc__runtime_8h_source.html','',''); });
 <div class="line"><a id="l00402" name="l00402"></a><span class="lineno">  402</span> </div>
 <div class="line"><a id="l00403" name="l00403"></a><span class="lineno">  403</span><span class="keywordtype">void</span> acPBASwapBuffers(<a class="code hl_struct" href="structVertexBufferArray.html">VertexBufferArray</a>* vba);</div>
 <div class="line"><a id="l00404" name="l00404"></a><span class="lineno">  404</span> </div>
-<div class="line"><a id="l00405" name="l00405"></a><span class="lineno">  405</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acLoadMeshInfo(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> <a class="code hl_define" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream);</div>
+<div class="line"><a id="l00405" name="l00405"></a><span class="lineno">  405</span><a class="code hl_enumeration" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acLoadMeshInfo(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>, <span class="keyword">const</span> <a class="code hl_define" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> stream);</div>
 <div class="line"><a id="l00406" name="l00406"></a><span class="lineno">  406</span> </div>
 <div class="line"><a id="l00407" name="l00407"></a><span class="lineno">  407</span> </div>
 <div class="line"><a id="l00408" name="l00408"></a><span class="lineno">  408</span> </div>
@@ -550,7 +550,7 @@ $(function(){initNavTree('acc__runtime_8h_source.html','',''); });
 <div class="line"><a id="l00421" name="l00421"></a><span class="lineno">  421</span><a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<a class="code hl_struct" href="structProfileBufferArray.html">ProfileBufferArray</a>, acPBACreate,(<span class="keyword">const</span> <a class="code hl_typedef" href="host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f">size3_t</a> count));</div>
 <div class="line"><a id="l00422" name="l00422"></a><span class="lineno">  422</span> </div>
 <div class="line"><a id="l00423" name="l00423"></a><span class="lineno">  423</span><a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<span class="keywordtype">void</span>, acPBADestroy,(<a class="code hl_struct" href="structProfileBufferArray.html">ProfileBufferArray</a>* pba, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshDims.html">AcMeshDims</a>* dims));</div>
-<div class="line"><a id="l00428" name="l00428"></a><span class="lineno">  428</span><a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<span class="keywordtype">int</span>, acVerifyMeshInfo,(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info));</div>
+<div class="line"><a id="l00428" name="l00428"></a><span class="lineno">  428</span><a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<span class="keywordtype">int</span>, acVerifyMeshInfo,(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>));</div>
 <div class="line"><a id="l00429" name="l00429"></a><span class="lineno">  429</span> </div>
 <div class="line"><a id="l00430" name="l00430"></a><span class="lineno">  430</span><span class="preprocessor">#ifdef __cplusplus</span></div>
 <div class="line"><a id="l00431" name="l00431"></a><span class="lineno">  431</span> </div>
@@ -691,7 +691,7 @@ $(function(){initNavTree('acc__runtime_8h_source.html','',''); });
 <div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span> </div>
 <div class="line"><a id="l00567" name="l00567"></a><span class="lineno">  567</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> P&gt;</div>
 <div class="line"><a id="l00568" name="l00568"></a><span class="lineno">  568</span>  <span class="keyword">constexpr</span> <span class="keyword">static</span> <span class="keyword">auto</span></div>
-<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span>  get_array_dim_sizes(<span class="keyword">const</span> P array, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info)</div>
+<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span>  get_array_dim_sizes(<span class="keyword">const</span> P array, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>)</div>
 <div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span>  {</div>
 <div class="line"><a id="l00571" name="l00571"></a><span class="lineno">  571</span>      <span class="keyword">auto</span> dims            = get_array_info(array).dims;</div>
 <div class="line"><a id="l00572" name="l00572"></a><span class="lineno">  572</span>      <span class="keywordtype">int</span> num_dims         = get_array_info(array).num_dims;</div>
@@ -707,27 +707,27 @@ $(function(){initNavTree('acc__runtime_8h_source.html','',''); });
 <div class="line"><a id="l00582" name="l00582"></a><span class="lineno">  582</span>          {</div>
 <div class="line"><a id="l00583" name="l00583"></a><span class="lineno">  583</span>              <span class="keywordflow">if</span>(dims[i].run_const)</div>
 <div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>              {</div>
-<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>                <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = info.<a class="code hl_variable" href="structAcMeshInfo.html#a8411944366b0d3be19f2b469e4fb95c9">run_consts</a>.<a class="code hl_variable" href="structAcCompInfo.html#abda070c6a900af7006d05595f0ea4694">config</a>.int_params[dims[i].base];</div>
+<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>                <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>.run_consts.config.int_params[dims[i].base];</div>
 <div class="line"><a id="l00586" name="l00586"></a><span class="lineno">  586</span>              }</div>
 <div class="line"><a id="l00587" name="l00587"></a><span class="lineno">  587</span>              <span class="keywordflow">else</span></div>
 <div class="line"><a id="l00588" name="l00588"></a><span class="lineno">  588</span>              {</div>
-<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span>                <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = info.int_params[dims[i].base];</div>
+<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span>                <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>.int_params[dims[i].base];</div>
 <div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span>              }</div>
 <div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span>              <span class="keywordflow">continue</span>;</div>
 <div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span>          }</div>
 <div class="line"><a id="l00593" name="l00593"></a><span class="lineno">  593</span>          <span class="keywordflow">if</span>(!strcmp(dims[i].member,<span class="stringliteral">&quot;x&quot;</span>))</div>
 <div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span>          {</div>
-<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span>              <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = info.int3_params[dims[i].base].x;</div>
+<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span>              <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>.int3_params[dims[i].base].x;</div>
 <div class="line"><a id="l00596" name="l00596"></a><span class="lineno">  596</span>              <span class="keywordflow">continue</span>;</div>
 <div class="line"><a id="l00597" name="l00597"></a><span class="lineno">  597</span>          }</div>
 <div class="line"><a id="l00598" name="l00598"></a><span class="lineno">  598</span>          <span class="keywordflow">if</span>(!strcmp(dims[i].member,<span class="stringliteral">&quot;y&quot;</span>))</div>
 <div class="line"><a id="l00599" name="l00599"></a><span class="lineno">  599</span>          {</div>
-<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span>              <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = info.int3_params[dims[i].base].y;</div>
+<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span>              <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>.int3_params[dims[i].base].y;</div>
 <div class="line"><a id="l00601" name="l00601"></a><span class="lineno">  601</span>              <span class="keywordflow">continue</span>;</div>
 <div class="line"><a id="l00602" name="l00602"></a><span class="lineno">  602</span>          }</div>
 <div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span>          <span class="keywordflow">if</span>(!strcmp(dims[i].member,<span class="stringliteral">&quot;z&quot;</span>))</div>
 <div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span>          {</div>
-<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span>              <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = info.int3_params[dims[i].base].z;</div>
+<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span>              <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a>[i] = <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>.int3_params[dims[i].base].z;</div>
 <div class="line"><a id="l00606" name="l00606"></a><span class="lineno">  606</span>              <span class="keywordflow">continue</span>;</div>
 <div class="line"><a id="l00607" name="l00607"></a><span class="lineno">  607</span>          }</div>
 <div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span>      }</div>
@@ -736,9 +736,9 @@ $(function(){initNavTree('acc__runtime_8h_source.html','',''); });
 <div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span> </div>
 <div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span>  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> P&gt;</div>
 <div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span>  <span class="keyword">constexpr</span> <span class="keyword">static</span> <span class="keywordtype">size_t</span></div>
-<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span>  get_array_length(<span class="keyword">const</span> P array, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info)</div>
+<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span>  get_array_length(<span class="keyword">const</span> P array, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> <a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>)</div>
 <div class="line"><a id="l00615" name="l00615"></a><span class="lineno">  615</span>  {</div>
-<div class="line"><a id="l00616" name="l00616"></a><span class="lineno">  616</span>      <span class="keyword">auto</span> sizes = get_array_dim_sizes(array,info);</div>
+<div class="line"><a id="l00616" name="l00616"></a><span class="lineno">  616</span>      <span class="keyword">auto</span> sizes = get_array_dim_sizes(array,<a class="code hl_variable" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>);</div>
 <div class="line"><a id="l00617" name="l00617"></a><span class="lineno">  617</span>      <span class="keywordtype">size_t</span> <a class="code hl_variable" href="math__utils_8h.html#a5e111f6687f261e4e28bd6528e7f5b48">res</a> = 1;</div>
 <div class="line"><a id="l00618" name="l00618"></a><span class="lineno">  618</span>      <span class="keywordtype">int</span> num_dims         = get_array_info(array).num_dims;</div>
 <div class="line"><a id="l00619" name="l00619"></a><span class="lineno">  619</span>      <span class="keywordflow">for</span>(<span class="keywordtype">int</span> i = 0; i &lt; num_dims; ++i)</div>
@@ -912,6 +912,7 @@ $(function(){initNavTree('acc__runtime_8h_source.html','',''); });
 <div class="ttc" id="aacc__runtime_8h_html_af45b1f0ed8e2fdf944b127b47208d8a1"><div class="ttname"><a href="acc__runtime_8h.html#af45b1f0ed8e2fdf944b127b47208d8a1">ac_get_scratchpad_size_real</a></div><div class="ttdeci">const size_t * ac_get_scratchpad_size_real(const size_t i)</div></div>
 <div class="ttc" id="aacc__runtime_8h_html_af8622a7bea9af574bf25ab30d90646c0"><div class="ttname"><a href="acc__runtime_8h.html#af8622a7bea9af574bf25ab30d90646c0">acFreeArrays</a></div><div class="ttdeci">AcResult acFreeArrays(const AcMeshInfo config)</div></div>
 <div class="ttc" id="aacreal_8h_html_a682ddafb17af19aa8f6e413da6625de0"><div class="ttname"><a href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a></div><div class="ttdeci">float AcReal</div><div class="ttdef"><b>Definition</b> acreal.h:11</div></div>
+<div class="ttc" id="aastaroth_8h_html_a6a8698b79984b9e721e85f1fea42a9a1"><div class="ttname"><a href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a></div><div class="ttdeci">static AcResult const AcMeshInfo info</div><div class="ttdef"><b>Definition</b> astaroth.h:359</div></div>
 <div class="ttc" id="aastaroth__device__headers_8h_html"><div class="ttname"><a href="astaroth__device__headers_8h.html">astaroth_device_headers.h</a></div></div>
 <div class="ttc" id="aastaroth__utils_8h_html_a67414ecb24200d9f1a60f2923f1cfa7b"><div class="ttname"><a href="astaroth__utils_8h.html#a67414ecb24200d9f1a60f2923f1cfa7b">config</a></div><div class="ttdeci">AcResult AcMeshInfo * config</div><div class="ttdef"><b>Definition</b> astaroth_utils.h:164</div></div>
 <div class="ttc" id="acommon__kernels_8h_html"><div class="ttname"><a href="common__kernels_8h.html">common_kernels.h</a></div></div>

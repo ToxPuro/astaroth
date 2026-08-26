@@ -1,8 +1,8 @@
 var hashtable_8h =
 [
+    [ "hashmap_create_options_t", "structhashmap__create__options__t.html", "structhashmap__create__options__t" ],
     [ "hashmap_element_t", "structhashmap__element__t.html", "structhashmap__element__t" ],
     [ "hashmap_t", "structhashmap__t.html", "structhashmap__t" ],
-    [ "hashmap_create_options_t", "structhashmap__create__options__t.html", "structhashmap__create__options__t" ],
     [ "HASHMAP_ALWAYS_INLINE", "hashtable_8h.html#aa66973ff32878a51ce3a165ffad331e7", null ],
     [ "HASHMAP_ATTRIBUTE", "hashtable_8h.html#afc5205e3036062364d5e2a52b913e368", null ],
     [ "HASHMAP_CAST", "hashtable_8h.html#a1c9b9f443cd6f67795731b878a668d11", null ],

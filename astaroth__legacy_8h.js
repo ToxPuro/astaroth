@@ -2,6 +2,11 @@ var astaroth__legacy_8h =
 [
     [ "acBoundcondStep", "astaroth__legacy_8h.html#af13798c688d19e80f2f3dea2b3990174", null ],
     [ "acBoundcondStepGBC", "astaroth__legacy_8h.html#a06b26a3b442bfab0645a57844cceeea5", null ],
+    [ "acCheckDeviceAvailability", "astaroth__legacy_8h.html#aef4e17cb67ef5ec0e4f84119b03fc227", null ],
+    [ "acGetFieldHandle", "astaroth__legacy_8h.html#ab491336a243e24951b7511fcc9057739", null ],
+    [ "acGetFieldName", "astaroth__legacy_8h.html#af75184cc77327be7497c02d6ec859cd7", null ],
+    [ "acGetNumDevicesPerNode", "astaroth__legacy_8h.html#a3a34a2135859438edf2ebbb87a138922", null ],
+    [ "acGetNumFields", "astaroth__legacy_8h.html#a99e2a4b03e2a3cd1e07a0c8c236ef0b1", null ],
     [ "acInit", "astaroth__legacy_8h.html#a34c59e1547a22cde0263d81537676c18", null ],
     [ "acIntegrate", "astaroth__legacy_8h.html#a52b93ca2c10fbf6f3c8c685ca68aec56", null ],
     [ "acIntegrateGBC", "astaroth__legacy_8h.html#a8650395501ec2249f6e4f93b6c901362", null ],

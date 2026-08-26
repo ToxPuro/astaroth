@@ -1,7 +1,7 @@
 var mapreduce_8cuh =
 [
-    [ "SOAVector", "structSOAVector.html", "structSOAVector" ],
     [ "CrossProductInputs", "structCrossProductInputs.html", "structCrossProductInputs" ],
+    [ "SOAVector", "structSOAVector.html", "structSOAVector" ],
     [ "acBufferArrayCreate", "mapreduce_8cuh.html#a667050839c1536e15c7ff8d25e1dc3fb", null ],
     [ "acBufferArrayDestroy", "mapreduce_8cuh.html#a5f05dc32303b853c6458142e7c4cc85a", null ],
     [ "acKernelReduceScal", "mapreduce_8cuh.html#a060a5fef75f7366f4d92292d4cb5b4c1", null ],

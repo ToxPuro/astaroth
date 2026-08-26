@@ -14,7 +14,7 @@ var searchData=
   ['indirect_5ferrchk_5falways_11',['INDIRECT_ERRCHK_ALWAYS',['../errchk_8h.html#ae91660239419ccde6d6ace940b10bdf3',1,'errchk.h']]],
   ['indirect_5ferror_12',['INDIRECT_ERROR',['../errchk_8h.html#a57b2b0dd30399b40a15f556fa4059a8f',1,'errchk.h']]],
   ['infix_13',['infix',['../structASTNode.html#aa8f55f7adb1a3c0600e68af5599b6b78',1,'ASTNode']]],
-  ['info_14',['info',['../structAcMesh.html#a9188ac0d8a5d2cfc227871600e0de92d',1,'AcMesh']]],
+  ['info_14',['info',['../structAcMesh.html#a9188ac0d8a5d2cfc227871600e0de92d',1,'AcMesh::info'],['../astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1',1,'info:&#160;astaroth.h'],['../astaroth__utils_8h.html#a4b9cd1b0bd64a7385b458e7ba75ae12b',1,'info:&#160;astaroth_utils.h']]],
   ['init_5ftype_5faa_5frandom_15',['INIT_TYPE_AA_RANDOM',['../astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a1f8232d1cfbc345afaab09291fba9d0d',1,'astaroth_base.h']]],
   ['init_5ftype_5fabc_5fflow_16',['INIT_TYPE_ABC_FLOW',['../astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a54e763ee8006868788096c727502e35d',1,'astaroth_base.h']]],
   ['init_5ftype_5fgaussian_5fradial_5fexpl_17',['INIT_TYPE_GAUSSIAN_RADIAL_EXPL',['../astaroth__base_8h.html#a8b039e6ef27959d7fc6119161905f257a8b24da74c64cee913361b4bb919b02bc',1,'astaroth_base.h']]],
