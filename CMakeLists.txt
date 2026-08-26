@@ -31,7 +31,7 @@ endif()
 ## Options
 option(2D                          "Compile Astaroth for 2D simulation" OFF)
 option(BUILD_ACM                   "Whether to build to the Astaroth Communication Module (ACM)." OFF)
-option(BUILD_ADVECTION_EXAMPL      "Builds hello world example" OFF)
+option(BUILD_ADVECTION_EXAMPLE     "Builds hello world example" OFF)
 option(BUILD_MHD_SAMPLES           "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(BUILD_MLLIB_SAMPLES         "Builds samples that use cuDNN or MIOpen" OFF)
 option(BUILD_SAMPLES               "Builds projects in samples subdirectory." ON)

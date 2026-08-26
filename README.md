@@ -154,7 +154,7 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 |--------|-------------|---------|
 | `2D`                          | Compile Astaroth for 2D simulation | `OFF` |
 | `BUILD_ACM`                   | Whether to build to the Astaroth Communication Module (ACM). | `OFF` |
-| `BUILD_ADVECTION_EXAMPL`      | Builds hello world example | `OFF` |
+| `BUILD_ADVECTION_EXAMPLE`      | Builds hello world example | `OFF` |
 | `BUILD_MHD_SAMPLES`           | Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF. | `ON` |
 | `BUILD_MLLIB_SAMPLES`         | Builds samples that use cuDNN or MIOpen | `OFF` |
 | `BUILD_SAMPLES`               | Builds projects in samples subdirectory. | `ON` |
