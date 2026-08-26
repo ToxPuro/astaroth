@@ -154,7 +154,7 @@ static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMes
 	return handle;
 }
 #else
-static AcLibHandle __attribute__((unused)) acLoadUtils(FILE*, const AcMeshInfo)
+static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMeshInfo info)
 {
 	return (AcLibHandle)0;
 }
