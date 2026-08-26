@@ -37,7 +37,8 @@ option(BUILD_MLLIB_SAMPLES         "Builds samples that use cuDNN or MIOpen" OFF
 option(BUILD_SAMPLES               "Builds projects in samples subdirectory." ON)
 option(BUILD_SHARED_LIBS           "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
 option(BUILD_STANDALONE            "Build the standalone_mpi executable to run standard simulation." ON)
-option(BUILD_TESTS                 "Builds tests in test subdirectory." OFF)
+option(BUILD_TESTS                 "Builds tests in test subdirectory. Make sure to set DSL_MODULE_DIR and
+DSL_MODULE_FILE accordingly and build only a specific test taget." OFF)
 option(BUILD_UTILS                 "Builds the utility library" ON)
 option(BUILD_INTEGRATOR            "Whether to build integrator" OFF)
 option(CPU_BUILD                   "To build CPU-only build" OFF)
@@ -267,6 +268,13 @@ add_subdirectory(src/core)
 add_subdirectory(acc-runtime)
 
 if (BUILD_TESTS)
+    message(WARNING
+"When using the BUILD_TESTS option make sure to set the DSL_MODULE_DIR and \
+DSL_MODULE_FILE options accordingly and to only build a target that matches \
+those options. Compiling all targets is expected to fail due to the way DSL is \
+handled by the build system.
+")
+
     add_subdirectory(test)
     add_definitions(-DINCLUDE_MODEL_SOLVER=0)
 else()
