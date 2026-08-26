@@ -160,7 +160,7 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | `BUILD_SAMPLES`               | Builds projects in samples subdirectory. | `ON` |
 | `BUILD_SHARED_LIBS`           | Build Astaroth as a collection of shared libraries instead of statically built modules | `OFF` |
 | `BUILD_STANDALONE`            | Build the standalone_mpi executable to run standard simulation. | `ON` |
-| `BUILD_TESTS`                 | Builds tests in test subdirectory. | `OFF` |
+| `BUILD_TESTS`                 | Builds tests in test subdirectory. Make sure to set DSL_MODULE_DIR and DSL_MODULE_FILE accordingly and build only a specific test taget. | `OFF` |
 | `BUILD_UTILS`                 | Builds the utility library | `ON` |
 | `CPU_BUILD`                   | To build CPU-only build | `OFF` |
 | `DEBUG_SYNC`                  | Whether to sync after all tasks in default ops | `OFF` |
