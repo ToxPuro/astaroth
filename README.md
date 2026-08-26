@@ -155,12 +155,12 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | `2D`                          | Compile Astaroth for 2D simulation | `OFF` |
 | `BUILD_ACM`                   | Whether to build to the Astaroth Communication Module (ACM). | `OFF` |
 | `BUILD_ADVECTION_EXAMPLE`      | Builds hello world example | `OFF` |
-| `BUILD_MHD_SAMPLES`           | Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF. | `ON` |
+| `BUILD_MHD_SAMPLES`           | Builds MHD samples. Has no effect if `BUILD_SAMPLES=OFF`. | `ON` |
 | `BUILD_MLLIB_SAMPLES`         | Builds samples that use cuDNN or MIOpen | `OFF` |
 | `BUILD_SAMPLES`               | Builds projects in samples subdirectory. | `ON` |
 | `BUILD_SHARED_LIBS`           | Build Astaroth as a collection of shared libraries instead of statically built modules | `OFF` |
 | `BUILD_STANDALONE`            | Build the standalone_mpi executable to run standard simulation. | `ON` |
-| `BUILD_TESTS`                 | Builds tests in test subdirectory. Make sure to set DSL_MODULE_DIR and DSL_MODULE_FILE accordingly and build only a specific test taget. | `OFF` |
+| `BUILD_TESTS`                 | Builds tests in test subdirectory. Make sure to set `DSL_MODULE_DIR` and `DSL_MODULE_FILE` accordingly and build only a specific test taget. | `OFF` |
 | `BUILD_UTILS`                 | Builds the utility library | `ON` |
 | `CPU_BUILD`                   | To build CPU-only build | `OFF` |
 | `DEBUG_SYNC`                  | Whether to sync after all tasks in default ops | `OFF` |
