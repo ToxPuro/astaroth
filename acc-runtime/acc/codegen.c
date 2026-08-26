@@ -1725,7 +1725,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		"static AcResult __attribute ((unused))"
 	        "acStoreUniform(const cudaStream_t stream, const %sParam param, %s* value) { return acStore%sUniform(stream,param,value);}\n"
 		"static AcResult __attribute ((unused))"
-	        "acStoreUniform(const %sArrayParam param, %s* values, const size_t length) { return acStore%sArrayUniform(param,values,length);}\n"
+	        "acStoreUniform(const %sArrayParam param, %s* values, const size_t length) { return acStore%sArrayUniform(param,values,length);}\n\n"
 		,enum_name, datatype_scalar, upper_case_name
 		,enum_name, datatype_scalar, upper_case_name
 		,enum_name, datatype_scalar, upper_case_name
@@ -1734,10 +1734,10 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 
 	fprintf_filename("load_and_store_uniform_funcs.h",
-	 	"AcResult acLoad%sUniform(const cudaStream_t, const %sParam param, const %s value) { return acLoadUniform(param,value); }\n"
-	 	"AcResult acLoad%sArrayUniform(const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length) { return acLoadArrayUniform(param ,values, length); }\n"
-	 	"AcResult acStore%sUniform(const cudaStream_t, const %sParam param, %s* value) { return acStoreUniform(param,value); }\n"
-	 	"AcResult acStore%sArrayUniform(const %sArrayParam param, %s* values, const size_t length) { return acStoreArrayUniform(param ,values, length); }\n"
+		"AcResult acLoad%sUniform(const cudaStream_t, const %sParam param, const %s value) { return acLoadUniform(param,value); }\n"
+		"AcResult acLoad%sArrayUniform(const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length) { return acLoadArrayUniform(param ,values, length); }\n"
+		"AcResult acStore%sUniform(const cudaStream_t, const %sParam param, %s* value) { return acStoreUniform(param,value); }\n"
+		"AcResult acStore%sArrayUniform(const %sArrayParam param, %s* values, const size_t length) { return acStoreArrayUniform(param ,values, length); }\n\n"
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
@@ -1751,7 +1751,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		"FUNC_DEFINE(AcResult, acLoad%sUniform,(const cudaStream_t, const %sParam param, const %s value));\n"
 		"FUNC_DEFINE(AcResult, acLoad%sArrayUniform, (const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length));\n"
 		"FUNC_DEFINE(AcResult, acStore%sUniform,(const cudaStream_t, const %sParam param, %s* value));\n"
-		"FUNC_DEFINE(AcResult, acStore%sArrayUniform, (const %sArrayParam param, %s* values, const size_t length));\n"
+		"FUNC_DEFINE(AcResult, acStore%sArrayUniform, (const %sArrayParam param, %s* values, const size_t length));\n\n"
 	    	,upper_case_name, enum_name, datatype_scalar
 	    	,upper_case_name, enum_name, datatype_scalar
 	    	,upper_case_name, enum_name, datatype_scalar
@@ -1798,14 +1798,14 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"info->is_loaded.%s_arrays[(int)param] = true;\n"
 				"info->config.%s_arrays[(int)param] = val;\n"
 				"return AC_SUCCESS;\n"
-				"}\n"
+				"}\n\n"
 		,upper_case_name ,enum_name,datatype_scalar,define_name,define_name
 		,upper_case_name ,enum_name,datatype_scalar,define_name,define_name
 			);
 
 	fprintf_filename("load_comp_info_overloads.h",
 			"GEN_LOAD_COMP_INFO(%sCompParam,%s,%s)\n"
-			"GEN_LOAD_COMP_INFO(%sCompArrayParam,%s*,%sArray)\n"
+			"GEN_LOAD_COMP_INFO(%sCompArrayParam,%s*,%sArray)\n\n"
 			, enum_name, datatype_scalar, upper_case_name
 			, enum_name, datatype_scalar, upper_case_name
 			);
@@ -1813,7 +1813,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("is_output_param.h",
 		"constexpr static UNUSED bool IsOutputParam(const %s&)               {return false;}\n"
 		"constexpr static UNUSED bool IsOutputParam(const %sParam&)          {return false;}\n"
-		"constexpr static UNUSED bool IsOutputParam(const %sOutputParam&)     {return true;}\n"
+		"constexpr static UNUSED bool IsOutputParam(const %sOutputParam&)     {return true;}\n\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name
@@ -1824,7 +1824,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		"template <> constexpr bool IsCompParam<%sParam>()          {return false;}\n"
 		"template <> constexpr bool IsCompParam<%sArrayParam>()     {return false;}\n"
 		"template <> constexpr bool IsCompParam<%sCompArrayParam>() {return true;}\n"
-		"template <> constexpr bool IsCompParam<%sCompParam>()      {return true;}\n"
+		"template <> constexpr bool IsCompParam<%sCompParam>()      {return true;}\n\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name
@@ -1837,7 +1837,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		"template <> constexpr bool IsParam<%sParam>()          {return true;}\n"
 		"template <> constexpr bool IsParam<%sArrayParam>()     {return true;}\n"
 		"template <> constexpr bool IsParam<%sCompArrayParam>() {return true;}\n"
-		"template <> constexpr bool IsParam<%sCompParam>()      {return true;}\n"
+		"template <> constexpr bool IsParam<%sCompParam>()      {return true;}\n\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name
@@ -1851,7 +1851,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		"constexpr static UNUSED bool IsArrayParam(const %sParam&)          {return false;}\n"
 		"constexpr static UNUSED bool IsArrayParam(const %sArrayParam&)     {return true;}\n"
 		"constexpr static UNUSED bool IsArrayParam(const %sCompArrayParam&) {return true;}\n"
-		"constexpr static UNUSED bool IsArrayParam(const %sCompParam&)      {return false;}\n"
+		"constexpr static UNUSED bool IsArrayParam(const %sCompParam&)      {return false;}\n\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name
@@ -1911,52 +1911,51 @@ gen_datatype_enums(FILE* fp, const char* datatype_scalar)
   sprintf(tmp,"%s*",datatype_scalar);
   const char* datatype_arr = intern(tmp);
 
-  fprintf(fp, "typedef enum {");
+  fprintf(fp, "typedef enum {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_%s_PARAMS} %sParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+      fprintf(fp, "  %s,\n", symbol_table[i].identifier);
+  fprintf(fp, "  NUM_%s_PARAMS\n} %sParam;\n\n",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
 
 
-  fprintf(fp, "typedef enum {");
+  fprintf(fp, "typedef enum {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_arr && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR,GLOBAL_MEM_STR))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_%s_ARRAYS} %sArrayParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+      fprintf(fp, "  %s,\n", symbol_table[i].identifier);
+  fprintf(fp, "  NUM_%s_ARRAYS\n} %sArrayParam;\n\n",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
 
 
-  fprintf(fp, "typedef enum {");
+  fprintf(fp, "typedef enum {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_%s_OUTPUTS} %sOutputParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+      fprintf(fp, "  %s,\n", symbol_table[i].identifier);
+  fprintf(fp, "  NUM_%s_OUTPUTS\n} %sOutputParam;\n\n",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
 
-  fprintf(fp, "typedef enum {");
+  fprintf(fp, "typedef enum {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,INPUT_STR))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_%s_INPUT_PARAMS} %sInputParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+      fprintf(fp, "  %s,\n", symbol_table[i].identifier);
+  fprintf(fp, "  NUM_%s_INPUT_PARAMS\n} %sInputParam;\n\n",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
 
-  fprintf(fp, "typedef enum {");
+  fprintf(fp, "typedef enum {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_arr && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_%s_OUTPUT_ARRAYS} %sArrayOutputParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+      fprintf(fp, "  %s,\n", symbol_table[i].identifier);
+  fprintf(fp, "  NUM_%s_OUTPUT_ARRAYS\n} %sArrayOutputParam;\n\n",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
 
-  fprintf(fp, "typedef enum {");
+  fprintf(fp, "typedef enum {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,RUN_CONST_STR))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_%s_COMP_PARAMS} %sCompParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+      fprintf(fp, "  %s,\n", symbol_table[i].identifier);
+  fprintf(fp, "  NUM_%s_COMP_PARAMS\n} %sCompParam;\n\n",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
 
 
-  fprintf(fp, "typedef enum {");
+  fprintf(fp, "typedef enum {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_arr && str_vec_contains(symbol_table[i].tqualifiers,RUN_CONST_STR))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_%s_COMP_ARRAYS} %sCompArrayParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+      fprintf(fp, "  %s,\n", symbol_table[i].identifier);
+  fprintf(fp, "  NUM_%s_COMP_ARRAYS\n} %sCompArrayParam;\n\n",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
 
-  fprintf(fp,"\n");
   int counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
@@ -1990,37 +1989,35 @@ gen_param_names(FILE* fp, const char* datatype_scalar, const char* place_attribu
   sprintf(tmp,"%s*",datatype_scalar);
   const char* datatype_arr = intern(tmp);
 
-  fprintf(fp, "%s static const char* %sparam_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
+  fprintf(fp, "%s static const char* %sparam_names%s[] __attribute__((unused)) = {\n",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "\"padding\"};");
+      fprintf(fp, "  \"%s\",\n", symbol_table[i].identifier);
+  fprintf(fp, "  \"padding\"\n};\n\n");
 
-  fprintf(fp, "%s static const char* %s_output_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
+  fprintf(fp, "%s static const char* %s_output_names%s[] __attribute__((unused)) = {\n",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "\"padding\"};");
+      fprintf(fp, "  \"%s\",\n", symbol_table[i].identifier);
+  fprintf(fp, "  \"padding\"\n};\n\n");
 
-  fprintf(fp, "%s static const char* %s_array_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
+  fprintf(fp, "%s static const char* %s_array_names%s[] __attribute__((unused)) = {\n",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_arr && (str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR) ||str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR)))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "\"padding\"};");
+      fprintf(fp, "  \"%s\",\n", symbol_table[i].identifier);
+  fprintf(fp, "  \"padding\"\n};\n\n");
 
-  fprintf(fp, "%s static const char* %s_array_output_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
+  fprintf(fp, "%s static const char* %s_array_output_names%s[] __attribute__((unused)) = {\n",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_arr && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "\"padding\"};");
+      fprintf(fp, "  \"%s\",\n", symbol_table[i].identifier);
+  fprintf(fp, "  \"padding\"\n};\n\n");
 
-  fprintf(fp, "%s static const char* %s_comp_param_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
+  fprintf(fp, "%s static const char* %s_comp_param_names%s[] __attribute__((unused)) = {\n",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,RUN_CONST_STR))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "\"padding\"};");
-
-
+      fprintf(fp, "  \"%s\",\n", symbol_table[i].identifier);
+  fprintf(fp, "  \"padding\"\n};\n\n");
 }
 
 static ASTNode*
