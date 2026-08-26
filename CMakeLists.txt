@@ -276,9 +276,6 @@ handled by the build system.
 ")
 
     add_subdirectory(test)
-    add_definitions(-DINCLUDE_MODEL_SOLVER=0)
-else()
-    add_definitions(-DINCLUDE_MODEL_SOLVER=1)
 endif()
 
 if (BUILD_UTILS)
