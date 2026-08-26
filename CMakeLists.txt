@@ -296,70 +296,16 @@ endif()
 if (BUILD_ADVECTION_EXAMPLE)
     add_subdirectory(samples/advection-example)
 endif()
-if (BUILD_SAMPLES AND NOT BUILD_TESTS)
-    add_subdirectory(samples/ctest)
-    add_subdirectory(samples/cpptest)
-
-    #TP: we should make a wrapper functions for the CUDA calls
-    add_subdirectory(samples/benchmark-device)
-    add_subdirectory(samples/benchmark)
-
-    add_subdirectory(samples/mpi-io)
-    add_subdirectory(samples/mpi-io-multithreaded)
-    add_subdirectory(samples/pc-varfile-import)
-
-    #add_subdirectory(samples/stress)
-    #add_subdirectory(samples/standalone)
-    #add_subdirectory(samples/standalone_mpi)
-    #add_subdirectory(samples/ctest)
-    #add_subdirectory(samples/cpptest)
-    #add_subdirectory(samples/mpitest)
-    #add_subdirectory(samples/taskgraph_example)
-    #add_subdirectory(samples/taskgraph_print)
-    #add_subdirectory(samples/taskgraph_trace)
-    #add_subdirectory(samples/taskgraph_test)
-    #add_subdirectory(samples/mpi_fullgriderror_test)
-    #add_subdirectory(samples/benchmark)
-    #add_subdirectory(samples/benchmark-device)
-    #add_subdirectory(samples/boundcond_test)
-
-    #add_subdirectory(samples/mpi-io)
-    #add_subdirectory(samples/genbenchmarkscripts)
-    #add_subdirectory(samples/mpi_reduce_bench)
-    #add_subdirectory(samples/fortrantest)
-
-    if (NOT RUNTIME_COMPILATION)
-        add_subdirectory(samples/benchmark-node)
-    endif()
-
-    if (NOT CPU_BUILD)
-        add_subdirectory(samples/microbenchmark)
-    endif()
-
-    #if (MPI_ENABLED)
-    #  add_subdirectory(samples/bwtest)
-    #endif()
-endif()
-
-if (BUILD_SAMPLES AND BUILD_MLLIB_SAMPLES)
-    # Workaround for finding miopen on Triton
-    link_directories(/opt/rocm/miopen/lib/)
-    add_subdirectory(samples/microbenchmark-nn)
-endif ()
-
-if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
-    # add_subdirectory(samples/standalone)
-    # add_subdirectory(samples/standalone_mpi)
-    add_subdirectory(samples/mpitest)
-    add_subdirectory(samples/devicetest)
-    #add_subdirectory(samples/stencil-loader)
-endif()
 
 if (MPI_ENABLED AND BUILD_ACM)
     if (CPU_BUILD)
       set(HOST_ONLY_MODE ON)
     endif()
     add_subdirectory(acc-comm)
+endif()
+
+if (BUILD_SAMPLES)
+    add_subdirectory(samples)
 endif()
 
 # User-specified program modules
