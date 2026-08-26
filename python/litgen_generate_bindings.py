@@ -106,7 +106,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         # "<return_type> <func_name> <func_params>"
         regex.add_replacement(
             r"OVERLOADED_FUNC_DEFINE\s*\(([\w\s\*]+)\s*,\s*([\w]+)\s*,\s*\(([\w\s\*,\[\]\(\)]*)\)\)",
-            r"\1 \2(\3)",
+            r"\1 \2_BASE(\3)",
         )
 
         # "FUNC_DEFINE(<return_type>, <func_name>, <func_params>)"
@@ -168,9 +168,10 @@ def get_litgen_options() -> litgen.LitgenOptions:
             r"^acDevice",
             r"^acConstruct.+Param$",
             # FIXME: Cannot use double (or more) pointers in parameters.
-            # r"^acMalloc|acLaunchCooperativeKernel",
-            # FIXME: Cannot return double (or more) pointers from funcftions.
-            # r"^ac_allocate_scratchpad_real|ac_allocate_scratchpad_int|ac_allocate_scratchpad_float$",
+            r"^acMalloc|acLaunchCooperativeKernel|acHostMeshDestroyVertexBuffer",
+            # FIXME: Cannot return double (or more) pointers from functions.
+            r"^ac_allocate_scratchpad_real|ac_allocate_scratchpad_int|ac_allocate_scratchpad_float$",
+            ".*allocate_scratchpad.*",
             # FIXME: litgen does not properly overload the fun c
             r"^acMemcpy",
             # FIXME: Incorrectly uses BoxedInt in place of a AcReal array
@@ -180,8 +181,6 @@ def get_litgen_options() -> litgen.LitgenOptions:
             ".*StoreStencil",
             # FIXME: Getting this error from nanobind -> error: invalid use of incomplete type ”struct ompi_communicator_t”
             "acGridMPIComm",
-            # FIXME: litgen does not handle double pointers in return values.
-            ".*allocate_scratchpad.*",
             # FIXME: no match for call to ....
             "acCompute",
             "acHaloExchange",
@@ -189,6 +188,11 @@ def get_litgen_options() -> litgen.LitgenOptions:
             # Not needed to be exposed through the bindings.
             "ac_library_not_yet_loaded",
             "acLoadRunTime",
+            # FIXME For some reason these struggles with overloads when RUNTIME_COMPILATION=ON
+            "acScan",
+            "acRayUpdate",
+            # Bound manually
+            "acCommunicator.*",
         ]
 
         for pattern in blacklist:
@@ -215,6 +219,8 @@ def get_litgen_options() -> litgen.LitgenOptions:
             r"Device",
             # FIXME: Struct/classes with const members do not have a default constructor.
             "ParamLoadingInfo",
+            # asd
+            r"\*\*",
         ]
 
         for pattern in blacklist:
@@ -318,6 +324,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         custom = [
             r"^AC_CPU_BUILD$",
             r"^AC_MPI_ENABLED$",
+            r"^AC_RUNTIME_COMPILATION$",
             r"^AC_BEGIN_C_DECLARATIONS$",
             r"^AC_END_C_DECLARATIONS$",
         ]

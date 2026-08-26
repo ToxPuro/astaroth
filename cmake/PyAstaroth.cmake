@@ -1,0 +1,348 @@
+cmake_minimum_required(VERSION 3.15...3.28)
+
+macro(_pyastaroth_find_python)
+    # Taken from https://nanobind.readthedocs.io/en/latest/building.html
+    if (CMAKE_VERSION VERSION_LESS 3.18)
+        set(DEV_MODULE Development)
+    else()
+        set(DEV_MODULE Development.Module)
+    endif()
+
+    find_package(
+        Python
+        3.8
+        COMPONENTS
+            Interpreter ${DEV_MODULE}
+        REQUIRED
+    )
+endmacro()
+
+
+macro(_pyastaroth_find_nanobind)
+    _pyastaroth_find_python()
+
+    # Detect the installed nanobind package and import it into CMake
+    execute_process(
+        COMMAND
+            "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        OUTPUT_VARIABLE
+            nanobind_ROOT
+    )
+    find_package(nanobind CONFIG REQUIRED)
+
+    if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+        set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+    endif()
+endmacro()
+
+
+macro(_pyastaroth_find_mpi4py)
+    _pyastaroth_find_python()
+
+    # Detect if mpi4py is installed and get from it the include directory needed to compile the
+    # Python bindings.
+    execute_process(
+        COMMAND
+            "${Python_EXECUTABLE}" -c "import mpi4py as m; print(m.get_include());"
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        OUTPUT_VARIABLE
+            mpi4py_INCLUDE_DIR
+    )
+endmacro()
+
+function(_pyastaroth_prepare_bindings
+         target
+         parent_module
+)
+    ## Dependencies
+    _pyastaroth_find_nanobind()
+    _pyastaroth_find_mpi4py()
+
+    set(pydef_dir "${CMAKE_CURRENT_BINARY_DIR}/pydef")
+    set(stubs_dir "${CMAKE_CURRENT_BINARY_DIR}/stubs/astaroth/impl")
+
+    set(base_pydef_dir "${CMAKE_SOURCE_DIR}/python/pydef")
+    set(base_stubs_dir "${CMAKE_SOURCE_DIR}/python/stubs/astaroth/impl")
+
+    set(pydefs
+        astaroth-core-impl.cc
+        astaroth-grid-impl.cc
+        astaroth-node-impl.cc
+        astaroth-utils-impl.cc
+        astaroth-device-impl.cc
+        astaroth-legacy-impl.cc
+    )
+    foreach(file ${pydefs})
+        configure_file("${base_pydef_dir}/${file}" "${pydef_dir}/${file}" COPYONLY)
+    endforeach()
+
+    set(stubs
+        core.pyi
+        node.pyi
+        grid.pyi
+        utils.pyi
+        device.pyi
+        legacy.pyi
+    )
+    foreach(file ${stubs})
+        configure_file("${base_stubs_dir}/${file}" "${stubs_dir}/${file}" COPYONLY)
+    endforeach()
+
+    set(pyastaroth_pydef               "${pydef_dir}/astaroth-core-impl.cc")
+    set(pyastaroth_include_directories "${CMAKE_SOURCE_DIR}/include"
+				       "${CMAKE_BINARY_DIR}/acc-runtime/api"
+				       "${CMAKE_SOURCE_DIR}/acc-runtime/api")
+
+    litgen_generate_bindings(
+	pyastaroth_core_bindings
+	PYDEF_FILE
+	    ${pyastaroth_pydef}
+	STUBS_FILE
+	    "${stubs_dir}/core.pyi"
+	BASE_DIR
+	    ${CMAKE_SOURCE_DIR}
+	HEADER_FILE
+	    "${CMAKE_SOURCE_DIR}/include/astaroth.h"
+	INCLUDE_DIRECTORIES
+	    "${pyastaroth_include_directories}"
+	AMALGAMATE
+    )
+    add_dependencies(pyastaroth_core_bindings acc-runtime-headers)
+
+    nanobind_add_module(
+        core
+        NB_SUPPRESS_WARNINGS
+        ${pyastaroth_pydef}
+    )
+    litgen_setup_module(
+        astaroth_core
+        core
+        ${parent_module}/astaroth/impl
+        ${stubs_dir}
+    )
+
+    add_dependencies(core pyastaroth_core_bindings)
+    target_include_directories(
+        core
+        PUBLIC
+            ${AC_BASE_PATH}/include
+            ${AC_BASE_PATH}/acc-runtime/api
+            ${mpi4py_INCLUDE_DIR}
+    )
+    target_link_libraries(core PUBLIC astaroth_core)
+    ac_link_mpi(core)
+
+    set(pyastaroth_device_pydef               "${pydef_dir}/astaroth-device-impl.cc")
+    set(pyastaroth_device_include_directories "${CMAKE_SOURCE_DIR}/include"
+					      "${CMAKE_BINARY_DIR}/acc-runtime/api"
+					      "${CMAKE_SOURCE_DIR}/acc-runtime/api")
+
+    litgen_generate_bindings(
+	pyastaroth_device_bindings
+	PYDEF_FILE
+	    ${pyastaroth_device_pydef}
+	STUBS_FILE
+	    "${stubs_dir}/device.pyi"
+	BASE_DIR
+	    ${CMAKE_SOURCE_DIR}
+	HEADER_FILE
+	    "${CMAKE_SOURCE_DIR}/include/astaroth_device.h"
+    )
+    add_dependencies(pyastaroth_device_bindings acc-runtime-headers)
+
+    nanobind_add_module(
+	device
+	NB_SUPPRESS_WARNINGS
+	${pyastaroth_device_pydef}
+    )
+    litgen_setup_module(
+	astaroth_core
+	device
+        ${parent_module}/astaroth/impl
+	${stubs_dir}
+    )
+
+    add_dependencies(device pyastaroth_device_bindings)
+    target_include_directories(
+	device
+	PUBLIC
+	    ${AC_BASE_PATH}/include
+    )
+    ac_link_mpi(device)
+
+    set(pyastaroth_grid_pydef               "${pydef_dir}/astaroth-grid-impl.cc")
+    set(pyastaroth_grid_include_directories "${CMAKE_SOURCE_DIR}/include"
+					    "${CMAKE_BINARY_DIR}/acc-runtime/api"
+					    "${CMAKE_SOURCE_DIR}/acc-runtime/api")
+
+    litgen_generate_bindings(
+	pyastaroth_grid_bindings
+	PYDEF_FILE
+	    ${pyastaroth_grid_pydef}
+	STUBS_FILE
+	    "${stubs_dir}/grid.pyi"
+        BASE_DIR
+	    ${CMAKE_SOURCE_DIR}
+	HEADER_FILE
+	    "${CMAKE_SOURCE_DIR}/include/astaroth_grid.h"
+    )
+    add_dependencies(pyastaroth_grid_bindings acc-runtime-headers)
+
+    nanobind_add_module(
+	grid
+	NB_SUPPRESS_WARNINGS
+	${pyastaroth_grid_pydef}
+    )
+    litgen_setup_module(
+	astaroth_core
+	grid
+        ${parent_module}/astaroth/impl
+	${stubs_dir}
+    )
+
+    add_dependencies(grid pyastaroth_grid_bindings)
+    target_include_directories(
+	grid
+	PUBLIC
+	    ${AC_BASE_PATH}/include
+	    ${mpi4py_INCLUDE_DIR}
+    )
+    ac_link_mpi(grid)
+
+    set(pyastaroth_legacy_pydef               "${pydef_dir}/astaroth-legacy-impl.cc")
+    set(pyastaroth_legacy_include_directories "${CMAKE_SOURCE_DIR}/include"
+					      "${CMAKE_BINARY_DIR}/acc-runtime/api"
+					      "${CMAKE_SOURCE_DIR}/acc-runtime/api")
+
+    litgen_generate_bindings(
+	pyastaroth_legacy_bindings
+	PYDEF_FILE
+	    ${pyastaroth_legacy_pydef}
+	STUBS_FILE
+	    "${stubs_dir}/legacy.pyi"
+	BASE_DIR
+	    ${CMAKE_SOURCE_DIR}
+	HEADER_FILE
+	    "${CMAKE_SOURCE_DIR}/include/astaroth_legacy.h"
+    )
+    add_dependencies(pyastaroth_legacy_bindings acc-runtime-headers)
+
+    nanobind_add_module(
+	legacy
+	NB_SUPPRESS_WARNINGS
+	${pyastaroth_legacy_pydef}
+    )
+    litgen_setup_module(
+	astaroth_core
+	legacy
+        ${parent_module}/astaroth/impl
+	${stubs_dir}
+    )
+
+    add_dependencies(legacy pyastaroth_legacy_bindings)
+    target_include_directories(
+	legacy
+	PUBLIC
+	    ${AC_BASE_PATH}/include
+    )
+    ac_link_mpi(legacy)
+
+    set(pyastaroth_node_pydef               "${pydef_dir}/astaroth-node-impl.cc")
+    set(pyastaroth_node_include_directories "${CMAKE_SOURCE_DIR}/include"
+					    "${CMAKE_BINARY_DIR}/acc-runtime/api"
+					    "${CMAKE_SOURCE_DIR}/acc-runtime/api")
+
+    litgen_generate_bindings(
+	pyastaroth_node_bindings
+	PYDEF_FILE
+	    ${pyastaroth_node_pydef}
+	STUBS_FILE
+	    "${stubs_dir}/node.pyi"
+	BASE_DIR
+	    ${CMAKE_SOURCE_DIR}
+	HEADER_FILE
+	    "${CMAKE_SOURCE_DIR}/include/astaroth_node.h"
+    )
+    add_dependencies(pyastaroth_node_bindings acc-runtime-headers)
+
+    nanobind_add_module(
+	node
+	NB_SUPPRESS_WARNINGS
+	${pyastaroth_node_pydef}
+    )
+    litgen_setup_module(
+	astaroth_core
+	node
+        ${parent_module}/astaroth/impl
+	${stubs_dir}
+    )
+
+    add_dependencies(node pyastaroth_node_bindings)
+    target_include_directories(
+	node
+	PUBLIC
+	    ${AC_BASE_PATH}/include
+    )
+    ac_link_mpi(node)
+
+    set(pyastaroth_utils_pydef               "${pydef_dir}/astaroth-utils-impl.cc")
+    set(pyastaroth_utils_include_directories "${CMAKE_SOURCE_DIR}/include"
+					     "${CMAKE_BINARY_DIR}/acc-runtime/api"
+					     "${CMAKE_SOURCE_DIR}/acc-runtime/api")
+
+    litgen_generate_bindings(
+	pyastaroth_utils_bindings
+	PYDEF_FILE
+	    ${pyastaroth_utils_pydef}
+	STUBS_FILE
+	    "${stubs_dir}/utils.pyi"
+	BASE_DIR
+	    ${CMAKE_SOURCE_DIR}
+	HEADER_FILE
+	    "${CMAKE_SOURCE_DIR}/include/astaroth_utils.h"
+    )
+    add_dependencies(pyastaroth_utils_bindings acc-runtime-headers)
+
+    nanobind_add_module(
+	utils
+	NB_SUPPRESS_WARNINGS
+	${pyastaroth_utils_pydef}
+    )
+    litgen_setup_module(
+	astaroth_utils
+	utils
+        ${parent_module}/astaroth/impl
+	${stubs_dir}
+    )
+
+    add_dependencies(utils pyastaroth_utils_bindings)
+    target_include_directories(utils PUBLIC ${AC_BASE_PATH}/include)
+endfunction()
+
+function(pyastaroth_add_application target)
+    set(options "")
+    set(oneValueArgs MODULE_NAME)
+    set(multiValueArgs SOURCES)
+    cmake_parse_arguments(PARSE_ARGV 1 arg
+        "${options}" "${oneValueArgs}" "${multiValueArgs}"
+    )
+
+    if (DEFINED arg_MODULE_NAME)
+        set(module_name $arg_MODULE_NAME})
+    else()
+        set(module_name ${target})
+    endif()
+
+    set(pyastaroth_bindings "${target}_pyastaroth_bindings")
+    _pyastaroth_prepare_bindings(${pyastaroth_bindings} ${module_name})
+
+    # Set python_native_module_name install path to ${python_module_name} (required by skbuild)
+    install(
+        TARGETS
+            ${python_native_module_name}
+        DESTINATION
+            ${python_module_name}
+    )
+endfunction()
