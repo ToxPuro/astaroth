@@ -1,0 +1,51 @@
+[project]
+name = "pyastaroth_benchmark"
+version = "2026.0"
+authors = [
+    { name = "Johannes Pekkilä", email = "johannes.pekkila@aalto.fi" },
+    { name = "Miikka Väisäla", email = "Miikka.Vaisala@oulu.fi" },
+    { name = "Ondřej Míchal", email = "harrymichal@seznam.cz" },
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "mpi4py",
+]
+
+[project.scripts]
+benchmark = "pyastaroth_benchmark.__main__:main"
+
+[build-system]
+requires = [
+    "scikit-build-core>=0.10",
+    "nanobind",
+    "litgen @ git+https://github.com/martymichal/litgen@main",
+    "black",
+    "ruff",
+    "mpi4py",
+]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+cmake.build-type = "Debug"
+cmake.args = [
+    "-DBUILD_SAMPLE=python:benchmark",
+    "-DCPU_BUILD=ON",
+    "-DMPI_ENABLED=ON",
+    "-DRUNTIME_COMPILATION=ON",
+]
+cmake.source-dir = "../../../"
+ninja.make-fallback = true
+wheel.py-api = "cp312"
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "./**/*.{py,ac}" },
+    { file = "./**/CMakeLists.txt" },
+]
+
+[tool.uv.extra-build-dependencies]
+pyastaroth-benchmark = ["scikit_build_core.build"]

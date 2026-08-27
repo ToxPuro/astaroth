@@ -51,7 +51,8 @@ cache-keys = [
 members = [
     "analysis/viz_tools",
     "analysis/python",
-    "integrator",
+    "samples/integrator",
+    "samples/python/benchmark",
     # Do NOT include "config/samples/subsonic_forced_turbulence" if it's not a Python project
 ]
 
