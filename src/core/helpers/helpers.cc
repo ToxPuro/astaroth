@@ -1,3 +1,5 @@
+#include "astaroth_helpers.h"
+
 #include <fenv.h>
 #include <limits.h>
 #include <math.h>
