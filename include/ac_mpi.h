@@ -12,6 +12,9 @@ typedef struct AcCommunicator AcCommunicator;
 
 #if AC_MPI_ENABLED && __has_include(<mpi.h>)
 
+#include "func_define.h"
+#include "host_datatypes.h"
+
 struct AcCommunicator {
     MPI_Comm handle;
 };
@@ -30,6 +33,19 @@ typedef struct AcSubCommunicators {
     MPI_Comm xz;
     MPI_Comm yz;
 } AcSubCommunicators;
+
+AC_BEGIN_C_DECLARATIONS
+
+static AcResult
+acCommunicatorSetCommunicator(AcCommunicator *communicator, MPI_Comm comm)
+{
+    if (communicator == NULL) return AC_FAILURE;
+
+    communicator->handle = comm;
+    return AC_SUCCESS;
+}
+
+AC_END_C_DECLARATIONS
 
 #else
 
