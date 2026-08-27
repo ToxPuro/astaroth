@@ -200,8 +200,13 @@ AcResult
 ac_MPI_Init()
 {
     ERRCHK_ALWAYS(!grid.mpi_initialized);
-    if (MPI_Init(NULL, NULL)) {
-        return AC_FAILURE;
+
+    int mpi_has_been_initialized{};
+    MPI_Initialized(&mpi_has_been_initialized);
+    if(!mpi_has_been_initialized) {
+        if (MPI_Init(NULL, NULL)) {
+            return AC_FAILURE;
+        }
     }
 
     // Get rank for new communicator
