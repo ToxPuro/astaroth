@@ -74,11 +74,11 @@ get_red_black_state()
         return acDeviceGetInput(acGridGetDevice(),AC_red_black_halo_exchange);
 }
 
-#define fatal(MESSAGE, ...) \
-        { \
-	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
-	ERRCHK_ALWAYS(false); \
-	} 
+#define fatal(MESSAGE, ...)                                \
+    {                                                      \
+        acLogFromRootProc(ac_pid(), MESSAGE, __VA_ARGS__); \
+        FATAL();                                           \
+    }
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 #define MAX_HALO_TAG (10000) //"Namespacing" the MPI tag space to avoid collisions in case of multiple messages

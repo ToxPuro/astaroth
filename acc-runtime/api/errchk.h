@@ -43,25 +43,34 @@
  * General error checking
  * =============================================================================
  */
-// clang-format off
+#define _ERRCHK_REPORT_TIME()                                                  \
+  time_t terr = 0;                                                             \
+  time(&terr);                                                                 \
+  fprintf(stderr, "%s", ctime(&terr));
+
+#define FATAL()                                                                \
+  {                                                                            \
+    _ERRCHK_REPORT_TIME();                                                     \
+    fprintf(stderr, "Fatal error in file %s line %d\n", __FILE__, __LINE__);   \
+    fprintf(stderr, "This error is likely due to a serious programming "       \
+                    "error. Inspect any prior logs.\n");                       \
+    fflush(stderr);                                                            \
+    fflush(stdout);                                                            \
+    abort();                                                                   \
+  }
+
 #define ERROR(str)                                                             \
   {                                                                            \
-    time_t terr = 0;                                                           \
-    time(&terr);                                                               \
-    fprintf(stderr, "\n\n\n\n                          ERROR                             \n\n"); \
-    fprintf(stderr, "%s", ctime(&terr));                                       \
-    fprintf(stderr, "Error in file %s line %d: %s\n", __FILE__, __LINE__, str); \
-    fprintf(stderr, "\n                          ERROR                             \n\n\n\n"); \
+    _ERRCHK_REPORT_TIME();                                                     \
+    fprintf(stderr, "Error in file %s line %d: %s\n", __FILE__, __LINE__,      \
+            str);                                                              \
     fflush(stderr);                                                            \
     abort();                                                                   \
   }
-// clang-format on
 
 #define WARNING(str)                                                           \
   {                                                                            \
-    time_t terr = 0;                                                           \
-    time(&terr);                                                               \
-    fprintf(stderr, "%s", ctime(&terr));                                       \
+    _ERRCHK_REPORT_TIME();                                                     \
     fprintf(stderr, "\tWarning in file %s line %d: %s\n", __FILE__, __LINE__,  \
             str);                                                              \
     fflush(stderr);                                                            \
