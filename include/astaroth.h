@@ -142,6 +142,7 @@ acLoadLibrary(FILE* stream, const AcMeshInfo info)
     LOAD_DSYM(acGridReduceScal, stream);
     LOAD_DSYM(acGridReduceVec, stream);
     LOAD_DSYM(acGridReduceVecScal, stream);
+    LOAD_DSYM(acGridReduceXY, stream);
     LOAD_DSYM(acGridAccessMeshOnDiskSynchronous, stream);
     LOAD_DSYM(acGridDiskAccessLaunch, stream);
     LOAD_DSYM(acGridWriteSlicesToDiskLaunch, stream);
