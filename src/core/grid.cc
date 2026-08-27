@@ -77,13 +77,12 @@
 
 AcResult acAnalysisLoadMeshInfo(const AcMeshInfo info);
 
-#define fatal(MESSAGE, ...) \
-        { \
-	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
-	fflush(stderr); \
-	fflush(stdout); \
-	ERRCHK_ALWAYS(false); \
-	} 
+#define fatal(MESSAGE, ...)                                \
+    {                                                      \
+        acLogFromRootProc(ac_pid(), MESSAGE, __VA_ARGS__); \
+        FATAL();                                           \
+    }
+
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;

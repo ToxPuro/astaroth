@@ -36,11 +36,11 @@ static int ac_pid()
 	return res;
 }
 
-#define fatal(MESSAGE, ...) \
-        { \
-	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
-	abort(); \
-	} 
+#define fatal(MESSAGE, ...)                                \
+    {                                                      \
+        acLogFromRootProc(ac_pid(), MESSAGE, __VA_ARGS__); \
+        FATAL();                                           \
+    }
 
 static bool
 is_bc_taskgraph(const AcDSLTaskGraph graph)
