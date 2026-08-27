@@ -1,6 +1,10 @@
 #pragma once
 
+#include "acc_runtime.h"
+#include "astaroth_analysis.h"
+#include "astaroth_base.h"
 #include "func_define.h"
+#include "host_datatypes.h"
 
 #ifdef __cplusplus
 #include "user_builtin_non_scalar_constants.h"
