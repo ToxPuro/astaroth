@@ -23,7 +23,6 @@
 
 #include "ac_helpers.h"
 #include "builtin_enums.h"
-#include "common_kernels.h"
 #include "datatypes.h"
 #include "astaroth_device_headers.h"
 #include "errchk.h"
