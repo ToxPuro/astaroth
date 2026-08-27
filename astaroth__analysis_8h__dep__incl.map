@@ -1,11 +1,19 @@
 <map id="acc&#45;runtime/api/astaroth_analysis.h" name="acc&#45;runtime/api/astaroth_analysis.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="192,5,373,50"/>
-<area shape="rect" id="Node000002" href="$astaroth_8h.html" title=" " alt="" coords="120,106,258,134"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="252,59,205,108,201,104,248,62"/>
-<area shape="rect" id="Node000005" href="$astaroth__analysis__helpers_8h.html" title=" " alt="" coords="282,98,470,143"/>
-<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="316,58,357,98,351,98,315,63"/>
-<area shape="rect" id="Node000003" href="$astaroth__utils_8h.html" title="Functions for loading and updating AcMeshInfo." alt="" coords="5,191,179,218"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="165,144,109,193,106,188,160,145"/>
-<area shape="rect" id="Node000004" href="$device__detail_8h.html" title=" " alt="" coords="202,191,374,218"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="218,142,275,190,270,190,216,147"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="39,5,220,50"/>
+<area shape="rect" id="Node000002" href="$astaroth_8h.html" title=" " alt="" coords="120,266,258,294"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="62,60,43,78,26,99,20,120,26,142,54,183,91,217,129,245,164,265,159,267,126,249,87,222,50,186,22,144,15,120,22,97,39,74,65,56"/>
+<area shape="rect" id="Node000005" href="$astaroth__analysis__helpers_8h.html" title=" " alt="" coords="36,98,223,143"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="130,63,132,98,127,97,129,68"/>
+<area shape="rect" id="Node000006" href="$astaroth__helpers_8h.html" title=" " alt="" coords="247,106,441,134"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="195,54,315,105,311,107,195,59"/>
+<area shape="rect" id="Node000003" href="$astaroth__utils_8h.html" title="Functions for loading and updating AcMeshInfo." alt="" coords="5,342,179,370"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="163,303,111,344,108,339,158,304"/>
+<area shape="rect" id="Node000004" href="$device__detail_8h.html" title=" " alt="" coords="202,342,374,370"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="220,301,273,342,268,341,218,306"/>
+<area shape="poly" id="edge6_Node000006_Node000002" title=" " alt="" coords="306,144,278,166,249,192,219,232,198,268,194,264,214,229,245,189,275,162,310,141"/>
+<area shape="rect" id="Node000007" href="$astaroth__grid_8h.html" title=" " alt="" coords="259,191,429,218"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="345,148,346,192,342,189,343,152"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="300,227,218,268,216,263,305,224"/>
+<area shape="rect" id="Node000008" href="$astaroth__debug_8h.html" title=" " alt="" coords="282,266,467,294"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="357,231,372,267,367,265,354,235"/>
 </map>

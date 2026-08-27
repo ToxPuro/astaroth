@@ -3,7 +3,6 @@ var astaroth__grid_8h =
     [ "AcTaskDefinition", "structAcTaskDefinition.html", "structAcTaskDefinition" ],
     [ "facet_class_range", "structfacet__class__range.html", "structfacet__class__range" ],
     [ "ParamLoadingInfo", "structParamLoadingInfo.html", "structParamLoadingInfo" ],
-    [ "UNUSED", "astaroth__grid_8h.html#addf5ec070e9499d36b7f2009ce736076", null ],
     [ "AcTaskGraph", "astaroth__grid_8h.html#ac339c5f974cd7716df6119c12b7158cd", null ],
     [ "LoadKernelParamsFunc", "astaroth__grid_8h.html#ac2944870a54d36393fe59fc62e8ad19f", null ],
     [ "AccessType", "astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478", [
