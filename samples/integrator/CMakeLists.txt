@@ -1,5 +1,6 @@
 ## mpitest
 
+set(DSL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/DSL")
 
 find_package(pybind11 QUIET)
 find_package(GSL REQUIRED)

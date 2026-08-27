@@ -56,3 +56,7 @@ if (BUILD_MHD_SAMPLES)
     add_subdirectory(devicetest)
     #add_subdirectory(stencil-loader)
 endif()
+
+if (BUILD_INTEGRATOR)
+    add_subdirectory(integrator)
+endif()

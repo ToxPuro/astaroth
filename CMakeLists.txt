@@ -32,6 +32,7 @@ endif()
 option(2D                          "Compile Astaroth for 2D simulation" OFF)
 option(BUILD_ACM                   "Whether to build to the Astaroth Communication Module (ACM)." OFF)
 option(BUILD_ADVECTION_EXAMPLE     "Builds hello world example" OFF)
+option(BUILD_INTEGRATOR            "Whether to build integrator" OFF)
 option(BUILD_MHD_SAMPLES           "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(BUILD_MLLIB_SAMPLES         "Builds samples that use cuDNN or MIOpen" OFF)
 option(BUILD_SAMPLES               "Builds projects in samples subdirectory." ON)
@@ -40,7 +41,6 @@ option(BUILD_STANDALONE            "Build the standalone_mpi executable to run s
 option(BUILD_TESTS                 "Builds tests in test subdirectory. Make sure to set DSL_MODULE_DIR and
 DSL_MODULE_FILE accordingly and build only a specific test taget." OFF)
 option(BUILD_UTILS                 "Builds the utility library" ON)
-option(BUILD_INTEGRATOR            "Whether to build integrator" OFF)
 option(CPU_BUILD                   "To build CPU-only build" OFF)
 option(DEBUG_SYNC                  "Whether to sync after all tasks in default ops" OFF)
 option(DOUBLE_PRECISION            "Generates double precision code." ON)
@@ -252,11 +252,6 @@ add_definitions(-DAC_DEFAULT_CONFIG="${AC_DEFAULT_CONFIG}")
 # 3rd party
 if (INCLUDE_3RD_PARTIES)
     add_subdirectory(3rdparty/inih)
-endif()
-
-if(BUILD_INTEGRATOR)
-   set(DSL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/integrator/DSL")
-   add_subdirectory(integrator)
 endif()
 
 # Astaroth modules
