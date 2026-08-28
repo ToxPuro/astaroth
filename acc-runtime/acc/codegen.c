@@ -1435,6 +1435,25 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			);
 	
 
+        fprintf_filename("ac_push_to_config.h","void acPushToConfig%s(AcMeshInfo& config, %sParam param, %s val)\n"
+			"{\n"
+			 "acPushToConfig(config,param,val);\n"
+			"}\n"
+			,upper_case_name,enum_name,datatype_scalar);
+
+        fprintf_filename("ac_push_to_config.h","void acPushToConfig%sArray(AcMeshInfo& config, %sArrayParam param, const %s* arr)\n"
+			"{\n"
+			 "acPushToConfig(config,param,(%s*)arr);\n"
+			"}\n"
+			,upper_case_name,enum_name,datatype_scalar,datatype_scalar);
+
+
+        fprintf_filename("ac_push_to_config_decl.h","void acPushToConfig%s(AcMeshInfo& config, %sParam param, const %s arr);\n"
+			,upper_case_name,enum_name,datatype_scalar);
+
+        fprintf_filename("ac_push_to_config_decl.h","void acPushToConfig%sArray(AcMeshInfo& config, %sArrayParam param, const %s* arr);\n"
+			,upper_case_name,enum_name,datatype_scalar);
+
 
         fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 

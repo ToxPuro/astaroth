@@ -197,6 +197,7 @@ acLoadLibrary(FILE* stream, const AcMeshInfo info)
     LOAD_DSYM(acGetLengths, stream)
     LOAD_DSYM(acHostMeshCopyVertexBuffers, stream)
 #include "device_load_uniform_loads.h"
+#include "ac_push_to_config_loads.h"
     LOAD_DSYM(acHostMeshCopy, stream)
     LOAD_DSYM(acGetKernelId, stream)
     LOAD_DSYM(acGetKernelIdByName, stream)
@@ -443,6 +444,8 @@ acGetDefaultConfig()
     // return AC_SUCCESS;
 }
 
+#include "ac_push_to_config_decl.h"
+
 AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
@@ -525,6 +528,7 @@ acVertexBufferCompdomainSize(const AcMeshInfo info, const VertexBufferHandle vtx
 
 static inline size_t
 acVertexBufferCompdomainSizeBytes(const AcMeshInfo info, const VertexBufferHandle vtxbuf) {return  acVertexBufferCompdomainSizeBytesVariable(info,vtxbuf); }
+
 
 template <typename P, typename V>
 void

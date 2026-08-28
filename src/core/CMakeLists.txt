@@ -1,6 +1,6 @@
 ## Astaroth Core
 if(RUNTIME_COMPILATION)
-  add_library(astaroth_core_obj OBJECT empty.cc)
+  add_library(astaroth_core_obj OBJECT ac_push.cc)
 else()
   #TP: It is not that important that these are as efficient as possible
   #    so can speed up compilation by setting their optimization level to 0
@@ -14,7 +14,7 @@ else()
   )
 
   set_source_files_properties(stencil_accesses.cpp PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1)
-  add_library(astaroth_core_obj OBJECT device.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp analysis_helpers.cc)
+  add_library(astaroth_core_obj OBJECT ac_push.cc device.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp analysis_helpers.cc)
   target_link_libraries(astaroth_core_obj PRIVATE acc-runtime-headers )
   target_include_directories(astaroth_core_obj PRIVATE ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src ${AC_BASE_PATH}/src/core/kernels)
 
