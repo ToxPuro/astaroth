@@ -21,10 +21,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "ac_helpers.h"
+#include "astaroth_device_headers.h"
 #include "builtin_enums.h"
 #include "datatypes.h"
-#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "func_define.h"
 
@@ -199,6 +198,19 @@ typedef struct {
   	AcReduceOp floats[NUM_FLOAT_OUTPUTS+1];	
 #endif
 } AcScratchpadStates;
+
+// FIXME(OM): The API for this lives in astaroth_helpers.h even though it
+// should probably live in the ACC runtime layer. For now this works but it is
+// quite intuitive.
+typedef struct AcBuffer{
+    AcReal* data;
+    size_t count;
+    bool on_device;
+    AcShape shape;
+    #ifdef __cplusplus
+    const AcReal& operator[](const int index) {return data[index];}
+    #endif
+} AcBuffer;
 
 typedef struct {
 	  AcBuffer src;

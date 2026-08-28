@@ -8,6 +8,7 @@
 #include <stack>
 #include <vector>
 
+#include "ac_helpers.h"
 #include "ac_mpi.h"
 #include "astaroth_analysis_helpers.h"
 #include "astaroth_base.h"

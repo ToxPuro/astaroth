@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "ac_helpers.h"
 #include "ac_mpi.h"
 #include "acc_runtime.h"
 #include "acreal.h"

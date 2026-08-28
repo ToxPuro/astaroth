@@ -12,6 +12,20 @@
 
 AC_BEGIN_C_DECLARATIONS
 
+/*
+ * =============================================================================
+ * Helper functions
+ * =============================================================================
+ */
+
+AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
+AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
+AcBuffer acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order);
+void acBufferDestroy(AcBuffer* buffer);
+AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
+AcBuffer acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaStream_t stream);
+AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cudaStream_t stream);
+
 int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
                           const AcMeshInfo info);
 
@@ -26,11 +40,7 @@ acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealPara
     };
 }
 
-/*
- * =============================================================================
- * Helper functions
- * =============================================================================
- */
+const char* acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm);
 
 FUNC_DEFINE(Volume, acGetLocalNN, (const AcMeshInfo info));
 FUNC_DEFINE(Volume, acGetLocalMM, (const AcMeshInfo info));
@@ -349,25 +359,32 @@ static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
     const int3 halos = acGetFieldHalos(info, vtxbuf);
-    const Volume n0  = (Volume){as_size_t(halos.x), as_size_t(halos.y), as_size_t(halos.z)};
-    const Volume m1  = (Volume){as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].x),
-                                as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].y),
-                                as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].z)};
-    const Volume n1  = (Volume){
+    const Volume n0  = (Volume){
+        as_size_t(halos.x),
+        as_size_t(halos.y),
+        as_size_t(halos.z),
+    };
+    const Volume m0 = (Volume){0, 0, 0};
+    const Volume m1 = (Volume){
+        as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].x),
+        as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].y),
+        as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].z),
+    };
+    const Volume n1 = (Volume){
         m1.x - n0.x,
         m1.y - n0.y,
         m1.z - n0.z,
     };
-    const Volume m0 = (Volume){0, 0, 0};
     const Volume nn = (Volume){
         m1.x - 2 * n0.x,
         m1.y - 2 * n0.y,
         m1.z - 2 * n0.z,
     };
-    const Volume
-        reduction_tile = (Volume){as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
-                                  as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
-                                  as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)};
+    const Volume reduction_tile = (Volume){
+        as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+        as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+        as_size_t(info.int3_params[AC_reduction_tile_dimensions].z),
+    };
 
     return (AcMeshDims){
         .n0             = n0,

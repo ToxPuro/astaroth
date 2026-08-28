@@ -976,12 +976,6 @@ is_valid_vec(const Vector a)
 }
 
 __attribute__((unused)) static inline bool
-is_valid(const AcReal a)
-{
-    return !isnan(a) && !isinf(a);
-}
-
-__attribute__((unused)) static inline bool
 is_valid_vec(const AcReal3 a)
 {
     return is_valid(a.x) && is_valid(a.y) && is_valid(a.z);

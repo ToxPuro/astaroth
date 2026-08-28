@@ -22,56 +22,6 @@
 #include "reduce_helpers_decls.h"
 // clang-format on
 
-static inline AcMeshDims
-acGetMeshDims(const AcMeshInfo info)
-{
-   const Volume n0 = to_volume(info[AC_nmin]);
-   const Volume n1 = to_volume(info[AC_nlocal_max]);
-   const Volume m0 = (Volume){0, 0, 0};
-   const Volume m1 = to_volume(info[AC_mlocal]);
-   const Volume nn = to_volume(info[AC_nlocal]);
-   const Volume reduction_tile = (Volume)
-   {
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
-   };
-
-   return (AcMeshDims){
-       .n0 = n0,
-       .n1 = n1,
-       .m0 = m0,
-       .m1 = m1,
-       .nn = nn,
-       .reduction_tile = reduction_tile,
-   };
-}
-
-static inline AcMeshDims
-acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
-{
-   const Volume n0 = to_volume(acGetFieldHalos(info,vtxbuf));
-   const Volume m1 = to_volume(info[vtxbuf_dims[vtxbuf]]);
-   const Volume n1 = m1-n0;
-   const Volume m0 = (Volume){0, 0, 0};
-   const Volume nn = (m1 <= n0*2) ? m1 : m1-n0*2;
-   const Volume reduction_tile = (Volume)
-   {
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
-   };
-
-   return (AcMeshDims){
-       .n0 = n0,
-       .n1 = n1,
-       .m0 = m0,
-       .m1 = m1,
-       .nn = nn,
-       .reduction_tile = reduction_tile,
-   };
-}
-
 AcResult
 acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const AcMeshDims* dims)
 {

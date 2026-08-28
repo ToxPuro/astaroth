@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "ac_helpers.h"
 #include "astaroth.h"
 #include "astaroth_runtime_compilation.h"
 #include "astaroth_helpers.h"

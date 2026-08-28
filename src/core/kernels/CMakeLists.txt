@@ -19,6 +19,7 @@ if(CPU_BUILD)
 else()
 	add_library(ac_transpose OBJECT transpose.cu)
 endif()
+ac_link_mpi(ac_transpose)
 
 add_library(ac_reindex OBJECT reindex.cu)
 set_property(TARGET ac_reindex PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -49,7 +50,8 @@ else()
 			CUDA_SEPARABLE_COMPILATION ON
 			CUDA_RESOLVE_DEVICE_SYMBOLS ON
 	)
-        target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
+	target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
+	ac_link_mpi(kernels_obj)
 	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
 
 	

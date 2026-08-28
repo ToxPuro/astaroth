@@ -30,6 +30,7 @@
 #include "stencil_accesses.h" // Required by mem_access_helper_funcs.h
 // clang-format on
 
+#include "ac_helpers.h"
 #include "acc/implementation.h"
 #include "acc/mem_access_helper_funcs.h"
 #include "acc/string_vec.h"

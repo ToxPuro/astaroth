@@ -1585,9 +1585,10 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
                 AccSource* reduce_helpers = acc_sources_manager_get_source(
                     sources_manager, "reduce_helpers", ACC_SRC_DEVICE);
-                acc_source_add_include(reduce_helpers, false, false, "func_define.h", NULL);
+                acc_source_add_include(reduce_helpers, false, false, "ac_helpers.h", NULL);
                 acc_source_add_include(reduce_helpers, false, false, "acc_runtime.h", NULL);
                 acc_source_add_include(reduce_helpers, false, false, "datatypes.h", NULL);
+                acc_source_add_include(reduce_helpers, false, false, "func_define.h", NULL);
                 acc_source_add_include(reduce_helpers, true, false, "user_defines.h", NULL);
                 acc_source_add_include(reduce_helpers, true, false, "stencil_accesses.h", NULL);
 
