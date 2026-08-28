@@ -44,8 +44,10 @@ get_reduce_state_flush_var_real(const AcReduceOp state);
 int
 get_reduce_state_flush_var_int(const AcReduceOp state);
 
+#if AC_DOUBLE_PRECISION
 float
 get_reduce_state_flush_var_float(const AcReduceOp state);
+#endif
 
 size_t acGetSizeFromDim(const int dim, const Volume dims);
 
