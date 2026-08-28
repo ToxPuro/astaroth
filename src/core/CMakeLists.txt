@@ -15,7 +15,6 @@ else()
 
   set_source_files_properties(stencil_accesses.cpp PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1)
   add_library(astaroth_core_obj OBJECT ac_push.cc device.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp analysis_helpers.cc)
-  target_link_libraries(astaroth_core_obj PRIVATE acc-runtime-headers )
   target_include_directories(astaroth_core_obj PRIVATE ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src ${AC_BASE_PATH}/src/core/kernels)
 
   
@@ -83,6 +82,7 @@ else()
   #     )
   # endif()
 endif()
+target_link_libraries(astaroth_core_obj PRIVATE acc-runtime-headers )
 target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include)
 set_property(TARGET astaroth_core_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
 ac_link_mpi(astaroth_core_obj)
