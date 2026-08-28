@@ -1,100 +1,129 @@
 ## Astaroth Core
-if(RUNTIME_COMPILATION)
-  add_library(astaroth_core_obj OBJECT ac_push.cc)
-else()
-  #TP: It is not that important that these are as efficient as possible
-  #    so can speed up compilation by setting their optimization level to 0
-  #    especially compute_steps.cc can slow the compilation (with RUNTIME_COMPILATION on LUMI)
-  #    (TODO: check that it is actually safe for performance to compile compute_steps.cc with -O0, but in all likelihood it is fine)
-  set_source_files_properties(
+add_library(astaroth_core_obj)
+set_target_properties(
+    astaroth_core_obj
+    PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+)
+target_include_directories(
+    astaroth_core_obj
+    PRIVATE
+    ${AC_BASE_PATH}/include
+    ${AC_BASE_PATH}/src
+    ${AC_BASE_PATH}/src/core/kernels
+)
+target_link_libraries(
+    astaroth_core_obj
+    PRIVATE
+    acc-runtime-headers
+)
+ac_link_mpi(astaroth_core_obj)
+
+#TP: It is not that important that these are as efficient as possible
+#    so can speed up compilation by setting their optimization level to 0
+#    especially compute_steps.cc can slow the compilation (with RUNTIME_COMPILATION on LUMI)
+#    (TODO: check that it is actually safe for performance to compile compute_steps.cc with -O0, but in all likelihood it is fine)
+set_source_files_properties(
     compute_steps.cc
     debug.cc
     update_params.cc
     PROPERTIES COMPILE_FLAGS "-O0"
-  )
+)
+set_source_files_properties(
+    stencil_accesses.cpp
+    PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1
+)
 
-  set_source_files_properties(stencil_accesses.cpp PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1)
-  add_library(astaroth_core_obj OBJECT ac_push.cc device.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp analysis_helpers.cc)
-  target_include_directories(astaroth_core_obj PRIVATE ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src ${AC_BASE_PATH}/src/core/kernels)
+target_sources(astaroth_core_obj PRIVATE ac_push.cc)
 
-  
-  
-  # JP: disabled due to being error-prone, verbose, and not using modern CMake practices
-  # JP: Should consider enabling something here, e.g., CRAYPE GTL if still needed
-  # JP: on LUMI (the workaround was done 1.5 years ago and there have been several LUMI
-  # JP: updates since)
-  # if (USE_HIP)
-  #     find_package(hip)
-  #     target_link_libraries(astaroth_core
-  # 	PUBLIC
-  #         kernels
-  #         hip::host
-  #     )
-  
-  #     if(DEFINED ENV{CRAYPE_VERSION})
-  #         # Workaround due to hip/cmake/cray PE issue with GPU RDMA
-  #         # If we're on a Cray machine, link against the GTL library
-  #         # WARNING: this path may break, works on LUMI in June of 2023
-  #         target_link_directories(astaroth_core
-  #             PUBLIC
-  # 	    /opt/cray/pe/lib64
-  # 	#/opt/rocm-5.2.3/llvm/lib
-  #         )
-  #         target_link_libraries(astaroth_core
-  #             PUBLIC
-  #             mpi_gtl_hsa
-  #         )
-  #     endif()
-  
-  # JP: disabled as this caused issues on Triton. CMake should resolve these automatically.
-  #    message("AMD GPU targets: ${AMDGPU_TARGETS}\n")
-  #    foreach(amdgpu_target ${AMDGPU_TARGETS})
-  #	target_link_libraries(astaroth_core
-  #	    INTERFACE
-  #	      --cuda-gpu-arch=${amdgpu_target}
-  #	)
-  #    endforeach()
-  
-  # else()
-  #     find_package(CUDAToolkit)
-  #     target_link_libraries(astaroth_core
-  # 	PUBLIC
-  # 	kernels CUDA::cudart CUDA::cuda_driver)
-  # endif()
-  
-  # if (USE_PERFSTUBS)
-  #     find_package(Threads)
-  #     target_link_libraries(astaroth_core
-  # 	PUBLIC
-  #         perfstubs
-  # 	Threads::Threads
-  #     )
-  # else()
-  #     find_package(Threads REQUIRED)
-  #     target_link_libraries(astaroth_core PRIVATE Threads::Threads)
-  # endif()
-  
-  ## Options
-  # if (MPI_ENABLED)
-  #     target_link_libraries(astaroth_core
-  # 	PUBLIC
-  # 	MPI::MPI_C
-  #     )
-  # endif()
+if(NOT RUNTIME_COMPILATION)
+    target_sources(
+        astaroth_core_obj
+        PRIVATE
+        analysis_helpers.cc
+        astaroth.cc
+        compute_steps.cc
+        debug.cc
+        device.cc
+        grid.cc
+        legacy.cc
+        node.cc
+        stencil_accesses.cpp
+        task.cc
+    )
+
+    # JP: disabled due to being error-prone, verbose, and not using modern CMake practices
+    # JP: Should consider enabling something here, e.g., CRAYPE GTL if still needed
+    # JP: on LUMI (the workaround was done 1.5 years ago and there have been several LUMI
+    # JP: updates since)
+    # if (USE_HIP)
+    #     find_package(hip)
+    #     target_link_libraries(astaroth_core
+    # 	PUBLIC
+    #         kernels
+    #         hip::host
+    #     )
+
+    #     if(DEFINED ENV{CRAYPE_VERSION})
+    #         # Workaround due to hip/cmake/cray PE issue with GPU RDMA
+    #         # If we're on a Cray machine, link against the GTL library
+    #         # WARNING: this path may break, works on LUMI in June of 2023
+    #         target_link_directories(astaroth_core
+    #             PUBLIC
+    # 	    /opt/cray/pe/lib64
+    # 	#/opt/rocm-5.2.3/llvm/lib
+    #         )
+    #         target_link_libraries(astaroth_core
+    #             PUBLIC
+    #             mpi_gtl_hsa
+    #         )
+    #     endif()
+
+    # JP: disabled as this caused issues on Triton. CMake should resolve these automatically.
+    #    message("AMD GPU targets: ${AMDGPU_TARGETS}\n")
+    #    foreach(amdgpu_target ${AMDGPU_TARGETS})
+    #	target_link_libraries(astaroth_core
+    #	    INTERFACE
+    #	      --cuda-gpu-arch=${amdgpu_target}
+    #	)
+    #    endforeach()
+
+    # else()
+    #     find_package(CUDAToolkit)
+    #     target_link_libraries(astaroth_core
+    # 	PUBLIC
+    # 	kernels CUDA::cudart CUDA::cuda_driver)
+    # endif()
+
+    # if (USE_PERFSTUBS)
+    #     find_package(Threads)
+    #     target_link_libraries(astaroth_core
+    # 	PUBLIC
+    #         perfstubs
+    # 	Threads::Threads
+    #     )
+    # else()
+    #     find_package(Threads REQUIRED)
+    #     target_link_libraries(astaroth_core PRIVATE Threads::Threads)
+    # endif()
+
+    ## Options
+    # if (MPI_ENABLED)
+    #     target_link_libraries(astaroth_core
+    # 	PUBLIC
+    # 	MPI::MPI_C
+    #     )
+    # endif()
 endif()
-target_link_libraries(astaroth_core_obj PRIVATE acc-runtime-headers )
-target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include)
-set_property(TARGET astaroth_core_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
-ac_link_mpi(astaroth_core_obj)
 
 add_library(astaroth_core
-  $<TARGET_OBJECTS:acc_runtime_compiler>
-  $<TARGET_OBJECTS:ac_decomposition>
-  $<TARGET_OBJECTS:ac_update_params>
-  $<TARGET_OBJECTS:ac_cuda_wrappers>
-  $<TARGET_OBJECTS:astaroth_helpers>
-  $<TARGET_OBJECTS:acc_runtime_compiler>
-  $<TARGET_OBJECTS:astaroth_core_obj>
+    $<TARGET_OBJECTS:acc_runtime_compiler>
+    $<TARGET_OBJECTS:ac_decomposition>
+    $<TARGET_OBJECTS:ac_update_params>
+    $<TARGET_OBJECTS:ac_cuda_wrappers>
+    $<TARGET_OBJECTS:astaroth_helpers>
+    $<TARGET_OBJECTS:acc_runtime_compiler>
+    $<TARGET_OBJECTS:astaroth_core_obj>
 )
 
 set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
