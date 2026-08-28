@@ -1435,23 +1435,23 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			);
 	
 
-        fprintf_filename("ac_push_to_config.h","void acPushToConfig%s(AcMeshInfo& config, %sParam param, %s val)\n"
+        fprintf_filename("ac_push_to_config.h","void acPushToConfig%s(AcMeshInfo* config, %sParam param, %s val)\n"
 			"{\n"
-			 "acPushToConfig(config,param,val);\n"
+			 "acPushToConfig((*config),param,val);\n"
 			"}\n"
 			,upper_case_name,enum_name,datatype_scalar);
 
-        fprintf_filename("ac_push_to_config.h","void acPushToConfig%sArray(AcMeshInfo& config, %sArrayParam param, const %s* arr)\n"
+        fprintf_filename("ac_push_to_config.h","void acPushToConfig%sArray(AcMeshInfo* config, %sArrayParam param, const %s* arr)\n"
 			"{\n"
-			 "acPushToConfig(config,param,(%s*)arr);\n"
+			 "acPushToConfig((*config),param,(%s*)arr);\n"
 			"}\n"
 			,upper_case_name,enum_name,datatype_scalar,datatype_scalar);
 
 
-        fprintf_filename("ac_push_to_config_decl.h","void acPushToConfig%s(AcMeshInfo& config, %sParam param, const %s arr);\n"
+        fprintf_filename("ac_push_to_config_decl.h","void acPushToConfig%s(AcMeshInfo* config, %sParam param, const %s arr);\n"
 			,upper_case_name,enum_name,datatype_scalar);
 
-        fprintf_filename("ac_push_to_config_decl.h","void acPushToConfig%sArray(AcMeshInfo& config, %sArrayParam param, const %s* arr);\n"
+        fprintf_filename("ac_push_to_config_decl.h","void acPushToConfig%sArray(AcMeshInfo* config, %sArrayParam param, const %s* arr);\n"
 			,upper_case_name,enum_name,datatype_scalar);
 
 
