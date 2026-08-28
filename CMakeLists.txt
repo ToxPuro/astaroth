@@ -244,7 +244,8 @@ else ()
     add_definitions(-DTWO_D=0)
 endif ()
 
-add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
+set(AC_DEFAULT_CONFIG "${CMAKE_SOURCE_DIR}/config/astaroth.conf")
+add_definitions(-DAC_DEFAULT_CONFIG="${AC_DEFAULT_CONFIG}")
 
 ## Subdirectories
 
