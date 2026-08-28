@@ -52,8 +52,6 @@
 
 AC_BEGIN_C_DECLARATIONS
 
-FUNC_DEFINE(Node, acGetNode,(void));
-
 int3
 acDecompose(const uint64_t target, const AcMeshInfo info);
 int3
