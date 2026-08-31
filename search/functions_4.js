@@ -15,12 +15,11 @@ var searchData=
   ['get_5fkernel_5fradius_12',['get_kernel_radius',['../astaroth__analysis__helpers_8h.html#aa85830768059d348e8c0cfc9baa9d845',1,'astaroth_analysis_helpers.h']]],
   ['get_5fop_5finstruction_13',['get_op_instruction',['../warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c',1,'warp_reduce.h']]],
   ['get_5fray_5fboundaries_14',['get_ray_boundaries',['../astaroth__analysis__helpers_8h.html#a5914ab1759d0ce90be776606c3595f36',1,'astaroth_analysis_helpers.h']]],
-  ['get_5freduce_5fstate_5fflush_5fvar_5ffloat_15',['get_reduce_state_flush_var_float',['../ac__helpers_8h.html#a473f4b2728c1bfc7ab57f99fbab7b9bb',1,'ac_helpers.h']]],
-  ['get_5freduce_5fstate_5fflush_5fvar_5fint_16',['get_reduce_state_flush_var_int',['../ac__helpers_8h.html#aef051fc1d66be0bc5d9045a5dd3f3e05',1,'ac_helpers.h']]],
-  ['get_5freduce_5fstate_5fflush_5fvar_5freal_17',['get_reduce_state_flush_var_real',['../ac__helpers_8h.html#a9e6a43f4812df8018168451c2a039ee2',1,'ac_helpers.h']]],
-  ['get_5frng_18',['get_rng',['../astaroth__random_8h.html#ae96433a5a2da84eff2e2402ad609b92b',1,'astaroth_random.h']]],
-  ['get_5fstencil_5fboundaries_19',['get_stencil_boundaries',['../astaroth__analysis__helpers_8h.html#ab8307bd9712c7fc91ec1db53533a0404',1,'astaroth_analysis_helpers.h']]],
-  ['get_5fstencil_5fdims_20',['get_stencil_dims',['../astaroth__analysis__helpers_8h.html#ac5ad94ff4df3556be26ac192e3fa2aee',1,'astaroth_analysis_helpers.h']]],
-  ['get_5fstencil_5fhalo_5ftype_21',['get_stencil_halo_type',['../astaroth__analysis__helpers_8h.html#a826d6ee4098f47e979f06a29e0c33158',1,'astaroth_analysis_helpers.h']]],
-  ['greduce_22',['greduce',['../mapreduce_8cuh.html#ab446ce2ed92307958d150217f04b8b56',1,'mapreduce.cuh']]]
+  ['get_5freduce_5fstate_5fflush_5fvar_5fint_15',['get_reduce_state_flush_var_int',['../ac__helpers_8h.html#aef051fc1d66be0bc5d9045a5dd3f3e05',1,'ac_helpers.h']]],
+  ['get_5freduce_5fstate_5fflush_5fvar_5freal_16',['get_reduce_state_flush_var_real',['../ac__helpers_8h.html#a9e6a43f4812df8018168451c2a039ee2',1,'ac_helpers.h']]],
+  ['get_5frng_17',['get_rng',['../astaroth__random_8h.html#ae96433a5a2da84eff2e2402ad609b92b',1,'astaroth_random.h']]],
+  ['get_5fstencil_5fboundaries_18',['get_stencil_boundaries',['../astaroth__analysis__helpers_8h.html#ab8307bd9712c7fc91ec1db53533a0404',1,'astaroth_analysis_helpers.h']]],
+  ['get_5fstencil_5fdims_19',['get_stencil_dims',['../astaroth__analysis__helpers_8h.html#ac5ad94ff4df3556be26ac192e3fa2aee',1,'astaroth_analysis_helpers.h']]],
+  ['get_5fstencil_5fhalo_5ftype_20',['get_stencil_halo_type',['../astaroth__analysis__helpers_8h.html#a826d6ee4098f47e979f06a29e0c33158',1,'astaroth_analysis_helpers.h']]],
+  ['greduce_21',['greduce',['../mapreduce_8cuh.html#ab446ce2ed92307958d150217f04b8b56',1,'mapreduce.cuh']]]
 ];

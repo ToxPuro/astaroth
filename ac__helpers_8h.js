@@ -26,7 +26,6 @@ var ac__helpers_8h =
     [ "acSupportsCooperativeLaunches", "ac__helpers_8h.html#af089f9dd18046fc92769165d99eec290", null ],
     [ "acTransposeBuffer", "ac__helpers_8h.html#a0abdbd8c6a29e717148cf90b5d36ea14", null ],
     [ "get_bpg", "ac__helpers_8h.html#afcea299563c7d6a722eb5fb7245be749", null ],
-    [ "get_reduce_state_flush_var_float", "ac__helpers_8h.html#a473f4b2728c1bfc7ab57f99fbab7b9bb", null ],
     [ "get_reduce_state_flush_var_int", "ac__helpers_8h.html#aef051fc1d66be0bc5d9045a5dd3f3e05", null ],
     [ "get_reduce_state_flush_var_real", "ac__helpers_8h.html#a9e6a43f4812df8018168451c2a039ee2", null ]
 ];

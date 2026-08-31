@@ -1,6 +1,5 @@
 var NAVTREEINDEX4 =
 {
-"host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a0c75015db91d2767bd7ccae7958d9a80":[5,0,2,22,10,3],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a2f40244b989825fc009f5862f7ecc00c":[5,0,2,22,10,1],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a5f37dd57f20f263fd5a5f742265800ea":[5,0,2,22,10,5],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a616fc6d0ff8f80aecc92f8987c045012":[5,0,2,22,10,2],
@@ -249,5 +248,6 @@ var NAVTREEINDEX4 =
 "structAcTaskDefinition.html#a1f53430ecbd743e0cb1033ac43428278":[4,0,21,17],
 "structAcTaskDefinition.html#a2e01faa7b97e40428183ff7954672a6f":[4,0,21,23],
 "structAcTaskDefinition.html#a31c5eb7bb5411cd1cd9ef0ce23d4259c":[4,0,21,13],
-"structAcTaskDefinition.html#a356650482bd696c4c6fffe026947a8c2":[4,0,21,4]
+"structAcTaskDefinition.html#a356650482bd696c4c6fffe026947a8c2":[4,0,21,4],
+"structAcTaskDefinition.html#a392b788a68584e786e427085a7bc1afb":[4,0,21,12]
 };

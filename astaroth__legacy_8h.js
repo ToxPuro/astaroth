@@ -5,6 +5,7 @@ var astaroth__legacy_8h =
     [ "acCheckDeviceAvailability", "astaroth__legacy_8h.html#aef4e17cb67ef5ec0e4f84119b03fc227", null ],
     [ "acGetFieldHandle", "astaroth__legacy_8h.html#ab491336a243e24951b7511fcc9057739", null ],
     [ "acGetFieldName", "astaroth__legacy_8h.html#af75184cc77327be7497c02d6ec859cd7", null ],
+    [ "acGetNode", "astaroth__legacy_8h.html#ae491cd595ed35ef88cd1d93bb5c09fb6", null ],
     [ "acGetNumDevicesPerNode", "astaroth__legacy_8h.html#a3a34a2135859438edf2ebbb87a138922", null ],
     [ "acGetNumFields", "astaroth__legacy_8h.html#a99e2a4b03e2a3cd1e07a0c8c236ef0b1", null ],
     [ "acInit", "astaroth__legacy_8h.html#a34c59e1547a22cde0263d81537676c18", null ],

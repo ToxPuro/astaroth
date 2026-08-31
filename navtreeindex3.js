@@ -1,6 +1,5 @@
 var NAVTREEINDEX3 =
 {
-"func__define_8h.html#a4c5307d09a6e1193c9df6c7632265b3b":[5,0,2,20,4],
 "func__define_8h.html#a647edb5f42c181fd2443f4d9e556b3a9":[5,0,2,20,0],
 "func__define_8h.html#ac083955fb77e3fb56cef11c97df9f246":[5,0,2,20,1],
 "func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4":[5,0,2,20,3],
@@ -249,5 +248,6 @@ var NAVTREEINDEX3 =
 "host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88ab5deb5ccef445a25ea74605b121bf78d":[5,0,2,22,11,4],
 "host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88ac4978dfeda8fcc48a84988716f21fbef":[5,0,2,22,11,8],
 "host__datatypes_8h.html#ab40314f722f618913ce8af1992cbfa88aee8a0882d65eb4975d96e824b9dde33d":[5,0,2,22,11,1],
-"host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1":[5,0,2,22,10]
+"host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1":[5,0,2,22,10],
+"host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a0c75015db91d2767bd7ccae7958d9a80":[5,0,2,22,10,3]
 };

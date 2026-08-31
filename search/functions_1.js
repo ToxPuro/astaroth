@@ -188,7 +188,7 @@ var searchData=
   ['acgetmaxnn_185',['acGetMaxNN',['../astaroth__helpers_8h.html#adc22402ccfd1880ca487ba52412ddd57',1,'astaroth_helpers.h']]],
   ['acgetmeshorderforprofile_186',['acGetMeshOrderForProfile',['../ac__helpers_8h.html#af35e60c7d377b80af7dc1b82b06b6fc4',1,'ac_helpers.h']]],
   ['acgetminnn_187',['acGetMinNN',['../astaroth__helpers_8h.html#a08091a4cf8ce847cce78e43a60716a19',1,'astaroth_helpers.h']]],
-  ['acgetnode_188',['acGetNode',['../astaroth_8h.html#ae491cd595ed35ef88cd1d93bb5c09fb6',1,'astaroth.h']]],
+  ['acgetnode_188',['acGetNode',['../astaroth__legacy_8h.html#ae491cd595ed35ef88cd1d93bb5c09fb6',1,'astaroth_legacy.h']]],
   ['acgetnumdevicespernode_189',['acGetNumDevicesPerNode',['../astaroth__legacy_8h.html#a3a34a2135859438edf2ebbb87a138922',1,'astaroth_legacy.h']]],
   ['acgetnumfields_190',['acGetNumFields',['../astaroth__legacy_8h.html#a99e2a4b03e2a3cd1e07a0c8c236ef0b1',1,'astaroth_legacy.h']]],
   ['acgetnumofwarps_191',['acGetNumOfWarps',['../ac__helpers_8h.html#a9ac9bce33bde4dac4251aa9a17cd9712',1,'ac_helpers.h']]],

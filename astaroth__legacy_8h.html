@@ -92,12 +92,15 @@ $(function(){initNavTree('astaroth__legacy_8h.html','',''); });
   <div class="headertitle"><div class="title">astaroth_legacy.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
+<div class="textblock"><code>#include &quot;<a class="el" href="acc__runtime_8h_source.html">acc_runtime.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__base_8h_source.html">astaroth_base.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Include dependency graph for astaroth_legacy.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="astaroth__legacy_8h__incl.svg" width="198" height="190"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="astaroth__legacy_8h__incl.svg" width="100%" height="600"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 </div><div class="textblock"><div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>This graph shows which files directly or indirectly include this file:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
@@ -115,6 +118,7 @@ Functions</h2></td></tr>
 <tr class="memitem:aef4e17cb67ef5ec0e4f84119b03fc227" id="r_aef4e17cb67ef5ec0e4f84119b03fc227"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aef4e17cb67ef5ec0e4f84119b03fc227">acCheckDeviceAvailability</a> (void)</td></tr>
 <tr class="memitem:ab491336a243e24951b7511fcc9057739" id="r_ab491336a243e24951b7511fcc9057739"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab491336a243e24951b7511fcc9057739">acGetFieldHandle</a> (const char *field, size_t *handle)</td></tr>
 <tr class="memitem:af75184cc77327be7497c02d6ec859cd7" id="r_af75184cc77327be7497c02d6ec859cd7"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af75184cc77327be7497c02d6ec859cd7">acGetFieldName</a> (const Field field)</td></tr>
+<tr class="memitem:ae491cd595ed35ef88cd1d93bb5c09fb6" id="r_ae491cd595ed35ef88cd1d93bb5c09fb6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae491cd595ed35ef88cd1d93bb5c09fb6">acGetNode</a> (void)</td></tr>
 <tr class="memitem:a3a34a2135859438edf2ebbb87a138922" id="r_a3a34a2135859438edf2ebbb87a138922"><td class="memItemLeft" align="right" valign="top"><a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3a34a2135859438edf2ebbb87a138922">acGetNumDevicesPerNode</a> (void)</td></tr>
 <tr class="memitem:a99e2a4b03e2a3cd1e07a0c8c236ef0b1" id="r_a99e2a4b03e2a3cd1e07a0c8c236ef0b1"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a99e2a4b03e2a3cd1e07a0c8c236ef0b1">acGetNumFields</a> (void)</td></tr>
 <tr class="memitem:a34c59e1547a22cde0263d81537676c18" id="r_a34c59e1547a22cde0263d81537676c18"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a34c59e1547a22cde0263d81537676c18">acInit</a> (const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> mesh_info)</td></tr>
@@ -231,6 +235,23 @@ Functions</h2></td></tr>
           <td class="memname">const char * acGetFieldName </td>
           <td>(</td>
           <td class="paramtype">const Field</td>          <td class="paramname"><span class="paramname"><em>field</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae491cd595ed35ef88cd1d93bb5c09fb6" name="ae491cd595ed35ef88cd1d93bb5c09fb6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae491cd595ed35ef88cd1d93bb5c09fb6">&#9670;&#160;</a></span>acGetNode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="astaroth__base_8h.html#a4261c9bbb28aa78f2b9516fc0f504612">Node</a> acGetNode </td>
+          <td>(</td>
+          <td class="paramtype">void</td>          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
           <td></td>
         </tr>
       </table>
