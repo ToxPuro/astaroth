@@ -90,8 +90,8 @@ main(void)
     const char* build_str = "-DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
     info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
-    acLoadLibrary(stdout,info);
-    acLoadUtils(stdout,info);
+    acLoadLibrary(info);
+    acLoadUtils(info);
 
     AcMesh model, candidate;
     if (pid == 0) {

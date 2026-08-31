@@ -73,8 +73,8 @@ main(int argc, char* argv[])
     #if AC_RUNTIME_COMPILATION
     const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
     acCompile(build_str,info);
-    acLoadLibrary(stdout,info);
-    acLoadUtils(stdout,info);
+    acLoadLibrary(info);
+    acLoadUtils(info);
     #endif
 
     acGridInit(info);

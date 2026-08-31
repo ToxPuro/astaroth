@@ -371,7 +371,7 @@ generateForcingParams(const AcMeshInfo& mesh_info)
 void
 ForcingInit(AcMeshInfo info)
 {
-	if(AC_RUNTIME_COMPILATION) acLoadLibrary(stdout,info);
+	if(AC_RUNTIME_COMPILATION) acLoadLibrary(info);
 }
 
 

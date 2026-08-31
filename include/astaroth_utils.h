@@ -109,59 +109,41 @@ FUNC_DEFINE(AcResult, acHostInitProfileToValue, (const long double value, const 
 
 #include "astaroth_lib.h"
 #if AC_RUNTIME_COMPILATION
-static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMeshInfo info)
+static AcResult __attribute__((unused))
+acLoadUtils(const AcMeshInfo info)
 {
-	char original_runtime_astaroth_utils_path[40000];
-#ifdef __APPLE__
-	sprintf(original_runtime_astaroth_utils_path,"%s/runtime_build/src/utils/libastaroth_utils.dylib",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
-#else
-	sprintf(original_runtime_astaroth_utils_path,"%s/runtime_build/src/utils/libastaroth_utils.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
-#endif
-
 	static int counter = 0;
-	const char* runtime_astaroth_utils_path = acLibraryVersion(original_runtime_astaroth_utils_path,counter,info.comm);
-	++counter;
- 	void* handle = dlopen(runtime_astaroth_utils_path,RTLD_NOW | RTLD_LOCAL);
-	if(!handle)
-	{
-    		fprintf(stderr,"%s","Fatal error was not able to load Astaroth utils\n"); 
-		exit(EXIT_FAILURE);
-	}
-	utilsLibHandle=handle;
-	LOAD_DSYM(acHostVertexBufferSet,stream);
-	LOAD_DSYM(acHostMeshSet,stream);
-	LOAD_DSYM(acHostMeshApplyPeriodicBounds,stream);
-	LOAD_DSYM(acHostMeshApplyConstantBounds,stream);
-	LOAD_DSYM(acHostMeshClear,stream);
-	LOAD_DSYM(acHostReduceScal,stream);
-	LOAD_DSYM(acHostReduceVec,stream);
-	LOAD_DSYM(acHostReduceVecScal,stream);
-	LOAD_DSYM(acEvalError,stream);
-	LOAD_DSYM(acEvalErrorWithMaximumError,stream);
-	LOAD_DSYM(acVerifyMesh,stream);
-	LOAD_DSYM(acVerifyMeshWithMaximumError,stream);
-	LOAD_DSYM(acMeshDiffWriteSliceZ,stream);
-	LOAD_DSYM(acMeshDiffWrite,stream);
-	LOAD_DSYM(acHostMeshWriteToFile,stream);
-	LOAD_DSYM(acHostMeshReadFromFile,stream);
-	LOAD_DSYM(acGetError,stream);
-	LOAD_DSYM(acHostIntegrateStep,stream);
-	LOAD_DSYM(acHostWriteProfileToFile,stream);
-	LOAD_DSYM(acHostInitProfileToCosineWave,stream);
-	LOAD_DSYM(acHostInitProfileToSineWave,stream);
-	LOAD_DSYM(acHostInitProfileToValue,stream);
+	AcLibHandle handle = utilsLibHandle = acLibLoadLibrary(&info, "src/utils", "libastaroth_utils", &counter);
 
-//#ifdef __cplusplus
-//	return AcLibHandle(handle);
-//#else
-//	return handle;
-//#endif
-	return handle;
+	LOAD_DSYM(acHostVertexBufferSet);
+	LOAD_DSYM(acHostMeshSet);
+	LOAD_DSYM(acHostMeshApplyPeriodicBounds);
+	LOAD_DSYM(acHostMeshApplyConstantBounds);
+	LOAD_DSYM(acHostMeshClear);
+	LOAD_DSYM(acHostReduceScal);
+	LOAD_DSYM(acHostReduceVec);
+	LOAD_DSYM(acHostReduceVecScal);
+	LOAD_DSYM(acEvalError);
+	LOAD_DSYM(acEvalErrorWithMaximumError);
+	LOAD_DSYM(acVerifyMesh);
+	LOAD_DSYM(acVerifyMeshWithMaximumError);
+	LOAD_DSYM(acMeshDiffWriteSliceZ);
+	LOAD_DSYM(acMeshDiffWrite);
+	LOAD_DSYM(acHostMeshWriteToFile);
+	LOAD_DSYM(acHostMeshReadFromFile);
+	LOAD_DSYM(acGetError);
+	LOAD_DSYM(acHostIntegrateStep);
+	LOAD_DSYM(acHostWriteProfileToFile);
+	LOAD_DSYM(acHostInitProfileToCosineWave);
+	LOAD_DSYM(acHostInitProfileToSineWave);
+	LOAD_DSYM(acHostInitProfileToValue);
+
+	return AC_SUCCESS;
 }
 #else
-static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMeshInfo info)
+static AcResult __attribute__((unused)) acLoadUtils(const AcMeshInfo info)
 {
-	return (AcLibHandle)0;
+	return AC_FAILURE;
 }
 #endif
 

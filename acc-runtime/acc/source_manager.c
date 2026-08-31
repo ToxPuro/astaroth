@@ -58,7 +58,7 @@
 void
 acc_gen_dlsym(FILE* fp, const char* func_name)
 {
-  fprintf(fp, "LOAD_DSYM(%s, stream)\n", func_name);
+  fprintf(fp, "LOAD_DSYM(%s);\n", func_name);
 }
 
 struct _AccSourceDeclaration {

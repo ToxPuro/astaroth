@@ -62,96 +62,72 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
 #if AC_RUNTIME_COMPILATION
 
-#define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
-			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth warning: was not able to load %s\n",#FUNC_NAME);
-
 static AcResult __attribute__((unused))
-acLoadLibrary(FILE* stream, const AcMeshInfo info)
+acLoadLibrary(const AcMeshInfo info)
 {
-    const size_t len = 20000;
-    char original_runtime_astaroth_path[len];
-#ifdef __APPLE__
-    snprintf(original_runtime_astaroth_path, len,
-             "%s/runtime_build/src/core/libastaroth_core.dylib",
-             info.runtime_compilation_build_path ? info.runtime_compilation_build_path
-                                                 : astaroth_binary_path);
-#else
-    snprintf(original_runtime_astaroth_path, len, "%s/runtime_build/src/core/libastaroth_core.so",
-             info.runtime_compilation_build_path ? info.runtime_compilation_build_path
-                                                 : astaroth_binary_path);
-#endif
-    static int counter                = 0;
-    const char* runtime_astaroth_path = acLibraryVersion(original_runtime_astaroth_path, counter,
-                                                         info.comm);
-    ++counter;
-    void* handle = dlopen(runtime_astaroth_path, RTLD_NOW | RTLD_LOCAL);
-    if (!handle) {
-        fprintf(stderr, "%s", "Fatal error was not able to load Astaroth\n");
-        fprintf(stderr, "Error message: %s\n", dlerror());
-        exit(EXIT_FAILURE);
-    }
-    astarothLibHandle = handle;
+    static int counter = 0;
+    AcLibHandle handle = astarothLibHandle = acLibLoadLibrary(&info, "src/core", "libastaroth_core", &counter);
 
-    LOAD_DSYM(acDeviceGetVertexBufferPtrs, stream)
-    LOAD_DSYM(acDeviceGetLocalConfig, stream)
-    LOAD_DSYM(acDeviceFinishReduceInt, stream)
-    LOAD_DSYM(acDeviceMemGetInfo, stream)
-    LOAD_DSYM(acKernelFlushInt, stream)
-    LOAD_DSYM(acAnalysisGetKernelInfo, stream)
-    LOAD_DSYM(acAnalysisCheckForDSLErrors, stream)
-    LOAD_DSYM(acDeviceSwapAllProfileBuffers, stream)
-    LOAD_DSYM(acDeviceFFTR2C, stream)
-    LOAD_DSYM(acDeviceFFTC2R, stream)
-    LOAD_DSYM(acDeviceFFTR2Planar, stream)
-    LOAD_DSYM(acDeviceFFTR2PlanarBatched, stream)
-    LOAD_DSYM(acDeviceFFTR2HermitianPlanarBatched, stream)
-    LOAD_DSYM(acDeviceFFTBackwardTransformPlanar, stream)
-    LOAD_DSYM(acDeviceFFTBackwardTransformPlanar2R, stream)
-    LOAD_DSYM(acDeviceFFTR2PlanarXY, stream)
-    LOAD_DSYM(acDeviceFFTBackwardTransformPlanar2RXY, stream)
+    LOAD_DSYM(acDeviceGetVertexBufferPtrs);
+    LOAD_DSYM(acDeviceGetLocalConfig);
+    LOAD_DSYM(acDeviceFinishReduceInt);
+    LOAD_DSYM(acDeviceMemGetInfo);
+    LOAD_DSYM(acKernelFlushInt);
+    LOAD_DSYM(acAnalysisGetKernelInfo);
+    LOAD_DSYM(acAnalysisCheckForDSLErrors);
+    LOAD_DSYM(acDeviceSwapAllProfileBuffers);
+    LOAD_DSYM(acDeviceFFTR2C);
+    LOAD_DSYM(acDeviceFFTC2R);
+    LOAD_DSYM(acDeviceFFTR2Planar);
+    LOAD_DSYM(acDeviceFFTR2PlanarBatched);
+    LOAD_DSYM(acDeviceFFTR2HermitianPlanarBatched);
+    LOAD_DSYM(acDeviceFFTBackwardTransformPlanar);
+    LOAD_DSYM(acDeviceFFTBackwardTransformPlanar2R);
+    LOAD_DSYM(acDeviceFFTR2PlanarXY);
+    LOAD_DSYM(acDeviceFFTBackwardTransformPlanar2RXY);
 #if AC_MPI_ENABLED
     *(void**)(&BASE_FUNC_NAME(acBoundaryCondition)) = dlsym(handle, "acBoundaryCondition");
-    LOAD_DSYM(ac_MPI_Barrier, stream);
-    LOAD_DSYM(ac_MPI_Comm_rank, stream);
-    LOAD_DSYM(ac_MPI_Comm_size, stream);
-    LOAD_DSYM(ac_MPI_Finalize, stream);
-    LOAD_DSYM(ac_MPI_Init, stream)
-    LOAD_DSYM(ac_MPI_Init_thread, stream)
-    LOAD_DSYM(acGridInitialized, stream);
-    LOAD_DSYM(acGridMPIComm, stream);
-    LOAD_DSYM(acGridMPISubComms, stream);
-    LOAD_DSYM(acGridDecomposeMeshInfo, stream);
-    LOAD_DSYM(acGridGetLocalMeshInfo, stream);
-    LOAD_DSYM(acGridQuit, stream);
-    LOAD_DSYM(acGridGetDevice, stream);
-    LOAD_DSYM(acGridRandomize, stream);
-    LOAD_DSYM(acGridSynchronizeStream, stream);
-    LOAD_DSYM(acGridLoadScalarUniform, stream);
-    LOAD_DSYM(acGridLoadVectorUniform, stream);
-    LOAD_DSYM(acGridLoadIntUniform, stream);
-    LOAD_DSYM(acGridLoadInt3Uniform, stream);
-    LOAD_DSYM(acGridLoadMesh, stream);
-    LOAD_DSYM(acGridStoreMesh, stream);
+    LOAD_DSYM(ac_MPI_Barrier);
+    LOAD_DSYM(ac_MPI_Comm_rank);
+    LOAD_DSYM(ac_MPI_Comm_size);
+    LOAD_DSYM(ac_MPI_Finalize);
+    LOAD_DSYM(ac_MPI_Init);
+    LOAD_DSYM(ac_MPI_Init_thread);
+    LOAD_DSYM(acGridInitialized);
+    LOAD_DSYM(acGridMPIComm);
+    LOAD_DSYM(acGridMPISubComms);
+    LOAD_DSYM(acGridDecomposeMeshInfo);
+    LOAD_DSYM(acGridGetLocalMeshInfo);
+    LOAD_DSYM(acGridQuit);
+    LOAD_DSYM(acGridGetDevice);
+    LOAD_DSYM(acGridRandomize);
+    LOAD_DSYM(acGridSynchronizeStream);
+    LOAD_DSYM(acGridLoadScalarUniform);
+    LOAD_DSYM(acGridLoadVectorUniform);
+    LOAD_DSYM(acGridLoadIntUniform);
+    LOAD_DSYM(acGridLoadInt3Uniform);
+    LOAD_DSYM(acGridLoadMesh);
+    LOAD_DSYM(acGridStoreMesh);
 #ifdef AC_INTEGRATION_ENABLED
-    LOAD_DSYM(acGridIntegrate, stream);
+    LOAD_DSYM(acGridIntegrate);
 #endif
-    LOAD_DSYM(acGridSwapBuffers, stream);
-    LOAD_DSYM(acGridHaloExchange, stream);
-    LOAD_DSYM(acGridPeriodicBoundconds, stream);
-    LOAD_DSYM(acGridReduceScal, stream);
-    LOAD_DSYM(acGridReduceVec, stream);
-    LOAD_DSYM(acGridReduceVecScal, stream);
-    LOAD_DSYM(acGridReduceXY, stream);
-    LOAD_DSYM(acGridAccessMeshOnDiskSynchronous, stream);
-    LOAD_DSYM(acGridDiskAccessLaunch, stream);
-    LOAD_DSYM(acGridWriteSlicesToDiskLaunch, stream);
-    LOAD_DSYM(acGridWriteSlicesToDiskSynchronous, stream);
-    LOAD_DSYM(acGridWriteSlicesToDiskCollectiveSynchronous, stream);
-    LOAD_DSYM(acGridWriteMeshToDiskLaunch, stream);
-    LOAD_DSYM(acGridDiskAccessSync, stream);
-    LOAD_DSYM(acGridReadVarfileToMesh, stream);
-    LOAD_DSYM(acHaloExchangeBoundary, stream);
-    LOAD_DSYM(acPeriodicRay, stream);
+    LOAD_DSYM(acGridSwapBuffers);
+    LOAD_DSYM(acGridHaloExchange);
+    LOAD_DSYM(acGridPeriodicBoundconds);
+    LOAD_DSYM(acGridReduceScal);
+    LOAD_DSYM(acGridReduceVec);
+    LOAD_DSYM(acGridReduceVecScal);
+    LOAD_DSYM(acGridReduceXY);
+    LOAD_DSYM(acGridAccessMeshOnDiskSynchronous);
+    LOAD_DSYM(acGridDiskAccessLaunch);
+    LOAD_DSYM(acGridWriteSlicesToDiskLaunch);
+    LOAD_DSYM(acGridWriteSlicesToDiskSynchronous);
+    LOAD_DSYM(acGridWriteSlicesToDiskCollectiveSynchronous);
+    LOAD_DSYM(acGridWriteMeshToDiskLaunch);
+    LOAD_DSYM(acGridDiskAccessSync);
+    LOAD_DSYM(acGridReadVarfileToMesh);
+    LOAD_DSYM(acHaloExchangeBoundary);
+    LOAD_DSYM(acPeriodicRay);
     *(void**)(&BASE_FUNC_NAME(acRayUpdate))          = dlsym(handle, "acRayUpdate");
     *(void**)(&BASE_FUNC_NAME(acComputeWithParams))  = dlsym(handle, "acComputeWithParams");
     *(void**)(&BASE_FUNC_NAME(acCompute))            = dlsym(handle, "acCompute");
@@ -160,133 +136,133 @@ acLoadLibrary(FILE* stream, const AcMeshInfo info)
     *(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraph)) = dlsym(handle, "acGridBuildTaskGraph");
     *(void**)(&BASE_FUNC_NAME(
         acGridBuildTaskGraphWithBounds)) = dlsym(handle, "acGridBuildTaskGraphWithBounds");
-    LOAD_DSYM(acGridDestroyTaskGraph, stream);
-    LOAD_DSYM(acGridClearTaskGraphCache, stream);
-    LOAD_DSYM(acGetDSLTaskGraph, stream);
+    LOAD_DSYM(acGridDestroyTaskGraph);
+    LOAD_DSYM(acGridClearTaskGraphCache);
+    LOAD_DSYM(acGetDSLTaskGraph);
     *(void**)(&BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)) = dlsym(handle,
                                                                    "acGetOptimizedDSLTaskGraph");
-    LOAD_DSYM(acGetDSLTaskGraphWithBounds, stream);
-    LOAD_DSYM(acGetOptimizedDSLTaskGraphWithBounds, stream);
-    LOAD_DSYM(acGetComputeStepsBCs, stream);
-    LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed, stream);
-    LOAD_DSYM(acGridAccessMeshOnDiskSynchronousCollective, stream);
-    LOAD_DSYM(acGridGetDefaultTaskGraph, stream);
-    LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsX, stream);
-    LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsY, stream);
-    LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsZ, stream);
-    LOAD_DSYM(acGridTaskGraphIsEmpty, stream);
-    LOAD_DSYM(acGridExecuteTaskGraph, stream);
-    LOAD_DSYM(acGridExecuteTaskGraphBase, stream);
-    LOAD_DSYM(acGridFinalizeReduceLocal, stream);
-    LOAD_DSYM(acGridFinalizeReduce, stream);
-    LOAD_DSYM(acGridLaunchKernel, stream);
-    LOAD_DSYM(acGridLoadStencil, stream);
-    LOAD_DSYM(acGridStoreStencil, stream);
-    LOAD_DSYM(acGridLoadStencils, stream);
-    LOAD_DSYM(acGridStoreStencils, stream);
-    LOAD_DSYM(acGridInitBase, stream);
+    LOAD_DSYM(acGetDSLTaskGraphWithBounds);
+    LOAD_DSYM(acGetOptimizedDSLTaskGraphWithBounds);
+    LOAD_DSYM(acGetComputeStepsBCs);
+    LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed);
+    LOAD_DSYM(acGridAccessMeshOnDiskSynchronousCollective);
+    LOAD_DSYM(acGridGetDefaultTaskGraph);
+    LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsX);
+    LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsY);
+    LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsZ);
+    LOAD_DSYM(acGridTaskGraphIsEmpty);
+    LOAD_DSYM(acGridExecuteTaskGraph);
+    LOAD_DSYM(acGridExecuteTaskGraphBase);
+    LOAD_DSYM(acGridFinalizeReduceLocal);
+    LOAD_DSYM(acGridFinalizeReduce);
+    LOAD_DSYM(acGridLaunchKernel);
+    LOAD_DSYM(acGridLoadStencil);
+    LOAD_DSYM(acGridStoreStencil);
+    LOAD_DSYM(acGridLoadStencils);
+    LOAD_DSYM(acGridStoreStencils);
+    LOAD_DSYM(acGridInitBase);
 #endif
-    LOAD_DSYM(acGetLocalNN, stream)
-    LOAD_DSYM(acGetLocalMM, stream)
-    LOAD_DSYM(acGetGridNN, stream)
-    LOAD_DSYM(acGetGridMM, stream)
-    LOAD_DSYM(acGetMinNN, stream)
-    LOAD_DSYM(acGetMaxNN, stream)
-    LOAD_DSYM(acGetGridMaxNN, stream)
-    LOAD_DSYM(acGetLengths, stream)
+    LOAD_DSYM(acGetLocalNN);
+    LOAD_DSYM(acGetLocalMM);
+    LOAD_DSYM(acGetGridNN);
+    LOAD_DSYM(acGetGridMM);
+    LOAD_DSYM(acGetMinNN);
+    LOAD_DSYM(acGetMaxNN);
+    LOAD_DSYM(acGetGridMaxNN);
+    LOAD_DSYM(acGetLengths);
 #include "device_load_uniform_loads.h"
 #include "ac_push_to_config_loads.h"
-    LOAD_DSYM(acGetKernelId, stream)
-    LOAD_DSYM(acGetKernelIdByName, stream)
-    LOAD_DSYM(acCheckDeviceAvailability, stream)
-    LOAD_DSYM(acGetNumDevicesPerNode, stream)
-    LOAD_DSYM(acGetNumFields, stream)
-    LOAD_DSYM(acGetFieldHandle, stream)
-    LOAD_DSYM(acGetFieldName, stream)
-    LOAD_DSYM(acGetNode, stream)
-    LOAD_DSYM(acNodeCreate, stream)
-    LOAD_DSYM(acNodeDestroy, stream)
-    LOAD_DSYM(acNodePrintInfo, stream)
-    LOAD_DSYM(acNodeQueryDeviceConfiguration, stream)
-    LOAD_DSYM(acNodeAutoOptimize, stream)
-    LOAD_DSYM(acNodeSynchronizeStream, stream)
-    LOAD_DSYM(acNodeSynchronizeVertexBuffer, stream)
-    LOAD_DSYM(acNodeSynchronizeMesh, stream)
-    LOAD_DSYM(acNodeSwapBuffers, stream)
-    LOAD_DSYM(acNodeLoadConstant, stream)
-    LOAD_DSYM(acNodeLoadVertexBufferWithOffset, stream)
-    LOAD_DSYM(acNodeLoadMeshWithOffset, stream)
-    LOAD_DSYM(acNodeLoadVertexBuffer, stream)
-    LOAD_DSYM(acNodeLoadMesh, stream)
-    LOAD_DSYM(acNodeSetVertexBuffer, stream)
-    LOAD_DSYM(acNodeStoreVertexBufferWithOffset, stream)
-    LOAD_DSYM(acNodeStoreMeshWithOffset, stream)
-    LOAD_DSYM(acNodeStoreVertexBuffer, stream)
-    LOAD_DSYM(acNodeStoreMesh, stream)
-    LOAD_DSYM(acNodeIntegrateSubstep, stream)
-    LOAD_DSYM(acNodeIntegrate, stream)
-    LOAD_DSYM(acNodeIntegrateGBC, stream)
-    LOAD_DSYM(acNodePeriodicBoundcondStep, stream)
-    LOAD_DSYM(acNodePeriodicBoundconds, stream)
-    LOAD_DSYM(acNodeGeneralBoundcondStep, stream)
-    LOAD_DSYM(acNodeGeneralBoundconds, stream)
-    LOAD_DSYM(acNodeReduceScal, stream)
-    LOAD_DSYM(acNodeReduceVec, stream)
-    LOAD_DSYM(acNodeReduceVecScal, stream)
-    LOAD_DSYM(acDeviceCreate, stream)
-    LOAD_DSYM(acDeviceDestroy, stream)
-    LOAD_DSYM(acDeviceResetMesh, stream)
-    LOAD_DSYM(acDevicePrintInfo, stream)
-    LOAD_DSYM(acDeviceSynchronizeStream, stream)
-    LOAD_DSYM(acDeviceSwapBuffer, stream)
-    LOAD_DSYM(acDeviceSwapBuffers, stream)
-    LOAD_DSYM(acDeviceLoadScalarUniform, stream)
-    LOAD_DSYM(acDeviceLoadVectorUniform, stream)
-    LOAD_DSYM(acDeviceLoadIntUniform, stream)
-    LOAD_DSYM(acDeviceLoadBoolUniform, stream)
-    LOAD_DSYM(acDeviceLoadInt3Uniform, stream)
-    LOAD_DSYM(acDeviceStoreScalarUniform, stream)
-    LOAD_DSYM(acDeviceStoreVectorUniform, stream)
-    LOAD_DSYM(acDeviceStoreIntUniform, stream)
-    LOAD_DSYM(acDeviceStoreBoolUniform, stream)
-    LOAD_DSYM(acDeviceStoreInt3Uniform, stream)
-    LOAD_DSYM(acDeviceLoadMeshInfo, stream)
-    LOAD_DSYM(acDeviceLoadVertexBufferWithOffset, stream)
-    LOAD_DSYM(acDeviceLoadMeshWithOffset, stream)
-    LOAD_DSYM(acDeviceLoadVertexBuffer, stream)
-    LOAD_DSYM(acDeviceLoadMesh, stream)
-    LOAD_DSYM(acDeviceSetVertexBuffer, stream)
-    LOAD_DSYM(acDeviceFlushOutputBuffers, stream)
-    LOAD_DSYM(acDeviceStoreVertexBufferWithOffset, stream)
-    LOAD_DSYM(acDeviceGetConfig, stream)
-    LOAD_DSYM(acDeviceGetKernelInputParamsObject, stream)
-    LOAD_DSYM(acDeviceStoreMeshWithOffset, stream)
-    LOAD_DSYM(acDeviceStoreVertexBuffer, stream)
-    LOAD_DSYM(acDeviceStoreMesh, stream)
-    LOAD_DSYM(acDeviceTransferVertexBufferWithOffset, stream)
-    LOAD_DSYM(acDeviceTransferMeshWithOffset, stream)
-    LOAD_DSYM(acDeviceTransferVertexBuffer, stream)
-    LOAD_DSYM(acDeviceTransferMesh, stream)
-    LOAD_DSYM(acDeviceIntegrateSubstep, stream)
-    LOAD_DSYM(acDevicePeriodicBoundcondStep, stream)
-    LOAD_DSYM(acDevicePeriodicBoundconds, stream)
-    LOAD_DSYM(acDeviceGeneralBoundcondStep, stream)
-    LOAD_DSYM(acDeviceGeneralBoundconds, stream)
-    LOAD_DSYM(acDeviceReduceScalNoPostProcessing, stream)
-    LOAD_DSYM(acDeviceReduceScal, stream)
-    LOAD_DSYM(acDeviceReduceVecNoPostProcessing, stream)
-    LOAD_DSYM(acDeviceReduceVec, stream)
-    LOAD_DSYM(acDeviceReduceVecScalNoPostProcessing, stream)
-    LOAD_DSYM(acDeviceReduceVecScal, stream)
-    LOAD_DSYM(acDeviceUpdate, stream)
-    LOAD_DSYM(acDeviceGetKernelOutput, stream)
-    LOAD_DSYM(acDeviceLaunchKernel, stream)
-    LOAD_DSYM(acDeviceBenchmarkKernel, stream)
-    LOAD_DSYM(acDeviceLoadStencil, stream)
-    LOAD_DSYM(acDeviceLoadStencils, stream)
-    LOAD_DSYM(acDeviceLoadStencilsFromConfig, stream)
-    LOAD_DSYM(acDeviceStoreStencil, stream)
-    LOAD_DSYM(acDeviceVolumeCopy, stream)
+    LOAD_DSYM(acGetKernelId);
+    LOAD_DSYM(acGetKernelIdByName);
+    LOAD_DSYM(acCheckDeviceAvailability);
+    LOAD_DSYM(acGetNumDevicesPerNode);
+    LOAD_DSYM(acGetNumFields);
+    LOAD_DSYM(acGetFieldHandle);
+    LOAD_DSYM(acGetFieldName);
+    LOAD_DSYM(acGetNode);
+    LOAD_DSYM(acNodeCreate);
+    LOAD_DSYM(acNodeDestroy);
+    LOAD_DSYM(acNodePrintInfo);
+    LOAD_DSYM(acNodeQueryDeviceConfiguration);
+    LOAD_DSYM(acNodeAutoOptimize);
+    LOAD_DSYM(acNodeSynchronizeStream);
+    LOAD_DSYM(acNodeSynchronizeVertexBuffer);
+    LOAD_DSYM(acNodeSynchronizeMesh);
+    LOAD_DSYM(acNodeSwapBuffers);
+    LOAD_DSYM(acNodeLoadConstant);
+    LOAD_DSYM(acNodeLoadVertexBufferWithOffset);
+    LOAD_DSYM(acNodeLoadMeshWithOffset);
+    LOAD_DSYM(acNodeLoadVertexBuffer);
+    LOAD_DSYM(acNodeLoadMesh);
+    LOAD_DSYM(acNodeSetVertexBuffer);
+    LOAD_DSYM(acNodeStoreVertexBufferWithOffset);
+    LOAD_DSYM(acNodeStoreMeshWithOffset);
+    LOAD_DSYM(acNodeStoreVertexBuffer);
+    LOAD_DSYM(acNodeStoreMesh);
+    LOAD_DSYM(acNodeIntegrateSubstep);
+    LOAD_DSYM(acNodeIntegrate);
+    LOAD_DSYM(acNodeIntegrateGBC);
+    LOAD_DSYM(acNodePeriodicBoundcondStep);
+    LOAD_DSYM(acNodePeriodicBoundconds);
+    LOAD_DSYM(acNodeGeneralBoundcondStep);
+    LOAD_DSYM(acNodeGeneralBoundconds);
+    LOAD_DSYM(acNodeReduceScal);
+    LOAD_DSYM(acNodeReduceVec);
+    LOAD_DSYM(acNodeReduceVecScal);
+    LOAD_DSYM(acDeviceCreate);
+    LOAD_DSYM(acDeviceDestroy);
+    LOAD_DSYM(acDeviceResetMesh);
+    LOAD_DSYM(acDevicePrintInfo);
+    LOAD_DSYM(acDeviceSynchronizeStream);
+    LOAD_DSYM(acDeviceSwapBuffer);
+    LOAD_DSYM(acDeviceSwapBuffers);
+    LOAD_DSYM(acDeviceLoadScalarUniform);
+    LOAD_DSYM(acDeviceLoadVectorUniform);
+    LOAD_DSYM(acDeviceLoadIntUniform);
+    LOAD_DSYM(acDeviceLoadBoolUniform);
+    LOAD_DSYM(acDeviceLoadInt3Uniform);
+    LOAD_DSYM(acDeviceStoreScalarUniform);
+    LOAD_DSYM(acDeviceStoreVectorUniform);
+    LOAD_DSYM(acDeviceStoreIntUniform);
+    LOAD_DSYM(acDeviceStoreBoolUniform);
+    LOAD_DSYM(acDeviceStoreInt3Uniform);
+    LOAD_DSYM(acDeviceLoadMeshInfo);
+    LOAD_DSYM(acDeviceLoadVertexBufferWithOffset);
+    LOAD_DSYM(acDeviceLoadMeshWithOffset);
+    LOAD_DSYM(acDeviceLoadVertexBuffer);
+    LOAD_DSYM(acDeviceLoadMesh);
+    LOAD_DSYM(acDeviceSetVertexBuffer);
+    LOAD_DSYM(acDeviceFlushOutputBuffers);
+    LOAD_DSYM(acDeviceStoreVertexBufferWithOffset);
+    LOAD_DSYM(acDeviceGetConfig);
+    LOAD_DSYM(acDeviceGetKernelInputParamsObject);
+    LOAD_DSYM(acDeviceStoreMeshWithOffset);
+    LOAD_DSYM(acDeviceStoreVertexBuffer);
+    LOAD_DSYM(acDeviceStoreMesh);
+    LOAD_DSYM(acDeviceTransferVertexBufferWithOffset);
+    LOAD_DSYM(acDeviceTransferMeshWithOffset);
+    LOAD_DSYM(acDeviceTransferVertexBuffer);
+    LOAD_DSYM(acDeviceTransferMesh);
+    LOAD_DSYM(acDeviceIntegrateSubstep);
+    LOAD_DSYM(acDevicePeriodicBoundcondStep);
+    LOAD_DSYM(acDevicePeriodicBoundconds);
+    LOAD_DSYM(acDeviceGeneralBoundcondStep);
+    LOAD_DSYM(acDeviceGeneralBoundconds);
+    LOAD_DSYM(acDeviceReduceScalNoPostProcessing);
+    LOAD_DSYM(acDeviceReduceScal);
+    LOAD_DSYM(acDeviceReduceVecNoPostProcessing);
+    LOAD_DSYM(acDeviceReduceVec);
+    LOAD_DSYM(acDeviceReduceVecScalNoPostProcessing);
+    LOAD_DSYM(acDeviceReduceVecScal);
+    LOAD_DSYM(acDeviceUpdate);
+    LOAD_DSYM(acDeviceGetKernelOutput);
+    LOAD_DSYM(acDeviceLaunchKernel);
+    LOAD_DSYM(acDeviceBenchmarkKernel);
+    LOAD_DSYM(acDeviceLoadStencil);
+    LOAD_DSYM(acDeviceLoadStencils);
+    LOAD_DSYM(acDeviceLoadStencilsFromConfig);
+    LOAD_DSYM(acDeviceStoreStencil);
+    LOAD_DSYM(acDeviceVolumeCopy);
 #include "device_get_input_loads.h"
 #include "device_get_output_loads.h"
 #include "device_set_input_loads.h"
@@ -296,52 +272,48 @@ acLoadLibrary(FILE* stream, const AcMeshInfo info)
     *(void**)(&acDeviceGetRealInput)  = dlsym(handle, "acDeviceGetRealInput");
     *(void**)(&acDeviceGetIntInput)   = dlsym(handle, "acDeviceGetIntInput");
     *(void**)(&acDeviceGetRealOutput) = dlsym(handle, "acDeviceGetRealOutput");
-    LOAD_DSYM(acHostMeshRandomize, stream);
-    LOAD_DSYM(acHostGridMeshRandomize, stream);
-    LOAD_DSYM(acHostMeshDestroy, stream);
+    LOAD_DSYM(acHostMeshRandomize);
+    LOAD_DSYM(acHostGridMeshRandomize);
+    LOAD_DSYM(acHostMeshDestroy);
 
-    LOAD_DSYM(acVerifyCompatibility, stream);
-    LOAD_DSYM(acDeviceLoadRealReduceRes, stream);
+    LOAD_DSYM(acVerifyCompatibility);
+    LOAD_DSYM(acDeviceLoadRealReduceRes);
     // Runtime functions
-    LOAD_DSYM(acKernelFlush, stream);
-    LOAD_DSYM(acVBAReset, stream);
-    LOAD_DSYM(acVBACreate, stream);
-    LOAD_DSYM(acAllocateArrays, stream);
-    LOAD_DSYM(acUpdateArrays, stream);
-    LOAD_DSYM(acVBADestroy, stream);
-    LOAD_DSYM(acRandInitAlt, stream);
-    LOAD_DSYM(acRandQuit, stream);
-    LOAD_DSYM(acLaunchKernel, stream);
-    LOAD_DSYM(acBenchmarkKernel, stream);
-    LOAD_DSYM(acLoadStencil, stream);
-    LOAD_DSYM(acStoreStencil, stream);
-    LOAD_DSYM(acLoadRealUniform, stream);
-    LOAD_DSYM(acLoadRealArrayUniform, stream);
-    LOAD_DSYM(acLoadReal3Uniform, stream);
-    LOAD_DSYM(acLoadIntUniform, stream)
-    LOAD_DSYM(acLoadIntUniform, stream)
-    LOAD_DSYM(acLoadIntArrayUniform, stream)
-    LOAD_DSYM(acLoadBoolUniform, stream)
-    LOAD_DSYM(acLoadIntArrayUniform, stream)
-    LOAD_DSYM(acLoadInt3Uniform, stream)
-    LOAD_DSYM(acStoreRealUniform, stream)
-    LOAD_DSYM(acStoreReal3Uniform, stream)
-    LOAD_DSYM(acStoreIntUniform, stream)
-    LOAD_DSYM(acStoreBoolUniform, stream)
-    LOAD_DSYM(acStoreInt3Uniform, stream)
-    LOAD_DSYM(acKernelLaunchGetLastTPB, stream)
-    LOAD_DSYM(acGetOptimizedKernel, stream)
-    LOAD_DSYM(acGetKernelReduceScratchPadSize, stream)
-    LOAD_DSYM(acGetKernelReduceScratchPadMinSize, stream)
-    LOAD_DSYM(acGetKernels, stream)
-    LOAD_DSYM(acGetOptimTPB, stream);
-    LOAD_DSYM(acRuntimeQuit, stream);
-    LOAD_DSYM(acGetRealScratchpadSize, stream);
-    // #ifdef __cplusplus
-    //	return AcLibHandle(handle);
-    // #else
-    //	return handle;
-    // #endif
+    LOAD_DSYM(acKernelFlush);
+    LOAD_DSYM(acVBAReset);
+    LOAD_DSYM(acVBACreate);
+    LOAD_DSYM(acAllocateArrays);
+    LOAD_DSYM(acUpdateArrays);
+    LOAD_DSYM(acVBADestroy);
+    LOAD_DSYM(acRandInitAlt);
+    LOAD_DSYM(acRandQuit);
+    LOAD_DSYM(acLaunchKernel);
+    LOAD_DSYM(acBenchmarkKernel);
+    LOAD_DSYM(acLoadStencil);
+    LOAD_DSYM(acStoreStencil);
+    LOAD_DSYM(acLoadRealUniform);
+    LOAD_DSYM(acLoadRealArrayUniform);
+    LOAD_DSYM(acLoadReal3Uniform);
+    LOAD_DSYM(acLoadIntUniform);
+    LOAD_DSYM(acLoadIntUniform);
+    LOAD_DSYM(acLoadIntArrayUniform);
+    LOAD_DSYM(acLoadBoolUniform);
+    LOAD_DSYM(acLoadIntArrayUniform);
+    LOAD_DSYM(acLoadInt3Uniform);
+    LOAD_DSYM(acStoreRealUniform);
+    LOAD_DSYM(acStoreReal3Uniform);
+    LOAD_DSYM(acStoreIntUniform);
+    LOAD_DSYM(acStoreBoolUniform);
+    LOAD_DSYM(acStoreInt3Uniform);
+    LOAD_DSYM(acKernelLaunchGetLastTPB);
+    LOAD_DSYM(acGetOptimizedKernel);
+    LOAD_DSYM(acGetKernelReduceScratchPadSize);
+    LOAD_DSYM(acGetKernelReduceScratchPadMinSize);
+    LOAD_DSYM(acGetKernels);
+    LOAD_DSYM(acGetOptimTPB);
+    LOAD_DSYM(acRuntimeQuit);
+    LOAD_DSYM(acGetRealScratchpadSize);
+
     const AcResult is_compatible = acVerifyCompatibility(sizeof(AcMesh), sizeof(AcMeshInfo),
                                                          sizeof(AcCompInfo), NUM_REAL_PARAMS,
                                                          NUM_INT_PARAMS, NUM_BOOL_PARAMS,
@@ -368,7 +340,7 @@ acCloseLibrary()
 #else
 
 static AcResult __attribute__((unused))
-acLoadLibrary(FILE* stream, const AcMeshInfo info)
+acLoadLibrary(const AcMeshInfo info)
 {
     return AC_FAILURE;
 }

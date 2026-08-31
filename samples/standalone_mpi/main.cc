@@ -1054,8 +1054,8 @@ ac_runtime_compile(const AcMeshInfo info)
 #endif
 	    		    ;
     acCompile(build_str,info);
-    acLoadLibrary(stdout,info);
-    acLoadUtils(stdout,info);
+    acLoadLibrary(info);
+    acLoadUtils(info);
 }
 void
 output_config_info(AcMeshInfo* info)
