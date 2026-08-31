@@ -298,18 +298,18 @@ acHostUpdateParams(AcMeshInfo* config);
 AcResult
 acHostUpdateCompParams(AcMeshInfo* config);
 
-OVERLOADED_FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
-FUNC_DEFINE(AcReal*, acHostCreateVertexBufferVariable,(const AcMeshInfo info, const VertexBufferHandle vtxbuf));
-FUNC_DEFINE(AcResult, acHostMeshCreateProfiles,(AcMesh* mesh));
-FUNC_DEFINE(AcResult, acHostMeshDestroyVertexBuffer,(AcReal** vtxbuf));
+AcReal* acHostCreateVertexBuffer (const AcMeshInfo info);
+AcReal* acHostCreateVertexBufferVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf);
+AcResult acHostMeshCreateProfiles(AcMesh* mesh);
+AcResult acHostMeshDestroyVertexBuffer(AcReal** vtxbuf);
 /** Creates a mesh stored in host memory */
-FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+AcResult acHostMeshCreate(const AcMeshInfo mesh_info, AcMesh* mesh);
 /** Copies the VertexBuffers from src to dst*/
-FUNC_DEFINE(AcResult, acHostMeshCopyVertexBuffers,(const AcMesh src, AcMesh dst));
+AcResult acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst);
 /** Copies a host mesh to a new host mesh */
-FUNC_DEFINE(AcResult, acHostMeshCopy,(const AcMesh src, AcMesh* dst));
+AcResult acHostMeshCopy(const AcMesh src, AcMesh* dst);
 /** Creates a mesh stored in host memory (size of the whole grid) */
-FUNC_DEFINE(AcResult, acHostGridMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+AcResult acHostGridMeshCreate(const AcMeshInfo mesh_info, AcMesh* mesh);
 
 /** Checks that the loaded dynamic Astaroth is binary compatible with the loader */
 FUNC_DEFINE(AcResult, acVerifyCompatibility, (const size_t mesh_size, const size_t mesh_info_size, const size_t comp_info_size, const int num_reals, const int num_ints, const int num_bools, const int num_real_arrays, const int num_int_arrays, const int num_bool_arrays));

@@ -193,10 +193,8 @@ acLoadLibrary(FILE* stream, const AcMeshInfo info)
     LOAD_DSYM(acGetMaxNN, stream)
     LOAD_DSYM(acGetGridMaxNN, stream)
     LOAD_DSYM(acGetLengths, stream)
-    LOAD_DSYM(acHostMeshCopyVertexBuffers, stream)
 #include "device_load_uniform_loads.h"
 #include "ac_push_to_config_loads.h"
-    LOAD_DSYM(acHostMeshCopy, stream)
     LOAD_DSYM(acGetKernelId, stream)
     LOAD_DSYM(acGetKernelIdByName, stream)
     LOAD_DSYM(acCheckDeviceAvailability, stream)
@@ -297,8 +295,6 @@ acLoadLibrary(FILE* stream, const AcMeshInfo info)
     *(void**)(&acDeviceGetRealInput)  = dlsym(handle, "acDeviceGetRealInput");
     *(void**)(&acDeviceGetIntInput)   = dlsym(handle, "acDeviceGetIntInput");
     *(void**)(&acDeviceGetRealOutput) = dlsym(handle, "acDeviceGetRealOutput");
-    LOAD_DSYM(acHostMeshCreate, stream)
-    LOAD_DSYM(acHostGridMeshCreate, stream)
     LOAD_DSYM(acHostMeshRandomize, stream);
     LOAD_DSYM(acHostGridMeshRandomize, stream);
     LOAD_DSYM(acHostMeshDestroy, stream);

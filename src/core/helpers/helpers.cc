@@ -14,6 +14,7 @@
 #include "acreal.h"
 #include "astaroth_cuda_wrappers.h"
 #include "astaroth_device_headers.h"
+#include "config_helpers.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 
@@ -288,9 +289,6 @@ acQueryKernels(void)
         printf("%s (%d)\n", kernel_names[i], i);
 }
 
-
-#include "config_helpers.h"
-
 void
 acStoreConfig(const AcMeshInfo info, const char* filename)
 {
@@ -305,7 +303,6 @@ acStoreConfig(const AcMeshInfo info, const char* filename)
         ac_restore_floating_point_exceptions();
 }
 
-
 void
 acStoreRunConsts(const AcMeshInfo info, const char* filename)
 {
@@ -313,4 +310,85 @@ acStoreRunConsts(const AcMeshInfo info, const char* filename)
 	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp,"override const", true);
 	AcArrayCompTypes::run<load_comp_arrays>(info, fp,"override const", true);
 	fclose(fp);
+}
+
+static
+AcReal*
+acCallocHostReal(const size_t n_cells)
+{
+    AcReal* res;
+    const size_t bytes = sizeof(AcReal)*n_cells;
+    ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&res, bytes));
+    ERRCHK_ALWAYS(res);
+    memset(res,0,bytes);
+    return res;
+}
+
+AcReal*
+acHostCreateVertexBufferVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const size_t n_cells = acVertexBufferSize(info,vtxbuf);
+    return acCallocHostReal(n_cells);
+}
+
+AcReal*
+acHostCreateVertexBuffer(const AcMeshInfo info)
+{
+    const size_t n_cells = acVertexBufferSize(info);
+    return acCallocHostReal(n_cells);
+}
+
+AcResult
+acHostMeshCreateProfiles(AcMesh* mesh)
+{
+    const auto mm = acGetLocalMM(mesh->info);
+    const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
+    for(int p = 0; p < NUM_PROFILES; ++p)
+    {
+	    mesh->profile[p] = acCallocHostReal(prof_size(Profile(p),counts));
+            ERRCHK_ALWAYS(mesh->profile[p]);
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+{
+    mesh->info = info;
+    acHostUpdateParams(&mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) 
+	mesh->vertex_buffer[w] = acHostCreateVertexBuffer(mesh->info,VertexBufferHandle(w));
+    return acHostMeshCreateProfiles(mesh);
+}
+
+AcResult
+acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
+{
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        if(src.vertex_buffer[w] == NULL) continue;
+	if(dst.vertex_buffer[w] == NULL) continue;
+	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info,VertexBufferHandle(w)));
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostMeshCopy(const AcMesh src, AcMesh* dst)
+{
+    ERRCHK_ALWAYS(acHostMeshCreate(src.info,dst) == AC_SUCCESS);
+    ERRCHK_ALWAYS(acHostMeshCopyVertexBuffers(src,*dst) == AC_SUCCESS);
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+{
+    mesh->info = info;
+    const size_t n_cells = acGridVertexBufferSize(mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        mesh->vertex_buffer[w] = acCallocHostReal(n_cells);
+        ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
+    }
+
+    return AC_SUCCESS;
 }
