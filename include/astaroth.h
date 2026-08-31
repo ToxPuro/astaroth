@@ -432,15 +432,6 @@ acInitMesh()
     return res;
 }
 
-static const char*
-acGetDefaultConfig()
-{
-    // if (filepath == NULL) return NULL;
-
-    return AC_DEFAULT_CONFIG;
-    // return AC_SUCCESS;
-}
-
 #include "ac_push_to_config_decl.h"
 
 AC_END_C_DECLARATIONS
