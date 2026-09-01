@@ -94,7 +94,7 @@ ac_bc_sym(AcBoundary boundary)
 {
 	for f in 0:NUM_FIELDS
 	{
-		ac_bc_a2(boundary,Field(f))
+		ac_bc_sym(boundary,Field(f))
 	}
 }
 
