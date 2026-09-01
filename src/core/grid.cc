@@ -2254,7 +2254,7 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
         acVerboseLogFromRootProc(ac_pid(), "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
         auto op = ops[i];
 
-	ERRCHK_ALWAYS(to_int3(op.end) >= to_int3(op.start));
+	ERRCHK_ALWAYS(to_int3(op.end) > to_int3(op.start));
 	const Volume dims  = op.end-op.start;
 	const Volume start = op.start;
 
