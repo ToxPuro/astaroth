@@ -407,6 +407,12 @@ acInitMesh()
     return res;
 }
 
+static const char *
+acGetDefaultConfig()
+{
+    return AC_DEFAULT_CONFIG;
+}
+
 #include "ac_push_to_config_decl.h"
 
 AC_END_C_DECLARATIONS
