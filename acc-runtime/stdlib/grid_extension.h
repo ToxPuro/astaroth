@@ -9,9 +9,9 @@
 get_value_on_extended_grid(Field src, int3 left_extended_halo, real padding_value)
 {
 	//Are we inside the subvolume of the extended grid that matches the original grid
-	const bool inside_volume = vertexIdx.x >= left_extended_halo.x +NGHOST &&
-	                           vertexIdx.y >= left_extended_halo.y +NGHOST &&
-	                           vertexIdx.z >= left_extended_halo.z +NGHOST &&
+	const bool inside_volume = vertexIdx.x >= left_extended_halo.x + AC_nmin.x &&
+	                           vertexIdx.y >= left_extended_halo.y + AC_nmin.y &&
+	                           vertexIdx.z >= left_extended_halo.z + AC_nmin.z &&
 	                           vertexIdx.x <  AC_nlocal_max.x + left_extended_halo.x &&
 	                           vertexIdx.y <  AC_nlocal_max.y + left_extended_halo.y &&
 	                           vertexIdx.z <  AC_nlocal_max.z + left_extended_halo.z
@@ -24,10 +24,7 @@ get_value_on_extended_grid(Field src, int3 left_extended_halo, real padding_valu
 					vertexIdx.z-left_extended_halo.z
 				}
 				:
-				(int3)
-				{
-					NGHOST, NGHOST,NGHOST
-				}
+				AC_nmin
 	//TP: The field is read with these weird indexes conditional reads based on vertex indexes do not play well with ComputeSteps
 	f_val = src[f_indexes.x][f_indexes.y][f_indexes.z]
 	if(inside_volume)
