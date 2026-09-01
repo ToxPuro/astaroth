@@ -32,7 +32,7 @@ get_decomp(const MPI_Comm comm, const AcMeshInfo config)
     return (uint3_64){0,0,0};
 }
 
-void
+static void
 decompose_info(const MPI_Comm comm, AcMeshInfo& config)
 {
   const auto decomp = get_decomp(comm,config);
@@ -59,7 +59,7 @@ decompose_info(const MPI_Comm comm, AcMeshInfo& config)
 
 #endif
 
-void
+static void
 check_that_built_ins_loaded(const AcCompInfo info)
 {
   	//TP: are not run_const anymore since for some reason gives bad performance
@@ -74,6 +74,7 @@ check_that_built_ins_loaded(const AcCompInfo info)
 		ERRCHK_ALWAYS(info.is_loaded.int3_params[AC_domain_decomposition]);
 #endif
 }
+
 const char* dynamic_base_path   = astaroth_base_path;
 const char* dynamic_binary_path = astaroth_binary_path;
 const char* dynamic_acc_compiler_path = NULL;
@@ -89,11 +90,13 @@ get_astaroth_binary_path()
 {
 	return std::string(dynamic_binary_path);
 }
+
 static std::string
 runtime_astaroth_build_path()
 {
 	return get_astaroth_binary_path() + std::string("/runtime_build");
 }
+
 static std::string
 acc_compiler_path()
 {
@@ -113,7 +116,6 @@ ac_overrides_path()
 	return runtime_astaroth_build_path() + std::string("/overrides.h");
 }
 
-
 void
 acLoadRunConsts(AcMeshInfo info)
 {
@@ -126,7 +128,8 @@ file_exists(const char* filename)
   struct stat   buffer;
   return (stat (filename, &buffer) == 0);
 }
-void
+
+static void
 check_for_cmake()
 {
    char cmd[2*10000];
@@ -141,7 +144,7 @@ check_for_cmake()
    }
 }
 
-const char*
+static const char*
 get_cmake_options(const char* user_cmake_options)
 {
     const char* command_line_options = RUNTIME_CMAKE_OPTIONS;
@@ -161,7 +164,7 @@ get_cmake_options(const char* user_cmake_options)
     return options;
 }
 
-AcResult
+static AcResult
 run_cmake(const char* user_cmake_options, const char* log_dst)
 {
   
@@ -203,7 +206,7 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   return AC_SUCCESS;
 }
 
-AcResult
+static AcResult
 acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
 	acStoreRunConsts(mesh_info,"tmp_astaroth_run_consts.h");
