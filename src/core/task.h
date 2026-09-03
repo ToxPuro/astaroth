@@ -24,7 +24,6 @@
 #include <string>
 #include <vector>
 
-#include "astaroth.h"
 #include "astaroth_grid.h"
 #include "decomposition/decomposition.h"  //getPid and friends
 #include "kernels/kernels.h"              //AcRealPacked, VertexBufferArray

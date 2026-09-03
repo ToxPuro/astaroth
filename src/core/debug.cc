@@ -3,7 +3,6 @@
 
 #include <string>
 
-#include "astaroth.h"
 #include "astaroth_debug.h"
 #include "task.h"
 

@@ -33,7 +33,6 @@
 #include "acc/implementation.h"
 #include "acc/mem_access_helper_funcs.h"
 #include "acc/string_vec.h"
-#include "acc_runtime.h"
 #include "astaroth_cuda_wrappers.h"
 #include "device_details.h"
 #include "errchk.h"

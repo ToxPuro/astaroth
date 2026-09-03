@@ -45,9 +45,9 @@
 #include <vector>
 
 #include "ac_helpers.h"
-#include "astaroth.h"
 #include "astaroth_analysis_helpers.h"
 #include "astaroth_cuda_wrappers.h"
+#include "astaroth_logging.h"
 #include "errchk.h"
 #include "grid_detail.h"
 #include "internal_device_funcs.h"

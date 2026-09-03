@@ -12,6 +12,7 @@
 #include "astaroth_analysis_helpers.h"
 #include "astaroth_base.h"
 #include "astaroth_grid.h"
+#include "astaroth_logging.h"
 #include "errchk.h"
 #include "math_utils.h"
 #include "task.h"

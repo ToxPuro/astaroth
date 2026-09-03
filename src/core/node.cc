@@ -17,6 +17,8 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "astaroth_node.h"
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -129,10 +131,10 @@
  */
 #include "acc_runtime.h"
 #include "acreal.h"
-#include "astaroth.h"
 #include "astaroth_base.h"
 #include "astaroth_cuda_wrappers.h"
 #include "astaroth_device.h"
+#include "astaroth_helpers.h"
 #include "astaroth_node.h"
 #include "datatypes.h"
 #include "errchk.h"

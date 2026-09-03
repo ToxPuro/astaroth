@@ -44,6 +44,8 @@
  * The nitty gritty of the MPI communication and the Task interface is defined in task.h/task.cc
  */
 
+#include "astaroth_grid.h"
+
 #include <mpi.h>
 
 #include <algorithm>
@@ -57,7 +59,6 @@
 #include "astaroth.h"
 #include "astaroth_analysis_helpers.h"
 #include "astaroth_cuda_wrappers.h"
-#include "astaroth_grid.h"
 #include "decomposition/decomposition.h"  //getPid3D, morton3D
 #include "errchk.h"
 #include "internal_device_funcs.h"

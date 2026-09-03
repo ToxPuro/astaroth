@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ac_mpi.h"
 #include "astaroth_device.h"
 #include "astaroth_helpers.h"
 #include "func_define.h"
