@@ -17,17 +17,20 @@
 # You should have received a copy of the GNU General Public License
 # along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys, os
+sys.setdlopenflags(os.RTLD_LOCAL | os.RTLD_LAZY)
+
 import pathlib
 
 import argparse
-import pyastaroth_benchmark.astaroth.impl.core as core
+import pyastaroth_benchmark.astaroth as ac
 from pyastaroth_benchmark import TestType, run_benchmark
 
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser("benchmark")
 
-    parser.add_argument("-c", "--config", type=pathlib.Path, default=core.get_default_config())
+    parser.add_argument("-c", "--config", type=pathlib.Path, default=ac.get_default_config())
     parser.add_argument("dimensions", nargs=3, type=int)
     parser.add_argument(
         "-t",

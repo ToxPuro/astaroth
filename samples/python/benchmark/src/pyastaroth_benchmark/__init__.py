@@ -22,9 +22,7 @@ from contextlib import AbstractContextManager
 from enum import StrEnum
 from typing import Final, Optional
 
-import pyastaroth_benchmark.astaroth.impl.core as core
-import pyastaroth_benchmark.astaroth.impl.grid as grid
-import pyastaroth_benchmark.astaroth.impl.utils as utils
+import pyastaroth_benchmark.astaroth as ac
 from mpi4py import MPI
 
 NUM_ITERATIONS: Final[int] = 100
@@ -41,17 +39,17 @@ class TimedBlock(AbstractContextManager):
         self.name = name
 
     def __enter__(self):
-        grid.grid_synchronize_stream(core.Stream.all)
+        ac.grid_synchronize_stream(ac.Stream.all)
 
         self.start: int = time.perf_counter_ns()
 
         return self
 
     def __exit__(self, *exc_details):
-        grid.grid_synchronize_stream(core.Stream.all)
+        ac.grid_synchronize_stream(ac.Stream.all)
 
         self.end: int = time.perf_counter_ns()
-        self.duration: int = (self.end - self.start) / NS_MS_FACTOR
+        self.duration: float = (self.end - self.start) / NS_MS_FACTOR
 
         if self.name:
             print(f"{self.name}: Time elapsed: {self.duration} ms")
@@ -68,12 +66,12 @@ def integrate(dt: float):
         """
         acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
         """
-        graph = grid.get_optimized_dsl_task_graph(core.DSLTaskGraph.ac_rhs_substep)
+        graph = ac.grid_get_optimized_dsl_task_graph(ac.DSLTaskGraph.ac_rhs_substep)
 
         with TimedBlock("Substep"):
             # FIXME: Did not get bound
             """
-            grid.execute_task_graph(graph, 1)
+            ac.grid_execute_task_graph(graph, 1)
             """
             pass
 
@@ -81,31 +79,31 @@ def integrate(dt: float):
 def run_benchmark(
     config: pathlib.Path, test_type: TestType, dims: list[int], verify: bool
 ):
-    info: core.AcMeshInfo = core.init_info()
-    utils.load_config(str(config), info)
-    core.communicator_set_communicator(info.comm, MPI.COMM_WORLD)
-    core.host_update_params(info)
+    info: ac.AcMeshInfo = ac.init_info()
+    ac.load_config(str(config), info)
+    ac.communicator_set_communicator(info.comm, MPI.COMM_WORLD)
+    ac.host_update_params(info)
 
     build_str: str = "-DOPTIMIZE_FIELDS=ON -DOPTIMIZE_INPUT_PARAMS=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF"
 
-    core.compile(build_str, info)
-    core.load_library(info)
-    utils.load_utils(info)
+    ac.compile(build_str, info)
+    ac.load_library(info)
+    ac.load_utils(info)
 
     nprocs: int = MPI.COMM_WORLD.Get_size()
     rank: int = MPI.COMM_WORLD.Get_rank()
 
-    decomp: core.int3 = core.decompose(nprocs, info)
+    decomp: int3 = ac.decompose(nprocs, info)
     if test_type == TestType.STRONG_SCALING:
         # nx, ny, nz -> dimensions
         print("Running strong scaling benchmarks.")
 
-        core.push_to_config_int3(info, core.Int3Param.ac_ngrid, decomp)
+        ac.push_to_config_int3(info, ac.Int3Param.ac_ngrid, decomp)
 
-        nlocal: core.int3 = core.int3(
+        nlocal: ac.int3 = ac.int3(
             int(dims[0] / decomp.x), int(dims[1] / decomp.y), int(dims[2] / decomp.z)
         )
-        core.push_to_config_int3(info, core.Int3Param.ac_nlocal, nlocal)
+        ac.push_to_config_int3(info, ac.Int3Param.ac_nlocal, nlocal)
     else:  # TestType.WEAK_SCALING
         print("Running weak scaling benchmarks.")
         """
@@ -113,10 +111,10 @@ def run_benchmark(
         acPushToConfig(info, AC_nlocal, (int3){nx, ny, nz});
         """
 
-    core.host_update_params(info)
+    ac.host_update_params(info)
 
-    grid.grid_init(info)
-    grid.grid_randomize()
+    ac.grid_init(info)
+    ac.grid_randomize()
 
     # FIXME: Most macros do not get bound by default.
     """
@@ -132,63 +130,63 @@ def run_benchmark(
     integrate(dt)
 
     if verify:
-        model: core.Mesh = core.Mesh()
-        candidate: core.Mesh = core.Mesh()
+        model: ac.Mesh = ac.Mesh()
+        candidate: ac.Mesh = ac.Mesh()
 
         if rank == 0:
-            core.host_grid_mesh_create(info, model)
-            core.host_grid_mesh_create(info, candidate)
-            core.host_grid_mesh_randomize(model)
-            core.host_grid_mesh_randomize(candidate)
+            ac.host_grid_mesh_create(info, model)
+            ac.host_grid_mesh_create(info, candidate)
+            ac.host_grid_mesh_randomize(model)
+            ac.host_grid_mesh_randomize(candidate)
         else:
-            grid.grid_load_mesh(
-                core.Stream._0, model
+            ac.grid_load_mesh(
+                ac.Stream._0, model
             )  # FIXME: The STREAM_DEFAULT constant is not bound."
 
-        grid.grid_synchronize_stream(
-            core.Stream._0
+        ac.grid_synchronize_stream(
+            ac.Stream._0
         )  # FIXME: The STREAM_DEFAULT constant is not bound."
-        grid.grid_periodic_boundconds(
-            core.Stream._0
+        ac.grid_periodic_boundconds(
+            ac.Stream._0
         )  # FIXME: The STREAM_DEFAULT constant is not bound."
-        grid.grid_synchronize_stream(
-            core.Stream._0
+        ac.grid_synchronize_stream(
+            ac.Stream._0
         )  # FIXME: The STREAM_DEFAULT constant is not bound."
 
         for i in range(0, 10):
             integrate(dt)
             if rank == 0:
                 print(f"Host integration step {i}")
-                utils.host_mesh_apply_periodic_bounds(model)
-                utils.host_integrate_step(model, dt)
+                ac.host_mesh_apply_periodic_bounds(model)
+                ac.host_integrate_step(model, dt)
 
-        grid.grid_periodic_boundconds(
-            core.Stream._0
+        ac.grid_periodic_boundconds(
+            ac.Stream._0
         )  # FIXME: The STREAM_DEFAULT constant is not bound."
-        grid.grid_store_mesh(
-            core.Stream._0, candidate
+        ac.grid_store_mesh(
+            ac.Stream._0, candidate
         )  # FIXME: The STREAM_DEFAULT constant is not bound."
-        grid.grid_periodic_boundconds(
-            core.Stream._0
+        ac.grid_periodic_boundconds(
+            ac.Stream._0
         )  # FIXME: The STREAM_DEFAULT constant is not bound."
-        grid.grid_synchronize_stream(
-            core.Stream._0
+        ac.grid_synchronize_stream(
+            ac.Stream._0
         )  # FIXME: The STREAM_DEFAULT constant is not bound."
 
         if rank == 0:
-            utils.host_mesh_apply_periodic_bounds(model)
+            ac.host_mesh_apply_periodic_bounds(model)
             print("Verifying...")
 
             # FIXME: This would look better if AcResult was used for making
             # exceptions.
             success = (
-                utils.verify_mesh("Integration", model, candidate)
-                == core.AcResult.ac_success
+                ac.verify_mesh("Integration", model, candidate)
+                == ac.AcResult.ac_success
             )
             # FIXME: Get rid of explicit memory management. Python can cleanup
             # automatically.
-            core.host_mesh_destroy(model)
-            core.host_mesh_destroy(candidate)
+            ac.host_mesh_destroy(model)
+            ac.host_mesh_destroy(candidate)
             if not success:
                 print("Failures found, benchmark invalid. Skipping.", file=sys.stderr)
                 return 1
@@ -223,7 +221,7 @@ def run_benchmark(
     if rank == 0:
         print("Sanity performance check:")
 
-    mesh_dims: core.MeshDims = core.get_mesh_dims(info)
+    mesh_dims: ac.MeshDims = ac.get_mesh_dims(info)
 
     with TimedBlock("acGridPeriodicBoundconds"):
         # FIXME: The Device-layer API has problems to be bound because of the opaque types.
@@ -238,14 +236,14 @@ def run_benchmark(
         candval: float = 0
         # FIXME: Unsure how to work with the parameters.
         """
-        grid.grid_reduce_scal(core.Stream._0, RTYPE_SUM, (Field)0, candval);
+        ac.grid_reduce_scal(ac.Stream._0, RTYPE_SUM, (Field)0, candval);
         """
 
     with TimedBlock("acGridReduceVec"):
         # FIXME: Unsure how to work with the parameters.
         """
-        grid.grid_reduce_vec(core.Stream._0, RTYPE_SUM, (Field)0, (Field)1, (Field)2, &candval);
+        ac.grid_reduce_vec(ac.Stream._0, RTYPE_SUM, (Field)0, (Field)1, (Field)2, &candval);
         """
 
-    grid.grid_quit()
-    grid.mpi_finalize()
+    ac.grid_quit()
+    ac.mpi_finalize()

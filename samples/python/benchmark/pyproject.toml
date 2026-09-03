@@ -32,6 +32,7 @@ build-dir = "build/{wheel_tag}"
 cmake.build-type = "Debug"
 cmake.args = [
     "-DBUILD_SAMPLE=python:benchmark",
+    "-DBUILD_STANDALONE=OFF",
     "-DCPU_BUILD=ON",
     "-DMPI_ENABLED=ON",
     "-DRUNTIME_COMPILATION=ON",
