@@ -2,12 +2,31 @@
 #target_compile_options(modelsolver PRIVATE "-mavx")
 option(OPENMP_ENABLED "Enables OPENMP (used in modelsolver for now)" ON)
 
-if(RUNTIME_COMPILATION)
-	add_library(astaroth_utils config_loader.cc)
-	target_link_libraries(astaroth_utils PUBLIC astaroth_core)
-else()
-	add_library(astaroth_utils memory.cc verification.cc modelreduce.cc modelsolver.cc profiles.cc config_loader.cc)
-	target_link_libraries(astaroth_utils PUBLIC astaroth_core)
+add_library(astaroth_utils)
+target_sources(
+	astaroth_utils
+	PRIVATE
+	config_loader.cc
+	utils.cc
+)
+set_property(TARGET astaroth_utils PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(
+	astaroth_utils
+	PUBLIC
+	astaroth_core
+)
+ac_link_mpi(astaroth_utils)
+
+if(NOT RUNTIME_COMPILATION)
+	target_sources(
+		astaroth_utils
+		PRIVATE
+		memory.cc
+		modelreduce.cc
+		modelsolver.cc
+		profiles.cc
+		verification.cc
+	)
 
 	add_library(astaroth_random astaroth_random.cc)
 	set_property(TARGET astaroth_random PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -25,8 +44,6 @@ else()
 	endif()
 endif()
 
-ac_link_mpi(astaroth_utils)
-set_property(TARGET astaroth_utils PROPERTY POSITION_INDEPENDENT_CODE ON)
 install(TARGETS
     astaroth_utils
     EXPORT AstarothTargets

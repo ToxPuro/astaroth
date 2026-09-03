@@ -34,7 +34,13 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1
 )
 
-target_sources(astaroth_core_obj PRIVATE ac_push.cc)
+target_sources(
+    astaroth_core_obj
+    PRIVATE
+    ac_push.cc
+    core.cc
+    core.c
+)
 
 if(NOT RUNTIME_COMPILATION)
     target_sources(

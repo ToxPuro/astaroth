@@ -7088,7 +7088,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   free_str_vec(&datatypes);
   free_structs_info(&s_info);
 
-  fprintf(fp,"const int3 ray_directions[] = {");
+  fprintf(fp,"static const int3 ray_directions[] = {");
   string_vec ray_directions = get_ray_directions(root_in);
   for(size_t ray = 0; ray < ray_directions.size; ++ray)
 	  fprintf(fp,"{%s},",ray_directions.data[ray]);

@@ -27,6 +27,11 @@
 #include <stdarg.h>
 
 #include "astaroth.h"
+
+#ifdef __ASTAROTH_UTILS_MAIN_STORAGE__
+#define __FUNC_DEFINE_MAIN_STORAGE__
+#endif
+
 #include "func_define.h"
 
 AC_BEGIN_C_DECLARATIONS
@@ -173,5 +178,3 @@ AC_END_C_DECLARATIONS
 #define AC_CYN   "\x1B[36m"
 #define AC_WHT   "\x1B[37m"
 #define AC_COL_RESET "\x1B[0m"
-
-
