@@ -80,11 +80,10 @@ typedef enum {
 	STREAM_30,
 	STREAM_31,
 	STREAM_ALL,
+	STREAM_DEFAULT = STREAM_0,
 } Stream;
 
-const Stream STREAM_DEFAULT = STREAM_0;
 #define NUM_STREAMS (32)
-
 
 // For plate buffers.
 enum AcPlateDirection {AC_H2D, AC_D2H};    // pack/unpack direction
