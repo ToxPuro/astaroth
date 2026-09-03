@@ -13,6 +13,20 @@
 
 AC_BEGIN_C_DECLARATIONS
 
+/** Calls MPI_Barrier on the Astaroth communicator */
+FUNC_DEFINE(void, ac_MPI_Barrier,());
+
+/** Returns the rank of the Astaroth communicator */
+FUNC_DEFINE(int, ac_MPI_Comm_rank,());
+
+/** Returns the size of the Astaroth communicator */
+FUNC_DEFINE(int, ac_MPI_Comm_size,());
+
+/**
+Destroys the communicator and calls MPI_Finalize
+*/
+FUNC_DEFINE(void, ac_MPI_Finalize,());
+
 /**
 Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color =
 666 Any program running in the same MPI process space must also call MPI_Comm_split with some color
@@ -36,23 +50,10 @@ Returns AC_FAILURE otherwise.
  */
 FUNC_DEFINE(AcResult, ac_MPI_Init_thread,(int thread_level));
 
-/**
-Destroys the communicator and calls MPI_Finalize
-*/
-FUNC_DEFINE(void, ac_MPI_Finalize,());
-
-/** Returns the rank of the Astaroth communicator */
-FUNC_DEFINE(int, ac_MPI_Comm_rank,());
-
 /** If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD */
 FUNC_DEFINE(MPI_Comm, acGridMPIComm,());
 
 FUNC_DEFINE(AcSubCommunicators,acGridMPISubComms,());
-/** Returns the size of the Astaroth communicator */
-FUNC_DEFINE(int, ac_MPI_Comm_size,());
-
-/** Calls MPI_Barrier on the Astaroth communicator */
-FUNC_DEFINE(void, ac_MPI_Barrier,());
 
 /**
 Initializes all available devices.

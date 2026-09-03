@@ -112,10 +112,12 @@ acLoadLibrary(FILE* stream, const AcMeshInfo info)
     LOAD_DSYM(acDeviceFFTBackwardTransformPlanar2RXY, stream)
 #if AC_MPI_ENABLED
     *(void**)(&BASE_FUNC_NAME(acBoundaryCondition)) = dlsym(handle, "acBoundaryCondition");
+    LOAD_DSYM(ac_MPI_Barrier, stream);
+    LOAD_DSYM(ac_MPI_Comm_rank, stream);
+    LOAD_DSYM(ac_MPI_Comm_size, stream);
+    LOAD_DSYM(ac_MPI_Finalize, stream);
     LOAD_DSYM(ac_MPI_Init, stream)
     LOAD_DSYM(ac_MPI_Init_thread, stream)
-    LOAD_DSYM(ac_MPI_Finalize, stream);
-    LOAD_DSYM(ac_MPI_Comm_rank, stream);
     LOAD_DSYM(acGridInitialized, stream);
     LOAD_DSYM(acGridMPIComm, stream);
     LOAD_DSYM(acGridMPISubComms, stream);
