@@ -1,10 +1,16 @@
 #pragma once
 
+#include "func_define.h"
+#include "host_datatypes.h"
+
 #if AC_MPI_ENABLED
-
-#define AC_MPI_H
-
 #include <mpi.h>
+#endif
+
+//TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm
+typedef struct AcCommunicator AcCommunicator;
+
+#if AC_MPI_ENABLED
 
 struct AcCommunicator {
     MPI_Comm handle;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ac_mpi.h"
 #include "acc_runtime.h"
 #include "astaroth_analysis.h"
 #include "astaroth_base.h"

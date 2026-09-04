@@ -54,7 +54,6 @@ else()
 	ac_link_mpi(kernels_obj)
 	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
 
-	
 	if(FFT_ENABLED)
 		if(CPU_BUILD)
 			add_library(ac_fft OBJECT kissfft/kiss_fft.c kissfft/kiss_fftnd.c cpufft.cc)

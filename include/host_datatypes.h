@@ -52,9 +52,6 @@ typedef struct {
 
 typedef AcShape AcIndex;
 
-//TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm
-typedef struct AcCommunicator AcCommunicator;
-
 #if AC_CPU_BUILD
 
 #ifndef INT3_DEFINED

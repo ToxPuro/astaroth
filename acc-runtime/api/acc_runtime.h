@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "ac_mpi.h"
 #include "astaroth_device_headers.h"
 #include "builtin_enums.h"
 #include "datatypes.h"
