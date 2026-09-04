@@ -24,12 +24,8 @@
 #include <math.h>
 
 #include "acreal.h"
-#include "builtin_enums.h"
 #include "astaroth_device_headers.h"
-
-#define VOLUME_DEFINED
-#define COMPLEX_DEFINED
-#define REAL3_DEFINED
+#include "builtin_enums.h"
 #include "host_datatypes.h"
 
 #ifdef __cplusplus
