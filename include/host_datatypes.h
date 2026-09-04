@@ -4,10 +4,10 @@
 #include <stddef.h>
 
 #include "acreal.h"
-#include "builtin_enums.h"
 #include "astaroth_device_headers.h"
+#include "builtin_enums.h"
 
-typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
+typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2 } AcResult;
 
 #define N_DIMS (3)
 #define X_ORDER_INT (0)
@@ -15,71 +15,71 @@ typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 #define Z_ORDER_INT (2)
 
 typedef enum {
-	XYZ = X_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*Z_ORDER_INT,
-	XZY = X_ORDER_INT + N_DIMS*Z_ORDER_INT + N_DIMS*N_DIMS*Y_ORDER_INT,
-	YXZ = Y_ORDER_INT + N_DIMS*X_ORDER_INT + N_DIMS*N_DIMS*Z_ORDER_INT,
-	YZX = Y_ORDER_INT + N_DIMS*Z_ORDER_INT + N_DIMS*N_DIMS*X_ORDER_INT,
-	ZXY = Z_ORDER_INT + N_DIMS*X_ORDER_INT + N_DIMS*N_DIMS*Y_ORDER_INT,
-	ZYX = Z_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*X_ORDER_INT,
+    XYZ = X_ORDER_INT + N_DIMS * Y_ORDER_INT + N_DIMS * N_DIMS * Z_ORDER_INT,
+    XZY = X_ORDER_INT + N_DIMS * Z_ORDER_INT + N_DIMS * N_DIMS * Y_ORDER_INT,
+    YXZ = Y_ORDER_INT + N_DIMS * X_ORDER_INT + N_DIMS * N_DIMS * Z_ORDER_INT,
+    YZX = Y_ORDER_INT + N_DIMS * Z_ORDER_INT + N_DIMS * N_DIMS * X_ORDER_INT,
+    ZXY = Z_ORDER_INT + N_DIMS * X_ORDER_INT + N_DIMS * N_DIMS * Y_ORDER_INT,
+    ZYX = Z_ORDER_INT + N_DIMS * Y_ORDER_INT + N_DIMS * N_DIMS * X_ORDER_INT,
 } AcMeshOrder;
 
-typedef enum AcReduceOp
-{
-	AC_REDUCE_OP_NO_REDUCE,
-	AC_REDUCE_OP_MIN,
-	AC_REDUCE_OP_MAX,
-	AC_REDUCE_OP_SUM,
+typedef enum AcReduceOp {
+    AC_REDUCE_OP_NO_REDUCE,
+    AC_REDUCE_OP_MIN,
+    AC_REDUCE_OP_MAX,
+    AC_REDUCE_OP_SUM,
 } AcReduceOp;
 
 #define ONE_DIMENSIONAL_PROFILE (1 << 20)
 #define TWO_DIMENSIONAL_PROFILE (1 << 21)
 typedef enum {
-	PROFILE_NONE = 0,
-	PROFILE_X  = (1 << 0) | ONE_DIMENSIONAL_PROFILE,
-	PROFILE_Y  = (1 << 1) | ONE_DIMENSIONAL_PROFILE,
-	PROFILE_Z  = (1 << 2) | ONE_DIMENSIONAL_PROFILE,
-	PROFILE_XY = (1 << 3) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_XZ = (1 << 4) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_YX = (1 << 5) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_YZ = (1 << 6) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_ZX = (1 << 7) | TWO_DIMENSIONAL_PROFILE,
-	PROFILE_ZY = (1 << 8) | TWO_DIMENSIONAL_PROFILE,
+    PROFILE_NONE = 0,
+    PROFILE_X    = (1 << 0) | ONE_DIMENSIONAL_PROFILE,
+    PROFILE_Y    = (1 << 1) | ONE_DIMENSIONAL_PROFILE,
+    PROFILE_Z    = (1 << 2) | ONE_DIMENSIONAL_PROFILE,
+    PROFILE_XY   = (1 << 3) | TWO_DIMENSIONAL_PROFILE,
+    PROFILE_XZ   = (1 << 4) | TWO_DIMENSIONAL_PROFILE,
+    PROFILE_YX   = (1 << 5) | TWO_DIMENSIONAL_PROFILE,
+    PROFILE_YZ   = (1 << 6) | TWO_DIMENSIONAL_PROFILE,
+    PROFILE_ZX   = (1 << 7) | TWO_DIMENSIONAL_PROFILE,
+    PROFILE_ZY   = (1 << 8) | TWO_DIMENSIONAL_PROFILE,
 } AcProfileType;
 
 typedef struct {
-  size_t x, y, z, w;
+    size_t x, y, z, w;
 } AcShape;
 
 typedef AcShape AcIndex;
 
 #if AC_CPU_BUILD
 
-#ifndef INT3_DEFINED
-typedef struct
-{
-	int x,y,z;
+typedef struct {
+    int x, y, z;
 } int3;
-typedef struct
-{
-        int x,y,z,w;
-} int4;
-#define INT3_DEFINED
-#endif
 
-typedef struct
-{
+typedef struct {
+    int x, y, z, w;
+} int4;
+
+typedef struct {
     unsigned int x, y, z;
 } dim3;
 
-typedef struct
-{
+typedef struct {
     unsigned int x, y, z;
 } uint3;
+
 #endif
 
 #include "user_typedefs.h"
 
 typedef Volume size3_t;
+
+static HOST_INLINE int3
+to_int3(const Volume a)
+{
+    return (int3){(int)a.x, (int)a.y, (int)a.z};
+}
 
 typedef struct {
     size3_t n0, n1;

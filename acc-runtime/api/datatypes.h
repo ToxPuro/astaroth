@@ -48,20 +48,6 @@
 #define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 #define AcVector AcReal3
 
-#if AC_CPU_BUILD
-#ifndef INT3_DEFINED
-typedef struct
-{
-	int x,y,z;
-} int3;
-typedef struct
-{
-        int x,y,z,w;
-} int4;
-#define INT3_DEFINED
-#endif
-#endif
-
 #ifdef __cplusplus
 
 #define AcArray std::array
@@ -105,15 +91,3 @@ operator==(const int3& a, const size3_t& b)
 }
 
 #endif
-static HOST_INLINE int3
-to_int3(const Volume a)
-{
-	return 
-	(int3)
-	{
-		(int)a.x,
-		(int)a.y,
-		(int)a.z
-	};
-}
-
