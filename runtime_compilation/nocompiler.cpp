@@ -13,7 +13,7 @@ acLoadRunConsts(AcMeshInfo){}
 
 #include "config_helpers.h"
 
-void
+extern "C" void
 acStoreConfig(const AcMeshInfo info, const char* filename)
 {
 	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");

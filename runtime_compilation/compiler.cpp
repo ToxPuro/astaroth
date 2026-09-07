@@ -397,7 +397,7 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 	return res;
 }
 
-void
+extern "C" void
 acStoreConfig(const AcMeshInfo info, const char* filename)
 {
 	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
