@@ -65,7 +65,7 @@ multiple different computing platforms. Such a library is both needed for accele
 Thus, its API has to enable good integration with existing and easy writing of new code.
 
 `Astaroth` strives to be this library, encapsulating the core steps and structures of stencil computations
-in its domain specific language (DSL), which enables researchers in different domains to write their
+in its domain specific language (DSL)[^sample_footnote], which enables researchers in different domains to write their
 stencil computations in a compact and obvious way. This encapsulation allows `Astaroth` to provide
 the needed execution platform for different application cases, predominantly for partial differential equation (PDE) solvers, but also for image processing and numerical linear algebra.
 
@@ -175,3 +175,4 @@ AI tools have not been used in any step of software creation, documentation or i
 
 [^stencil_footnote]: Stencil computations are computations on structured grids where a given point is updated using a fixed neighborhood pattern. Examples are convolutions in image processing and convolutional neural networks, and different schemes for spatial derivatives like the finite-difference method.
 [^paradigm_footnote]: In declarative programming, computations are defined by describing what the results look like; in imperative programming, by describing the steps to perform.
+[^sample_footnote]: For a simple example of the Astaroth DSL and a program using it, see the advection solver example in https://github.com/ToxPuro/astaroth/tree/9295cbc4a649881e94af83971b52bfc167a72e69/samples/advection-example.
