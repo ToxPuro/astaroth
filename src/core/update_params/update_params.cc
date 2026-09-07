@@ -110,6 +110,8 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
     	return config[param];
     };
 
+    //TP: we loop to get potential dependencies
+    for(int i = 0; i < 10; ++i)
     {
 	#include "user_constants.h"
     	#include "user_config_loader.h"
