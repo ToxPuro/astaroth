@@ -197,7 +197,7 @@ FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
 
 FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 
-FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
+void acStoreConfig(const AcMeshInfo info, const char* filename);
 
 //TP: this is done for perf optim since if acVertexBufferIdx is called often
 //Making it an external function call is quite expensive

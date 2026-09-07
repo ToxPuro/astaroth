@@ -304,7 +304,6 @@ acLoadLibrary(FILE* stream, const AcMeshInfo info)
     LOAD_DSYM(acHostMeshDestroy, stream);
 
     LOAD_DSYM(acVerifyCompatibility, stream);
-    LOAD_DSYM(acStoreConfig, stream);
     LOAD_DSYM(acDeviceLoadRealReduceRes, stream);
     // Runtime functions
     LOAD_DSYM(acKernelFlush, stream);

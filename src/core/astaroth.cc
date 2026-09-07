@@ -24,7 +24,6 @@
 #include "astaroth_cuda_wrappers.h"
 #include "astaroth_legacy.h"
 #include "astaroth_node.h"
-#include "config_helpers.h"
 #include "datatypes.h"
 #include "math_utils_base.h"
 
@@ -278,15 +277,3 @@ acGetLengths(const AcMeshInfo info)
 
 #include "get_vtxbufs_funcs.h"
 #include "stencil_accesses.h"
-void
-acStoreConfig(const AcMeshInfo info, const char* filename)
-{
-	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
-	AcScalarTypes::run<load_scalars>(info, fp, "", false);
-	AcArrayTypes::run<load_arrays>(info,fp, "", false);
-
-	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
-	AcArrayCompTypes::run<load_comp_arrays>(info,    fp, "", false);
-	if(filename != NULL) fclose(fp);
-}
-
