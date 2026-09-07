@@ -241,6 +241,30 @@ struct load_arrays
 				}
 				fprintf(fp,"]\n");
 			}
+			else if (n_dims == 3)
+			{
+				fprintf(fp,"%s %s %s = [",prefix,type.c_str(), name);
+				for (size_t z = 0; z < dims[2]; ++z)
+				{
+				  fprintf(fp,"%s","[");
+				  for (size_t y = 0; y < dims[1]; ++y)
+				  {
+				  	fprintf(fp,"%s","[");
+				  	for (size_t x = 0; x < dims[0]; ++x)
+				  	{
+				  		auto val = loaded_val[x + y*dims[0]];
+				  		std::string val_string = to_str(val);
+				  		fprintf(fp,"%s",val_string.c_str());
+				  		if (x < dims[0]-1) fprintf(fp,"%s",",");
+				  	}
+				  	fprintf(fp,"%s","]");
+				  	if (y < dims[1]-1) fprintf(fp,"%s",",");
+				  }
+				  fprintf(fp,"%s","]");
+				  if (z < dims[2]-1) fprintf(fp,"%s",",");
+				}
+				fprintf(fp,"]\n");
+			}
 		}
 	}
 };
