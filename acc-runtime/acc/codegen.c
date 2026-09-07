@@ -6998,7 +6998,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   for (size_t i = 0; i < s_info.user_structs.size; ++i)
   {
-	  fprintf_filename("to_str_funcs.h","std::string to_str(const %s value)\n"
+	  fprintf_filename("to_str_funcs.h","static std::string to_str(const %s value)\n"
 		       "{\n"
 		       "std::string res = \"{\";"
 		       "std::string tmp;\n"
@@ -7018,7 +7018,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 	  );
 	  const char* dsl_type = to_dsl_type(s_info.user_structs.data[i]);
 	  const char* res = dsl_type ? dsl_type : s_info.user_structs.data[i];
-	  fprintf_filename("to_str_funcs.h","template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], res);
+	  fprintf_filename("to_str_funcs.h","template <>\n inline std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], res);
   }
 
 

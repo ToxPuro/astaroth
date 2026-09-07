@@ -396,3 +396,16 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
         ac_restore_floating_point_exceptions();
 	return res;
 }
+
+void
+acStoreConfig(const AcMeshInfo info, const char* filename)
+{
+	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
+	AcScalarTypes::run<load_scalars>(info, fp, "", false);
+	AcArrayTypes::run<load_arrays>(info,fp, "", false);
+
+	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
+	AcArrayCompTypes::run<load_comp_arrays>(info,    fp, "", false);
+	if(filename != NULL) fclose(fp);
+}
+

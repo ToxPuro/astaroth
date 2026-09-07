@@ -11,54 +11,54 @@ get_default_value()
 }
 
 template <typename V>
-std::string
+inline std::string
 get_datatype(){return{};}
 
 template <>
-std::string
+inline std::string
 get_datatype<int>()    {return "int";};
 
 template <>
-std::string
+inline std::string
 get_datatype<bool>()   {return "bool";};
 
 template <>
-std::string
+inline std::string
 get_datatype<AcReal>() {return "real";};
 
 template <>
-std::string
+inline std::string
 get_datatype<long>()   {return "long";};
 
 template <>
-std::string
+inline std::string
 get_datatype<long long>() {return "long long";};
 
-std::string
+static std::string
 to_str(const int value)
 {
 	return std::to_string(value);
 }
 
-std::string
+static std::string
 to_str(const size_t value)
 {
 	return std::to_string(value);
 }
 
-std::string
+static std::string
 to_str(const long value)
 {
 	return std::to_string(value);
 }
 
-std::string
+static std::string
 to_str(const long long value)
 {
 	return std::to_string(value);
 }
 
-std::string
+static std::string
 to_str(const AcReal value)
 {
 	char* tmp;
@@ -75,13 +75,13 @@ to_str(const AcReal value)
 	return res;
 }
 #if AC_DOUBLE_PRECISION
-std::string
+static std::string
 to_str(const float value)
 {
 	return to_str((AcReal)value);
 }
 #else
-std::string
+static std::string
 to_str(const double value)
 {
 	char* tmp;
@@ -99,7 +99,7 @@ to_str(const double value)
 }
 #endif
 
-std::string
+static std::string
 to_str(const bool value)
 {
 	char* tmp;
