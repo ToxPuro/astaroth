@@ -20,7 +20,6 @@ var annotated_dup =
     [ "AcReduction", "structAcReduction.html", "structAcReduction" ],
     [ "AcScratchpadStates", "structAcScratchpadStates.html", "structAcScratchpadStates" ],
     [ "AcShape", "structAcShape.html", "structAcShape" ],
-    [ "AcSubCommunicators", "structAcSubCommunicators.html", "structAcSubCommunicators" ],
     [ "AcTaskDefinition", "structAcTaskDefinition.html", "structAcTaskDefinition" ],
     [ "ASTNode", "structASTNode.html", "structASTNode" ],
     [ "CodeGenInput", "structCodeGenInput.html", "structCodeGenInput" ],

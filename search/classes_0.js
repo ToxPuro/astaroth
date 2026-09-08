@@ -20,7 +20,6 @@ var searchData=
   ['acreduction_17',['AcReduction',['../structAcReduction.html',1,'']]],
   ['acscratchpadstates_18',['AcScratchpadStates',['../structAcScratchpadStates.html',1,'']]],
   ['acshape_19',['AcShape',['../structAcShape.html',1,'']]],
-  ['acsubcommunicators_20',['AcSubCommunicators',['../structAcSubCommunicators.html',1,'']]],
-  ['actaskdefinition_21',['AcTaskDefinition',['../structAcTaskDefinition.html',1,'']]],
-  ['astnode_22',['ASTNode',['../structASTNode.html',1,'']]]
+  ['actaskdefinition_20',['AcTaskDefinition',['../structAcTaskDefinition.html',1,'']]],
+  ['astnode_21',['ASTNode',['../structASTNode.html',1,'']]]
 ];

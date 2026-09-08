@@ -97,62 +97,49 @@ $(function(){initNavTree('ac__mpi_8h_source.html','',''); });
 <div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#include &quot;<a class="code" href="func__define_8h.html">func_define.h</a>&quot;</span></div>
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &quot;<a class="code" href="host__datatypes_8h.html">host_datatypes.h</a>&quot;</span></div>
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span> </div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#if AC_MPI_ENABLED</span></div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#if AC_MPI_ENABLED &amp;&amp; __has_include(&lt;mpi.h&gt;)</span></div>
 <div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#include &lt;mpi.h&gt;</span></div>
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="preprocessor">#endif</span></div>
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span> </div>
 <div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="comment">//TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm</span></div>
 <div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code hl_struct" href="structAcCommunicator.html">AcCommunicator</a> <a class="code hl_struct" href="structAcCommunicator.html">AcCommunicator</a>;</div>
 <div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span> </div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="preprocessor">#if AC_MPI_ENABLED</span></div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="preprocessor">#if AC_MPI_ENABLED &amp;&amp; __has_include(&lt;mpi.h&gt;)</span></div>
 <div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span> </div>
-<div class="foldopen" id="foldopen00015" data-start="{" data-end="};">
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno"><a class="line" href="structAcCommunicator.html">   15</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structAcCommunicator.html">AcCommunicator</a> {</div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno"><a class="line" href="structAcCommunicator.html#a35cbdd21df29a767ee8fa6900054c32a">   16</a></span>    MPI_Comm <a class="code hl_variable" href="structAcCommunicator.html#a35cbdd21df29a767ee8fa6900054c32a">handle</a>;</div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="keyword">struct </span><a class="code hl_struct" href="structAcCommunicator.html">AcCommunicator</a> {</div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span>    MPI_Comm handle;</div>
 <div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span>};</div>
-</div>
 <div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span> </div>
-<div class="foldopen" id="foldopen00019" data-start="{" data-end="};">
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html">   19</a></span><span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code hl_struct" href="structAcSubCommunicators.html">AcSubCommunicators</a> {</div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#a7ffc705f224d4e5df6e860a665490f78">   20</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#a7ffc705f224d4e5df6e860a665490f78">all</a>;</div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#aae61c3ae80f51da43c51cd08778fad5a">   21</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#aae61c3ae80f51da43c51cd08778fad5a">x</a>;</div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#a90467a30dd92594f591a2d6f412e492c">   22</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#a90467a30dd92594f591a2d6f412e492c">y</a>;</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#ab04adb50409c15a1ad7ce542946cd5c5">   23</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#ab04adb50409c15a1ad7ce542946cd5c5">z</a>;</div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="keyword">typedef</span> <span class="keyword">struct </span>AcSubCommunicators {</div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>    MPI_Comm all;</div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>    MPI_Comm x;</div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>    MPI_Comm y;</div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>    MPI_Comm z;</div>
 <div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span> </div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#aae5005ae2317aa2d2280bfff58fef534">   25</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#aae5005ae2317aa2d2280bfff58fef534">reverse_x</a>;</div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#a92b5771b6abb5de2ac4f000118b8e9b6">   26</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#a92b5771b6abb5de2ac4f000118b8e9b6">reverse_y</a>;</div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#aef87d888930994f0f2090aa740eac725">   27</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#aef87d888930994f0f2090aa740eac725">reverse_z</a>;</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>    MPI_Comm reverse_x;</div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>    MPI_Comm reverse_y;</div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>    MPI_Comm reverse_z;</div>
 <div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span> </div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#aacbd1479e5f1541e6259deb70cd6b981">   29</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#aacbd1479e5f1541e6259deb70cd6b981">xy</a>;</div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#ae8bf90ace3defafee1a9679ff2d7e3ae">   30</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#ae8bf90ace3defafee1a9679ff2d7e3ae">xz</a>;</div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno"><a class="line" href="structAcSubCommunicators.html#af5ffa2130f07386377bed5ff5bdaaff0">   31</a></span>    MPI_Comm <a class="code hl_variable" href="structAcSubCommunicators.html#af5ffa2130f07386377bed5ff5bdaaff0">yz</a>;</div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>} <a class="code hl_struct" href="structAcSubCommunicators.html">AcSubCommunicators</a>;</div>
-</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>    MPI_Comm xy;</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>    MPI_Comm xz;</div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>    MPI_Comm yz;</div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>} AcSubCommunicators;</div>
 <div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span> </div>
 <div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="preprocessor">#else</span></div>
 <div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span> </div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="keyword">struct </span><a class="code hl_struct" href="structAcCommunicator.html">AcCommunicator</a> {</div>
+<div class="foldopen" id="foldopen00036" data-start="{" data-end="};">
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno"><a class="line" href="structAcCommunicator.html">   36</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structAcCommunicator.html">AcCommunicator</a> {</div>
 <div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>    <span class="comment">// OM: Padding is necessary because C and C++ both make structs a different size if they are</span></div>
 <div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>    <span class="comment">// left empty.</span></div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>    <span class="keywordtype">void</span>* padding[8];</div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno"><a class="line" href="structAcCommunicator.html#acdd9684070b1d2cbbb78d35cde9e2cf6">   39</a></span>    <span class="keywordtype">void</span>* <a class="code hl_variable" href="structAcCommunicator.html#acdd9684070b1d2cbbb78d35cde9e2cf6">padding</a>[8];</div>
 <div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>};</div>
+</div>
 <div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span> </div>
 <div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="preprocessor">#endif</span></div>
 <div class="ttc" id="afunc__define_8h_html"><div class="ttname"><a href="func__define_8h.html">func_define.h</a></div></div>
 <div class="ttc" id="ahost__datatypes_8h_html"><div class="ttname"><a href="host__datatypes_8h.html">host_datatypes.h</a></div></div>
-<div class="ttc" id="astructAcCommunicator_html"><div class="ttname"><a href="structAcCommunicator.html">AcCommunicator</a></div><div class="ttdef"><b>Definition</b> ac_mpi.h:15</div></div>
-<div class="ttc" id="astructAcCommunicator_html_a35cbdd21df29a767ee8fa6900054c32a"><div class="ttname"><a href="structAcCommunicator.html#a35cbdd21df29a767ee8fa6900054c32a">AcCommunicator::handle</a></div><div class="ttdeci">MPI_Comm handle</div><div class="ttdef"><b>Definition</b> ac_mpi.h:16</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html"><div class="ttname"><a href="structAcSubCommunicators.html">AcSubCommunicators</a></div><div class="ttdef"><b>Definition</b> ac_mpi.h:19</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_a7ffc705f224d4e5df6e860a665490f78"><div class="ttname"><a href="structAcSubCommunicators.html#a7ffc705f224d4e5df6e860a665490f78">AcSubCommunicators::all</a></div><div class="ttdeci">MPI_Comm all</div><div class="ttdef"><b>Definition</b> ac_mpi.h:20</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_a90467a30dd92594f591a2d6f412e492c"><div class="ttname"><a href="structAcSubCommunicators.html#a90467a30dd92594f591a2d6f412e492c">AcSubCommunicators::y</a></div><div class="ttdeci">MPI_Comm y</div><div class="ttdef"><b>Definition</b> ac_mpi.h:22</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_a92b5771b6abb5de2ac4f000118b8e9b6"><div class="ttname"><a href="structAcSubCommunicators.html#a92b5771b6abb5de2ac4f000118b8e9b6">AcSubCommunicators::reverse_y</a></div><div class="ttdeci">MPI_Comm reverse_y</div><div class="ttdef"><b>Definition</b> ac_mpi.h:26</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_aacbd1479e5f1541e6259deb70cd6b981"><div class="ttname"><a href="structAcSubCommunicators.html#aacbd1479e5f1541e6259deb70cd6b981">AcSubCommunicators::xy</a></div><div class="ttdeci">MPI_Comm xy</div><div class="ttdef"><b>Definition</b> ac_mpi.h:29</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_aae5005ae2317aa2d2280bfff58fef534"><div class="ttname"><a href="structAcSubCommunicators.html#aae5005ae2317aa2d2280bfff58fef534">AcSubCommunicators::reverse_x</a></div><div class="ttdeci">MPI_Comm reverse_x</div><div class="ttdef"><b>Definition</b> ac_mpi.h:25</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_aae61c3ae80f51da43c51cd08778fad5a"><div class="ttname"><a href="structAcSubCommunicators.html#aae61c3ae80f51da43c51cd08778fad5a">AcSubCommunicators::x</a></div><div class="ttdeci">MPI_Comm x</div><div class="ttdef"><b>Definition</b> ac_mpi.h:21</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_ab04adb50409c15a1ad7ce542946cd5c5"><div class="ttname"><a href="structAcSubCommunicators.html#ab04adb50409c15a1ad7ce542946cd5c5">AcSubCommunicators::z</a></div><div class="ttdeci">MPI_Comm z</div><div class="ttdef"><b>Definition</b> ac_mpi.h:23</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_ae8bf90ace3defafee1a9679ff2d7e3ae"><div class="ttname"><a href="structAcSubCommunicators.html#ae8bf90ace3defafee1a9679ff2d7e3ae">AcSubCommunicators::xz</a></div><div class="ttdeci">MPI_Comm xz</div><div class="ttdef"><b>Definition</b> ac_mpi.h:30</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_aef87d888930994f0f2090aa740eac725"><div class="ttname"><a href="structAcSubCommunicators.html#aef87d888930994f0f2090aa740eac725">AcSubCommunicators::reverse_z</a></div><div class="ttdeci">MPI_Comm reverse_z</div><div class="ttdef"><b>Definition</b> ac_mpi.h:27</div></div>
-<div class="ttc" id="astructAcSubCommunicators_html_af5ffa2130f07386377bed5ff5bdaaff0"><div class="ttname"><a href="structAcSubCommunicators.html#af5ffa2130f07386377bed5ff5bdaaff0">AcSubCommunicators::yz</a></div><div class="ttdeci">MPI_Comm yz</div><div class="ttdef"><b>Definition</b> ac_mpi.h:31</div></div>
+<div class="ttc" id="astructAcCommunicator_html"><div class="ttname"><a href="structAcCommunicator.html">AcCommunicator</a></div><div class="ttdef"><b>Definition</b> ac_mpi.h:36</div></div>
+<div class="ttc" id="astructAcCommunicator_html_acdd9684070b1d2cbbb78d35cde9e2cf6"><div class="ttname"><a href="structAcCommunicator.html#acdd9684070b1d2cbbb78d35cde9e2cf6">AcCommunicator::padding</a></div><div class="ttdeci">void * padding[8]</div><div class="ttdef"><b>Definition</b> ac_mpi.h:39</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 </div><!-- container -->
