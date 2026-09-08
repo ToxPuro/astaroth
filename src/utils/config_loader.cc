@@ -25,6 +25,8 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 #include "acc_runtime.h"
 #include "acreal.h"
@@ -160,16 +162,413 @@ parse_intparam(const char* value)
 	return atoi(value);
 }
 
+static bool
+parse_3d_array(const char* value,
+                    AcReal* values,
+                    size_t& dim0,
+                    size_t& dim1,
+                    size_t& dim2)
+{
+    std::vector<std::vector<std::vector<AcReal>>> array;
+
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    while (*p != '\0' && *p != ']') {
+        if (*p != '[')
+            return false;
+
+        ++p;
+        skip_ws();
+
+        std::vector<std::vector<AcReal>> plane;
+
+        while (*p != '\0' && *p != ']') {
+            if (*p != '[')
+                return false;
+
+            ++p;
+            skip_ws();
+
+            std::vector<AcReal> row;
+
+            while (*p != '\0' && *p != ']') {
+                char* end;
+                const double val = strtod(p, &end);
+
+                if (end == p)
+                    return false;
+
+                row.push_back((AcReal)val);
+                p = end;
+
+                skip_ws();
+
+                if (*p == ',') {
+                    ++p;
+                    skip_ws();
+                }
+            }
+
+            if (*p != ']')
+                return false;
+
+            ++p;
+
+            plane.push_back(row);
+
+            skip_ws();
+
+            if (*p == ',') {
+                ++p;
+                skip_ws();
+            }
+        }
+
+        if (*p != ']')
+            return false;
+
+        ++p;
+
+        array.push_back(plane);
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (array.empty() ||
+        array[0].empty() ||
+        array[0][0].empty())
+        return false;
+
+    dim0 = array.size();
+    dim1 = array[0].size();
+    dim2 = array[0][0].size();
+
+    // Check that the array is genuinely rectangular.
+    for (const auto& plane : array) {
+        if (plane.size() != dim1)
+            return false;
+
+        for (const auto& row : plane) {
+            if (row.size() != dim2)
+                return false;
+        }
+    }
+
+    int counter = 0;
+    for (const auto& plane : array)
+        for (const auto& row : plane)
+            for (const auto& x : row)
+	    {
+                values[counter] = x;
+		++counter;
+	    }
+
+    return true;
+}
+
+static bool
+parse_3d_array(const char* value,
+                    int* values,
+                    size_t& dim0,
+                    size_t& dim1,
+                    size_t& dim2)
+{
+    std::vector<std::vector<std::vector<int>>> array;
+
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    while (*p != '\0' && *p != ']') {
+        if (*p != '[')
+            return false;
+
+        ++p;
+        skip_ws();
+
+        std::vector<std::vector<int>> plane;
+
+        while (*p != '\0' && *p != ']') {
+            if (*p != '[')
+                return false;
+
+            ++p;
+            skip_ws();
+
+            std::vector<int> row;
+
+            while (*p != '\0' && *p != ']') {
+                char* end;
+                const int val = (int)strtol(p, &end,0);
+
+                if (end == p)
+                    return false;
+
+                row.push_back((int)val);
+                p = end;
+
+                skip_ws();
+
+                if (*p == ',') {
+                    ++p;
+                    skip_ws();
+                }
+            }
+
+            if (*p != ']')
+                return false;
+
+            ++p;
+
+            plane.push_back(row);
+
+            skip_ws();
+
+            if (*p == ',') {
+                ++p;
+                skip_ws();
+            }
+        }
+
+        if (*p != ']')
+            return false;
+
+        ++p;
+
+        array.push_back(plane);
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (array.empty() ||
+        array[0].empty() ||
+        array[0][0].empty())
+        return false;
+
+    dim0 = array.size();
+    dim1 = array[0].size();
+    dim2 = array[0][0].size();
+
+    // Check that the array is genuinely rectangular.
+    for (const auto& plane : array) {
+        if (plane.size() != dim1)
+            return false;
+
+        for (const auto& row : plane) {
+            if (row.size() != dim2)
+                return false;
+        }
+    }
+
+    int counter = 0;
+    for (const auto& plane : array)
+        for (const auto& row : plane)
+            for (const auto& x : row)
+	    {
+                values[counter] = x;
+		++counter;
+	    }
+
+    return true;
+}
+
+static bool
+parse_3d_array(const char* value,
+                    bool* values,
+                    size_t& dim0,
+                    size_t& dim1,
+                    size_t& dim2)
+{
+    std::vector<std::vector<std::vector<bool>>> array;
+
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    while (*p != '\0' && *p != ']') {
+        if (*p != '[')
+            return false;
+
+        ++p;
+        skip_ws();
+
+        std::vector<std::vector<bool>> plane;
+
+        while (*p != '\0' && *p != ']') {
+            if (*p != '[')
+                return false;
+
+            ++p;
+            skip_ws();
+
+            std::vector<bool> row;
+
+            while (*p != '\0' && *p != ']') {
+                char* end;
+                const bool val = (bool)strtol(p, &end,0);
+
+                if (end == p)
+                    return false;
+
+                row.push_back((bool)val);
+                p = end;
+
+                skip_ws();
+
+                if (*p == ',') {
+                    ++p;
+                    skip_ws();
+                }
+            }
+
+            if (*p != ']')
+                return false;
+
+            ++p;
+
+            plane.push_back(row);
+
+            skip_ws();
+
+            if (*p == ',') {
+                ++p;
+                skip_ws();
+            }
+        }
+
+        if (*p != ']')
+            return false;
+
+        ++p;
+
+        array.push_back(plane);
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (array.empty() ||
+        array[0].empty() ||
+        array[0][0].empty())
+        return false;
+
+    dim0 = array.size();
+    dim1 = array[0].size();
+    dim2 = array[0][0].size();
+
+    // Check that the array is genuinely rectangular.
+    for (const auto& plane : array) {
+        if (plane.size() != dim1)
+            return false;
+
+        for (const auto& row : plane) {
+            if (row.size() != dim2)
+                return false;
+        }
+    }
+
+    int counter = 0;
+    for (const auto& plane : array)
+        for (const auto& row : plane)
+            for (const auto& x : row)
+	    {
+                values[counter] = x;
+		++counter;
+	    }
+
+    return true;
+}
+
 
 #define LOAD_ARRAY(UPPER_CASE,DATATYPE,LOWER_CASE,UP_NAME) \
         else if ((idx = find_array(keyword, LOWER_CASE##_array_info, NUM_##UPPER_CASE##_ARRAYS+NUM_##UPPER_CASE##_COMP_ARRAYS)) >= 0) { \
 		auto array_vals = get_entries(value,'[',']'); \
 		const bool is_comp = (idx >= NUM_##UPPER_CASE##_ARRAYS); \
 		idx -= NUM_##UPPER_CASE##_ARRAYS*is_comp; \
+		const auto rank = (is_comp) ? \
+				get_array_n_dims((Ac##UP_NAME##CompArrayParam)idx) :\
+				get_array_n_dims((Ac##UP_NAME##ArrayParam)idx); \
 		const auto size = (is_comp) ? \
 				get_array_length((Ac##UP_NAME##CompArrayParam)idx,*config) :\
 				get_array_length((Ac##UP_NAME##ArrayParam)idx,*config); \
-		if(array_vals.size() != (size_t)size) \
+		if(rank == 3) \
+		{ \
+			size_t dim0,dim1,dim2; \
+			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
+			parse_3d_array(value,dst,dim0,dim1,dim2); \
+			if(is_comp) \
+			{ \
+				if constexpr (NUM_##UPPER_CASE##_COMP_ARRAYS > 0) \
+				{ \
+				config->run_consts.config.LOWER_CASE##_arrays[idx] = dst; \
+				config->run_consts.is_loaded.LOWER_CASE##_arrays[idx] = true; \
+				} \
+			} \
+			else \
+			{ \
+				if constexpr (NUM_##UPPER_CASE##_ARRAYS > 0) \
+					config->LOWER_CASE##_arrays[idx] = dst; \
+			} \
+		} \
+		else if(array_vals.size() != (size_t)size) \
 			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %zu: SKIPPING\n",array_vals.size(),keyword,size); \
 		else \
 		{ \
@@ -197,22 +596,44 @@ parse_intparam(const char* value)
 static void
 parse_config(const char* path, AcMeshInfo* config)
 {
-    FILE* fp;
-    fp = fopen(path, "r");
-    // For knowing which .conf file will be used
-    // TP: put on comment since too many when running in parallel
-    //printf("Config file path: %s\n", path);
-    ERRCHK_ALWAYS(fp != NULL);
+    {
+      FILE* fp;
+      fp = fopen(path, "r");
+      // For knowing which .conf file will be used
+      // TP: put on comment since too many when running in parallel
+      //printf("Config file path: %s\n", path);
+      ERRCHK_ALWAYS(fp != NULL);
+      fclose(fp);
+    }
 
-    const size_t BUF_SIZE = 10000;
-    char keyword[BUF_SIZE];
-    char value[BUF_SIZE];
-    int items_matched;
-    while ((items_matched = fscanf(fp, "%s = %[^\n]", keyword, value)) != EOF) {
-
-        if (items_matched < 2)
+    std::ifstream fp(path);
+    std::string line;
+    
+    while (std::getline(fp, line)) {
+        const auto equal_pos = line.find('=');
+    
+        if (equal_pos == std::string::npos)
             continue;
-        int idx = -1;
+    
+        std::string keyword_string = line.substr(0, equal_pos);
+        std::string value_string = line.substr(equal_pos + 1);
+    
+        // Trim whitespace
+        const auto first = keyword_string.find_first_not_of(" \t");
+        const auto last  = keyword_string.find_last_not_of(" \t");
+    
+	keyword_string = keyword_string.substr(first, last - first + 1);
+        const char* keyword = keyword_string.c_str();
+    
+	const char* value  = NULL;
+        const auto value_first = value_string.find_first_not_of(" \t");
+        if (value_first != std::string::npos)
+	{
+            value_string = value_string.substr(value_first);
+	    value = value_string.c_str();
+	}
+    
+	int idx = -1;
         if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) {
 	    acPushToConfig(*config,static_cast<AcIntParam>(idx),parse_intparam(value));
         }
@@ -268,8 +689,6 @@ parse_config(const char* path, AcMeshInfo* config)
 	LOAD_ARRAY(BOOL,bool,bool,Bool)
 	LOAD_ARRAY(REAL,AcReal,real,Real)
     }
-
-    fclose(fp);
 }
 
 /**
