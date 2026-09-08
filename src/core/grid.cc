@@ -401,7 +401,7 @@ check_that_decomp_valid(const AcMeshInfo info)
     const bool nz_valid = nn.z % decomp.z == 0;
     if (!nx_valid || !ny_valid || !nz_valid) {
         WARNING("Mesh dimensions must be divisible by the decomposition\n");
-        fprintf(stderr, "Decomposition: (%lu, %lu, %lu)\n", decomp.x, decomp.y, decomp.z);
+        fprintf(stderr, "Decomposition: (%zu, %zu, %zu)\n", decomp.x, decomp.y, decomp.z);
         fprintf(stderr, "Mesh dimensions: (%ld, %ld, %ld)\n", nn.x, nn.y, nn.z);
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
     }
@@ -493,7 +493,7 @@ log_grid_debug_info(const AcMeshInfo info)
 
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, ac_pid(), ac_nprocs(), pid3d.x,
            pid3d.y, pid3d.z);
-    printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
+    printf("Decomposition: %zu, %zu, %zu\n", decomp.x, decomp.y, decomp.z);
     printf("Mesh size: %ld, %ld, %ld\n", nn.x,nn.y,nn.z);
     fflush(stdout);
     MPI_Barrier(astaroth_comm);
