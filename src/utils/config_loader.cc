@@ -278,7 +278,8 @@ parse_1d_array(const char* value,
 static bool
 parse_1d_array(const char* value,
                bool* values,
-               size_t& dim0, size_t max_size)
+               size_t& dim0,
+               size_t max_size)
 {
     const char* p = value;
 
@@ -298,21 +299,43 @@ parse_1d_array(const char* value,
     size_t counter = 0;
 
     while (*p != '\0' && *p != ']') {
-        char* end;
-        const bool val = (bool)strtol(p, &end,0);
 
-        if (end == p)
+        bool val;
+
+        if (strncmp(p, "true", 4) == 0) {
+            val = true;
+            p += 4;
+        }
+        else if (strncmp(p, "false", 5) == 0) {
+            val = false;
+            p += 5;
+        }
+        else if (*p == '1') {
+            val = true;
+            ++p;
+        }
+        else if (*p == '0') {
+            val = false;
+            ++p;
+        }
+        else {
+            return false;
+        }
+
+        if (counter >= max_size)
             return false;
 
-	if((size_t)counter >= max_size) return false;
-        values[counter++] = (bool)val;
-        p = end;
+        values[counter++] = val;
 
         skip_ws();
 
         if (*p == ',') {
             ++p;
             skip_ws();
+        }
+        else if (*p != ']') {
+            // Require either a comma or the closing bracket.
+            return false;
         }
     }
 
