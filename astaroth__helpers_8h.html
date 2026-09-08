@@ -126,7 +126,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a59a9a5f184a241bc841f69ca5d427c4c" id="r_a59a9a5f184a241bc841f69ca5d427c4c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a59a9a5f184a241bc841f69ca5d427c4c">acBufferMigrate</a> (const <a class="el" href="structAcBuffer.html">AcBuffer</a> in, <a class="el" href="structAcBuffer.html">AcBuffer</a> *out)</td></tr>
 <tr class="memitem:a03104ae0168afb68a2629f77d936744e" id="r_a03104ae0168afb68a2629f77d936744e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structAcBuffer.html">AcBuffer</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a03104ae0168afb68a2629f77d936744e">acBufferRemoveHalos</a> (const <a class="el" href="structAcBuffer.html">AcBuffer</a> buffer_in, const int3 halo_sizes, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> <a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>)</td></tr>
 <tr class="memitem:a7a3c6c5712d3016ffdc3f0dba2f2de0a" id="r_a7a3c6c5712d3016ffdc3f0dba2f2de0a"><td class="memItemLeft" align="right" valign="top">int3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a7a3c6c5712d3016ffdc3f0dba2f2de0a">acConstructInt3Param</a> (const AcIntParam a, const AcIntParam b, const AcIntParam c, const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> info)</td></tr>
-<tr class="memitem:ab64aa42a117de2543a6d5a259530e8c3" id="r_ab64aa42a117de2543a6d5a259530e8c3"><td class="memItemLeft" align="right" valign="top">const bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab64aa42a117de2543a6d5a259530e8c3">acFieldIsAuxiliary</a> (const Field field)</td></tr>
+<tr class="memitem:ad577d685fdb1191f34bb3b07e5ed1842" id="r_ad577d685fdb1191f34bb3b07e5ed1842"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad577d685fdb1191f34bb3b07e5ed1842">acFieldIsAuxiliary</a> (const Field field)</td></tr>
 <tr class="memitem:af75184cc77327be7497c02d6ec859cd7" id="r_af75184cc77327be7497c02d6ec859cd7"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af75184cc77327be7497c02d6ec859cd7">acGetFieldName</a> (const Field field)</td></tr>
 <tr class="memitem:a9a0a4a3472a1d08bdc07972c173dc25e" id="r_a9a0a4a3472a1d08bdc07972c173dc25e"><td class="memItemLeft" align="right" valign="top">Volume&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9a0a4a3472a1d08bdc07972c173dc25e">acGetGridMaxNN</a> (const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> info)</td></tr>
 <tr class="memitem:a9912cd95418ccd1c721dcd4c4b0c587e" id="r_a9912cd95418ccd1c721dcd4c4b0c587e"><td class="memItemLeft" align="right" valign="top">Volume&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9912cd95418ccd1c721dcd4c4b0c587e">acGetGridMM</a> (const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> info)</td></tr>
@@ -408,14 +408,14 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ab64aa42a117de2543a6d5a259530e8c3" name="ab64aa42a117de2543a6d5a259530e8c3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab64aa42a117de2543a6d5a259530e8c3">&#9670;&#160;</a></span>acFieldIsAuxiliary()</h2>
+<a id="ad577d685fdb1191f34bb3b07e5ed1842" name="ad577d685fdb1191f34bb3b07e5ed1842"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad577d685fdb1191f34bb3b07e5ed1842">&#9670;&#160;</a></span>acFieldIsAuxiliary()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const bool acFieldIsAuxiliary </td>
+          <td class="memname">bool acFieldIsAuxiliary </td>
           <td>(</td>
           <td class="paramtype">const Field</td>          <td class="paramname"><span class="paramname"><em>field</em></span></td><td>)</td>
           <td></td>

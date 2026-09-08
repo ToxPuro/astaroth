@@ -11,7 +11,7 @@ var astaroth__helpers_8h =
     [ "acBufferMigrate", "astaroth__helpers_8h.html#a59a9a5f184a241bc841f69ca5d427c4c", null ],
     [ "acBufferRemoveHalos", "astaroth__helpers_8h.html#a03104ae0168afb68a2629f77d936744e", null ],
     [ "acConstructInt3Param", "astaroth__helpers_8h.html#a7a3c6c5712d3016ffdc3f0dba2f2de0a", null ],
-    [ "acFieldIsAuxiliary", "astaroth__helpers_8h.html#ab64aa42a117de2543a6d5a259530e8c3", null ],
+    [ "acFieldIsAuxiliary", "astaroth__helpers_8h.html#ad577d685fdb1191f34bb3b07e5ed1842", null ],
     [ "acGetFieldName", "astaroth__helpers_8h.html#af75184cc77327be7497c02d6ec859cd7", null ],
     [ "acGetGridMaxNN", "astaroth__helpers_8h.html#a9a0a4a3472a1d08bdc07972c173dc25e", null ],
     [ "acGetGridMM", "astaroth__helpers_8h.html#a9912cd95418ccd1c721dcd4c4b0c587e", null ],

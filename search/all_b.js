@@ -239,7 +239,7 @@ var searchData=
   ['acfftforwardtransformsymmetricr2c_236',['acFFTForwardTransformSymmetricR2C',['../ac__fft_8h.html#a60ac7badd6a8e10bd158609f3af30614',1,'ac_fft.h']]],
   ['acfftinit_237',['acFFTInit',['../ac__fft_8h.html#a19f0bfeb129911fbc1090727f011a98e',1,'ac_fft.h']]],
   ['acfftquit_238',['acFFTQuit',['../ac__fft_8h.html#abd575c60198344f9c50fd0df51fe2392',1,'ac_fft.h']]],
-  ['acfieldisauxiliary_239',['acFieldIsAuxiliary',['../astaroth__helpers_8h.html#ab64aa42a117de2543a6d5a259530e8c3',1,'astaroth_helpers.h']]],
+  ['acfieldisauxiliary_239',['acFieldIsAuxiliary',['../astaroth__helpers_8h.html#ad577d685fdb1191f34bb3b07e5ed1842',1,'astaroth_helpers.h']]],
   ['acfree_240',['acFree',['../astaroth__cuda__wrappers_8h.html#abc4e654a8d80f622c61ad23ac342299e',1,'astaroth_cuda_wrappers.h']]],
   ['acfreearrays_241',['acFreeArrays',['../acc__runtime_8h.html#af8622a7bea9af574bf25ab30d90646c0',1,'acc_runtime.h']]],
   ['acfreehost_242',['acFreeHost',['../astaroth__cuda__wrappers_8h.html#a021a00cdbf993bbc7a9026bac0b3bb78',1,'astaroth_cuda_wrappers.h']]],
