@@ -50,6 +50,11 @@ else()
 			CUDA_SEPARABLE_COMPILATION ON
 			CUDA_RESOLVE_DEVICE_SYMBOLS ON
 	)
+	if (NOT USE_HIP AND CPU_BUILD)
+          target_compile_options(kernels_obj PRIVATE
+             $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
+           )
+        endif()
 	target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
 	ac_link_mpi(kernels_obj)
 	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
@@ -131,9 +136,6 @@ if (USE_HIP)
     set_property(TARGET static_kernels PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 else()
     set_property(TARGET static_kernels PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
-    target_compile_options(kernels_obj PRIVATE
-       $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
-     )
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
