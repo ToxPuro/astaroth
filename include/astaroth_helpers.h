@@ -330,6 +330,10 @@ AcResult acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, Ac
 
 AcResult acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
+FUNC_DEFINE(const char*,acGetFieldName,(const Field field));
+/** Returns the number of fields (vertexbuffer handles). */
+FUNC_DEFINE(size_t, acGetNumFields,(void));
+
 AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus

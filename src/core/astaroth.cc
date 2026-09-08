@@ -274,6 +274,18 @@ acGetLengths(const AcMeshInfo info)
 	return info[AC_len];
 }
 
+const char*
+acGetFieldName(const Field field)
+{
+	return field_names[field];
+}
+
+size_t
+acGetNumFields(void)
+{
+    return NUM_VTXBUF_HANDLES;
+}
+
 
 #include "get_vtxbufs_funcs.h"
 #include "stencil_accesses.h"

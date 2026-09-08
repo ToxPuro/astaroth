@@ -74,11 +74,6 @@ acGetFieldHandle(const char* field, size_t* handle)
     return AC_FAILURE;
 }
 
-const char*
-acGetFieldName(const Field field)
-{
-	return field_names[field];
-}
 
 Node
 acGetNode(void)
@@ -95,11 +90,6 @@ acGetNumDevicesPerNode(void)
     return num_devices;
 }
 
-size_t
-acGetNumFields(void)
-{
-    return NUM_VTXBUF_HANDLES;
-}
 
 AcResult
 acInit(const AcMeshInfo mesh_info)
