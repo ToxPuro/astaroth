@@ -4283,7 +4283,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 		{
 			if(!written_fields[i + num_fields*kernel_index]) continue;
 	  		const char* name = get_symbol_by_index(NODE_VARIABLE_ID,i,FIELD_STR)->identifier;
-			astnode_sprintf_postfix(compound_statement,"vba.out[%s][idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
+			astnode_sprintf_postfix(compound_statement,"((AcReal*)vba.out[%s])[idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
 		}
 	}
 	if(func_calls_reduce(fn_name) && BUFFERED_REDUCTIONS && !has_block_loops(kernel_index))
