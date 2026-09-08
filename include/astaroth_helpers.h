@@ -346,7 +346,7 @@ FUNC_DEFINE(const char*,acGetFieldName,(const Field field));
 /** Returns the number of fields (vertexbuffer handles). */
 FUNC_DEFINE(size_t, acGetNumFields,(void));
 
-FUNC_DEFINE(const bool,acFieldIsAuxiliary,(const Field field));
+FUNC_DEFINE(bool,acFieldIsAuxiliary,(const Field field));
 
 AC_END_C_DECLARATIONS
 

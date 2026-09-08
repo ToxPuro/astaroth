@@ -2,6 +2,7 @@
 #define AC_LIB_H
 
 #include <dlfcn.h>
+#include <stdio.h>
 
 #include "acc_runtime.h"
 #include "func_define.h"
