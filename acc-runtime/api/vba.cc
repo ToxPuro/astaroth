@@ -239,8 +239,8 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     }
     else
     {
-    	acKernelFlush(stream, (AcReal*)vba->on_device.in[i], vba->counts[i], (float)0.0);
-    	acKernelFlush(stream, (AcReal*)vba->on_device.out[i], vba->counts[i], (float)0.0);
+    	acKernelFlush(stream, (AcReal*)vba->on_device.in[i], vba->counts[i], (AcReal)0.0);
+    	acKernelFlush(stream, (AcReal*)vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
     }
   }
 
