@@ -33,6 +33,24 @@ inline get_boundary(int3 normal)
 		     : vertexIdx.z;
 	return (int3){x,y,z}
 }
+
+elemental ac_copy_bc(AcBoundary boundary, Field f)
+{
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 ghost  = boundary_point
+	const int3 field_halos = ac_get_field_halos(f)
+	const int nghost_local = 
+			normal.x != 0 ? field_halos.x :
+			normal.y != 0 ? field_halos.y :
+			field_halos.z
+
+	for i in 0:nghost_local
+	{
+		ghost  = ghost  + normal
+		f[ghost.x][ghost.y][ghost.z] = f[boundary_point.x][boundary_point.y][boundary_point.z]
+	}
+}
 elemental ac_fixed_bc(AcBoundary boundary, Field f)
 {
 	const int3 normal = get_normal(boundary)
