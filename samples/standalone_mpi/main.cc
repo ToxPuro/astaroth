@@ -22,6 +22,7 @@
 /**
     Running: mpirun -np <num processes> <executable>
 */
+
 #if AC_MPI_ENABLED
 #include "astaroth.h"
 #include "astaroth_utils.h"
@@ -44,13 +45,33 @@
 
 #include "config_loader.h"
 #include "errchk.h"
+#ifndef PENCIL_A
 #include "host_forcing.cc"
+#endif
 //TP: not used anymore
 //#include "host_memory.h"
 #include "math_utils.h"
 
 #include "simulation_control.h"
 #include "simulation_rng.h"
+
+#ifdef PENCIL_A
+#define  VTXBUF_UUX UUX
+#define  VTXBUF_UUY UUY
+#define  VTXBUF_UUZ UUZ
+
+#define AC_calc_timestep AC_calculate_timestep
+#define AC_rhs_substep AC_rhs
+
+#define  VTXBUF_AX AAX
+#define  VTXBUF_AY AAY
+#define  VTXBUF_AZ AAZ
+#define  VTXBUF_LNRHO RHO
+#define  VTXBUF_SS F_SS
+#define SUBSTEP_NUMBER PC_SUB_STEP_NUMBER
+#else
+#define SUBSTEP_NUMBER AC_SUBSTEP_NUMBER
+#endif
 
 // TODO: allow selecting single our doublepass here?
 enum class Simulation { MHD , Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Bound_Test_Solve, Default = MHD};
@@ -227,18 +248,21 @@ print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
         fprintf(diag_file, "bb_total_min  bb_total_rms  bb_total_max  ");
         fprintf(diag_file, "vA_total_min  vA_total_rms  vA_total_max  ");
 #endif
-        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-            fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
-                    vtxbuf_names[i]);
+        for (size_t i = 0; i < acGetNumFields(); ++i) {
+	    const char* name = acGetFieldName(Field(i));
+            fprintf(diag_file, "%s_min  %s_rms  %s_max  ", name, name,
+                    name);
         }
 #if LSPECIAL_REDUCTIONS
-        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-            fprintf(diag_file, "%s_min_wl  %s_sum_wl  %s_max_wl  ", vtxbuf_names[i], vtxbuf_names[i],
-                    vtxbuf_names[i]);
+        for (size_t i = 0; i < acGetNumFields(); ++i) {
+	    const char* name = acGetFieldName(Field(i));
+            fprintf(diag_file, "%s_min_wl  %s_sum_wl  %s_max_wl  ", name, name,
+                    name);
         }
-        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-            fprintf(diag_file, "%s_min_wg  %s_sum_wg  %s_max_wg  ", vtxbuf_names[i], vtxbuf_names[i],
-                    vtxbuf_names[i]);
+        for (size_t i = 0; i < acGetNumFields(); ++i) {
+	    const char* name = acGetFieldName(Field(i));
+            fprintf(diag_file, "%s_min_wg  %s_sum_wg  %s_max_wg  ", name, name,
+                    name);
         }
 #endif
 
@@ -315,13 +339,14 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 #endif
 
     // Calculate rms, min and max from the variables as scalars
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    for (size_t i = 0; i < acGetNumFields(); ++i) {
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VertexBufferHandle(i), &buf_max);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
 
+	const char* name = acGetFieldName(Field(i));
         acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width,
-                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+                          name, double(buf_min), double(buf_rms), double(buf_max));
         if (pid == 0) {
             fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
         }
@@ -337,13 +362,14 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     // possible. As such, no concern for a default user. 
 
     // Calculate rms, min and max from the variables as scalars with windowing (TEST)
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    for (int i = 0; i < acGetNumFields(); ++i) {
+	const char* name = acGetFieldName(Field(i));
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MAX, VertexBufferHandle(i), &buf_max);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MIN, VertexBufferHandle(i), &buf_min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_SUM, VertexBufferHandle(i), &buf_rms);
 
         acLogFromRootProc(pid, "WINDOW LINEAR %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
-                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+                          name, double(buf_min), double(buf_rms), double(buf_max));
         if (pid == 0) {
             fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
         }
@@ -354,13 +380,14 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     }
 
     // Calculate rms, min and max from the variables as scalars with windowing (TEST)
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    for (int i = 0; i < acGetNumFields(); ++i) {
+	const char* name = acGetFieldName(Field(i));
         acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_MAX, VertexBufferHandle(i), &buf_max);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_MIN, VertexBufferHandle(i), &buf_min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_SUM, VertexBufferHandle(i), &buf_rms);
 
         acLogFromRootProc(pid, "WINDOW GAUSSIAN  %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
-                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+                          name, double(buf_min), double(buf_rms), double(buf_max));
         if (pid == 0) {
             fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
         }
@@ -398,9 +425,19 @@ calc_timestep(const AcMeshInfo info)
     //TP: for backwards compatible scheme where timestep is calculated independently of the time integration
     //TP: otherwise calculated alongside the time integration
     //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
+#ifdef PENCIL_A
+    if(info[AC_ldt__mod__cdata])
+    {
+      return 1.0/acDeviceGetOutput(acGridGetDevice(),AC_dt1_max);
+    }
+    else
+    {
+	    return info[AC_dt0];
+    }
+#else
     if(info[AC_additive_timestep])
     {
-    	return acDeviceGetOutput(acGridGetDevice(),AC_dt_min);
+      return acDeviceGetOutput(acGridGetDevice(),AC_dt_min);
     }
     //TP: old way to do it: requires consider more reductions than the additive method but can be useful when portin code that uses the maximum formulation
     else
@@ -441,6 +478,7 @@ calc_timestep(const AcMeshInfo info)
     	ERRCHK_ALWAYS(is_valid((AcReal)dt));
     	return AcReal(dt);
     }
+#endif
 }
 
 void
@@ -481,7 +519,7 @@ dryrun(void)
     const int num_substeps = 3;
     for(int substep = 0; substep < num_substeps;  ++substep)
     {
-	    acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
+	    acDeviceSetInput(acGridGetDevice(),AC_step_num,(SUBSTEP_NUMBER)substep);
     	    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
 
     }
@@ -529,7 +567,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 //#endif
     //};
     std::vector<Field> io_fields{};
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+    for (size_t i = 0; i < acGetNumFields(); i++) {
 	if(vtxbuf_is_auxiliary[i]) continue;
         io_fields.push_back(Field(i));
     }
@@ -633,7 +671,7 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
     const size_t num_io_fields = ARRAY_SIZE(io_fields);
     **/
     std::vector<Field> io_fields{};
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+    for (size_t i = 0; i < acGetNumFields(); i++) {
 	if(vtxbuf_is_auxiliary[i]) continue;
         io_fields.push_back(Field(i));
     }
@@ -1008,7 +1046,11 @@ load_config_file(const char* config_path)
 void
 ac_runtime_compile(const AcMeshInfo info)
 {
-    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF"
+#ifdef PENCIL_A
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF -DDSL_MODULE_FILE=solve.ac -DALLOW_DEAD_VARIABLES=ON -DOPTIMIZE_FIELDS=ON -DMAX_THREADS_PER_BLOCK=512 -DUSE_ONLY_OPTIMIZED_KERNELS=ON -DOPTIMIZE_ARRAYS=ON"
+#else
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF -DMAX_THREADS_PER_BLOCK=512"
+#endif
 	    		    ;
     acCompile(build_str,info);
     acLoadLibrary(stdout,info);
@@ -1171,7 +1213,7 @@ initialize_mesh(const AcMeshInfo info, const CommandLineArguments cmdline_args, 
         acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
         // Ad haatouken!
 #if !LMULTIFLUID
-        acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
+        //acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
 #endif
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
@@ -1185,7 +1227,7 @@ initialize_mesh(const AcMeshInfo info, const CommandLineArguments cmdline_args, 
         acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
         //acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
 #if !LMULTIFLUID
-        acGridLaunchKernel(STREAM_DEFAULT, radial_vec_initcond, dims.n0, dims.n1);
+        //acGridLaunchKernel(STREAM_DEFAULT, radial_vec_initcond, dims.n0, dims.n1);
 #endif
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
@@ -1265,7 +1307,9 @@ main(int argc, char** argv)
     AcMeshInfo info = load_config_file(cmdline_args.config_path);
     if(AC_RUNTIME_COMPILATION) ac_runtime_compile(info);
 
+#ifndef PENCIL_A
     ForcingInit(info);
+#endif
 
     //////////////////////////////
     // Output run configuration //
@@ -1407,7 +1451,14 @@ main(int argc, char** argv)
                                                                         AC_max_time);
 
     //TP: calc initial timestep
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
+    {
+      acDeviceSetInput(acGridGetDevice(), AC_step_num, (SUBSTEP_NUMBER) 0);
+      acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
+#ifdef PENCIL_A
+      acGridSynchronizeStream(STREAM_ALL);
+      acDeviceSwapBuffers(acGridGetDevice());
+#endif
+    }
 
     //TP: This is important since by default output buffers are NaNs
     //    so when in rk3 one reads them with call of previous all outputs will
@@ -1444,6 +1495,7 @@ main(int argc, char** argv)
             acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
             set_event(&events, SimulationEvent::NanDetected);
         }
+#ifndef PENCIL_A
 	if(info[AC_lforcing])
 	{
           log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing "
@@ -1452,6 +1504,7 @@ main(int argc, char** argv)
           // printForcingParams(forcing_params);
           loadForcingParamsToGrid(forcing_params);
 	}
+#endif
     }
     else if (pid == 0) {
         // add newline to old diag_file from previous run
@@ -1481,7 +1534,14 @@ main(int argc, char** argv)
 	
 	if(!info[AC_timestep_calc_with_rhs])
 	{
-        	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
+    		{
+    		  acDeviceSetInput(acGridGetDevice(), AC_step_num, (SUBSTEP_NUMBER) 0);
+    		  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
+#ifdef PENCIL_A
+    		  acGridSynchronizeStream(STREAM_ALL);
+    		  acDeviceSwapBuffers(acGridGetDevice());
+#endif
+    		}
 	}
         const AcReal dt = calc_timestep(info);
         debug_log_from_root_proc_with_sim_progress(pid, "Done calculating time delta, dt = %e\n",
@@ -1564,6 +1624,7 @@ main(int argc, char** argv)
         	    write_slices(pid, i, simulation_time);
                     break;
                 }
+#ifndef PENCIL_A
                 case PeriodicAction::GenerateForcing: {
                     log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new "
                                                               "forcing parameters\n");
@@ -1572,6 +1633,7 @@ main(int argc, char** argv)
                     loadForcingParamsToGrid(forcing_params);
                     break;
                 }
+#endif
                 default:
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Unsupported periodic action pre sim "
@@ -1619,7 +1681,7 @@ main(int argc, char** argv)
 	const int num_substeps = 3;
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
-    	        acDeviceSetInput(acGridGetDevice(),AC_SUBSTEP,(AC_SUBSTEP_NUMBER)substep);
+    	        acDeviceSetInput(acGridGetDevice(),AC_step_num,(SUBSTEP_NUMBER)substep);
     		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
     	}
         simulation_time += dt;
