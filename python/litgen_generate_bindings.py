@@ -1,17 +1,36 @@
 #!/usr/bin/env python
 
 import argparse
+import itertools
 import re
+import shutil
+import sys
 import tempfile
+from collections.abc import Iterable
 from pathlib import Path
 
 import litgen
+import srcmlcpp
 from codemanip import code_utils
 from codemanip.amalgamated_header import (
     write_amalgamate_header_file,
     AmalgamationOptions,
 )
 from codemanip.code_replacements import RegexReplacementList
+
+
+FUNC_DEFINE_PATTERN: str = (
+    r"FUNC_DEFINE\s*\(([\w\s\*]+)\s*,\s*([\w]+)\s*,\s*\(([\w\s\*,\[\]\(\)]*)\)\)"
+)
+OVERLOADED_FUNC_DEFINE_PATTERN: str = r"OVERLOADED_FUNC_DEFINE\s*\(([\w\s\*]+)\s*,\s*([\w]+)\s*,\s*\(([\w\s\*,\[\]\(\)]*)\)\)"
+
+FUNC_DEFINE_RE = re.compile(FUNC_DEFINE_PATTERN, re.MULTILINE)
+OVERLOADED_FUNC_DEFINE_RE = re.compile(OVERLOADED_FUNC_DEFINE_PATTERN, re.MULTILINE)
+
+
+force_lambda_funcs = [
+    "^acGetOptimizedDSLTaskGraph$",
+]
 
 
 def get_litgen_options() -> litgen.LitgenOptions:
@@ -43,6 +62,17 @@ def get_litgen_options() -> litgen.LitgenOptions:
     def code_preprocess(code: str) -> str:
         regex: RegexReplacementList = RegexReplacementList()
 
+        def collect_func_define_functions() -> Iterable[str]:
+            return map(
+                lambda m: rf"{m.group(2)}",
+                itertools.chain(
+                    re.finditer(FUNC_DEFINE_RE, code),
+                    re.finditer(OVERLOADED_FUNC_DEFINE_RE, code),
+                ),
+            )
+
+        force_lambda_funcs.extend(collect_func_define_functions())
+
         #
         # Macros
         #
@@ -51,6 +81,17 @@ def get_litgen_options() -> litgen.LitgenOptions:
             r"[^ a-z]AC_(BEGIN|END)_C_DECLARATIONS[^;]",
             r"AC_\1_C_DECLARATIONS;",
         )
+
+        # Add extra blank lines around #ifdef __cplusplus
+        # regex.add_replacement(
+        #     r"#ifdef __cplusplus",
+        #     "\n#ifdef __cplusplus\n",
+        # )
+        #
+        # regex.add_replacement(
+        #     r"#endif",
+        #     "\n#endif\n",
+        # )
 
         #
         # Types
@@ -61,7 +102,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         # "enum <type> { ... };"
         regex.add_replacement(
             r"typedef\s+enum[\s\w]*\{((?s:.*?))\}\s*(\w+)\s*;",
-            r"enum \2 {\1};",
+            r"enum \2 {\1};\n",
         )
 
         # "typedef struct { ... } <type>;"
@@ -69,7 +110,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         # "struct <type> { ... };"
         regex.add_replacement(
             r"typedef\s+struct\s*\w*\s*{((?s:.*?))}\s*(\w+)\s*;",
-            r"struct \2 {\1};",
+            r"struct \2 {\1};;\n",
         )
 
         # "typedef union { ... } <type>;"
@@ -77,7 +118,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         # "union <type> { ... };"
         regex.add_replacement(
             r"typedef\s+union\s*\w*\s*{((?s:.*?))}\s*(\w+)\s*;",
-            r"union \2 {\1};",
+            r"union \2 {\1};\n",
         )
 
         # "typedef <type> <alias>;"
@@ -85,7 +126,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         # "using <alias> = <type>;"
         regex.add_replacement(
             r"typedef\s([\w\s*]+)\s\b(\w+);",
-            r"using \2 = \1;",
+            r"using \2 = \1;\n",
         )
 
         # Opaque structs (forward declarations)
@@ -105,7 +146,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         #   into
         # "<return_type> <func_name> <func_params>"
         regex.add_replacement(
-            r"OVERLOADED_FUNC_DEFINE\s*\(([\w\s\*]+)\s*,\s*([\w]+)\s*,\s*\(([\w\s\*,\[\]\(\)]*)\)\)",
+            OVERLOADED_FUNC_DEFINE_PATTERN,
             r"\1 \2_BASE(\3)",
         )
 
@@ -113,15 +154,15 @@ def get_litgen_options() -> litgen.LitgenOptions:
         #   into
         # "<return_type> <func_name> <func_params>"
         regex.add_replacement(
-            r"FUNC_DEFINE\s*\(([\w\s\*]+)\s*,\s*([\w]+)\s*,\s*\(([\w\s\*,\[\]\(\)]*)\)\)",
+            FUNC_DEFINE_PATTERN,
             r"\1 \2(\3)",
         )
 
         # FIXME: This is only temporary to make the binding work
-        regex.add_replacement(
-            r"static\s+AcTaskGraph\*\s+acGetOptimizedDSLTaskGraph",
-            r"static void *\nacGetOptimizedDSLTaskGraph",
-        )
+        # regex.add_replacement(
+        #     r"static\s+AcTaskGraph\*\s+acGetOptimizedDSLTaskGraph",
+        #     r"static void *\nacGetOptimizedDSLTaskGraph",
+        # )
 
         #
         # Qualifiers
@@ -136,7 +177,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         )
 
         regex.add_replacement(
-            r"__attribute__\(\(unused\)\)",
+            r"__attribute__\(\(unused\)\)|\[\[maybe_unused\]\]",
             r"",
         )
 
@@ -165,10 +206,11 @@ def get_litgen_options() -> litgen.LitgenOptions:
             # FIXME: Struggles with templates.
             r"^AS_SIZE_T$",
             r"^ceil",
-            r"^acDevice",
+            # r"^acDevice", # Re-enabled!
             r"^acConstruct.+Param$",
             # FIXME: Cannot use double (or more) pointers in parameters.
             r"^acMalloc|acLaunchCooperativeKernel|acHostMeshDestroyVertexBuffer",
+            r"acDeviceGetVertexBufferPtrs",
             # FIXME: Cannot return double (or more) pointers from functions.
             r"^ac_allocate_scratchpad_real|ac_allocate_scratchpad_int|ac_allocate_scratchpad_float$",
             ".*allocate_scratchpad.*",
@@ -180,7 +222,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
             ".*LoadStencil",
             ".*StoreStencil",
             # FIXME: Getting this error from nanobind -> error: invalid use of incomplete type ”struct ompi_communicator_t”
-            "acGridMPIComm",
+            # "acGridMPIComm",
             # FIXME: no match for call to ....
             "acCompute",
             "acHaloExchange",
@@ -191,6 +233,10 @@ def get_litgen_options() -> litgen.LitgenOptions:
             # FIXME For some reason these struggles with overloads when RUNTIME_COMPILATION=ON
             "acScan",
             "acRayUpdate",
+            # FIXME: char* parameters (without const) do not get bound
+            # correctly. How to handle preallocated strings? Returned items
+            # in Python are always allocated on the heap.
+            "acDeviceGetPCIBusId",
             # Bound manually
             "acCommunicator.*",
         ]
@@ -213,10 +259,10 @@ def get_litgen_options() -> litgen.LitgenOptions:
             # added support for.
             r"VertexBufferArray",
             # FIXME: error: invalid use of incomplete type
-            r"AcTaskGraph",
-            r"Node",
-            r"const Node",
-            r"Device",
+            # r"AcTaskGraph",
+            # r"Node",
+            # r"const Node",
+            # r"Device",
             # FIXME: Struct/classes with const members do not have a default constructor.
             "ParamLoadingInfo",
             # asd
@@ -242,12 +288,7 @@ def get_litgen_options() -> litgen.LitgenOptions:
         return False
 
     def fn_force_lambda(code) -> bool:
-        functions = [
-            "acGetOptimizedDSLTaskGraph",
-            #"acDeviceCreate",
-        ]
-
-        for func in functions:
+        for func in force_lambda_funcs:
             if func in code:
                 return True
 
@@ -261,6 +302,23 @@ def get_litgen_options() -> litgen.LitgenOptions:
 
         for func in functions:
             if func in code:
+                return True
+
+        return False
+
+    def fn_encapsulate_incomplete_types(code) -> bool:
+        incomplete_types = [
+            r"^AcTaskGraph\s+\*$",
+            r"(const)*\s*Device|Device\s+\*$",
+            r"(const)*\s*Node|Node\s+\*$",
+            r"MPI_Comm",
+            # Specific for CUDA-compilation
+            # r"(const)*\s*cudaStream_t\s*\**$",
+            # r"(const)*\s*cudaEvent_t\s*\**$",
+        ]
+
+        for pattern in incomplete_types:
+            if re.match(pattern, code):
                 return True
 
         return False
@@ -316,29 +374,10 @@ def get_litgen_options() -> litgen.LitgenOptions:
 
         return False
 
-    def header_filter_acceptable(code: str) -> bool:
-        _default = r"__cplusplus|_h_$|_h$|_H$|_H_$|hpp$|HPP$|hxx$|HXX$"
-        if re.match(_default, code):
-            return True
-
-        custom = [
-            r"^AC_CPU_BUILD$",
-            r"^AC_MPI_ENABLED$",
-            r"^AC_RUNTIME_COMPILATION$",
-            r"^AC_BEGIN_C_DECLARATIONS$",
-            r"^AC_END_C_DECLARATIONS$",
-        ]
-        for pattern in custom:
-            if re.match(pattern, code):
-                return True
-
-        return False
-
     options: litgen.LitgenOptions = litgen.LitgenOptions()
 
     options.bind_library = litgen.BindLibraryType.nanobind
     options.namespaces_root = ["ac"]
-    # options.python_run_black_formatter = True
 
     # Names translation from C++ to Python
     options.python_convert_to_snake_case = True
@@ -389,6 +428,8 @@ def get_litgen_options() -> litgen.LitgenOptions:
 
     # Force using py::overload for functions that matches these regexes
     options.fn_force_overload__regex = fn_force_overload
+
+    options.fn_encapsulate_incomplete_types__regex = fn_encapsulate_incomplete_types
 
     # Adapt class members
     options.member_numeric_c_array_types = code_utils.join_string_by_pipe_char(
@@ -459,15 +500,27 @@ def main() -> None:
     )
 
     parser.add_argument(
-        "output_cpp_pydef_file",
+        "pydef_file_in",
         type=Path,
-        metavar="OUT_PYDEF",
+        metavar="PYDEF_INPUT",
         help="",
     )
     parser.add_argument(
-        "output_stub_pyi_file",
+        "stubs_file_in",
         type=Path,
-        metavar="OUT_STUBS_PYI",
+        metavar="STUBS_INPUT",
+        help="",
+    )
+    parser.add_argument(
+        "pydef_file_out",
+        type=Path,
+        metavar="PYDEF_OUTPUT",
+        help="",
+    )
+    parser.add_argument(
+        "stubs_file_out",
+        type=Path,
+        metavar="STUBS_OUTPUT",
         help="",
     )
     parser.add_argument(
@@ -489,11 +542,30 @@ def main() -> None:
         metavar="INCLUDE_DIRS",
         help="",
     )
+    parser.add_argument(
+        "--dump-processed-header",
+        action="store_true",
+        help="",
+    )
 
     args = parser.parse_args()
 
-    if args.amalgamate:
-        with tempfile.TemporaryDirectory(prefix="litgen", delete=False) as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="litgen", delete=True) as temp_dir:
+        temp_pydef_file: Path = Path(temp_dir, args.pydef_file_out.name)
+        temp_stubs_file: Path = Path(temp_dir, args.stubs_file_out.name)
+
+        try:
+            shutil.copyfile(args.pydef_file_in, temp_pydef_file)
+            shutil.copyfile(args.stubs_file_in, temp_stubs_file)
+        except Exception as err:
+            print(
+                f"There was a problem while preparing input files for generating bindings: {err}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        main_header_file: Path = args.main_header_file
+        if args.amalgamate:
             amalgamated_header: Path = Path(temp_dir, args.main_header_file.name)
 
             write_amalgamate_header_file(
@@ -505,19 +577,34 @@ def main() -> None:
                 )
             )
 
-            litgen.write_generated_code_for_files(
-                options=get_litgen_options(),
-                input_cpp_header_files=[str(amalgamated_header)],
-                output_cpp_pydef_file=str(args.output_cpp_pydef_file),
-                output_stub_pyi_file=str(args.output_stub_pyi_file),
-            )
-    else:
+            main_header_file = amalgamated_header
+
+        litgen_options: litgen.LitgenOptions = get_litgen_options()
+        if args.dump_processed_header:
+            with open(main_header_file, "r") as f:
+                cpp_unit = srcmlcpp.code_to_cpp_unit(
+                    litgen_options.srcmlcpp_options, f.read()
+                )
+            temp_processed_header: Path = Path(temp_dir, "processed_header.h")
+            with open(temp_processed_header, "w") as f:
+                f.write(cpp_unit.str_code())
+
         litgen.write_generated_code_for_files(
-            options=get_litgen_options(),
-            input_cpp_header_files=[str(args.main_header_file)],
-            output_cpp_pydef_file=str(args.output_cpp_pydef_file),
-            output_stub_pyi_file=str(args.output_stub_pyi_file),
+            options=litgen_options,
+            input_cpp_header_files=[str(main_header_file)],
+            output_cpp_pydef_file=str(temp_pydef_file),
+            output_stub_pyi_file=str(temp_stubs_file),
         )
+
+        try:
+            shutil.copyfile(temp_pydef_file, args.pydef_file_out)
+            shutil.copyfile(temp_stubs_file, args.stubs_file_out)
+        except Exception as err:
+            print(
+                f"There was a problem while copying the generated bindings into the output location: {err}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@
 #include <mpi4py/mpi4py.h>
 
 #include "astaroth.h"
-// #include "astaroth_utils.h"
+#include "astaroth_utils.h"
 
 namespace nb = nanobind;
 
@@ -61,6 +61,8 @@ MPI_Comm py_comm_to_cxx_comm(nb::object py_comm) {
 
 NB_MODULE(astaroth, m)
 {
+    nb::set_leak_warnings(false);
+
     // Initialize the mpi4py C API
     if (import_mpi4py() < 0) {
         throw nb::python_error();

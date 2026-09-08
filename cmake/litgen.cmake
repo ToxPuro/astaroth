@@ -67,52 +67,112 @@ When building via CMake, you may have to specify Python_EXECUTABLE via
 
 function(litgen_generate_bindings
          target
+         input_pydef
+         input_stubs
+         header_file
+         output_dir
 )
     set(options AMALGAMATE)
-    set(oneValueArgs PYDEF_FILE STUBS_FILE BASE_DIR HEADER_FILE)
-    set(multiValueArgs INCLUDE_DIRECTORIES)
+    set(oneValueArgs BASE_DIR)
+    set(multiValueArgs INCLUDE_DIRECTORIES DEPENDENCIES)
     cmake_parse_arguments(PARSE_ARGV 1 arg
         "${options}" "${oneValueArgs}" "${multiValueArgs}"
     )
 
-    set(_litgen_generator "${CMAKE_SOURCE_DIR}/python/litgen_generate_bindings.py")
-    set(_litgen_target_msg "Generating C++ polyfil and Python stubs for Python bindings using litgen for target ${target}")
+    set(litgen_generator "${CMAKE_SOURCE_DIR}/python/litgen_generate_bindings.py")
+    set(litgen_target_msg "Generating C++ bindings and Python stubs using litgen for target ${target}")
     list(JOIN arg_INCLUDE_DIRECTORIES " " INCLUDE_DIRECTORIES)
 
+    cmake_path(GET input_pydef STEM module_name)
+
+    set(${target}_pydef "${output_dir}/pydef/${module_name}.cc")
+    set(${target}_stubs "${output_dir}/stubs/${module_name}.pyi")
+
+    set(output_pydef_in "${${target}_pydef}.in")
+    set(output_stubs_in "${${target}_stubs}.in")
+
+    configure_file("${input_pydef}" "${output_pydef_in}" COPYONLY)
+    configure_file("${input_stubs}" "${output_stubs_in}" COPYONLY)
+
     if(arg_AMALGAMATE)
-        add_custom_target(
-            ${target}
+        add_custom_command(
+            OUTPUT
+                ${${target}_pydef}
+                ${${target}_stubs}
             COMMAND
                 ${Python3_Executable}
-                ${_litgen_generator}
+                ${litgen_generator}
                 --amalgamate
-                ${arg_PYDEF_FILE}
-                ${arg_STUBS_FILE}
+                ${output_pydef_in}
+                ${output_stubs_in}
+                ${${target}_pydef}
+                ${${target}_stubs}
                 ${arg_BASE_DIR}
-                ${arg_HEADER_FILE}
+                ${header_file}
                 ${INCLUDE_DIRECTORIES}
             WORKING_DIRECTORY
-                ${CMAKE_SOURCE_DIR}
+                ${arg_BASE_DIR}
             COMMENT
-                ${_litgen_target_msg}
+                ${litgen_target_msg}
+            DEPENDS
+                ${arg_DEPENDENCIES}
+                ${litgen_generator}
         )
     else()
-        add_custom_target(
-            ${target}
+        add_custom_command(
+            OUTPUT
+                ${${target}_pydef}
+                ${${target}_stubs}
             COMMAND
                 ${Python3_Executable}
-                ${_litgen_generator}
-                ${arg_PYDEF_FILE}
-                ${arg_STUBS_FILE}
+                ${litgen_generator}
+                ${output_pydef_in}
+                ${output_stubs_in}
+                ${${target}_pydef}
+                ${${target}_stubs}
                 ${arg_BASE_DIR}
-                ${arg_HEADER_FILE}
+                ${header_file}
             WORKING_DIRECTORY
-                ${CMAKE_SOURCE_DIR}
+                ${arg_BASE_DIR}
             COMMENT
-                ${_litgen_target_msg}
+                ${litgen_target_msg}
+            DEPENDS
+                ${arg_DEPENDENCIES}
+                ${litgen_generator}
         )
     endif()
 
+    foreach(dir ${INCLUDE_DIRECTORIES})
+        file(
+            GLOB
+            _globbed_headers
+            LIST_DIRECTORIES false
+            CONFIGURE_DEPENDS
+            "${dir}/*.h")
+
+        foreach(header ${_globbed_headers})
+            add_custom_command(
+                OUTPUT
+                    ${${target}_pydef}
+                    ${${target}_stubs}
+                APPEND
+                DEPENDS
+                    ${header}
+                    ${litgen_generator}
+            )
+        endforeach()
+    endforeach()
+
+    add_custom_target(
+        ${target}
+        ALL
+        DEPENDS
+            ${${target}_pydef}
+            ${${target}_stubs}
+    )
+
+    set(${target}_pydef "${${target}_pydef}" PARENT_SCOPE)
+    set(${target}_stubs "${${target}_stubs}" PARENT_SCOPE)
 endfunction()
 
 function(litgen_setup_module
@@ -120,7 +180,7 @@ function(litgen_setup_module
          bound_library             #  name of the C++ for which we build bindings ("foolib")
          python_native_module_name #  name of the native python module that provides bindings (for example "_foolib")
          python_module_name        #  name of the standard python module that will import the native module (for example "foolib")
-         editable_bindings_folder  # path to the folder containing the python bindings for editable mode (for example "_stubs/")
+         # editable_bindings_folder  # path to the folder containing the python bindings for editable mode (for example "_stubs/")
 )
     target_link_libraries(${python_native_module_name} PRIVATE ${bound_library})
 
@@ -132,44 +192,44 @@ function(litgen_setup_module
             ${python_module_name}
     )
 
-    if (NOT SKBUILD)
-        # If we are **not** building with skbuild, it means that we are **not** building a wheel for pipy or conda.
-        #
-        # Instead, we are building as a standard C++ project: in this case, we want to deploy our compiled module
-        # so that it is used by our next runs of python.
-        #
-        # We will copy it into two different locations, to cover all cases:
-        # - 1. ${editable_bindings_folder}: the user selected binding folder
-        #      (if the user did *manually* prepend it to his python path)
-        # - 2. ${Python_SITEARCH}: the platform dependent installation directory
-        #      (site-packages when using pip install)
-
-        # 1. Copy the python module to editable_bindings_folder
-        set(bindings_module_folder ${editable_bindings_folder}/${python_module_name})
-        set(python_native_module_editable_location ${bindings_module_folder}/$<TARGET_FILE_NAME:${python_native_module_name}>)
-
-        string(REPLACE "/" "_" python_module_name_sanitized ${python_module_name})
-        add_custom_target(
-            ${python_module_name_sanitized}_${python_native_module_name}_deploy_editable
-            ALL
-            COMMAND
-                ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${python_native_module_name}> ${python_native_module_editable_location}
-            DEPENDS
-                ${python_native_module_name}
-        )
-
-        # 2. Copy the python module to the platform dependent installation directory (site-packages when using pip install)
-        # We'll rely on find_package(Python) which fills Python_SITEARCH, which is where we want to copy the module
-        litgen_find_python()  # will call find_package(Python) and set Python_SITEARCH
-        set(python_native_module_editable_location_site_packages ${Python_SITEARCH}/${python_module_name}/$<TARGET_FILE_NAME:${python_native_module_name}>)
-        add_custom_target(
-            ${python_module_name_sanitized}_${python_native_module_name}_deploy_editable_site_packages
-            ALL
-            COMMAND
-                ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${python_native_module_name}> ${python_native_module_editable_location_site_packages}
-            DEPENDS
-                ${python_native_module_name}
-        )
-        message(STATUS "litgen_setup_module: python native module will be copied to ${python_native_module_editable_location_site_packages}")
-    endif(NOT SKBUILD)
+    # if (NOT SKBUILD)
+    #     # If we are **not** building with skbuild, it means that we are **not** building a wheel for pipy or conda.
+    #     #
+    #     # Instead, we are building as a standard C++ project: in this case, we want to deploy our compiled module
+    #     # so that it is used by our next runs of python.
+    #     #
+    #     # We will copy it into two different locations, to cover all cases:
+    #     # - 1. ${editable_bindings_folder}: the user selected binding folder
+    #     #      (if the user did *manually* prepend it to his python path)
+    #     # - 2. ${Python_SITEARCH}: the platform dependent installation directory
+    #     #      (site-packages when using pip install)
+    #
+    #     # 1. Copy the python module to editable_bindings_folder
+    #     set(bindings_module_folder ${editable_bindings_folder}/${python_module_name})
+    #     set(python_native_module_editable_location ${bindings_module_folder}/$<TARGET_FILE_NAME:${python_native_module_name}>)
+    #
+    #     string(REPLACE "/" "_" python_module_name_sanitized ${python_module_name})
+    #     add_custom_target(
+    #         ${python_module_name_sanitized}_${python_native_module_name}_deploy_editable
+    #         ALL
+    #         COMMAND
+    #             ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${python_native_module_name}> ${python_native_module_editable_location}
+    #         DEPENDS
+    #             ${python_native_module_name}
+    #     )
+    #
+    #     # 2. Copy the python module to the platform dependent installation directory (site-packages when using pip install)
+    #     # We'll rely on find_package(Python) which fills Python_SITEARCH, which is where we want to copy the module
+    #     litgen_find_python()  # will call find_package(Python) and set Python_SITEARCH
+    #     set(python_native_module_editable_location_site_packages ${Python_SITEARCH}/${python_module_name}/$<TARGET_FILE_NAME:${python_native_module_name}>)
+    #     add_custom_target(
+    #         ${python_module_name_sanitized}_${python_native_module_name}_deploy_editable_site_packages
+    #         ALL
+    #         COMMAND
+    #             ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${python_native_module_name}> ${python_native_module_editable_location_site_packages}
+    #         DEPENDS
+    #             ${python_native_module_name}
+    #     )
+    #     message(STATUS "litgen_setup_module: python native module will be copied to ${python_native_module_editable_location_site_packages}")
+    # endif(NOT SKBUILD)
 endfunction()
