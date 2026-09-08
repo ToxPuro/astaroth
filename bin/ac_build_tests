@@ -1,12 +1,17 @@
-#!/bin/bash 
+#!/bin/bash
 TEST_DIR=$PWD
 parallel=0
 cpu_build=OFF
 no_clean=0
+cmake_serial=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --parallel)
             parallel=1
+            shift
+            ;;
+        --cmake-serial)
+            cmake_serial=1
             shift
             ;;
         --cpu)
@@ -24,6 +29,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 export AC_CPU_BUILD=$cpu_build
+if [ ${cmake_serial} -eq 1 ]; then
+    export CMAKE_BUILD_PARALLEL_LEVEL=1
+else
+    export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
+fi
 
 build_project() {
     local dir="$1"

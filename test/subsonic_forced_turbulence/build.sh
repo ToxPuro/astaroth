@@ -54,5 +54,5 @@ echo "Compiling..."
 
 # Standard compilation
 
-cmake --build build -j
+cmake --build build
 

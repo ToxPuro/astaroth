@@ -5,4 +5,4 @@ set -euo pipefail
 IFS=$'\n\t'
 
 cmake -S $AC_HOME -B build -DCMAKE_BUILD_TYPE=Release -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DRUNTIME_COMPILATION=OFF -DALLOW_DEAD_VARIABLES=ON -DBUILD_TESTS=ON -DDSL_MODULE_DIR=test/integration-test/DSL
-cmake --build build -t integration-test -j
+cmake --build build -t integration-test
