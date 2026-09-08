@@ -171,6 +171,159 @@ parse_3d_array(const char* value,
 }
 
 static bool
+parse_1d_array(const char* value,
+               AcReal* values,
+               size_t& dim0)
+{
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    size_t counter = 0;
+
+    while (*p != '\0' && *p != ']') {
+        char* end;
+        const double val = strtod(p, &end);
+
+        if (end == p)
+            return false;
+
+        values[counter++] = (AcReal)val;
+        p = end;
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (counter == 0)
+        return false;
+
+    dim0 = counter;
+
+    return true;
+}
+
+static bool
+parse_1d_array(const char* value,
+               int* values,
+               size_t& dim0)
+{
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    size_t counter = 0;
+
+    while (*p != '\0' && *p != ']') {
+        char* end;
+        const int val = (int)strtol(p, &end,0);
+
+        if (end == p)
+            return false;
+
+        values[counter++] = (int)val;
+        p = end;
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (counter == 0)
+        return false;
+
+    dim0 = counter;
+
+    return true;
+}
+
+static bool
+parse_1d_array(const char* value,
+               bool* values,
+               size_t& dim0)
+{
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    size_t counter = 0;
+
+    while (*p != '\0' && *p != ']') {
+        char* end;
+        const bool val = (bool)strtol(p, &end,0);
+
+        if (end == p)
+            return false;
+
+        values[counter++] = (bool)val;
+        p = end;
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (counter == 0)
+        return false;
+
+    dim0 = counter;
+
+    return true;
+}
+
+static bool
 parse_2d_array(const char* value,
                AcReal* values,
                size_t& dim0,
@@ -825,7 +978,30 @@ parse_intparam(const char* value)
 		const auto size = (is_comp) ? \
 				get_array_length((Ac##UP_NAME##CompArrayParam)idx,*config) :\
 				get_array_length((Ac##UP_NAME##ArrayParam)idx,*config); \
-		if(rank == 2) \
+		if(rank == 1) \
+		{ \
+			size_t dim0 = 0; \
+			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
+			parse_1d_array(value,dst,dim0); \
+			if(dim0 != (size_t)size) \
+			{ \
+                          fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %zu: SKIPPING\n",array_vals.size(),keyword,size); \
+			} \
+			else if(is_comp) \
+			{ \
+				if constexpr (NUM_##UPPER_CASE##_COMP_ARRAYS > 0) \
+				{ \
+				config->run_consts.config.LOWER_CASE##_arrays[idx] = dst; \
+				config->run_consts.is_loaded.LOWER_CASE##_arrays[idx] = true; \
+				} \
+			} \
+			else \
+			{ \
+				if constexpr (NUM_##UPPER_CASE##_ARRAYS > 0) \
+					config->LOWER_CASE##_arrays[idx] = dst; \
+			} \
+		} \
+		else if(rank == 2) \
 		{ \
 			size_t dim0,dim1; \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
@@ -849,29 +1025,6 @@ parse_intparam(const char* value)
 			size_t dim0,dim1,dim2; \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
 			parse_3d_array(value,dst,dim0,dim1,dim2); \
-			if(is_comp) \
-			{ \
-				if constexpr (NUM_##UPPER_CASE##_COMP_ARRAYS > 0) \
-				{ \
-				config->run_consts.config.LOWER_CASE##_arrays[idx] = dst; \
-				config->run_consts.is_loaded.LOWER_CASE##_arrays[idx] = true; \
-				} \
-			} \
-			else \
-			{ \
-				if constexpr (NUM_##UPPER_CASE##_ARRAYS > 0) \
-					config->LOWER_CASE##_arrays[idx] = dst; \
-			} \
-		} \
-		else if(array_vals.size() != (size_t)size) \
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %zu: SKIPPING\n",array_vals.size(),keyword,size); \
-		else \
-		{ \
-			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size);\
-			for(size_t i = 0; i < size; ++i) \
-			{ \
-				dst[i] = parse_##LOWER_CASE##param(array_vals[i].c_str()); \
-			} \
 			if(is_comp) \
 			{ \
 				if constexpr (NUM_##UPPER_CASE##_COMP_ARRAYS > 0) \
