@@ -131,6 +131,9 @@ if (USE_HIP)
     set_property(TARGET static_kernels PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 else()
     set_property(TARGET static_kernels PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+    target_compile_options(kernels_obj PRIVATE
+       $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
+     )
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -10411,7 +10411,7 @@ add_casts(ASTNode* node)
 			const char* expr = get_expr_type(node);
 			if(strstr(expr,"AcArray"))
 			{
-				astnode_sprintf_prefix(node,"(%s) %s",expr,node->prefix);
+				astnode_sprintf_prefix(node,"%s %s",expr,node->prefix);
 			}
 		}
 	}
