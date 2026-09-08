@@ -1034,7 +1034,8 @@ parse_intparam(const char* value)
 		} \
 		else if(rank == 2) \
 		{ \
-			size_t dim0,dim1; \
+			size_t dim0=0; \
+			size_t dim1=0; \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
 			parse_2d_array(value,dst,dim0,dim1,size); \
 			if(dim0*dim1 != (size_t)size) \
@@ -1057,7 +1058,9 @@ parse_intparam(const char* value)
 		} \
 		else if(rank == 3) \
 		{ \
-			size_t dim0,dim1,dim2; \
+			size_t dim0=0; \
+			size_t dim1=0; \
+			size_t dim2=0; \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
 			parse_3d_array(value,dst,dim0,dim1,dim2,size); \
 			if(dim0*dim1*dim2 != (size_t)size) \
