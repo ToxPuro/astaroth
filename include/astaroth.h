@@ -179,6 +179,7 @@ acLoadLibrary(const AcMeshInfo info)
     LOAD_DSYM(acGetNumFields);
     LOAD_DSYM(acGetFieldHandle);
     LOAD_DSYM(acGetFieldName);
+    LOAD_DSYM(acFieldIsAuxiliary);
     LOAD_DSYM(acGetNode);
     LOAD_DSYM(acNodeCreate);
     LOAD_DSYM(acNodeDestroy);

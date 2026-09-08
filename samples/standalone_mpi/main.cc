@@ -569,7 +569,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     //};
     std::vector<Field> io_fields{};
     for (size_t i = 0; i < acGetNumFields(); i++) {
-	if(vtxbuf_is_auxiliary[i]) continue;
+	if(acFieldIsAuxiliary(Field(i))) continue;
         io_fields.push_back(Field(i));
     }
 
@@ -673,7 +673,7 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
     **/
     std::vector<Field> io_fields{};
     for (size_t i = 0; i < acGetNumFields(); i++) {
-	if(vtxbuf_is_auxiliary[i]) continue;
+	if(acFieldIsAuxiliary(Field(i))) continue;
         io_fields.push_back(Field(i));
     }
 

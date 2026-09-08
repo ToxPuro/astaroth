@@ -3774,7 +3774,11 @@ measure_file_size(const char* filepath)
 {
     
     FILE* fp_in                   = fopen(filepath, "r");
-    ERRCHK_ALWAYS(fp_in);
+    if(fp_in == NULL)
+    {
+      fprintf(stderr,"Did not found filepath: %s\n",filepath);
+      ERRCHK_ALWAYS(fp_in);
+    }
     fseek(fp_in, 0L, SEEK_END);
     const long measured_size = ftell(fp_in);
     fclose(fp_in);

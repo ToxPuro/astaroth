@@ -201,6 +201,12 @@ acGetFieldName(const Field field)
 	return field_names[field];
 }
 
+const bool
+acFieldIsAuxiliary(const Field field)
+{
+	return vtxbuf_is_auxiliary[field];
+}
+
 size_t
 acGetNumFields(void)
 {
