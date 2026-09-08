@@ -3818,13 +3818,13 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         AcReal* host_buffer = grid.submesh.vertex_buffer[i];
 
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in      = vba.on_device.in[i];
+        const AcReal* in      = (const AcReal*)vba.on_device.in[i];
         const Volume in_offset  = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 	
 
 	//TP: this can be done since everything is blocking until the memcpy to host has been finished
-        AcReal* out = vba.on_device.out[non_auxiliary_vtxbuf];
+        AcReal* out = (AcReal*)vba.on_device.out[non_auxiliary_vtxbuf];
 	const Volume out_offset = {0, 0, 0,};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         ERRCHK(acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -3973,11 +3973,11 @@ acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const A
         const int3 slice_offset = (int3){0, 0, local_z};
 
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in     = vba.on_device.in[field];
+        const AcReal* in     = (const AcReal*)vba.on_device.in[field];
 
 	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo()) + slice_offset;
 	const int3 in_volume = to_int3(acGetLocalMM(acGridGetLocalMeshInfo()));
-        AcReal* out           = vba.on_device.out[field];
+        AcReal* out           = (AcReal*)vba.on_device.out[field];
         const Volume out_offset = {0, 0, 0};
         const Volume out_volume = slice_volume;
 
@@ -4160,11 +4160,11 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
         const int3 slice_offset = (int3){0, 0, local_z};
 
 	auto vba = acDeviceGetVBA(device);
-	const AcReal* in = vba.on_device.in[field];
+	const AcReal* in = (const AcReal*)vba.on_device.in[field];
 	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo()) + slice_offset;
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
-        AcReal* out           = vba.on_device.out[field];
+        AcReal* out           = (AcReal*)vba.on_device.out[field];
         const Volume out_offset = {0, 0, 0};
         const Volume out_volume = slice_volume;
 
@@ -4438,10 +4438,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in      = vba.on_device.in[vtxbuf];
+        const AcReal* in      = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
-        AcReal* out           = vba.on_device.out[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume out_offset = (Volume){0, 0, 0};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -4559,11 +4559,11 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 		fatal("%s", "Can not read snapshot if all Fields are auxiliary!\n");
 	}
 	//TP: it is safe to borrow other fields output since this function is blocking
-        AcReal* in           = vba.on_device.out[non_auxiliary_vtxbuf];
+        AcReal* in           = (AcReal*)vba.on_device.out[non_auxiliary_vtxbuf];
         const Volume in_offset = {0, 0, 0};
         const Volume in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
 
-        AcReal* out           = vba.on_device.in[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.in[vtxbuf];
 
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
@@ -4622,10 +4622,10 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in      = vba.on_device.in[vtxbuf];
+        const AcReal* in      = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
-        AcReal* out           = vba.on_device.out[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume out_offset = (Volume){0, 0, 0};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -4668,11 +4668,11 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
-        AcReal* in           = vba.on_device.out[vtxbuf];
+        AcReal* in           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume in_offset = (Volume){0, 0, 0};
 	const Volume in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
 
-        AcReal* out           = vba.on_device.in[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
@@ -4729,10 +4729,10 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in      = vba.on_device.in[vtxbuf];
+        const AcReal* in      = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
-        AcReal* out           = vba.on_device.out[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume out_offset = {0, 0, 0};
         const Volume out_volume = nn_sub;
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -4803,11 +4803,11 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
-        AcReal* in           = vba.on_device.out[vtxbuf];
+        AcReal* in           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume in_offset = {0, 0, 0};
         const Volume in_volume = nn_sub;
 
-        AcReal* out           = vba.on_device.in[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
@@ -4913,11 +4913,11 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 
         // Load from host memory to device memory
 	auto vba = acDeviceGetVBA(device);
-        AcReal* in           = vba.on_device.out[field];
+        AcReal* in           = (AcReal*)vba.on_device.out[field];
         const Volume in_offset = {0, 0, 0};
         const Volume in_volume = subdomain_nn;
 
-        AcReal* out           = vba.on_device.in[field];
+        AcReal* out           = (AcReal*)vba.on_device.in[field];
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(field));

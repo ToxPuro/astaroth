@@ -1013,18 +1013,10 @@ Task::syncVBA()
         if (swap_offset[i]) {
             vba.on_device.in[i]  = device_vba.on_device.out[i];
             vba.on_device.out[i] = device_vba.on_device.in[i];
-            vba.on_device.single_in[i]  = device_vba.on_device.single_out[i];
-            vba.on_device.single_out[i] = device_vba.on_device.single_in[i];
-            vba.on_device.half_in[i]  = device_vba.on_device.half_out[i];
-            vba.on_device.half_out[i] = device_vba.on_device.half_in[i];
         }
         else {
             vba.on_device.in[i]  = device_vba.on_device.in[i];
             vba.on_device.out[i] = device_vba.on_device.out[i];
-            vba.on_device.single_in[i]  = device_vba.on_device.single_in[i];
-            vba.on_device.single_out[i] = device_vba.on_device.single_out[i];
-            vba.on_device.half_in[i]  = device_vba.on_device.half_in[i];
-            vba.on_device.half_out[i] = device_vba.on_device.half_out[i];
         }
     }
     for (int i = 0; i < NUM_PROFILES; ++i) {
@@ -1045,17 +1037,9 @@ Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 
         if (device_swaps[i]) {
-            AcReal* tmp = vba.on_device.in[i];
+            void* tmp = vba.on_device.in[i];
             vba.on_device.in[i]   = vba.on_device.out[i];
             vba.on_device.out[i]  = tmp;
-
-            float* sg_tmp = vba.on_device.single_in[i];
-            vba.on_device.single_in[i]   = vba.on_device.single_out[i];
-            vba.on_device.single_out[i]  = sg_tmp;
-
-            __half* hf_tmp = vba.on_device.half_in[i];
-            vba.on_device.half_in[i]   = vba.on_device.half_out[i];
-            vba.on_device.half_out[i]  = hf_tmp;
         }
     }
     for(int i = 0; i < NUM_PROFILES; ++i)

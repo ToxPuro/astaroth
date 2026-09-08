@@ -953,10 +953,10 @@ vbaCreate(const size_t count)
   VertexBufferArray vba{};
   memset(&vba, 0, sizeof(vba));
 
-  const size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
+  const size_t bytes = sizeof(AcReal) * count;
   for (size_t i = 0; i < NUM_FIELDS; ++i) {
-    vba.on_device.in[i]  = (AcReal*)malloc(bytes);
-    vba.on_device.out[i] = (AcReal*)malloc(bytes);
+    vba.on_device.in[i]  = malloc(bytes);
+    vba.on_device.out[i] = malloc(bytes);
   }
   for (int i = 0; i < NUM_PROFILES; ++i) {
     vba.on_device.profiles.in[i]  = (AcReal*)malloc(bytes);

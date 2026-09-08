@@ -593,8 +593,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 }
 
 AcResult acDeviceGetVertexBufferPtrs(Device device, const VertexBufferHandle vtxbuf, AcReal** in, AcReal** out) {
-    *in  = device->vba.on_device.in[vtxbuf];
-    *out = device->vba.on_device.out[vtxbuf];
+    *in  = (AcReal*)device->vba.on_device.in[vtxbuf];
+    *out = (AcReal*)device->vba.on_device.out[vtxbuf];
     return AC_SUCCESS;
 }
 
@@ -636,17 +636,9 @@ acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle)
 {
     ERRCHK_CUDA(acSetDevice(device->id));
 
-    AcReal* tmp             = device->vba.on_device.in[handle];
+    void* tmp             = device->vba.on_device.in[handle];
     device->vba.on_device.in[handle]  = device->vba.on_device.out[handle];
     device->vba.on_device.out[handle] = tmp;
-
-    float* sg_tmp = device->vba.on_device.single_in[handle];
-    device->vba.on_device.single_in[handle]  = device->vba.on_device.single_out[handle];
-    device->vba.on_device.single_out[handle] = sg_tmp;
-
-    __half* hf_tmp = device->vba.on_device.half_in[handle];
-    device->vba.on_device.half_in[handle]  = device->vba.on_device.half_out[handle];
-    device->vba.on_device.half_out[handle] = hf_tmp;
 
     return AC_SUCCESS;
 }
@@ -675,7 +667,7 @@ acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, con
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, device->local_config,vtxbuf_handle);
 
     const AcReal* src_ptr = &host_mesh.vertex_buffer[vtxbuf_handle][src_idx];
-    AcReal* dst_ptr       = &device->vba.on_device.in[vtxbuf_handle][dst_idx];
+    AcReal* dst_ptr       = &(((AcReal*)device->vba.on_device.in[vtxbuf_handle])[dst_idx]);
     const size_t bytes    = num_vertices * sizeof(src_ptr[0]);
 
     ERRCHK_CUDA(                                                                                  //
@@ -779,7 +771,7 @@ acDeviceFlushOutputBuffers(const Device device, const Stream stream)
     {
     	if(!vtxbuf_is_alive[i]) continue;
         const size_t count = acVertexBufferSize(device->local_config,Field(i));
-        retval |= acKernelFlush(device->streams[stream], device->vba.on_device.out[i], count, (AcReal)0.0);
+        retval |= acKernelFlush(device->streams[stream], (AcReal*)device->vba.on_device.out[i], count, (AcReal)0.0);
     }
 
     return (AcResult)retval;
@@ -798,7 +790,7 @@ acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, host_mesh->info,vtxbuf_handle);
 
 
-    const AcReal* src_ptr = &device->vba.on_device.in[vtxbuf_handle][src_idx];
+    const AcReal* src_ptr = &((AcReal*)device->vba.on_device.in[vtxbuf_handle])[src_idx];
     AcReal* dst_ptr       = &host_mesh->vertex_buffer[vtxbuf_handle][dst_idx];
     const size_t bytes    = num_vertices * sizeof(src_ptr[0]);
 
@@ -864,8 +856,8 @@ acDeviceTransferVertexBufferWithOffset(const Device src_device, const Stream str
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, src_device->local_config,vtxbuf_handle);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, dst_device->local_config,vtxbuf_handle);
 
-    const AcReal* src_ptr = &src_device->vba.on_device.in[vtxbuf_handle][src_idx];
-    AcReal* dst_ptr       = &dst_device->vba.on_device.in[vtxbuf_handle][dst_idx];
+    const AcReal* src_ptr = &((AcReal*)src_device->vba.on_device.in[vtxbuf_handle])[src_idx];
+    AcReal* dst_ptr       = &((AcReal*)dst_device->vba.on_device.in[vtxbuf_handle])[dst_idx];
     const size_t bytes    = num_vertices * sizeof(src_ptr[0]);
 
     ERRCHK_CUDA(acMemcpyPeerAsync(dst_ptr, dst_device->id, src_ptr, src_device->id, bytes,
@@ -1631,7 +1623,7 @@ acDeviceReduceAverages(const Device device, const Stream stream, const Profile p
 AcBuffer
 acDeviceTransposeVertexBuffer(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
 {
-	return acDeviceTransposeBase(device,stream,order,device->vba.on_device.in[vtxbuf]);
+	return acDeviceTransposeBase(device,stream,order,(AcReal*)device->vba.on_device.in[vtxbuf]);
 }
 AcBuffer
 acDeviceTransposeBase(const Device device, const Stream stream, const AcMeshOrder order, const AcReal* src)
@@ -1690,7 +1682,7 @@ AcResult
 acDeviceFFTR2C(const Device device, const Field src, const ComplexField dst)
 {
 	return acFFTForwardTransformR2C(
-				device->vba.on_device.in[src],
+				(AcReal*)device->vba.on_device.in[src],
 				acGetLocalMM(device->local_config),	
 				acGetLocalNN(device->local_config),	
 				acGetMinNN(device->local_config),	
@@ -1718,7 +1710,7 @@ acDeviceFFTR2CXY(const Device device, const Field src, const ComplexField dst, c
 			1
 		};
 		acFFTForwardTransformR2C(
-				device->vba.on_device.in[src],
+				(AcReal*)device->vba.on_device.in[src],
 				acGetLocalMM(device->local_config),	
 				subdomain_size,
 				starting_point,
@@ -1752,7 +1744,7 @@ acDeviceFFTC2RXY(const Device device, const Field src, const ComplexField dst, c
 				acGetLocalMM(device->local_config),	
 				subdomain_size,
 				starting_point,
-				device->vba.on_device.in[dst]
+				(AcReal*)device->vba.on_device.in[dst]
 			);
 
 	}
@@ -1770,13 +1762,13 @@ acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_sr
 	ERRCHK_ALWAYS(input_real_dims == output_real_dims);
 	ERRCHK_ALWAYS(input_real_dims == output_imag_dims);
 	return acFFTForwardTransformPlanar(
-				device->vba.on_device.in[real_src],
-				device->vba.on_device.in[imag_src],
+				(AcReal*)device->vba.on_device.in[real_src],
+				(AcReal*)device->vba.on_device.in[imag_src],
 				input_real_dims.m1,
 				input_real_dims.nn,
 				input_real_dims.n0,
-				device->vba.on_device.in[real_dst],
-				device->vba.on_device.in[imag_dst]
+				(AcReal*)device->vba.on_device.in[real_dst],
+				(AcReal*)device->vba.on_device.in[imag_dst]
 			);
 }
 
@@ -1793,12 +1785,12 @@ acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Fie
     	if(vtxbuf_precision[src_start] == AC_SINGLE_PRECISION && vtxbuf_precision[imag_dst_start] == AC_SINGLE_PRECISION) 
 	{
 		return acFFTForwardTransformR2PlanarBatched(
-					device->vba.on_device.single_in[src_start],
+					(float*)device->vba.on_device.in[src_start],
 					input_dims.m1,	
 					input_dims.nn,	
 					input_dims.n0,
-					device->vba.on_device.single_in[real_dst_start],
-					device->vba.on_device.single_in[imag_dst_start],
+					(float*)device->vba.on_device.in[real_dst_start],
+					(float*)device->vba.on_device.in[imag_dst_start],
 					batch_size,
 					AC_SINGLE_PRECISION,
 					AC_SINGLE_PRECISION
@@ -1807,24 +1799,24 @@ acDeviceFFTR2PlanarBatched(const Device device, const Field src_start, const Fie
 	else if(vtxbuf_precision[src_start] == AC_REAL_PRECISION && vtxbuf_precision[imag_dst_start] == AC_SINGLE_PRECISION) 
 	{
 		return acFFTForwardTransformR2PlanarBatched(
-					device->vba.on_device.in[src_start],
+					(AcReal*)device->vba.on_device.in[src_start],
 					input_dims.m1,	
 					input_dims.nn,	
 					input_dims.n0,
-					device->vba.on_device.single_in[real_dst_start],
-					device->vba.on_device.single_in[imag_dst_start],
+					(float*)device->vba.on_device.in[real_dst_start],
+					(float*)device->vba.on_device.in[imag_dst_start],
 					batch_size,
 					AC_REAL_PRECISION,
 					AC_SINGLE_PRECISION
 				);
 	}
 	return acFFTForwardTransformR2PlanarBatched(
-				device->vba.on_device.in[src_start],
+				(AcReal*)device->vba.on_device.in[src_start],
 				input_dims.m1,	
 				input_dims.nn,	
 				input_dims.n0,
-				device->vba.on_device.in[real_dst_start],
-				device->vba.on_device.in[imag_dst_start],
+				(AcReal*)device->vba.on_device.in[real_dst_start],
+				(AcReal*)device->vba.on_device.in[imag_dst_start],
 				batch_size,
 				AC_REAL_PRECISION,
 				AC_REAL_PRECISION
@@ -1841,12 +1833,12 @@ acDeviceFFTR2HermitianPlanarBatched(const Device device, const Field src_start, 
 	ERRCHK_ALWAYS(input_dims == output_real_dims);
 	ERRCHK_ALWAYS(input_dims == output_imag_dims);
 	return acFFTForwardTransformR2HermitianPlanarBatched(
-				device->vba.on_device.in[src_start],
+				(AcReal*)device->vba.on_device.in[src_start],
 				input_dims.m1,	
 				input_dims.nn,	
 				input_dims.n0,
-				device->vba.on_device.in[real_dst_start],
-				device->vba.on_device.in[imag_dst_start],
+				(AcReal*)device->vba.on_device.in[real_dst_start],
+				(AcReal*)device->vba.on_device.in[imag_dst_start],
 				batch_size,
 				device->streams[stream]
 			);
@@ -1862,12 +1854,12 @@ acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, 
 	ERRCHK_ALWAYS(input_dims == output_real_dims);
 	ERRCHK_ALWAYS(input_dims == output_imag_dims);
 	return acFFTForwardTransformR2Planar(
-				device->vba.on_device.in[src],
+				(AcReal*)device->vba.on_device.in[src],
 				input_dims.m1,	
 				input_dims.nn,	
 				input_dims.n0,
-				device->vba.on_device.in[real_dst],
-				device->vba.on_device.in[imag_dst]
+				(AcReal*)device->vba.on_device.in[real_dst],
+				(AcReal*)device->vba.on_device.in[imag_dst]
 			);
 }
 
@@ -1883,12 +1875,12 @@ acDeviceFFTR2PlanarXY(const Device device, const Field src, const Field real_dst
         const auto nn = (Volume){input_dims.nn.x,input_dims.nn.y,1};
         const auto starting_point  = (Volume){input_dims.n0.x,input_dims.n0.y,z_offset};
 	return acFFTForwardTransformR2Planar(
-				device->vba.on_device.in[src],
+				(AcReal*)device->vba.on_device.in[src],
 				input_dims.m1,	
 				nn,
 				starting_point,
-				device->vba.on_device.in[real_dst],
-				device->vba.on_device.in[imag_dst]
+				(AcReal*)device->vba.on_device.in[real_dst],
+				(AcReal*)device->vba.on_device.in[imag_dst]
 			);
 }
 
@@ -1902,12 +1894,12 @@ acDeviceFFTBackwardTransformPlanar2R(const Device device, const Field real_src, 
 	ERRCHK_ALWAYS(real_input_dims == output_dims);
 	ERRCHK_ALWAYS(imag_input_dims == output_dims);
 	return acFFTBackwardTransformPlanar2R(
-				device->vba.on_device.in[real_src],
-				device->vba.on_device.in[imag_src],
+				(AcReal*)device->vba.on_device.in[real_src],
+				(AcReal*)device->vba.on_device.in[imag_src],
 				real_input_dims.m1,	
 				real_input_dims.nn,	
 				real_input_dims.n0, 
-				device->vba.on_device.in[dst]
+				(AcReal*)device->vba.on_device.in[dst]
 			);
 }
 
@@ -1923,12 +1915,12 @@ acDeviceFFTBackwardTransformPlanar2RXY(const Device device, const Field real_src
         const auto nn = (Volume){output_dims.nn.x,output_dims.nn.y,1};
         const auto starting_point  = (Volume){output_dims.n0.x,output_dims.n0.y,z_offset};
 	return acFFTBackwardTransformPlanar2R(
-				device->vba.on_device.in[real_src],
-				device->vba.on_device.in[imag_src],
+				(AcReal*)device->vba.on_device.in[real_src],
+				(AcReal*)device->vba.on_device.in[imag_src],
 				real_input_dims.m1,	
 				nn,
 				starting_point,
-				device->vba.on_device.in[dst]
+				(AcReal*)device->vba.on_device.in[dst]
 			);
 }
 
@@ -1943,13 +1935,13 @@ acDeviceFFTBackwardTransformPlanar(const Device device, const Field real_src, co
 	ERRCHK_ALWAYS(real_input_dims == real_output_dims);
 	ERRCHK_ALWAYS(imag_input_dims == imag_output_dims);
 	return acFFTBackwardTransformPlanar(
-				device->vba.on_device.in[real_src],
-				device->vba.on_device.in[imag_src],
+				(AcReal*)device->vba.on_device.in[real_src],
+				(AcReal*)device->vba.on_device.in[imag_src],
 				real_input_dims.m1,	
 				real_input_dims.nn,	
 				real_input_dims.n0,
-				device->vba.on_device.in[real_dst],
-				device->vba.on_device.in[real_dst]
+				(AcReal*)device->vba.on_device.in[real_dst],
+				(AcReal*)device->vba.on_device.in[real_dst]
 			);
 }
 
@@ -1961,7 +1953,7 @@ acDeviceFFTC2R(const Device device, const ComplexField src, const Field dst)
 				acGetLocalMM(device->local_config),	
 				acGetLocalNN(device->local_config),	
 				acGetMinNN(device->local_config),	
-				device->vba.on_device.in[dst]
+				(AcReal*)device->vba.on_device.in[dst]
 			);
 }
 /*
