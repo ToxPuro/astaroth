@@ -47,6 +47,8 @@
 #endif
 #endif
 
+#ifdef __cplusplus
+
 static HOST_DEVICE_INLINE int3
 operator/(const int3& a, const int& b)
 {
@@ -1164,3 +1166,5 @@ operator==(const AcMeshDims& a, const AcMeshDims& b)
 
 static HOST_DEVICE_INLINE int
 AC_abs(const int& x) {return abs(x);}
+
+#endif /* __cplusplus */

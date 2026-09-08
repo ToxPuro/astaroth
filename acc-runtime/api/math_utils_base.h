@@ -1,6 +1,9 @@
 #pragma once
 
 #include "func_attributes.h"
+
+#ifdef __cplusplus
+
 template <class T>
 static HOST_DEVICE_INLINE const T
 min(const T& a, const T& b)
@@ -114,3 +117,5 @@ operator*(const int& a, const Volume& b)
 	};
 
 }
+
+#endif /* __cplusplus */
