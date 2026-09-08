@@ -423,95 +423,97 @@ $(function(){initNavTree('astaroth__helpers_8h_source.html','',''); });
 <div class="line"><a id="l00345" name="l00345"></a><span class="lineno"><a class="line" href="astaroth__helpers_8h.html#af75184cc77327be7497c02d6ec859cd7">  345</a></span><a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>*,<a class="code hl_function" href="astaroth__helpers_8h.html#af75184cc77327be7497c02d6ec859cd7">acGetFieldName</a>,(<span class="keyword">const</span> Field field));</div>
 <div class="line"><a id="l00347" name="l00347"></a><span class="lineno"><a class="line" href="astaroth__helpers_8h.html#a99e2a4b03e2a3cd1e07a0c8c236ef0b1">  347</a></span><a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<span class="keywordtype">size_t</span>, <a class="code hl_function" href="astaroth__helpers_8h.html#a99e2a4b03e2a3cd1e07a0c8c236ef0b1">acGetNumFields</a>,(<span class="keywordtype">void</span>));</div>
 <div class="line"><a id="l00348" name="l00348"></a><span class="lineno">  348</span> </div>
-<div class="line"><a id="l00349" name="l00349"></a><span class="lineno">  349</span><a class="code hl_define" href="func__define_8h.html#ac083955fb77e3fb56cef11c97df9f246">AC_END_C_DECLARATIONS</a></div>
+<div class="line"><a id="l00349" name="l00349"></a><span class="lineno"><a class="line" href="astaroth__helpers_8h.html#ab64aa42a117de2543a6d5a259530e8c3">  349</a></span><a class="code hl_define" href="func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4">FUNC_DEFINE</a>(<span class="keyword">const</span> <span class="keywordtype">bool</span>,<a class="code hl_function" href="astaroth__helpers_8h.html#ab64aa42a117de2543a6d5a259530e8c3">acFieldIsAuxiliary</a>,(<span class="keyword">const</span> Field field));</div>
 <div class="line"><a id="l00350" name="l00350"></a><span class="lineno">  350</span> </div>
-<div class="line"><a id="l00351" name="l00351"></a><span class="lineno">  351</span><span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a id="l00351" name="l00351"></a><span class="lineno">  351</span><a class="code hl_define" href="func__define_8h.html#ac083955fb77e3fb56cef11c97df9f246">AC_END_C_DECLARATIONS</a></div>
 <div class="line"><a id="l00352" name="l00352"></a><span class="lineno">  352</span> </div>
-<div class="line"><a id="l00353" name="l00353"></a><span class="lineno">  353</span><span class="keyword">static</span> <span class="keyword">inline</span> <a class="code hl_typedef" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>*</div>
-<div class="line"><a id="l00354" name="l00354"></a><span class="lineno">  354</span><a class="code hl_function" href="astaroth__helpers_8h.html#a484a9efc3716f90720deff6250dc2522">acHostCreateVertexBuffer</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
-<div class="line"><a id="l00355" name="l00355"></a><span class="lineno">  355</span>{</div>
-<div class="line"><a id="l00356" name="l00356"></a><span class="lineno">  356</span>    <span class="keywordflow">return</span> <a class="code hl_function" href="astaroth__helpers_8h.html#ac2997f4687c6e812fe79ca7a46d5562e">acHostCreateVertexBufferVariable</a>(info, vtxbuf);</div>
-<div class="line"><a id="l00357" name="l00357"></a><span class="lineno">  357</span>}</div>
-<div class="line"><a id="l00358" name="l00358"></a><span class="lineno">  358</span> </div>
-<div class="line"><a id="l00359" name="l00359"></a><span class="lineno">  359</span><span class="keyword">static</span> <span class="keyword">inline</span> <a class="code hl_struct" href="structAcMeshDims.html">AcMeshDims</a></div>
-<div class="line"><a id="l00360" name="l00360"></a><span class="lineno">  360</span>acGetMeshDims(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
-<div class="line"><a id="l00361" name="l00361"></a><span class="lineno">  361</span>{</div>
-<div class="line"><a id="l00362" name="l00362"></a><span class="lineno">  362</span>    <span class="keyword">const</span> int3 halos = acGetFieldHalos(info, vtxbuf);</div>
-<div class="line"><a id="l00363" name="l00363"></a><span class="lineno">  363</span>    <span class="keyword">const</span> Volume n0  = (Volume){</div>
-<div class="line"><a id="l00364" name="l00364"></a><span class="lineno">  364</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(halos.x),</div>
-<div class="line"><a id="l00365" name="l00365"></a><span class="lineno">  365</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(halos.y),</div>
-<div class="line"><a id="l00366" name="l00366"></a><span class="lineno">  366</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(halos.z),</div>
-<div class="line"><a id="l00367" name="l00367"></a><span class="lineno">  367</span>    };</div>
-<div class="line"><a id="l00368" name="l00368"></a><span class="lineno">  368</span>    <span class="keyword">const</span> Volume m0 = (Volume){0, 0, 0};</div>
-<div class="line"><a id="l00369" name="l00369"></a><span class="lineno">  369</span>    <span class="keyword">const</span> Volume m1 = (Volume){</div>
-<div class="line"><a id="l00370" name="l00370"></a><span class="lineno">  370</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[vtxbuf_dims[vtxbuf]].x),</div>
-<div class="line"><a id="l00371" name="l00371"></a><span class="lineno">  371</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[vtxbuf_dims[vtxbuf]].y),</div>
-<div class="line"><a id="l00372" name="l00372"></a><span class="lineno">  372</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[vtxbuf_dims[vtxbuf]].z),</div>
-<div class="line"><a id="l00373" name="l00373"></a><span class="lineno">  373</span>    };</div>
-<div class="line"><a id="l00374" name="l00374"></a><span class="lineno">  374</span>    <span class="keyword">const</span> Volume n1 = (Volume){</div>
-<div class="line"><a id="l00375" name="l00375"></a><span class="lineno">  375</span>        m1.x - n0.x,</div>
-<div class="line"><a id="l00376" name="l00376"></a><span class="lineno">  376</span>        m1.y - n0.y,</div>
-<div class="line"><a id="l00377" name="l00377"></a><span class="lineno">  377</span>        m1.z - n0.z,</div>
-<div class="line"><a id="l00378" name="l00378"></a><span class="lineno">  378</span>    };</div>
-<div class="line"><a id="l00379" name="l00379"></a><span class="lineno">  379</span>    <span class="keyword">const</span> Volume nn = (Volume){</div>
-<div class="line"><a id="l00380" name="l00380"></a><span class="lineno">  380</span>        m1.x - 2 * n0.x,</div>
-<div class="line"><a id="l00381" name="l00381"></a><span class="lineno">  381</span>        m1.y - 2 * n0.y,</div>
-<div class="line"><a id="l00382" name="l00382"></a><span class="lineno">  382</span>        m1.z - 2 * n0.z,</div>
-<div class="line"><a id="l00383" name="l00383"></a><span class="lineno">  383</span>    };</div>
-<div class="line"><a id="l00384" name="l00384"></a><span class="lineno">  384</span>    <span class="keyword">const</span> Volume reduction_tile = (Volume){</div>
-<div class="line"><a id="l00385" name="l00385"></a><span class="lineno">  385</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[AC_reduction_tile_dimensions].x),</div>
-<div class="line"><a id="l00386" name="l00386"></a><span class="lineno">  386</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[AC_reduction_tile_dimensions].y),</div>
-<div class="line"><a id="l00387" name="l00387"></a><span class="lineno">  387</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[AC_reduction_tile_dimensions].z),</div>
-<div class="line"><a id="l00388" name="l00388"></a><span class="lineno">  388</span>    };</div>
-<div class="line"><a id="l00389" name="l00389"></a><span class="lineno">  389</span> </div>
-<div class="line"><a id="l00390" name="l00390"></a><span class="lineno">  390</span>    <span class="keywordflow">return</span> (<a class="code hl_struct" href="structAcMeshDims.html">AcMeshDims</a>){</div>
-<div class="line"><a id="l00391" name="l00391"></a><span class="lineno">  391</span>        .n0             = n0,</div>
-<div class="line"><a id="l00392" name="l00392"></a><span class="lineno">  392</span>        .n1             = n1,</div>
-<div class="line"><a id="l00393" name="l00393"></a><span class="lineno">  393</span>        .m0             = m0,</div>
-<div class="line"><a id="l00394" name="l00394"></a><span class="lineno">  394</span>        .m1             = m1,</div>
-<div class="line"><a id="l00395" name="l00395"></a><span class="lineno">  395</span>        .nn             = nn,</div>
-<div class="line"><a id="l00396" name="l00396"></a><span class="lineno">  396</span>        .reduction_tile = reduction_tile,</div>
-<div class="line"><a id="l00397" name="l00397"></a><span class="lineno">  397</span>    };</div>
-<div class="line"><a id="l00398" name="l00398"></a><span class="lineno">  398</span>}</div>
-<div class="line"><a id="l00399" name="l00399"></a><span class="lineno">  399</span> </div>
-<div class="line"><a id="l00400" name="l00400"></a><span class="lineno">  400</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
-<div class="line"><a id="l00401" name="l00401"></a><span class="lineno">  401</span>acVertexBufferCompdomainSize(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
-<div class="line"><a id="l00402" name="l00402"></a><span class="lineno">  402</span>{</div>
-<div class="line"><a id="l00403" name="l00403"></a><span class="lineno">  403</span>    <span class="keywordflow">return</span> acVertexBufferCompdomainSizeVariable(info, vtxbuf);</div>
-<div class="line"><a id="l00404" name="l00404"></a><span class="lineno">  404</span>}</div>
-<div class="line"><a id="l00405" name="l00405"></a><span class="lineno">  405</span> </div>
-<div class="line"><a id="l00406" name="l00406"></a><span class="lineno">  406</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
-<div class="line"><a id="l00407" name="l00407"></a><span class="lineno">  407</span>acVertexBufferCompdomainSizeBytes(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
-<div class="line"><a id="l00408" name="l00408"></a><span class="lineno">  408</span>{</div>
-<div class="line"><a id="l00409" name="l00409"></a><span class="lineno">  409</span>    <span class="keywordflow">return</span> acVertexBufferCompdomainSizeBytesVariable(info, vtxbuf);</div>
-<div class="line"><a id="l00410" name="l00410"></a><span class="lineno">  410</span>}</div>
-<div class="line"><a id="l00411" name="l00411"></a><span class="lineno">  411</span> </div>
-<div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span><span class="keyword">static</span> <span class="keyword">inline</span> Volume</div>
-<div class="line"><a id="l00413" name="l00413"></a><span class="lineno">  413</span>acVertexBufferDims(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
-<div class="line"><a id="l00414" name="l00414"></a><span class="lineno">  414</span>{</div>
-<div class="line"><a id="l00415" name="l00415"></a><span class="lineno">  415</span>    <span class="keywordflow">return</span> acVertexBufferDimsVariable(info, vtxbuf);</div>
-<div class="line"><a id="l00416" name="l00416"></a><span class="lineno">  416</span>}</div>
-<div class="line"><a id="l00417" name="l00417"></a><span class="lineno">  417</span> </div>
-<div class="line"><a id="l00418" name="l00418"></a><span class="lineno">  418</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
-<div class="line"><a id="l00419" name="l00419"></a><span class="lineno">  419</span>acVertexBufferIdx(<span class="keyword">const</span> <span class="keywordtype">int</span> i, <span class="keyword">const</span> <span class="keywordtype">int</span> j, <span class="keyword">const</span> <span class="keywordtype">int</span> k, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info,</div>
-<div class="line"><a id="l00420" name="l00420"></a><span class="lineno">  420</span>                  <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
-<div class="line"><a id="l00421" name="l00421"></a><span class="lineno">  421</span>{</div>
-<div class="line"><a id="l00422" name="l00422"></a><span class="lineno">  422</span>    <span class="keywordflow">return</span> acVertexBufferIdxVariable(i, j, k, info, vtxbuf);</div>
-<div class="line"><a id="l00423" name="l00423"></a><span class="lineno">  423</span>}</div>
-<div class="line"><a id="l00424" name="l00424"></a><span class="lineno">  424</span> </div>
-<div class="line"><a id="l00425" name="l00425"></a><span class="lineno">  425</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
-<div class="line"><a id="l00426" name="l00426"></a><span class="lineno">  426</span>acVertexBufferSize(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
-<div class="line"><a id="l00427" name="l00427"></a><span class="lineno">  427</span>{</div>
-<div class="line"><a id="l00428" name="l00428"></a><span class="lineno">  428</span>    <span class="keywordflow">return</span> acVertexBufferVariableSize(info, vtxbuf);</div>
-<div class="line"><a id="l00429" name="l00429"></a><span class="lineno">  429</span>}</div>
-<div class="line"><a id="l00430" name="l00430"></a><span class="lineno">  430</span> </div>
-<div class="line"><a id="l00431" name="l00431"></a><span class="lineno">  431</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
-<div class="line"><a id="l00432" name="l00432"></a><span class="lineno">  432</span>acVertexBufferSizeBytes(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
-<div class="line"><a id="l00433" name="l00433"></a><span class="lineno">  433</span>{</div>
-<div class="line"><a id="l00434" name="l00434"></a><span class="lineno">  434</span>    <span class="keywordflow">return</span> acVertexBufferSizeBytesVariable(info, vtxbuf);</div>
-<div class="line"><a id="l00435" name="l00435"></a><span class="lineno">  435</span>}</div>
-<div class="line"><a id="l00436" name="l00436"></a><span class="lineno">  436</span> </div>
-<div class="line"><a id="l00437" name="l00437"></a><span class="lineno">  437</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00353" name="l00353"></a><span class="lineno">  353</span><span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a id="l00354" name="l00354"></a><span class="lineno">  354</span> </div>
+<div class="line"><a id="l00355" name="l00355"></a><span class="lineno">  355</span><span class="keyword">static</span> <span class="keyword">inline</span> <a class="code hl_typedef" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>*</div>
+<div class="line"><a id="l00356" name="l00356"></a><span class="lineno">  356</span><a class="code hl_function" href="astaroth__helpers_8h.html#a484a9efc3716f90720deff6250dc2522">acHostCreateVertexBuffer</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00357" name="l00357"></a><span class="lineno">  357</span>{</div>
+<div class="line"><a id="l00358" name="l00358"></a><span class="lineno">  358</span>    <span class="keywordflow">return</span> <a class="code hl_function" href="astaroth__helpers_8h.html#ac2997f4687c6e812fe79ca7a46d5562e">acHostCreateVertexBufferVariable</a>(info, vtxbuf);</div>
+<div class="line"><a id="l00359" name="l00359"></a><span class="lineno">  359</span>}</div>
+<div class="line"><a id="l00360" name="l00360"></a><span class="lineno">  360</span> </div>
+<div class="line"><a id="l00361" name="l00361"></a><span class="lineno">  361</span><span class="keyword">static</span> <span class="keyword">inline</span> <a class="code hl_struct" href="structAcMeshDims.html">AcMeshDims</a></div>
+<div class="line"><a id="l00362" name="l00362"></a><span class="lineno">  362</span>acGetMeshDims(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00363" name="l00363"></a><span class="lineno">  363</span>{</div>
+<div class="line"><a id="l00364" name="l00364"></a><span class="lineno">  364</span>    <span class="keyword">const</span> int3 halos = acGetFieldHalos(info, vtxbuf);</div>
+<div class="line"><a id="l00365" name="l00365"></a><span class="lineno">  365</span>    <span class="keyword">const</span> Volume n0  = (Volume){</div>
+<div class="line"><a id="l00366" name="l00366"></a><span class="lineno">  366</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(halos.x),</div>
+<div class="line"><a id="l00367" name="l00367"></a><span class="lineno">  367</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(halos.y),</div>
+<div class="line"><a id="l00368" name="l00368"></a><span class="lineno">  368</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(halos.z),</div>
+<div class="line"><a id="l00369" name="l00369"></a><span class="lineno">  369</span>    };</div>
+<div class="line"><a id="l00370" name="l00370"></a><span class="lineno">  370</span>    <span class="keyword">const</span> Volume m0 = (Volume){0, 0, 0};</div>
+<div class="line"><a id="l00371" name="l00371"></a><span class="lineno">  371</span>    <span class="keyword">const</span> Volume m1 = (Volume){</div>
+<div class="line"><a id="l00372" name="l00372"></a><span class="lineno">  372</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[vtxbuf_dims[vtxbuf]].x),</div>
+<div class="line"><a id="l00373" name="l00373"></a><span class="lineno">  373</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[vtxbuf_dims[vtxbuf]].y),</div>
+<div class="line"><a id="l00374" name="l00374"></a><span class="lineno">  374</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[vtxbuf_dims[vtxbuf]].z),</div>
+<div class="line"><a id="l00375" name="l00375"></a><span class="lineno">  375</span>    };</div>
+<div class="line"><a id="l00376" name="l00376"></a><span class="lineno">  376</span>    <span class="keyword">const</span> Volume n1 = (Volume){</div>
+<div class="line"><a id="l00377" name="l00377"></a><span class="lineno">  377</span>        m1.x - n0.x,</div>
+<div class="line"><a id="l00378" name="l00378"></a><span class="lineno">  378</span>        m1.y - n0.y,</div>
+<div class="line"><a id="l00379" name="l00379"></a><span class="lineno">  379</span>        m1.z - n0.z,</div>
+<div class="line"><a id="l00380" name="l00380"></a><span class="lineno">  380</span>    };</div>
+<div class="line"><a id="l00381" name="l00381"></a><span class="lineno">  381</span>    <span class="keyword">const</span> Volume nn = (Volume){</div>
+<div class="line"><a id="l00382" name="l00382"></a><span class="lineno">  382</span>        m1.x - 2 * n0.x,</div>
+<div class="line"><a id="l00383" name="l00383"></a><span class="lineno">  383</span>        m1.y - 2 * n0.y,</div>
+<div class="line"><a id="l00384" name="l00384"></a><span class="lineno">  384</span>        m1.z - 2 * n0.z,</div>
+<div class="line"><a id="l00385" name="l00385"></a><span class="lineno">  385</span>    };</div>
+<div class="line"><a id="l00386" name="l00386"></a><span class="lineno">  386</span>    <span class="keyword">const</span> Volume reduction_tile = (Volume){</div>
+<div class="line"><a id="l00387" name="l00387"></a><span class="lineno">  387</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[AC_reduction_tile_dimensions].x),</div>
+<div class="line"><a id="l00388" name="l00388"></a><span class="lineno">  388</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[AC_reduction_tile_dimensions].y),</div>
+<div class="line"><a id="l00389" name="l00389"></a><span class="lineno">  389</span>        <a class="code hl_define" href="errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e">as_size_t</a>(info.int3_params[AC_reduction_tile_dimensions].z),</div>
+<div class="line"><a id="l00390" name="l00390"></a><span class="lineno">  390</span>    };</div>
+<div class="line"><a id="l00391" name="l00391"></a><span class="lineno">  391</span> </div>
+<div class="line"><a id="l00392" name="l00392"></a><span class="lineno">  392</span>    <span class="keywordflow">return</span> (<a class="code hl_struct" href="structAcMeshDims.html">AcMeshDims</a>){</div>
+<div class="line"><a id="l00393" name="l00393"></a><span class="lineno">  393</span>        .n0             = n0,</div>
+<div class="line"><a id="l00394" name="l00394"></a><span class="lineno">  394</span>        .n1             = n1,</div>
+<div class="line"><a id="l00395" name="l00395"></a><span class="lineno">  395</span>        .m0             = m0,</div>
+<div class="line"><a id="l00396" name="l00396"></a><span class="lineno">  396</span>        .m1             = m1,</div>
+<div class="line"><a id="l00397" name="l00397"></a><span class="lineno">  397</span>        .nn             = nn,</div>
+<div class="line"><a id="l00398" name="l00398"></a><span class="lineno">  398</span>        .reduction_tile = reduction_tile,</div>
+<div class="line"><a id="l00399" name="l00399"></a><span class="lineno">  399</span>    };</div>
+<div class="line"><a id="l00400" name="l00400"></a><span class="lineno">  400</span>}</div>
+<div class="line"><a id="l00401" name="l00401"></a><span class="lineno">  401</span> </div>
+<div class="line"><a id="l00402" name="l00402"></a><span class="lineno">  402</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
+<div class="line"><a id="l00403" name="l00403"></a><span class="lineno">  403</span>acVertexBufferCompdomainSize(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00404" name="l00404"></a><span class="lineno">  404</span>{</div>
+<div class="line"><a id="l00405" name="l00405"></a><span class="lineno">  405</span>    <span class="keywordflow">return</span> acVertexBufferCompdomainSizeVariable(info, vtxbuf);</div>
+<div class="line"><a id="l00406" name="l00406"></a><span class="lineno">  406</span>}</div>
+<div class="line"><a id="l00407" name="l00407"></a><span class="lineno">  407</span> </div>
+<div class="line"><a id="l00408" name="l00408"></a><span class="lineno">  408</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
+<div class="line"><a id="l00409" name="l00409"></a><span class="lineno">  409</span>acVertexBufferCompdomainSizeBytes(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00410" name="l00410"></a><span class="lineno">  410</span>{</div>
+<div class="line"><a id="l00411" name="l00411"></a><span class="lineno">  411</span>    <span class="keywordflow">return</span> acVertexBufferCompdomainSizeBytesVariable(info, vtxbuf);</div>
+<div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span>}</div>
+<div class="line"><a id="l00413" name="l00413"></a><span class="lineno">  413</span> </div>
+<div class="line"><a id="l00414" name="l00414"></a><span class="lineno">  414</span><span class="keyword">static</span> <span class="keyword">inline</span> Volume</div>
+<div class="line"><a id="l00415" name="l00415"></a><span class="lineno">  415</span>acVertexBufferDims(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00416" name="l00416"></a><span class="lineno">  416</span>{</div>
+<div class="line"><a id="l00417" name="l00417"></a><span class="lineno">  417</span>    <span class="keywordflow">return</span> acVertexBufferDimsVariable(info, vtxbuf);</div>
+<div class="line"><a id="l00418" name="l00418"></a><span class="lineno">  418</span>}</div>
+<div class="line"><a id="l00419" name="l00419"></a><span class="lineno">  419</span> </div>
+<div class="line"><a id="l00420" name="l00420"></a><span class="lineno">  420</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
+<div class="line"><a id="l00421" name="l00421"></a><span class="lineno">  421</span>acVertexBufferIdx(<span class="keyword">const</span> <span class="keywordtype">int</span> i, <span class="keyword">const</span> <span class="keywordtype">int</span> j, <span class="keyword">const</span> <span class="keywordtype">int</span> k, <span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info,</div>
+<div class="line"><a id="l00422" name="l00422"></a><span class="lineno">  422</span>                  <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00423" name="l00423"></a><span class="lineno">  423</span>{</div>
+<div class="line"><a id="l00424" name="l00424"></a><span class="lineno">  424</span>    <span class="keywordflow">return</span> acVertexBufferIdxVariable(i, j, k, info, vtxbuf);</div>
+<div class="line"><a id="l00425" name="l00425"></a><span class="lineno">  425</span>}</div>
+<div class="line"><a id="l00426" name="l00426"></a><span class="lineno">  426</span> </div>
+<div class="line"><a id="l00427" name="l00427"></a><span class="lineno">  427</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
+<div class="line"><a id="l00428" name="l00428"></a><span class="lineno">  428</span>acVertexBufferSize(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00429" name="l00429"></a><span class="lineno">  429</span>{</div>
+<div class="line"><a id="l00430" name="l00430"></a><span class="lineno">  430</span>    <span class="keywordflow">return</span> acVertexBufferVariableSize(info, vtxbuf);</div>
+<div class="line"><a id="l00431" name="l00431"></a><span class="lineno">  431</span>}</div>
+<div class="line"><a id="l00432" name="l00432"></a><span class="lineno">  432</span> </div>
+<div class="line"><a id="l00433" name="l00433"></a><span class="lineno">  433</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">size_t</span></div>
+<div class="line"><a id="l00434" name="l00434"></a><span class="lineno">  434</span>acVertexBufferSizeBytes(<span class="keyword">const</span> <a class="code hl_struct" href="structAcMeshInfo.html">AcMeshInfo</a> info, <span class="keyword">const</span> VertexBufferHandle vtxbuf)</div>
+<div class="line"><a id="l00435" name="l00435"></a><span class="lineno">  435</span>{</div>
+<div class="line"><a id="l00436" name="l00436"></a><span class="lineno">  436</span>    <span class="keywordflow">return</span> acVertexBufferSizeBytesVariable(info, vtxbuf);</div>
+<div class="line"><a id="l00437" name="l00437"></a><span class="lineno">  437</span>}</div>
+<div class="line"><a id="l00438" name="l00438"></a><span class="lineno">  438</span> </div>
+<div class="line"><a id="l00439" name="l00439"></a><span class="lineno">  439</span><span class="preprocessor">#endif</span></div>
 <div class="ttc" id="aac__mpi_8h_html"><div class="ttname"><a href="ac__mpi_8h.html">ac_mpi.h</a></div></div>
 <div class="ttc" id="aacc__runtime_8h_html"><div class="ttname"><a href="acc__runtime_8h.html">acc_runtime.h</a></div></div>
 <div class="ttc" id="aacc__runtime_8h_html_a50320f580cc090b7957072655702cebb"><div class="ttname"><a href="acc__runtime_8h.html#a50320f580cc090b7957072655702cebb">AC_INDEX_ORDER</a></div><div class="ttdeci">#define AC_INDEX_ORDER(i, j, k, x, y, z)</div><div class="ttdef"><b>Definition</b> acc_runtime.h:57</div></div>
@@ -552,6 +554,7 @@ $(function(){initNavTree('astaroth__helpers_8h_source.html','',''); });
 <div class="ttc" id="aastaroth__helpers_8h_html_aa4cd2721cee7f2255b1dd87bb8535ebc"><div class="ttname"><a href="astaroth__helpers_8h.html#aa4cd2721cee7f2255b1dd87bb8535ebc">acHostMeshRandomize</a></div><div class="ttdeci">AcResult acHostMeshRandomize(AcMesh *mesh)</div></div>
 <div class="ttc" id="aastaroth__helpers_8h_html_aac5b4c6fc0c7004fe456972d4cdac16e"><div class="ttname"><a href="astaroth__helpers_8h.html#aac5b4c6fc0c7004fe456972d4cdac16e">acBufferDestroy</a></div><div class="ttdeci">void acBufferDestroy(AcBuffer *buffer)</div></div>
 <div class="ttc" id="aastaroth__helpers_8h_html_aad3406c95c3ce9b2880052ea29617103"><div class="ttname"><a href="astaroth__helpers_8h.html#aad3406c95c3ce9b2880052ea29617103">acHostMeshDestroyVertexBuffer</a></div><div class="ttdeci">AcResult acHostMeshDestroyVertexBuffer(AcReal **vtxbuf)</div></div>
+<div class="ttc" id="aastaroth__helpers_8h_html_ab64aa42a117de2543a6d5a259530e8c3"><div class="ttname"><a href="astaroth__helpers_8h.html#ab64aa42a117de2543a6d5a259530e8c3">acFieldIsAuxiliary</a></div><div class="ttdeci">const bool acFieldIsAuxiliary(const Field field)</div></div>
 <div class="ttc" id="aastaroth__helpers_8h_html_ab7062054ac60c626d988fe3559cfa417"><div class="ttname"><a href="astaroth__helpers_8h.html#ab7062054ac60c626d988fe3559cfa417">acAnalysisCheckForDSLErrors</a></div><div class="ttdeci">AcResult acAnalysisCheckForDSLErrors(const AcMeshInfo info)</div></div>
 <div class="ttc" id="aastaroth__helpers_8h_html_abd5fa9f1c3f81b8dcbdcc01eb037d724"><div class="ttname"><a href="astaroth__helpers_8h.html#abd5fa9f1c3f81b8dcbdcc01eb037d724">acHostMeshDestroy</a></div><div class="ttdeci">AcResult acHostMeshDestroy(AcMesh *mesh)</div></div>
 <div class="ttc" id="aastaroth__helpers_8h_html_abd859a8b8caf5e7f50af6c2a1c43d4df"><div class="ttname"><a href="astaroth__helpers_8h.html#abd859a8b8caf5e7f50af6c2a1c43d4df">acStoreConfig</a></div><div class="ttdeci">void acStoreConfig(const AcMeshInfo info, const char *filename)</div></div>
