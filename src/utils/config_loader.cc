@@ -288,6 +288,282 @@ parse_3d_array(const char* value,
 }
 
 static bool
+parse_2d_array(const char* value,
+               AcReal* values,
+               size_t& dim0,
+               size_t& dim1)
+{
+    std::vector<std::vector<AcReal>> array;
+
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    while (*p != '\0' && *p != ']') {
+        if (*p != '[')
+            return false;
+
+        ++p;
+        skip_ws();
+
+        std::vector<AcReal> row;
+
+        while (*p != '\0' && *p != ']') {
+            char* end;
+            const double val = strtod(p, &end);
+
+            if (end == p)
+                return false;
+
+            row.push_back((AcReal)val);
+            p = end;
+
+            skip_ws();
+
+            if (*p == ',') {
+                ++p;
+                skip_ws();
+            }
+        }
+
+        if (*p != ']')
+            return false;
+
+        ++p;
+
+        array.push_back(row);
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (array.empty() || array[0].empty())
+        return false;
+
+    dim0 = array.size();
+    dim1 = array[0].size();
+
+    // Check that the array is genuinely rectangular.
+    for (const auto& row : array) {
+        if (row.size() != dim1)
+            return false;
+    }
+
+    size_t counter = 0;
+
+    for (const auto& row : array) {
+        for (const auto& x : row) {
+            values[counter] = x;
+            ++counter;
+        }
+    }
+
+    return true;
+}
+
+static bool
+parse_2d_array(const char* value,
+               int* values,
+               size_t& dim0,
+               size_t& dim1)
+{
+    std::vector<std::vector<int>> array;
+
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    while (*p != '\0' && *p != ']') {
+        if (*p != '[')
+            return false;
+
+        ++p;
+        skip_ws();
+
+        std::vector<int> row;
+
+        while (*p != '\0' && *p != ']') {
+            char* end;
+            const int val = (int)strtol(p, &end,0);
+
+            if (end == p)
+                return false;
+
+            row.push_back((int)val);
+            p = end;
+
+            skip_ws();
+
+            if (*p == ',') {
+                ++p;
+                skip_ws();
+            }
+        }
+
+        if (*p != ']')
+            return false;
+
+        ++p;
+
+        array.push_back(row);
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (array.empty() || array[0].empty())
+        return false;
+
+    dim0 = array.size();
+    dim1 = array[0].size();
+
+    // Check that the array is genuinely rectangular.
+    for (const auto& row : array) {
+        if (row.size() != dim1)
+            return false;
+    }
+
+    size_t counter = 0;
+
+    for (const auto& row : array) {
+        for (const auto& x : row) {
+            values[counter] = x;
+            ++counter;
+        }
+    }
+
+    return true;
+}
+
+static bool
+parse_2d_array(const char* value,
+               bool* values,
+               size_t& dim0,
+               size_t& dim1)
+{
+    std::vector<std::vector<bool>> array;
+
+    const char* p = value;
+
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t')
+            ++p;
+    };
+
+    skip_ws();
+
+    if (*p != '[')
+        return false;
+
+    ++p;
+    skip_ws();
+
+    while (*p != '\0' && *p != ']') {
+        if (*p != '[')
+            return false;
+
+        ++p;
+        skip_ws();
+
+        std::vector<bool> row;
+
+        while (*p != '\0' && *p != ']') {
+            char* end;
+            const bool val = (bool)strtol(p, &end,0);
+
+            if (end == p)
+                return false;
+
+            row.push_back((bool)val);
+            p = end;
+
+            skip_ws();
+
+            if (*p == ',') {
+                ++p;
+                skip_ws();
+            }
+        }
+
+        if (*p != ']')
+            return false;
+
+        ++p;
+
+        array.push_back(row);
+
+        skip_ws();
+
+        if (*p == ',') {
+            ++p;
+            skip_ws();
+        }
+    }
+
+    if (*p != ']')
+        return false;
+
+    if (array.empty() || array[0].empty())
+        return false;
+
+    dim0 = array.size();
+    dim1 = array[0].size();
+
+    // Check that the array is genuinely rectangular.
+    for (const auto& row : array) {
+        if (row.size() != dim1)
+            return false;
+    }
+
+    size_t counter = 0;
+
+    for (const auto& row : array) {
+        for (const auto& x : row) {
+            values[counter] = x;
+            ++counter;
+        }
+    }
+
+    return true;
+}
+
+static bool
 parse_3d_array(const char* value,
                     int* values,
                     size_t& dim0,
@@ -549,7 +825,26 @@ parse_3d_array(const char* value,
 		const auto size = (is_comp) ? \
 				get_array_length((Ac##UP_NAME##CompArrayParam)idx,*config) :\
 				get_array_length((Ac##UP_NAME##ArrayParam)idx,*config); \
-		if(rank == 3) \
+		if(rank == 2) \
+		{ \
+			size_t dim0,dim1; \
+			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
+			parse_2d_array(value,dst,dim0,dim1); \
+			if(is_comp) \
+			{ \
+				if constexpr (NUM_##UPPER_CASE##_COMP_ARRAYS > 0) \
+				{ \
+				config->run_consts.config.LOWER_CASE##_arrays[idx] = dst; \
+				config->run_consts.is_loaded.LOWER_CASE##_arrays[idx] = true; \
+				} \
+			} \
+			else \
+			{ \
+				if constexpr (NUM_##UPPER_CASE##_ARRAYS > 0) \
+					config->LOWER_CASE##_arrays[idx] = dst; \
+			} \
+		} \
+		else if(rank == 3) \
 		{ \
 			size_t dim0,dim1,dim2; \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
