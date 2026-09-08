@@ -252,7 +252,7 @@ struct load_arrays
 				  	fprintf(fp,"%s","[");
 				  	for (size_t x = 0; x < dims[0]; ++x)
 				  	{
-				  		auto val = loaded_val[x + y*dims[0]];
+				  		auto val = loaded_val[x + dims[0]*(y+z*dims[1])];
 				  		std::string val_string = to_str(val);
 				  		fprintf(fp,"%s",val_string.c_str());
 				  		if (x < dims[0]-1) fprintf(fp,"%s",",");
