@@ -223,37 +223,6 @@ acShapeCount(const AcShape shape)
 	return shape.x*shape.y*shape.z*shape.w;
 }
 
-AcReal
-get_reduce_state_flush_var_real(const AcReduceOp state)
-{
-	return 
-		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (AcReal)0.0 :
-		(state == AC_REDUCE_OP_MIN) ? AC_REAL_MAX :
-		(state == AC_REDUCE_OP_MAX) ? -AC_REAL_MAX :
-		(AcReal)0.0;
-}
-
-int
-get_reduce_state_flush_var_int(const AcReduceOp state)
-{
-	return 
-		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? 0 :
-		(state == AC_REDUCE_OP_MIN) ? INT_MAX:
-		(state == AC_REDUCE_OP_MAX) ? -INT_MAX:
-		0;
-}
-
-#if AC_DOUBLE_PRECISION
-float
-get_reduce_state_flush_var_float(const AcReduceOp state)
-{
-	return 
-		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (float)0.0 :
-		(state == AC_REDUCE_OP_MIN) ? FLT_MAX :
-		(state == AC_REDUCE_OP_MAX) ? -FLT_MAX :
-		(float)0.0;
-}
-#endif
 
 void
 acQueryIntparams(void)
@@ -394,3 +363,35 @@ acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 
     return AC_SUCCESS;
 }
+
+AcReal
+get_reduce_state_flush_var_real(const AcReduceOp state)
+{
+	return 
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (AcReal)0.0 :
+		(state == AC_REDUCE_OP_MIN) ? AC_REAL_MAX :
+		(state == AC_REDUCE_OP_MAX) ? -AC_REAL_MAX :
+		(AcReal)0.0;
+}
+
+int
+get_reduce_state_flush_var_int(const AcReduceOp state)
+{
+	return 
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? 0 :
+		(state == AC_REDUCE_OP_MIN) ? INT_MAX:
+		(state == AC_REDUCE_OP_MAX) ? -INT_MAX:
+		0;
+}
+
+#if AC_DOUBLE_PRECISION
+float
+get_reduce_state_flush_var_float(const AcReduceOp state)
+{
+	return 
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (float)0.0 :
+		(state == AC_REDUCE_OP_MIN) ? FLT_MAX :
+		(state == AC_REDUCE_OP_MAX) ? -FLT_MAX :
+		(float)0.0;
+}
+#endif
