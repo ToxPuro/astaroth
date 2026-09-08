@@ -50,7 +50,7 @@ parse_3d_array(const char* value,
                     AcReal* values,
                     size_t& dim0,
                     size_t& dim1,
-                    size_t& dim2)
+                    size_t& dim2, const unsigned long int max_size)
 {
     std::vector<std::vector<std::vector<AcReal>>> array;
 
@@ -163,6 +163,7 @@ parse_3d_array(const char* value,
         for (const auto& row : plane)
             for (const auto& x : row)
 	    {
+		if((size_t)counter >= max_size) return false;
                 values[counter] = x;
 		++counter;
 	    }
@@ -173,7 +174,7 @@ parse_3d_array(const char* value,
 static bool
 parse_1d_array(const char* value,
                AcReal* values,
-               size_t& dim0)
+               size_t& dim0,const long unsigned int max_size)
 {
     const char* p = value;
 
@@ -199,6 +200,7 @@ parse_1d_array(const char* value,
         if (end == p)
             return false;
 
+	if((size_t)counter >= max_size) return false;
         values[counter++] = (AcReal)val;
         p = end;
 
@@ -224,7 +226,7 @@ parse_1d_array(const char* value,
 static bool
 parse_1d_array(const char* value,
                int* values,
-               size_t& dim0)
+               size_t& dim0, const long unsigned int max_size)
 {
     const char* p = value;
 
@@ -250,6 +252,7 @@ parse_1d_array(const char* value,
         if (end == p)
             return false;
 
+	if((size_t)counter >= max_size) return false;
         values[counter++] = (int)val;
         p = end;
 
@@ -275,7 +278,7 @@ parse_1d_array(const char* value,
 static bool
 parse_1d_array(const char* value,
                bool* values,
-               size_t& dim0)
+               size_t& dim0, size_t max_size)
 {
     const char* p = value;
 
@@ -301,6 +304,7 @@ parse_1d_array(const char* value,
         if (end == p)
             return false;
 
+	if((size_t)counter >= max_size) return false;
         values[counter++] = (bool)val;
         p = end;
 
@@ -327,7 +331,7 @@ static bool
 parse_2d_array(const char* value,
                AcReal* values,
                size_t& dim0,
-               size_t& dim1)
+               size_t& dim1,const long unsigned int max_size)
 {
     std::vector<std::vector<AcReal>> array;
 
@@ -407,6 +411,7 @@ parse_2d_array(const char* value,
 
     for (const auto& row : array) {
         for (const auto& x : row) {
+	    if((size_t)counter >= max_size) return false;
             values[counter] = x;
             ++counter;
         }
@@ -419,7 +424,7 @@ static bool
 parse_2d_array(const char* value,
                int* values,
                size_t& dim0,
-               size_t& dim1)
+               size_t& dim1,const long unsigned int max_size)
 {
     std::vector<std::vector<int>> array;
 
@@ -499,6 +504,7 @@ parse_2d_array(const char* value,
 
     for (const auto& row : array) {
         for (const auto& x : row) {
+	    if((size_t)counter >= max_size) return false;
             values[counter] = x;
             ++counter;
         }
@@ -511,7 +517,7 @@ static bool
 parse_2d_array(const char* value,
                bool* values,
                size_t& dim0,
-               size_t& dim1)
+               size_t& dim1, const long unsigned int max_size)
 {
     std::vector<std::vector<bool>> array;
 
@@ -591,6 +597,7 @@ parse_2d_array(const char* value,
 
     for (const auto& row : array) {
         for (const auto& x : row) {
+	    if((size_t)counter >= max_size) return false;
             values[counter] = x;
             ++counter;
         }
@@ -604,7 +611,7 @@ parse_3d_array(const char* value,
                     int* values,
                     size_t& dim0,
                     size_t& dim1,
-                    size_t& dim2)
+                    size_t& dim2, const long unsigned int max_size)
 {
     std::vector<std::vector<std::vector<int>>> array;
 
@@ -717,6 +724,7 @@ parse_3d_array(const char* value,
         for (const auto& row : plane)
             for (const auto& x : row)
 	    {
+	        if((size_t)counter >= max_size) return false;
                 values[counter] = x;
 		++counter;
 	    }
@@ -729,7 +737,7 @@ parse_3d_array(const char* value,
                     bool* values,
                     size_t& dim0,
                     size_t& dim1,
-                    size_t& dim2)
+                    size_t& dim2, const long unsigned int max_size)
 {
     std::vector<std::vector<std::vector<bool>>> array;
 
@@ -842,6 +850,7 @@ parse_3d_array(const char* value,
         for (const auto& row : plane)
             for (const auto& x : row)
 	    {
+	        if((size_t)counter >= max_size) return false;
                 values[counter] = x;
 		++counter;
 	    }
@@ -969,7 +978,6 @@ parse_intparam(const char* value)
 
 #define LOAD_ARRAY(UPPER_CASE,DATATYPE,LOWER_CASE,UP_NAME) \
         else if ((idx = find_array(keyword, LOWER_CASE##_array_info, NUM_##UPPER_CASE##_ARRAYS+NUM_##UPPER_CASE##_COMP_ARRAYS)) >= 0) { \
-		auto array_vals = get_entries(value,'[',']'); \
 		const bool is_comp = (idx >= NUM_##UPPER_CASE##_ARRAYS); \
 		idx -= NUM_##UPPER_CASE##_ARRAYS*is_comp; \
 		const auto rank = (is_comp) ? \
@@ -982,10 +990,10 @@ parse_intparam(const char* value)
 		{ \
 			size_t dim0 = 0; \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
-			parse_1d_array(value,dst,dim0); \
+			parse_1d_array(value,dst,dim0,size); \
 			if(dim0 != (size_t)size) \
 			{ \
-                          fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %zu: SKIPPING\n",array_vals.size(),keyword,size); \
+                          fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %zu: SKIPPING\n",dim0,keyword,size); \
 			} \
 			else if(is_comp) \
 			{ \
@@ -1005,8 +1013,12 @@ parse_intparam(const char* value)
 		{ \
 			size_t dim0,dim1; \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
-			parse_2d_array(value,dst,dim0,dim1); \
-			if(is_comp) \
+			parse_2d_array(value,dst,dim0,dim1,size); \
+			if(dim0*dim1 != (size_t)size) \
+			{ \
+                          fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %zu: SKIPPING\n",dim0*dim1,keyword,size); \
+			} \
+			else if(is_comp) \
 			{ \
 				if constexpr (NUM_##UPPER_CASE##_COMP_ARRAYS > 0) \
 				{ \
@@ -1024,8 +1036,12 @@ parse_intparam(const char* value)
 		{ \
 			size_t dim0,dim1,dim2; \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size); \
-			parse_3d_array(value,dst,dim0,dim1,dim2); \
-			if(is_comp) \
+			parse_3d_array(value,dst,dim0,dim1,dim2,size); \
+			if(dim0*dim1*dim2 != (size_t)size) \
+			{ \
+                          fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %zu: SKIPPING\n",dim0*dim1*dim2,keyword,size); \
+			} \
+			else if(is_comp) \
 			{ \
 				if constexpr (NUM_##UPPER_CASE##_COMP_ARRAYS > 0) \
 				{ \
