@@ -1,5 +1,7 @@
 var NAVTREEINDEX5 =
 {
+"structAcTaskDefinition.html#a7a658bbb92fca42e9b527ec20fc7fd9a":[4,0,21,32],
+"structAcTaskDefinition.html#a7f9ca058118256c5381511284be813dc":[4,0,21,7],
 "structAcTaskDefinition.html#a811ee40cf90d84337246e613d69e4272":[4,0,21,9],
 "structAcTaskDefinition.html#a8420da4a803e5d69389685f08175cfe7":[4,0,21,2],
 "structAcTaskDefinition.html#a843d3eecd6bf43e3339cf947eb4f8501":[4,0,21,10],
@@ -156,9 +158,9 @@ var NAVTREEINDEX5 =
 "structte__variable.html#a61e2ec3703bb3cd8519a4068b92399af":[4,0,44,1],
 "structte__variable.html#a94cf978c87b0c7da037d9cb70fd29987":[4,0,44,2],
 "structte__variable.html#af07e006edd70271440a510748f6cd9c4":[4,0,44,3],
-"timer__hires_8h.html":[5,0,2,23],
-"timer__hires_8h.html#a7ae30853a48233eb21cf83baf34e6c0c":[5,0,2,23,0],
-"timer__hires_8h_source.html":[5,0,2,23],
+"timer__hires_8h.html":[5,0,2,24],
+"timer__hires_8h.html#a7ae30853a48233eb21cf83baf34e6c0c":[5,0,2,24,0],
+"timer__hires_8h_source.html":[5,0,2,24],
 "tinyexpr_8h.html":[5,0,0,0,12],
 "tinyexpr_8h.html#a0efab36d0741747d26b3538ed704325e":[5,0,0,0,12,5],
 "tinyexpr_8h.html#a3cb88a7549ca780bef926f626fb6539d":[5,0,0,0,12,4],

@@ -98,6 +98,7 @@ $(function(){initNavTree('ac__helpers_8h.html','',''); });
 <code>#include &quot;<a class="el" href="astaroth__helpers_8h_source.html">astaroth_helpers.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="ac__reduce__helpers_8h_source.html">ac_reduce_helpers.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Include dependency graph for ac_helpers.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
@@ -125,8 +126,6 @@ Functions</h2></td></tr>
 <tr class="memitem:a4f560e71c6c03f8ddf7e5ac5f1b10268" id="r_a4f560e71c6c03f8ddf7e5ac5f1b10268"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4f560e71c6c03f8ddf7e5ac5f1b10268">acShapeSize</a> (const <a class="el" href="structAcShape.html">AcShape</a> shape)</td></tr>
 <tr class="memitem:af089f9dd18046fc92769165d99eec290" id="r_af089f9dd18046fc92769165d99eec290"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af089f9dd18046fc92769165d99eec290">acSupportsCooperativeLaunches</a> ()</td></tr>
 <tr class="memitem:afcea299563c7d6a722eb5fb7245be749" id="r_afcea299563c7d6a722eb5fb7245be749"><td class="memItemLeft" align="right" valign="top">Volume&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#afcea299563c7d6a722eb5fb7245be749">get_bpg</a> (Volume dims, const Volume tpb)</td></tr>
-<tr class="memitem:aef051fc1d66be0bc5d9045a5dd3f3e05" id="r_aef051fc1d66be0bc5d9045a5dd3f3e05"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aef051fc1d66be0bc5d9045a5dd3f3e05">get_reduce_state_flush_var_int</a> (const <a class="el" href="host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95">AcReduceOp</a> state)</td></tr>
-<tr class="memitem:a9e6a43f4812df8018168451c2a039ee2" id="r_a9e6a43f4812df8018168451c2a039ee2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9e6a43f4812df8018168451c2a039ee2">get_reduce_state_flush_var_real</a> (const <a class="el" href="host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95">AcReduceOp</a> state)</td></tr>
 </table>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="a19f3229f04326d2099866276eae57111" name="a19f3229f04326d2099866276eae57111"></a>
@@ -424,40 +423,6 @@ Functions</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">const Volume</td>          <td class="paramname"><span class="paramname"><em>tpb</em></span>&#160;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aef051fc1d66be0bc5d9045a5dd3f3e05" name="aef051fc1d66be0bc5d9045a5dd3f3e05"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aef051fc1d66be0bc5d9045a5dd3f3e05">&#9670;&#160;</a></span>get_reduce_state_flush_var_int()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int get_reduce_state_flush_var_int </td>
-          <td>(</td>
-          <td class="paramtype">const <a class="el" href="host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95">AcReduceOp</a></td>          <td class="paramname"><span class="paramname"><em>state</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a9e6a43f4812df8018168451c2a039ee2" name="a9e6a43f4812df8018168451c2a039ee2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9e6a43f4812df8018168451c2a039ee2">&#9670;&#160;</a></span>get_reduce_state_flush_var_real()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> get_reduce_state_flush_var_real </td>
-          <td>(</td>
-          <td class="paramtype">const <a class="el" href="host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95">AcReduceOp</a></td>          <td class="paramname"><span class="paramname"><em>state</em></span></td><td>)</td>
-          <td></td>
         </tr>
       </table>
 </div><div class="memdoc">

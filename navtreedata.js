@@ -95,11 +95,11 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "3d__caching__implementations_8h.html",
-"astaroth__base_8h.html#af2a8c11d6508bd7c70f49c57b6f5e94c",
-"astaroth__helpers_8h.html#a5fc729b224f4e0dd4957692b42658749",
-"functions_e.html",
-"implementation_8h.html#a2831a16bac51962b90c99023d5733252",
-"structAcTaskDefinition.html#a811ee40cf90d84337246e613d69e4272"
+"astaroth__base_8h.html#ac7f86c76a4d3ce7b11f00fcfdba809b8",
+"astaroth__helpers_8h.html#a59a9a5f184a241bc841f69ca5d427c4c",
+"functions_c.html",
+"host__datatypes_8h_source.html",
+"structAcTaskDefinition.html#a7a658bbb92fca42e9b527ec20fc7fd9a"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';

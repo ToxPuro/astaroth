@@ -15,7 +15,5 @@ var ac__helpers_8h =
     [ "acShapeCount", "ac__helpers_8h.html#a5da392ccd5dfbf6cb92b45dd1247e980", null ],
     [ "acShapeSize", "ac__helpers_8h.html#a4f560e71c6c03f8ddf7e5ac5f1b10268", null ],
     [ "acSupportsCooperativeLaunches", "ac__helpers_8h.html#af089f9dd18046fc92769165d99eec290", null ],
-    [ "get_bpg", "ac__helpers_8h.html#afcea299563c7d6a722eb5fb7245be749", null ],
-    [ "get_reduce_state_flush_var_int", "ac__helpers_8h.html#aef051fc1d66be0bc5d9045a5dd3f3e05", null ],
-    [ "get_reduce_state_flush_var_real", "ac__helpers_8h.html#a9e6a43f4812df8018168451c2a039ee2", null ]
+    [ "get_bpg", "ac__helpers_8h.html#afcea299563c7d6a722eb5fb7245be749", null ]
 ];
