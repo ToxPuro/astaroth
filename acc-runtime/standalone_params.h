@@ -6,6 +6,7 @@ global output real AC_dt_min
 // Additional params needed by standalone & standalone_mpi
 // diagnostics period
 int AC_save_steps
+real AC_dt0
 
 // snapshot period
 int AC_bin_steps
