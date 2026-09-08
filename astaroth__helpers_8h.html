@@ -151,6 +151,7 @@ Functions</h2></td></tr>
 <tr class="memitem:ade80fe486f6ef29bc180bc8884e7c77f" id="r_ade80fe486f6ef29bc180bc8884e7c77f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ade80fe486f6ef29bc180bc8884e7c77f">acSetGridMeshDims</a> (const size_t nx, const size_t ny, const size_t nz, <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> *<a class="el" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>)</td></tr>
 <tr class="memitem:af7ae8f4b298756a542c2edefdc837c5c" id="r_af7ae8f4b298756a542c2edefdc837c5c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af7ae8f4b298756a542c2edefdc837c5c">acSetLocalMeshDims</a> (const size_t nx, const size_t ny, const size_t nz, <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> *<a class="el" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>)</td></tr>
 <tr class="memitem:abd859a8b8caf5e7f50af6c2a1c43d4df" id="r_abd859a8b8caf5e7f50af6c2a1c43d4df"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abd859a8b8caf5e7f50af6c2a1c43d4df">acStoreConfig</a> (const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> <a class="el" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>, const char *filename)</td></tr>
+<tr class="memitem:af70a6e93683fab1bbfc1342e8b28ee0a" id="r_af70a6e93683fab1bbfc1342e8b28ee0a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af70a6e93683fab1bbfc1342e8b28ee0a">acStoreRunConsts</a> (const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a> <a class="el" href="astaroth_8h.html#a6a8698b79984b9e721e85f1fea42a9a1">info</a>, const char *filename)</td></tr>
 <tr class="memitem:a5fc729b224f4e0dd4957692b42658749" id="r_a5fc729b224f4e0dd4957692b42658749"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5fc729b224f4e0dd4957692b42658749">acVerifyCompatibility</a> (const size_t mesh_size, const size_t mesh_info_size, const size_t comp_info_size, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> num_reals, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> num_ints, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> num_bools, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> num_real_arrays, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> num_int_arrays, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> num_bool_arrays)</td></tr>
 </table>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
@@ -864,6 +865,27 @@ Functions</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">void acStoreConfig </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a></td>          <td class="paramname"><span class="paramname"><em>info</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *</td>          <td class="paramname"><span class="paramname"><em>filename</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af70a6e93683fab1bbfc1342e8b28ee0a" name="af70a6e93683fab1bbfc1342e8b28ee0a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af70a6e93683fab1bbfc1342e8b28ee0a">&#9670;&#160;</a></span>acStoreRunConsts()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void acStoreRunConsts </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="structAcMeshInfo.html">AcMeshInfo</a></td>          <td class="paramname"><span class="paramname"><em>info</em></span>, </td>
         </tr>

@@ -37,5 +37,6 @@ var astaroth__helpers_8h =
     [ "acSetGridMeshDims", "astaroth__helpers_8h.html#ade80fe486f6ef29bc180bc8884e7c77f", null ],
     [ "acSetLocalMeshDims", "astaroth__helpers_8h.html#af7ae8f4b298756a542c2edefdc837c5c", null ],
     [ "acStoreConfig", "astaroth__helpers_8h.html#abd859a8b8caf5e7f50af6c2a1c43d4df", null ],
+    [ "acStoreRunConsts", "astaroth__helpers_8h.html#af70a6e93683fab1bbfc1342e8b28ee0a", null ],
     [ "acVerifyCompatibility", "astaroth__helpers_8h.html#a5fc729b224f4e0dd4957692b42658749", null ]
 ];
