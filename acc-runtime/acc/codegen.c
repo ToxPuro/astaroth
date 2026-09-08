@@ -1391,10 +1391,10 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
 
 
-	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {return %s_params[param];}\n",enum_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",enum_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {return %s_params[param];}\n",enum_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {return %s_arrays[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) return dummy; return %s_params[param];}\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) return dummy; return %s_arrays[param];}\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) return dummy; return %s_params[param];}\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) return dummy; return %s_arrays[param];}\n",enum_name,uppr_name,define_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompParam ) const {return false;}\n",enum_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompArrayParam ) const {return false;}\n",enum_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
