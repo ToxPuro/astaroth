@@ -4,6 +4,7 @@
 
 #include "astaroth.h"
 #include "astaroth_runtime_compilation.h"
+#include "astaroth_helpers.h"
 #if AC_MPI_ENABLED
 #include "../src/core/decomposition/decomposition.h"
 #endif
@@ -12,7 +13,6 @@
 
 const size_t max_string_size = 20000;
 
-#include "config_helpers.h"
 
 #if AC_MPI_ENABLED
 static uint3_64
@@ -74,14 +74,6 @@ check_that_built_ins_loaded(const AcCompInfo info)
 		ERRCHK_ALWAYS(info.is_loaded.int3_params[AC_domain_decomposition]);
 #endif
 }
-void
-acLoadRunConstsBase(const char* filename, AcMeshInfo info)
-{
-	FILE* fp = fopen(filename,"w");
-	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp,"override const", true);
-	AcArrayCompTypes::run<load_comp_arrays>(info, fp,"override const", true);
-	fclose(fp);
-}
 const char* dynamic_base_path   = astaroth_base_path;
 const char* dynamic_binary_path = astaroth_binary_path;
 const char* dynamic_acc_compiler_path = NULL;
@@ -125,7 +117,7 @@ ac_overrides_path()
 void
 acLoadRunConsts(AcMeshInfo info)
 {
-	acLoadRunConstsBase(ac_overrides_path().c_str(),info);
+	acStoreRunConsts(info,ac_overrides_path().c_str());
 }
 
 static bool
@@ -214,7 +206,7 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
 AcResult
 acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
-	acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);
+	acStoreRunConsts(mesh_info,"tmp_astaroth_run_consts.h");
 	char cmd[2*20000];
 	char cwd[5024];
 	if (getcwd(cwd, sizeof(cwd)) == NULL) {
@@ -294,7 +286,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 			fprintf(stderr,"%s","Fatal error was not able to make build directory\n");
 			return AC_FAILURE;
 		}
-		acLoadRunConstsBase(ac_overrides_path().c_str(),mesh_info);
+		acStoreRunConsts(mesh_info,ac_overrides_path().c_str());
 		if(run_cmake(user_cmake_options,log_dst) != AC_SUCCESS) return AC_FAILURE;
 	}
 	else
@@ -395,19 +387,5 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 #endif
         ac_restore_floating_point_exceptions();
 	return res;
-}
-
-extern "C" void
-acStoreConfig(const AcMeshInfo info, const char* filename)
-{
-        ac_unset_floating_point_exceptions();
-	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
-	AcScalarTypes::run<load_scalars>(info, fp, "", false);
-	AcArrayTypes::run<load_arrays>(info,fp, "", false);
-
-	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
-	AcArrayCompTypes::run<load_comp_arrays>(info,    fp, "", false);
-	if(filename != NULL) fclose(fp);
-        ac_restore_floating_point_exceptions();
 }
 
