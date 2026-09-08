@@ -89,5 +89,8 @@ var astaroth__device_8h =
     [ "acDeviceTransposeVertexBuffer", "astaroth__device_8h.html#a375e6f1ea2c7c2c12e99893e5a764af5", null ],
     [ "acDeviceUpdate", "astaroth__device_8h.html#a0715b9b9ab9df970759f57652529ef26", null ],
     [ "acDeviceVolumeCopy", "astaroth__device_8h.html#aaf2f9cacc10332ed29cf70830885ff20", null ],
-    [ "acDeviceWriteMeshToDisk", "astaroth__device_8h.html#aee83bf0c26eb16f5277236aad07d8a00", null ]
+    [ "acDeviceWriteMeshToDisk", "astaroth__device_8h.html#aee83bf0c26eb16f5277236aad07d8a00", null ],
+    [ "order", "astaroth__device_8h.html#a36adb0389fef9fa9a65d14556bbf1075", null ],
+    [ "src", "astaroth__device_8h.html#a31b7963829e8e66400bf7b4750977abb", null ],
+    [ "stream", "astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b", null ]
 ];

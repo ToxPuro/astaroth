@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['seed_5frng_0',['seed_rng',['../astaroth__random_8h.html#a1e0ab75164f06285d26c0fb33e772c97',1,'astaroth_random.h']]],
-  ['stencil_5faccesses_5fboundaries_1',['stencil_accesses_boundaries',['../astaroth__analysis__helpers_8h.html#ad7aa223b4863268e86047b7f9c06a0e8',1,'astaroth_analysis_helpers.h']]]
+  ['va_5fend_0',['va_end',['../vecs_8h.html#aa694120a0e2e1e38b7bebb913a0fe88e',1,'vecs.h']]],
+  ['va_5fstart_1',['va_start',['../vecs_8h.html#a25419a391fdd4ad7954699c58cfeb3b9',1,'vecs.h']]]
 ];

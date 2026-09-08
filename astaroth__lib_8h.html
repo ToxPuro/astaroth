@@ -92,12 +92,14 @@ $(function(){initNavTree('astaroth__lib_8h.html','',''); });
   <div class="headertitle"><div class="title">astaroth_lib.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
+<div class="textblock"><code>#include &lt;dlfcn.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="acc__runtime_8h_source.html">acc_runtime.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Include dependency graph for astaroth_lib.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="astaroth__lib_8h__incl.svg" width="174" height="190"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="astaroth__lib_8h__incl.svg" width="100%" height="600"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 </div><div class="textblock"><div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>This graph shows which files directly or indirectly include this file:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
@@ -108,10 +110,37 @@ $(function(){initNavTree('astaroth__lib_8h.html','',''); });
 </div>
 <p><a href="astaroth__lib_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 id="header-define-members" class="groupheader"><a id="define-members" name="define-members"></a>
+Macros</h2></td></tr>
+<tr class="memitem:abf78485208f08c91beb276c005325150" id="r_abf78485208f08c91beb276c005325150"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abf78485208f08c91beb276c005325150">LOAD_DSYM</a>(FUNC_NAME)</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-typedef-members" class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
 <tr class="memitem:a18c352a2df77907ab0e840511ff115b8" id="r_a18c352a2df77907ab0e840511ff115b8"><td class="memItemLeft" align="right" valign="top">typedef void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a18c352a2df77907ab0e840511ff115b8">AcLibHandle</a></td></tr>
 </table>
+<a name="doc-define-members" id="doc-define-members"></a><h2 id="header-doc-define-members" class="groupheader">Macro Definition Documentation</h2>
+<a id="abf78485208f08c91beb276c005325150" name="abf78485208f08c91beb276c005325150"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abf78485208f08c91beb276c005325150">&#9670;&#160;</a></span>LOAD_DSYM</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define LOAD_DSYM</td>
+          <td>(</td>
+          <td class="paramtype"></td>          <td class="paramname"><span class="paramname"><em>FUNC_NAME</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Value:</b><div class="fragment"><div class="line">    *(<span class="keywordtype">void</span>**)(&amp;FUNC_NAME) = dlsym(handle, #FUNC_NAME); \</div>
+<div class="line">    if (FUNC_NAME == NULL)                             { \</div>
+<div class="line">                                  fprintf(stderr, <span class="stringliteral">&quot;Fatal error: was not able to load function &quot;</span> #FUNC_NAME <span class="stringliteral">&quot;\n&quot;</span>); \</div>
+<div class="line">        abort(); \</div>
+<div class="line">}</div>
+</div><!-- fragment -->
+</div>
+</div>
 <a name="doc-typedef-members" id="doc-typedef-members"></a><h2 id="header-doc-typedef-members" class="groupheader">Typedef Documentation</h2>
 <a id="a18c352a2df77907ab0e840511ff115b8" name="a18c352a2df77907ab0e840511ff115b8"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a18c352a2df77907ab0e840511ff115b8">&#9670;&#160;</a></span>AcLibHandle</h2>

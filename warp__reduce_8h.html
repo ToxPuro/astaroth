@@ -105,14 +105,14 @@ $(function(){initNavTree('warp__reduce_8h.html','',''); });
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a06f8db8d69443714aaa3b018cebd328c" id="r_a06f8db8d69443714aaa3b018cebd328c"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a06f8db8d69443714aaa3b018cebd328c">get_op_instruction</a> (const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</td></tr>
-<tr class="memitem:a72cf3c99d99f585936adb7e3e7de5966" id="r_a72cf3c99d99f585936adb7e3e7de5966"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a72cf3c99d99f585936adb7e3e7de5966">print_shuffle_down</a> (FILE *stream, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> offset)</td></tr>
-<tr class="memitem:ae7a20060faa4a18970bde799dda3c7d9" id="r_ae7a20060faa4a18970bde799dda3c7d9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a> (FILE *stream, const char *tmp_type, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> offset, const char *op_instruction, const bool check_activeness)</td></tr>
-<tr class="memitem:a81216496aa0a5086b0430176c8e01096" id="r_a81216496aa0a5086b0430176c8e01096"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a81216496aa0a5086b0430176c8e01096">print_warp_reduction</a> (FILE *stream, const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a> warp_size, const char *op_instruction, const bool check_activeness)</td></tr>
+<tr class="memitem:a72cf3c99d99f585936adb7e3e7de5966" id="r_a72cf3c99d99f585936adb7e3e7de5966"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a72cf3c99d99f585936adb7e3e7de5966">print_shuffle_down</a> (FILE *<a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>, const int offset)</td></tr>
+<tr class="memitem:ae7a20060faa4a18970bde799dda3c7d9" id="r_ae7a20060faa4a18970bde799dda3c7d9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae7a20060faa4a18970bde799dda3c7d9">print_shuffle_iteration</a> (FILE *<a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>, const char *tmp_type, const int offset, const char *op_instruction, const bool check_activeness)</td></tr>
+<tr class="memitem:a81216496aa0a5086b0430176c8e01096" id="r_a81216496aa0a5086b0430176c8e01096"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a81216496aa0a5086b0430176c8e01096">print_warp_reduction</a> (FILE *<a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>, const int warp_size, const char *op_instruction, const bool check_activeness)</td></tr>
 <tr class="memitem:a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8" id="r_a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a83c10bdbe8b9ae8d9d6f92cf7f2dd8b8">reduce_op_to_name</a> (const <a class="el" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a> op)</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:a433e04760a4c0df4327ab01c13bde02b" id="r_a433e04760a4c0df4327ab01c13bde02b"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a433e04760a4c0df4327ab01c13bde02b">shuffle_instruction</a> = &quot;__shfl_sync(AC_INTERNAL_active_threads,<a class="el" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">val</a>,target_tid)&quot;</td></tr>
+<tr class="memitem:a433e04760a4c0df4327ab01c13bde02b" id="r_a433e04760a4c0df4327ab01c13bde02b"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a433e04760a4c0df4327ab01c13bde02b">shuffle_instruction</a> = &quot;__shfl_sync(AC_INTERNAL_active_threads,val,target_tid)&quot;</td></tr>
 </table>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="a06f8db8d69443714aaa3b018cebd328c" name="a06f8db8d69443714aaa3b018cebd328c"></a>
@@ -146,7 +146,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a></td>          <td class="paramname"><span class="paramname"><em>offset</em></span>&#160;)</td>
+          <td class="paramtype">const int</td>          <td class="paramname"><span class="paramname"><em>offset</em></span>&#160;)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -172,7 +172,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a></td>          <td class="paramname"><span class="paramname"><em>offset</em></span>, </td>
+          <td class="paramtype">const int</td>          <td class="paramname"><span class="paramname"><em>offset</em></span>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -203,7 +203,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a></td>          <td class="paramname"><span class="paramname"><em>warp_size</em></span>, </td>
+          <td class="paramtype">const int</td>          <td class="paramname"><span class="paramname"><em>warp_size</em></span>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -245,7 +245,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const char* shuffle_instruction = &quot;__shfl_sync(AC_INTERNAL_active_threads,<a class="el" href="math__utils_8h.html#a4d348ec60ddcabc4d3429057f3889815">val</a>,target_tid)&quot;</td>
+          <td class="memname">const char* shuffle_instruction = &quot;__shfl_sync(AC_INTERNAL_active_threads,val,target_tid)&quot;</td>
         </tr>
       </table>
 </div><div class="memdoc">

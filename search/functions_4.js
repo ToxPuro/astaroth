@@ -1,25 +1,6 @@
 var searchData=
 [
-  ['gen_5fboundcond_5fkernels_0',['gen_boundcond_kernels',['../codegen_8h.html#ad1aa4eca82846176f72f2311f611263a',1,'codegen.h']]],
-  ['gen_5fextra_5ffuncs_1',['gen_extra_funcs',['../codegen_8h.html#a4cebfb2b0e651f3a3a4222da54161b51',1,'codegen.h']]],
-  ['gen_5ffused_5fkernels_2',['gen_fused_kernels',['../codegen_8h.html#aea114774e4098f47fd448a90f4e42605',1,'codegen.h']]],
-  ['gen_5fkfunc_5finfo_3',['gen_kfunc_info',['../codegen_8h.html#a032ef32d36b37682250081946283ef78',1,'codegen.h']]],
-  ['gen_5foutput_5ffiles_4',['gen_output_files',['../codegen_8h.html#a6e71b4a11f6f97a70148838256e3f55d',1,'codegen.h']]],
-  ['generate_5',['generate',['../codegen_8h.html#ad7a2e8e9b460de7937db7f624bbd2d51',1,'codegen.h']]],
-  ['generate_5fmem_5faccesses_6',['generate_mem_accesses',['../codegen_8h.html#aec386ebc54b3a34fcddfa3bd63adcaec',1,'codegen.h']]],
-  ['generatehelicalforcingparams_7',['generateHelicalForcingParams',['../astaroth__forcing_8h.html#a5d8f541a7c17acf1c35a4665b235cc3a',1,'astaroth_forcing.h']]],
-  ['get_5fbpg_8',['get_bpg',['../ac__helpers_8h.html#afcea299563c7d6a722eb5fb7245be749',1,'ac_helpers.h']]],
-  ['get_5ffields_5fkernel_5fdepends_5fon_5fboundaries_9',['get_fields_kernel_depends_on_boundaries',['../astaroth__analysis__helpers_8h.html#a664767e07312a29804e3dfda8abb8aee',1,'astaroth_analysis_helpers.h']]],
-  ['get_5fkernel_5fanalysis_5finfo_10',['get_kernel_analysis_info',['../astaroth__analysis__helpers_8h.html#a12fc801c70d40f811131fe56fc093111',1,'get_kernel_analysis_info(const AcMeshInfo config):&#160;astaroth_analysis_helpers.h'],['../astaroth__analysis__helpers_8h.html#a91d1359f24d91ff49bce6020cf7d0aae',1,'get_kernel_analysis_info(const AcMeshInfo config, const AcKernel kernel):&#160;astaroth_analysis_helpers.h'],['../astaroth__analysis__helpers_8h.html#ac3fb6c744f37f85db8ca0210687ffe7e',1,'get_kernel_analysis_info(const AcMeshInfo config, const AcKernel kernel, const acKernelInputParams input_params):&#160;astaroth_analysis_helpers.h']]],
-  ['get_5fkernel_5fdepends_5fon_5fboundaries_11',['get_kernel_depends_on_boundaries',['../astaroth__analysis__helpers_8h.html#a3667d8ce986e8693dafc5b61dd700666',1,'get_kernel_depends_on_boundaries(const AcMeshInfo config, const std::array&lt; int, NUM_FIELDS &gt; &amp;fields_already_depend_on_boundaries, const KernelAnalysisInfo info):&#160;astaroth_analysis_helpers.h'],['../astaroth__analysis__helpers_8h.html#a31d4977c33e4fd5a1e9e67c2fb4d560e',1,'get_kernel_depends_on_boundaries(const AcMeshInfo config, const std::array&lt; int, NUM_FIELDS &gt; &amp;fields_already_depend_on_boundaries, const KernelAnalysisInfo *info):&#160;astaroth_analysis_helpers.h']]],
-  ['get_5fkernel_5fradius_12',['get_kernel_radius',['../astaroth__analysis__helpers_8h.html#aa85830768059d348e8c0cfc9baa9d845',1,'astaroth_analysis_helpers.h']]],
-  ['get_5fop_5finstruction_13',['get_op_instruction',['../warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c',1,'warp_reduce.h']]],
-  ['get_5fray_5fboundaries_14',['get_ray_boundaries',['../astaroth__analysis__helpers_8h.html#a5914ab1759d0ce90be776606c3595f36',1,'astaroth_analysis_helpers.h']]],
-  ['get_5freduce_5fstate_5fflush_5fvar_5fint_15',['get_reduce_state_flush_var_int',['../ac__helpers_8h.html#aef051fc1d66be0bc5d9045a5dd3f3e05',1,'ac_helpers.h']]],
-  ['get_5freduce_5fstate_5fflush_5fvar_5freal_16',['get_reduce_state_flush_var_real',['../ac__helpers_8h.html#a9e6a43f4812df8018168451c2a039ee2',1,'ac_helpers.h']]],
-  ['get_5frng_17',['get_rng',['../astaroth__random_8h.html#ae96433a5a2da84eff2e2402ad609b92b',1,'astaroth_random.h']]],
-  ['get_5fstencil_5fboundaries_18',['get_stencil_boundaries',['../astaroth__analysis__helpers_8h.html#ab8307bd9712c7fc91ec1db53533a0404',1,'astaroth_analysis_helpers.h']]],
-  ['get_5fstencil_5fdims_19',['get_stencil_dims',['../astaroth__analysis__helpers_8h.html#ac5ad94ff4df3556be26ac192e3fa2aee',1,'astaroth_analysis_helpers.h']]],
-  ['get_5fstencil_5fhalo_5ftype_20',['get_stencil_halo_type',['../astaroth__analysis__helpers_8h.html#a826d6ee4098f47e979f06a29e0c33158',1,'astaroth_analysis_helpers.h']]],
-  ['greduce_21',['greduce',['../mapreduce_8cuh.html#ab446ce2ed92307958d150217f04b8b56',1,'mapreduce.cuh']]]
+  ['if_0',['if',['../ast_8h.html#a7b50077bef75e0e1697a39b905253930',1,'if(node-&gt;rhs) change_qualifier(node -&gt; rhs, old_qualifier, new_qualifier):&#160;ast.h'],['../ast_8h.html#adadbe985a0a930e6d3bf3126bdd24adb',1,'if(node-&gt;type &amp;NODE_TQUAL &amp;&amp;node-&gt;lhs-&gt;buffer==old_qualifier):&#160;ast.h']]],
+  ['is_5fcoop_5fraytracing_5fkernel_1',['is_coop_raytracing_kernel',['../static__analysis_8h.html#ab065c1b6b6b4f40b8b34a6e2051826f7',1,'static_analysis.h']]],
+  ['is_5fraytracing_5fkernel_2',['is_raytracing_kernel',['../static__analysis_8h.html#a90a6704b0f5402f31480c57fd363448f',1,'is_raytracing_kernel(const AcKernel kernel):&#160;static_analysis.h'],['../astaroth__analysis__helpers_8h.html#a92e2aef8e8e3db595dd24e610eaa350a',1,'is_raytracing_kernel(const KernelAnalysisInfo info):&#160;astaroth_analysis_helpers.h']]]
 ];

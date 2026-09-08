@@ -162,7 +162,7 @@ Source example:</h1>
 <div class="line"><span class="preprocessor">#include &quot;more_headers.h&quot;</span></div>
 <div class="line"> </div>
 <div class="line"><span class="keyword">typedef</span> <span class="keyword">struct </span>{</div>
-<div class="line">    <span class="keywordtype">int</span> <a class="code hl_variable" href="math__utils_8h.html#ae56c2367da268bdb962b7fbf13028a82">data</a>;</div>
+<div class="line">    <span class="keywordtype">int</span> data;</div>
 <div class="line">} SomeStruct;</div>
 <div class="line"> </div>
 <div class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">int</span> small_function(<span class="keyword">const</span> SomeStruct&amp; stuff) { <span class="keywordflow">return</span> stuff.data; }</div>
@@ -181,12 +181,11 @@ Source example:</h1>
 <div class="line">{</div>
 <div class="line">    <span class="keywordflow">return</span>;</div>
 <div class="line">}</div>
-<div class="ttc" id="amath__utils_8h_html_ae56c2367da268bdb962b7fbf13028a82"><div class="ttname"><a href="math__utils_8h.html#ae56c2367da268bdb962b7fbf13028a82">data</a></div><div class="ttdeci">out data[0][0]</div><div class="ttdef"><b>Definition</b> math_utils.h:738</div></div>
 </div><!-- fragment --><h1 class="doxsection"><a class="anchor" id="autotoc_md20"></a>
 Managing feature branches</h1>
 <ol type="1">
 <li>Ensure that you're on the latest version of master. <span class="tt">git checkout master &amp;&amp; git pull</span></li>
-<li>Create a feature branch with <span class="tt">git checkout -<a class="el" href="math__utils_8h.html#a94bfcee558f13d4d009466545802dbc9">b</a> &lt;feature_name_year-month-date&gt;</span>, f.ex. <span class="tt">git checkout -<a class="el" href="math__utils_8h.html#a94bfcee558f13d4d009466545802dbc9">b</a> forcingtests_2019-01-01</span></li>
+<li>Create a feature branch with <span class="tt">git checkout -b &lt;feature_name_year-month-date&gt;</span>, f.ex. <span class="tt">git checkout -b forcingtests_2019-01-01</span></li>
 <li>Do your commits in that branch until your new feature works</li>
 <li>Merge master with your feature branch <span class="tt">git merge master</span></li>
 <li>Resolve the conflicts and test that the code compiles and still works by running <span class="tt">./ac_run -t</span></li>
@@ -199,7 +198,7 @@ About branches in general</h1>
 <ul>
 <li>Unused branches should not kept around after merging them into master in order to avoid cluttering the repository.</li>
 <li><span class="tt">git branch -a --merged</span> shows a list of branches that have been merged to master and are likely not needed any more.</li>
-<li><span class="tt">git push origin --delete &lt;feature branch&gt;</span> deletes a remote branch while <span class="tt">git branch -<a class="el" href="math__utils_8h.html#a2dfdaa96d5441b1adbac99ce5521d7da">d</a> &lt;feature branch&gt;</span> deletes a local branch</li>
+<li><span class="tt">git push origin --delete &lt;feature branch&gt;</span> deletes a remote branch while <span class="tt">git branch -d &lt;feature branch&gt;</span> deletes a local branch</li>
 <li>If you think that you have messed up and lost work, run <span class="tt">git reflog</span> which lists the latests commits. All work that has been committed should be accessible with the hashes listed by this command with <span class="tt">git checkout &lt;reflog hash&gt;</span>.</li>
 </ul>
 <h1 class="doxsection"><a class="anchor" id="autotoc_md22"></a>

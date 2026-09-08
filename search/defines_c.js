@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['one_5fdimensional_5fprofile_0',['ONE_DIMENSIONAL_PROFILE',['../host__datatypes_8h.html#ab05911eb069642c037eddbcbbfedb9da',1,'host_datatypes.h']]],
-  ['overloaded_5ffunc_5fdefine_1',['OVERLOADED_FUNC_DEFINE',['../func__define_8h.html#a4c5307d09a6e1193c9df6c7632265b3b',1,'func_define.h']]]
+  ['n_5fdims_0',['N_DIMS',['../host__datatypes_8h.html#a82fa9f1c919bef6677d8695e2a5d3a7d',1,'host_datatypes.h']]],
+  ['num_5freduce_5fscratchpads_1',['NUM_REDUCE_SCRATCHPADS',['../acc__runtime_8h.html#a1082d01a08c0fbec4d9238f881fd8170',1,'acc_runtime.h']]],
+  ['num_5fstreams_2',['NUM_STREAMS',['../astaroth__base_8h.html#a876704225d1c5ecd8b0fc85315f88397',1,'astaroth_base.h']]]
 ];

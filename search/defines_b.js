@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['n_5fdims_0',['N_DIMS',['../host__datatypes_8h.html#a82fa9f1c919bef6677d8695e2a5d3a7d',1,'host_datatypes.h']]],
-  ['num_5freduce_5fscratchpads_1',['NUM_REDUCE_SCRATCHPADS',['../acc__runtime_8h.html#a1082d01a08c0fbec4d9238f881fd8170',1,'acc_runtime.h']]],
-  ['num_5fstreams_2',['NUM_STREAMS',['../astaroth__base_8h.html#a876704225d1c5ecd8b0fc85315f88397',1,'astaroth_base.h']]]
+  ['make_5fcudoublecomplex_0',['make_cuDoubleComplex',['../hip_8h.html#a512afa369ac2316e3b8d407ccef8bbe2',1,'hip.h']]],
+  ['make_5fcufloatcomplex_1',['make_cuFloatComplex',['../hip_8h.html#a6f9d1dd3c15a82cba580b47465aa86bf',1,'hip.h']]],
+  ['maybe_5funused_2',['MAYBE_UNUSED',['../acc__runtime_8h.html#a07d932791f722cd5b75c111e51ef2023',1,'acc_runtime.h']]]
 ];

@@ -32,5 +32,6 @@ var searchData=
   ['stream_5f7_29',['STREAM_7',['../astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aab42d5e9cf72d8a3ac7aead8f9b6ca27',1,'astaroth_base.h']]],
   ['stream_5f8_30',['STREAM_8',['../astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0ad40cdf4c21d38306795fe64ead952154',1,'astaroth_base.h']]],
   ['stream_5f9_31',['STREAM_9',['../astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0a8d2c6ac1e5c3e76b59641af5387c9d3e',1,'astaroth_base.h']]],
-  ['stream_5fall_32',['STREAM_ALL',['../astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aec536951b36ac016b9cc55be1ac096dc',1,'astaroth_base.h']]]
+  ['stream_5fall_32',['STREAM_ALL',['../astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aec536951b36ac016b9cc55be1ac096dc',1,'astaroth_base.h']]],
+  ['stream_5fdefault_33',['STREAM_DEFAULT',['../astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0a37d2c7c6163b5dad23a8499a250ee35d',1,'astaroth_base.h']]]
 ];

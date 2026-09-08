@@ -75,7 +75,7 @@ var astaroth__base_8h =
       [ "STREAM_29", "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0a0712ab4b5bcb7c686fbd0748318dd984", null ],
       [ "STREAM_30", "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0a20847aec72bf3c49adeda029450713a5", null ],
       [ "STREAM_31", "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0acf2b6a6509fc8130858154ead81d809c", null ],
-      [ "STREAM_ALL", "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aec536951b36ac016b9cc55be1ac096dc", null ]
-    ] ],
-    [ "STREAM_DEFAULT", "astaroth__base_8h.html#af33de62dcfe8be8cfa7f916f5101bcdf", null ]
+      [ "STREAM_ALL", "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0aec536951b36ac016b9cc55be1ac096dc", null ],
+      [ "STREAM_DEFAULT", "astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0a37d2c7c6163b5dad23a8499a250ee35d", null ]
+    ] ]
 ];

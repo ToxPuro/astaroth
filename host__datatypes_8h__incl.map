@@ -1,19 +1,19 @@
 <map id="include/host_datatypes.h" name="include/host_datatypes.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="214,5,398,33"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="231,5,416,33"/>
 <area shape="rect" id="Node000002" title=" " alt="" coords="5,81,87,109"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="259,36,102,80,101,75,260,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="273,36,103,81,101,76,274,31"/>
 <area shape="rect" id="Node000003" title=" " alt="" coords="111,81,184,109"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="275,35,190,77,188,72,280,32"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="290,35,194,77,191,72,294,32"/>
 <area shape="rect" id="Node000004" href="$acreal_8h.html" title=" " alt="" coords="208,81,281,109"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="297,32,267,71,263,67,293,35"/>
-<area shape="rect" id="Node000005" title=" " alt="" coords="306,81,431,109"/>
-<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="318,31,350,69,345,69,316,36"/>
-<area shape="rect" id="Node000006" href="$astaroth__device__headers_8h.html" title=" " alt="" coords="456,81,652,109"/>
-<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="351,31,498,76,493,77,350,36"/>
-<area shape="rect" id="Node000009" title=" " alt="" coords="677,81,802,109"/>
-<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="384,31,663,79,659,81,384,36"/>
-<area shape="rect" id="Node000007" title=" " alt="" coords="405,157,554,184"/>
-<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="543,108,505,148,502,143,538,110"/>
-<area shape="rect" id="Node000008" title=" " alt="" coords="578,157,679,184"/>
-<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="568,107,607,146,602,145,566,112"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="312,32,271,72,268,68,307,35"/>
+<area shape="rect" id="Node000005" href="$astaroth__device__headers_8h.html" title=" " alt="" coords="305,81,502,109"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="338,31,381,70,375,70,337,36"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="526,81,651,109"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="371,31,530,76,524,77,371,36"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="675,81,801,109"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="398,31,662,79,657,81,398,36"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="254,157,403,184"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="392,108,354,148,352,143,388,110"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="428,157,528,184"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="418,107,456,146,451,145,416,112"/>
 </map>

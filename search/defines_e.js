@@ -1,7 +1,9 @@
 var searchData=
 [
-  ['sin_0',['sin',['../math__utils_8h.html#a0cb8046c9ac52516329d57a440a7e60a',1,'math_utils.h']]],
-  ['sqrt_1',['sqrt',['../math__utils_8h.html#ac4acb71b4114d72176466f9b52bf72ac',1,'math_utils.h']]],
-  ['str_5fvec_5fcontains_2',['str_vec_contains',['../string__vec_8h.html#adf95ace7802cdf5762874c7d32d23523',1,'string_vec.h']]],
-  ['strcmps_3',['strcmps',['../string__vec_8h.html#a03cbd7543ad334167af12654f70f567e',1,'string_vec.h']]]
+  ['rand_5funiform_0',['rand_uniform',['../random_8cuh.html#a4113356a2e4968780156d946abcdbb59',1,'random.cuh']]],
+  ['rocprim_5f_5fwarp_5fshuffle_1',['rocprim__warp_shuffle',['../device__details_8h.html#af25f72b50d470e443d38d87641fb2e31',1,'device_details.h']]],
+  ['rocprim_5f_5fwarp_5fshuffle_5fdown_2',['rocprim__warp_shuffle_down',['../device__details_8h.html#aa511a64c88e0d396f16c3e2b3f2f44c0',1,'device_details.h']]],
+  ['rocprim_5f_5fwarpid_3',['rocprim__warpId',['../device__details_8h.html#aa703881f12a8897f3b741331d66da745',1,'device_details.h']]],
+  ['rocprim_5f_5fwarpsize_4',['rocprim__warpSize',['../device__details_8h.html#ae0a4b574398bedf42367a4746b2f5706',1,'device_details.h']]],
+  ['rtype_5fisnan_5',['RTYPE_ISNAN',['../astaroth__base_8h.html#a5a802f6492438259b3360450d252b487',1,'astaroth_base.h']]]
 ];

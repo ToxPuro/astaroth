@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['to_5fvolume_0',['to_volume',['../math__utils__base_8h.html#a5602a472f54f1ee3b87605f09d164cb3',1,'math_utils_base.h']]],
-  ['toacreal3_1',['TOACREAL3',['../datatypes_8h.html#adc1475159505564d2ee18588b967a9c7',1,'datatypes.h']]],
-  ['tovec3_2',['TOVEC3',['../datatypes_8h.html#a66841bc43d248b2fd5293f96984fa61b',1,'datatypes.h']]],
-  ['two_5fdimensional_5fprofile_3',['TWO_DIMENSIONAL_PROFILE',['../host__datatypes_8h.html#ac727fc264af97cb7ad3e5cd5cb23219a',1,'host_datatypes.h']]]
+  ['sin_0',['sin',['../math__utils_8h.html#a0cb8046c9ac52516329d57a440a7e60a',1,'math_utils.h']]],
+  ['sqrt_1',['sqrt',['../math__utils_8h.html#ac4acb71b4114d72176466f9b52bf72ac',1,'math_utils.h']]],
+  ['str_5fvec_5fcontains_2',['str_vec_contains',['../string__vec_8h.html#adf95ace7802cdf5762874c7d32d23523',1,'string_vec.h']]],
+  ['strcmps_3',['strcmps',['../string__vec_8h.html#a03cbd7543ad334167af12654f70f567e',1,'string_vec.h']]]
 ];

@@ -166,7 +166,7 @@ Fields</h3>
 </div><!-- fragment --><h3 class="doxsection"><a class="anchor" id="autotoc_md51"></a>
 Primitive types</h3>
 <p>The following primitive C++ types are usable:</p><ul>
-<li><span class="tt"><a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a></span></li>
+<li><span class="tt">int</span></li>
 <li><span class="tt">bool</span></li>
 <li><span class="tt">long</span></li>
 <li><span class="tt">long long</span></li>
@@ -209,7 +209,7 @@ Structures</h4>
 </blockquote>
 <h5 class="doxsection"><a class="anchor" id="autotoc_md55"></a>
 Operators</h5>
-<p>If all of the members of the structure are <span class="tt">real</span> we provide member-wise arithmetic operators (<span class="tt">+</span>, <span class="tt">-</span>, <span class="tt">/</span>, <span class="tt">*</span>) with <span class="tt">real</span> scalars. Additionally <span class="tt">+</span> and <span class="tt">-</span> are supported between structures of the same type, all of the members of which are <span class="tt">real</span> or <span class="tt"><a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a></span>. For all operators the corresponding compound assignment operator is also supported.</p>
+<p>If all of the members of the structure are <span class="tt">real</span> we provide member-wise arithmetic operators (<span class="tt">+</span>, <span class="tt">-</span>, <span class="tt">/</span>, <span class="tt">*</span>) with <span class="tt">real</span> scalars. Additionally <span class="tt">+</span> and <span class="tt">-</span> are supported between structures of the same type, all of the members of which are <span class="tt">real</span> or <span class="tt">int</span>. For all operators the corresponding compound assignment operator is also supported.</p>
 <h4 class="doxsection"><a class="anchor" id="autotoc_md56"></a>
 Enums</h4>
 <p>Enums are declared in the C syntax </p><div class="fragment"><div class="line">enum Characters</div>
@@ -257,7 +257,7 @@ Advanced</h3>
 <p>Note: At the moment, can be used only via <span class="tt">ComputeSteps</span>. See the section describing <span class="tt">ComputeSteps</span> for example usage. </p>
 </blockquote>
 </li>
-<li><span class="tt">output</span> Used to specify that a variable is supposed to to be the output result of a reduction across the whole subdomain. At the moment, restricted to <span class="tt">real</span>,<span class="tt">float</span> and <span class="tt"><a class="el" href="math__utils__base_8h.html#a2eac6341f2dd45257e1a0c50de89b896">int</a></span> scalar quantities. <blockquote class="doxtable">
+<li><span class="tt">output</span> Used to specify that a variable is supposed to to be the output result of a reduction across the whole subdomain. At the moment, restricted to <span class="tt">real</span>,<span class="tt">float</span> and <span class="tt">int</span> scalar quantities. <blockquote class="doxtable">
 <p>Note: implicitly allocates memory on the GPU to perform reductions. </p>
 </blockquote>
 </li>
@@ -545,7 +545,7 @@ Additional physics-specific API functions</h2>
 </blockquote>
 <h2 class="doxsection"><a class="anchor" id="autotoc_md69"></a>
 Stencil order</h2>
-<p>The stencil order can be set by the user by <span class="tt">hostdefine STENCIL_ORDER (<a class="el" href="math__utils_8h.html#a9336ebf25087d91c818ee6e9ec29f8c1">x</a>)</span>, where <span class="tt"><a class="el" href="math__utils_8h.html#a9336ebf25087d91c818ee6e9ec29f8c1">x</a></span> is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.</p>
+<p>The stencil order can be set by the user by <span class="tt">hostdefine STENCIL_ORDER (x)</span>, where <span class="tt">x</span> is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.</p>
 <p>Alternatively it can be set via CMAKE with <span class="tt">-DAC_STENCIL_ORDER=N</span>.</p>
 <blockquote class="doxtable">
 <p>Note: The size of the halo surrounding the computational is the same as <span class="tt">STENCIL_ORDER</span>. </p>

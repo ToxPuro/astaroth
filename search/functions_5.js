@@ -1,19 +1,17 @@
 var searchData=
 [
-  ['hashmap_5fcapacity_0',['hashmap_capacity',['../hashtable_8h.html#a18281b8e8bc76e81efafe0e29cc1cde8',1,'hashtable.h']]],
-  ['hashmap_5fclz_1',['hashmap_clz',['../hashtable_8h.html#aa34a4dca0a6ccd102c7d57a876cf42d8',1,'hashtable.h']]],
-  ['hashmap_5fcreate_2',['hashmap_create',['../hashtable_8h.html#a10bd73039f7d172977cfb4a8dfc3d18c',1,'hashtable.h']]],
-  ['hashmap_5fcreate_5fex_3',['hashmap_create_ex',['../hashtable_8h.html#a728ff01da3bc8155f454726f41a9a490',1,'hashtable.h']]],
-  ['hashmap_5fdestroy_4',['hashmap_destroy',['../hashtable_8h.html#a3df3db431e88d12507d67159e205db44',1,'hashtable.h']]],
-  ['hashmap_5fget_5',['hashmap_get',['../hashtable_8h.html#a4ee339d17abdce2e3cc45c70880c4a66',1,'hashtable.h']]],
-  ['hashmap_5fhash_5fhelper_6',['hashmap_hash_helper',['../hashtable_8h.html#ad31b9e210e7506da30493743d3db6a4f',1,'hashtable.h']]],
-  ['hashmap_5fhash_5fhelper_5fint_5fhelper_7',['hashmap_hash_helper_int_helper',['../hashtable_8h.html#a184e524b9bb850a10d61bc47a6cc2637',1,'hashtable.h']]],
-  ['hashmap_5fiterate_8',['hashmap_iterate',['../hashtable_8h.html#a0f6182200c64eac28749ee1959ddf42d',1,'hashtable.h']]],
-  ['hashmap_5fiterate_5fpairs_9',['hashmap_iterate_pairs',['../hashtable_8h.html#ad31e3d3284cac1d13897705b08b652d2',1,'hashtable.h']]],
-  ['hashmap_5fnum_5fentries_10',['hashmap_num_entries',['../hashtable_8h.html#ad7fe4dc7386303dc9eb91019d5271b82',1,'hashtable.h']]],
-  ['hashmap_5fput_11',['hashmap_put',['../hashtable_8h.html#a8d7292c67c004675172a4a0e31bd4cb4',1,'hashtable.h']]],
-  ['hashmap_5frehash_5fhelper_12',['hashmap_rehash_helper',['../hashtable_8h.html#aa3aacb312d9ddb0c2eb1ccefb05d2f8d',1,'hashtable.h']]],
-  ['hashmap_5frehash_5fiterator_13',['hashmap_rehash_iterator',['../hashtable_8h.html#ab8a37b44c7b6b9fc8b62e20b2d6b4e5a',1,'hashtable.h']]],
-  ['hashmap_5fremove_14',['hashmap_remove',['../hashtable_8h.html#a61f3b0754ced500e1ff74eee9e9b6fa1',1,'hashtable.h']]],
-  ['hashmap_5fremove_5fand_5freturn_5fkey_15',['hashmap_remove_and_return_key',['../hashtable_8h.html#a1f2cc90241df90b2fb0f2bbcf7ac8d1a',1,'hashtable.h']]]
+  ['kernel_5fcalls_5fray_0',['kernel_calls_ray',['../astaroth__analysis__helpers_8h.html#af3a1e13993d466e0ac8ccacddfc9d3ed',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fcalls_5fstencil_1',['kernel_calls_stencil',['../astaroth__analysis__helpers_8h.html#ad5f48da3e6acd09dc3c9987f51c13ae7',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fdoes_5fonly_5fprofile_5freductions_2',['kernel_does_only_profile_reductions',['../astaroth__analysis__helpers_8h.html#a0bdf1982efc7f80923fed47ae49c6966',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fhas_5fprofile_5fstencil_5fops_3',['kernel_has_profile_stencil_ops',['../astaroth__analysis__helpers_8h.html#a4254e9f0c81b11e8d5bee4b8ef976ba5',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fhas_5fstencil_5fops_4',['kernel_has_stencil_ops',['../astaroth__analysis__helpers_8h.html#aba907ac0a4743952f69ce54128f60a9e',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fonly_5fwrites_5fprofile_5',['kernel_only_writes_profile',['../astaroth__analysis__helpers_8h.html#ab7f3a1f2bea92553be0dd0d3baeb0b67',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5freduces_5fonly_5fprofiles_6',['kernel_reduces_only_profiles',['../astaroth__analysis__helpers_8h.html#a98d5d44831d40d610734b1649ed9b2d7',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5freduces_5fscalar_7',['kernel_reduces_scalar',['../astaroth__analysis__helpers_8h.html#abdd1b6e8e75793d6bcab2a14219e3567',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5freduces_5fsomething_8',['kernel_reduces_something',['../astaroth__analysis__helpers_8h.html#aba808ec1a58783d9a66f20ebc313d467',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fupdates_5fvtxbuf_9',['kernel_updates_vtxbuf',['../astaroth__analysis__helpers_8h.html#aed51d0726e8386c28ea988d72312ba32',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fuses_5frays_10',['kernel_uses_rays',['../astaroth__analysis__helpers_8h.html#ad35ee347f13da1aeea101d127f5d9587',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fwrites_5fprofile_11',['kernel_writes_profile',['../astaroth__analysis__helpers_8h.html#a712ca0386dbc91c31d6f4c85093408d7',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fwrites_5fto_5finput_12',['kernel_writes_to_input',['../astaroth__analysis__helpers_8h.html#a1a320de81203598bb1a4ca59b527a387',1,'astaroth_analysis_helpers.h']]],
+  ['kernel_5fwrites_5fto_5foutput_13',['kernel_writes_to_output',['../astaroth__analysis__helpers_8h.html#a07d8462e72b661b295e29492d788beb3',1,'astaroth_analysis_helpers.h']]]
 ];

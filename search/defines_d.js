@@ -1,10 +1,5 @@
 var searchData=
 [
-  ['rand_5funiform_0',['rand_uniform',['../random_8cuh.html#a4113356a2e4968780156d946abcdbb59',1,'random.cuh']]],
-  ['real3_5fdefined_1',['REAL3_DEFINED',['../datatypes_8h.html#af0597c7716852ab732b72661915bf088',1,'datatypes.h']]],
-  ['rocprim_5f_5fwarp_5fshuffle_2',['rocprim__warp_shuffle',['../device__details_8h.html#af25f72b50d470e443d38d87641fb2e31',1,'device_details.h']]],
-  ['rocprim_5f_5fwarp_5fshuffle_5fdown_3',['rocprim__warp_shuffle_down',['../device__details_8h.html#aa511a64c88e0d396f16c3e2b3f2f44c0',1,'device_details.h']]],
-  ['rocprim_5f_5fwarpid_4',['rocprim__warpId',['../device__details_8h.html#aa703881f12a8897f3b741331d66da745',1,'device_details.h']]],
-  ['rocprim_5f_5fwarpsize_5',['rocprim__warpSize',['../device__details_8h.html#ae0a4b574398bedf42367a4746b2f5706',1,'device_details.h']]],
-  ['rtype_5fisnan_6',['RTYPE_ISNAN',['../astaroth__base_8h.html#a5a802f6492438259b3360450d252b487',1,'astaroth_base.h']]]
+  ['one_5fdimensional_5fprofile_0',['ONE_DIMENSIONAL_PROFILE',['../host__datatypes_8h.html#ab05911eb069642c037eddbcbbfedb9da',1,'host_datatypes.h']]],
+  ['overloaded_5ffunc_5fdefine_1',['OVERLOADED_FUNC_DEFINE',['../func__define_8h.html#a4c5307d09a6e1193c9df6c7632265b3b',1,'func_define.h']]]
 ];

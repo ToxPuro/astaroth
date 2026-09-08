@@ -10,6 +10,7 @@ var dir_cddd8425e5ff5c26b8315309a0324aae =
     [ "hashtable.h", "hashtable_8h.html", "hashtable_8h" ],
     [ "implementation.h", "implementation_8h.html", "implementation_8h" ],
     [ "mem_access_helper_funcs.h", "mem__access__helper__funcs_8h.html", null ],
+    [ "source_manager.h", "source__manager_8h.html", "source__manager_8h" ],
     [ "string_vec.h", "string__vec_8h.html", "string__vec_8h" ],
     [ "tinyexpr.h", "tinyexpr_8h.html", "tinyexpr_8h" ],
     [ "vecs.h", "vecs_8h.html", "vecs_8h" ],

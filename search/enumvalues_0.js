@@ -13,6 +13,16 @@ var searchData=
   ['ac_5ftop_10',['AC_TOP',['../astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78a45a6d8680445e247ecbf30f571553643',1,'astaroth_base.h']]],
   ['ac_5fxz_11',['AC_XZ',['../astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78a08bb143a0b28c4876ee060d4feb17a44',1,'astaroth_base.h']]],
   ['ac_5fyz_12',['AC_YZ',['../astaroth__base_8h.html#a63f31c6e4874260362c8995061883c78aa47b9f1c0b9f0e52479034c4c43cc4c9',1,'astaroth_base.h']]],
-  ['access_5fread_13',['ACCESS_READ',['../astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478a8f2d555454c1fc22e29d47755c3001c8',1,'astaroth_grid.h']]],
-  ['access_5fwrite_14',['ACCESS_WRITE',['../astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478a50e06f55e6a48ab9a1f8903bd9331097',1,'astaroth_grid.h']]]
+  ['acc_5fsrc_5fcpp_13',['ACC_SRC_CPP',['../source__manager_8h.html#a7cbe4bd98c9df178430ba1513c870bb8a97114612410730bea561b1aeb9468ec3',1,'source_manager.h']]],
+  ['acc_5fsrc_5fdecl_5fconstant_14',['ACC_SRC_DECL_CONSTANT',['../source__manager_8h.html#aee47f0ff325dea3b83889ac864eeff0ba3212a41156f1c56b95aea907bfeb10f0',1,'source_manager.h']]],
+  ['acc_5fsrc_5fdecl_5fdevice_15',['ACC_SRC_DECL_DEVICE',['../source__manager_8h.html#aee47f0ff325dea3b83889ac864eeff0ba5cebaf8601f235bd251c71a153314bbb',1,'source_manager.h']]],
+  ['acc_5fsrc_5fdecl_5fepilogue_16',['ACC_SRC_DECL_EPILOGUE',['../source__manager_8h.html#aee47f0ff325dea3b83889ac864eeff0bacbe193bc5a3126cd707c8591dc8ddaed',1,'source_manager.h']]],
+  ['acc_5fsrc_5fdecl_5fpublic_17',['ACC_SRC_DECL_PUBLIC',['../source__manager_8h.html#aee47f0ff325dea3b83889ac864eeff0baeea0e1c9a3d0b0753b2adc0f1c86121d',1,'source_manager.h']]],
+  ['acc_5fsrc_5fdecl_5funmanaged_18',['ACC_SRC_DECL_UNMANAGED',['../source__manager_8h.html#aee47f0ff325dea3b83889ac864eeff0ba8aeff0549987f01a5110acbe295f2530',1,'source_manager.h']]],
+  ['acc_5fsrc_5fdevice_19',['ACC_SRC_DEVICE',['../source__manager_8h.html#a7cbe4bd98c9df178430ba1513c870bb8af38411dcee3c0307fee0f4cd913b9db5',1,'source_manager.h']]],
+  ['acc_5fsrc_5ffunc_5fcpp_20',['ACC_SRC_FUNC_CPP',['../source__manager_8h.html#acef74f9bb5d89e4e235fdcbfe3a78b85a1dbc66227c616fa90c99ddd6ce139c53',1,'source_manager.h']]],
+  ['acc_5fsrc_5ffunc_5fprivate_21',['ACC_SRC_FUNC_PRIVATE',['../source__manager_8h.html#acef74f9bb5d89e4e235fdcbfe3a78b85a23486674000954442218d5420ca1d501',1,'source_manager.h']]],
+  ['acc_5fsrc_5fheader_5fonly_22',['ACC_SRC_HEADER_ONLY',['../source__manager_8h.html#a7cbe4bd98c9df178430ba1513c870bb8abbeaa0afb5edd3e9204e9fce6c5ed235',1,'source_manager.h']]],
+  ['access_5fread_23',['ACCESS_READ',['../astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478a8f2d555454c1fc22e29d47755c3001c8',1,'astaroth_grid.h']]],
+  ['access_5fwrite_24',['ACCESS_WRITE',['../astaroth__grid_8h.html#ad8aff9e545a5f496a179a16667431478a50e06f55e6a48ab9a1f8903bd9331097',1,'astaroth_grid.h']]]
 ];
