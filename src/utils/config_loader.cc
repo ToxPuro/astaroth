@@ -45,123 +45,6 @@
  not found.
  */
 
-AC_BEGIN_C_DECLARATIONS
-
-static int
-find_str(const char keyword[], const char* names[], const int n)
-{
-    for (int i = 0; i < n; ++i)
-        if (!strcmp(keyword, names[i]))
-            return i;
-
-    return -1;
-}
-static int
-find_array(const char keyword[], const array_info* info, const int n)
-{
-	for(int i = 0; i < n; ++i)
-        	if (!strcmp(keyword, info[i].name))
-			return i;
-	return -1;
-}
-
-//static bool
-//is_bctype(const int)
-//{
-//	return false;
-//}
-//
-//static bool
-//is_initcondtype(const int)
-//{
-//    return false;
-//}
-
-
-static int3
-parse_int3param(const char* value)
-{
-	int x, y, z;
-    	sscanf(value,"{%d,%d,%d}", &x, &y, &z);
-	return (int3){x,y,z};
-}
-
-static AcReal3
-parse_real3param(const char* value)
-{
-	double x, y, z;
-    	sscanf(value,"{%lg,%lg,%lg}", &x, &y, &z);
-	return (AcReal3){(AcReal)x,(AcReal)y,(AcReal)z};
-}
-
-static bool
-parse_boolparam(const char* value)
-{
-	if(!strcmp(value,"true"))
-		return true;
-	if(!strcmp(value,"True"))
-		return true;
-	if(!strcmp(value,"T"))
-		return true;
-	if(!strcmp(value,"false"))
-		return false;
-	if(!strcmp(value,"False"))
-		return false;
-	if(!strcmp(value,"F"))
-		return false;
-	return atoi(value);
-}
-
-static void 
-extract_between_symbol(const char *str, char *result, const char symbol,const char end_symbol) {
-    const char *start = strchr(str, symbol);
-    const char *end = strchr(start + 1, end_symbol);
-
-    if (start && end && start < end) {
-        size_t len = end - start - 1;
-        strncpy(result, start + 1, len);
-        result[len] = '\0'; // Null-terminate the result
-    } else {
-        result[0] = '\0'; // No valid substring found
-    }
-}
-
-static std::vector<std::string>
-get_entries(const char* line, const char symbol, const char end_symbol)
-{
-
-      std::vector<std::string> dst{};
-      char* line_copy = (char*)malloc(sizeof(char)*strlen(line));
-      extract_between_symbol(line,line_copy,symbol,end_symbol);
-      char* token;
-      token = strtok(line_copy,",");
-      while(token != NULL)
-      {
-	      dst.push_back(token);
-              token = strtok(NULL,",");
-      }
-      free(line_copy);
-      return dst;
-}
-
-static AcBool3
-parse_bool3param(const char* value)
-{
-	auto entries = get_entries(value,'{','}');
-	return (AcBool3){parse_boolparam(entries[0].c_str()),parse_boolparam(entries[1].c_str()),parse_boolparam(entries[2].c_str())};
-}
-
-static AcReal
-parse_realparam(const char* value)
-{
-	return (AcReal)atof(value);
-}
-static int
-parse_intparam(const char* value)
-{
-	return atoi(value);
-}
-
 static bool
 parse_3d_array(const char* value,
                     AcReal* values,
@@ -811,6 +694,123 @@ parse_3d_array(const char* value,
 	    }
 
     return true;
+}
+
+AC_BEGIN_C_DECLARATIONS
+
+static int
+find_str(const char keyword[], const char* names[], const int n)
+{
+    for (int i = 0; i < n; ++i)
+        if (!strcmp(keyword, names[i]))
+            return i;
+
+    return -1;
+}
+static int
+find_array(const char keyword[], const array_info* info, const int n)
+{
+	for(int i = 0; i < n; ++i)
+        	if (!strcmp(keyword, info[i].name))
+			return i;
+	return -1;
+}
+
+//static bool
+//is_bctype(const int)
+//{
+//	return false;
+//}
+//
+//static bool
+//is_initcondtype(const int)
+//{
+//    return false;
+//}
+
+
+static int3
+parse_int3param(const char* value)
+{
+	int x, y, z;
+    	sscanf(value,"{%d,%d,%d}", &x, &y, &z);
+	return (int3){x,y,z};
+}
+
+static AcReal3
+parse_real3param(const char* value)
+{
+	double x, y, z;
+    	sscanf(value,"{%lg,%lg,%lg}", &x, &y, &z);
+	return (AcReal3){(AcReal)x,(AcReal)y,(AcReal)z};
+}
+
+static bool
+parse_boolparam(const char* value)
+{
+	if(!strcmp(value,"true"))
+		return true;
+	if(!strcmp(value,"True"))
+		return true;
+	if(!strcmp(value,"T"))
+		return true;
+	if(!strcmp(value,"false"))
+		return false;
+	if(!strcmp(value,"False"))
+		return false;
+	if(!strcmp(value,"F"))
+		return false;
+	return atoi(value);
+}
+
+static void 
+extract_between_symbol(const char *str, char *result, const char symbol,const char end_symbol) {
+    const char *start = strchr(str, symbol);
+    const char *end = strchr(start + 1, end_symbol);
+
+    if (start && end && start < end) {
+        size_t len = end - start - 1;
+        strncpy(result, start + 1, len);
+        result[len] = '\0'; // Null-terminate the result
+    } else {
+        result[0] = '\0'; // No valid substring found
+    }
+}
+
+static std::vector<std::string>
+get_entries(const char* line, const char symbol, const char end_symbol)
+{
+
+      std::vector<std::string> dst{};
+      char* line_copy = (char*)malloc(sizeof(char)*strlen(line));
+      extract_between_symbol(line,line_copy,symbol,end_symbol);
+      char* token;
+      token = strtok(line_copy,",");
+      while(token != NULL)
+      {
+	      dst.push_back(token);
+              token = strtok(NULL,",");
+      }
+      free(line_copy);
+      return dst;
+}
+
+static AcBool3
+parse_bool3param(const char* value)
+{
+	auto entries = get_entries(value,'{','}');
+	return (AcBool3){parse_boolparam(entries[0].c_str()),parse_boolparam(entries[1].c_str()),parse_boolparam(entries[2].c_str())};
+}
+
+static AcReal
+parse_realparam(const char* value)
+{
+	return (AcReal)atof(value);
+}
+static int
+parse_intparam(const char* value)
+{
+	return atoi(value);
 }
 
 

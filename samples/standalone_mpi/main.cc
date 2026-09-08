@@ -69,6 +69,7 @@
 #define  VTXBUF_LNRHO RHO
 #define  VTXBUF_SS F_SS
 #define SUBSTEP_NUMBER PC_SUB_STEP_NUMBER
+#define AC_step_number AC_step_num
 #else
 #define SUBSTEP_NUMBER AC_SUBSTEP_NUMBER
 #endif
@@ -519,7 +520,7 @@ dryrun(void)
     const int num_substeps = 3;
     for(int substep = 0; substep < num_substeps;  ++substep)
     {
-	    acDeviceSetInput(acGridGetDevice(),AC_step_num,(SUBSTEP_NUMBER)substep);
+	    acDeviceSetInput(acGridGetDevice(),AC_step_number,(SUBSTEP_NUMBER)substep);
     	    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
 
     }
@@ -1452,7 +1453,7 @@ main(int argc, char** argv)
 
     //TP: calc initial timestep
     {
-      acDeviceSetInput(acGridGetDevice(), AC_step_num, (SUBSTEP_NUMBER) 0);
+      acDeviceSetInput(acGridGetDevice(), AC_step_number, (SUBSTEP_NUMBER) 0);
       acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
 #ifdef PENCIL_A
       acGridSynchronizeStream(STREAM_ALL);
@@ -1535,7 +1536,7 @@ main(int argc, char** argv)
 	if(!info[AC_timestep_calc_with_rhs])
 	{
     		{
-    		  acDeviceSetInput(acGridGetDevice(), AC_step_num, (SUBSTEP_NUMBER) 0);
+    		  acDeviceSetInput(acGridGetDevice(), AC_step_number, (SUBSTEP_NUMBER) 0);
     		  acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
 #ifdef PENCIL_A
     		  acGridSynchronizeStream(STREAM_ALL);
@@ -1681,7 +1682,7 @@ main(int argc, char** argv)
 	const int num_substeps = 3;
     	for(int substep = 0; substep < num_substeps;  ++substep)
     	{
-    	        acDeviceSetInput(acGridGetDevice(),AC_step_num,(SUBSTEP_NUMBER)substep);
+    	        acDeviceSetInput(acGridGetDevice(),AC_step_number,(SUBSTEP_NUMBER)substep);
     		acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs_substep),1);
     	}
         simulation_time += dt;
