@@ -3,14 +3,14 @@
 #include "func_define.h"
 #include "host_datatypes.h"
 
-#if AC_MPI_ENABLED
+#if AC_MPI_ENABLED && __has_include(<mpi.h>)
 #include <mpi.h>
 #endif
 
 //TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm
 typedef struct AcCommunicator AcCommunicator;
 
-#if AC_MPI_ENABLED
+#if AC_MPI_ENABLED && __has_include(<mpi.h>)
 
 struct AcCommunicator {
     MPI_Comm handle;

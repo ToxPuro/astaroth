@@ -30,9 +30,7 @@
 #include <dlfcn.h>
 #endif
 
-#if AC_MPI_ENABLED
-#include <mpi.h>
-#endif
+#include "ac_mpi.h"
 
 #ifdef __cplusplus
 #include <functional>
