@@ -2616,7 +2616,7 @@
             if (lmagnetic) {
               aa_sfta_91_98_161=aa_sfta_91_98_161-ac_transformed_pencil_jxbr
             }
-            DF_DUST_VELOCITY[k_98_161-1] = 1/AC_dt_beta_ts__mod__cdata[AC_itsub__mod__cdata-1]*(value(F_UVEC)-ac_transformed_pencil_uud[k_98_161-1]+aa_sfta_91_98_161/tausd1__mod__dustvelocity[k_98_161-1])
+            DF_DUST_VELOCITY[k_98_161-1] = 1/(AC_dt__mod__cdata*rk_beta(AC_itsub__mod__cdata-1))*(value(F_UVEC)-ac_transformed_pencil_uud[k_98_161-1]+aa_sfta_91_98_161/tausd1__mod__dustvelocity[k_98_161-1])
           }
           else {
             if (AC_ladvection_dust__mod__dustvelocity) {
@@ -4310,7 +4310,7 @@
           }
           for i_144_145_161 in 1:ndustspec+1 {
             new_nd_144_145_161[i_144_145_161-1] = new_rhod_144_145_161[i_144_145_161-1]/AC_md__mod__dustvelocity[i_144_145_161-1]
-            DF_DUST_DENSITY[i_144_145_161-1] = 1/AC_dt_beta_ts__mod__cdata[AC_itsub__mod__cdata-1]*(new_nd_144_145_161[i_144_145_161-1]-ac_transformed_pencil_nd[i_144_145_161-1])
+            DF_DUST_DENSITY[i_144_145_161-1] = 1/(AC_dt__mod__cdata*rk_beta(AC_itsub__mod__cdata-1))*(new_nd_144_145_161[i_144_145_161-1]-ac_transformed_pencil_nd[i_144_145_161-1])
             ac_transformed_pencil_uud[i_144_145_161-1] = ac_transformed_pencil_old_uud[i_144_145_161-1]
           }
         }
