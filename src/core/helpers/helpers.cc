@@ -18,7 +18,9 @@
 #include "errchk.h"
 #include "host_datatypes.h"
 
+#ifndef __APPLE_
 static int original_excepts{};
+#endif
 
 void
 ac_unset_floating_point_exceptions()
