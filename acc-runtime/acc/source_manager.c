@@ -20,6 +20,7 @@
 #define _GNU_SOURCE
 #include "source_manager.h"
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -57,9 +58,11 @@
   } while (0)
 
 void
-acc_gen_dlsym(FILE* fp, const char* func_name)
+acc_gen_dlsym(FILE* stream, const char* func_name)
 {
-  fprintf(fp, "LOAD_DSYM(%s);\n", func_name);
+  assert(stream != NULL);
+
+  fprintf(stream, "LOAD_DSYM(%s);\n", func_name);
 }
 
 struct _AccSourceDeclaration {
@@ -189,6 +192,8 @@ acc_source_function_invalidate(AccSourceFunction* self)
 static void
 print_func_implementation(FILE* stream, char* implementation)
 {
+  assert(stream != NULL);
+
   char* tmp  = NULL;
   char* line = strtok_r(implementation, "\n", &tmp);
   while (line != NULL) {
@@ -402,12 +407,16 @@ acc_source_invalidate(AccSource* self)
 static void
 print_system_include(FILE* stream, const char* included_file)
 {
+  assert(stream != NULL);
+
   fprintf(stream, "#include <%s>\n", included_file);
 }
 
 static void
 print_app_include(FILE* stream, const char* included_file)
 {
+  assert(stream != NULL);
+
   fprintf(stream, "#include \"%s\"\n", included_file);
 }
 
