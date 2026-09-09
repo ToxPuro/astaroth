@@ -339,7 +339,9 @@ acc_source_add_include(AccSource* self, bool private, bool system,
   if (str_vec_contains(self->includes, include))
     return;
 
-  self->includes_public |= (private ? 0 : 1 << self->includes.size);
+  int includes_public = ((self->flags & ACC_SRC_HEADER_ONLY) || private) ? 0
+                                                                         : 1;
+  self->includes_public |= (includes_public << self->includes.size);
   push(&self->includes, include);
 }
 
@@ -425,7 +427,9 @@ print_includes(AccSource* self, const char* decls_filename)
 {
   ACC_FPRINTF(self->fp_decls, "#pragma once\n\n");
 
-  if (!(self->flags & ACC_SRC_HEADER_ONLY)) {
+  const bool is_header_only = self->flags & ACC_SRC_HEADER_ONLY;
+
+  if (!is_header_only) {
     print_app_include(self->fp_defs, decls_filename);
     ACC_FPRINTF(self->fp_defs, "\n");
   }
@@ -433,13 +437,13 @@ print_includes(AccSource* self, const char* decls_filename)
   int public_includes  = 0;
   int private_includes = 0;
   for (size_t i = 0; i < self->includes.size; ++i) {
-    const char* include = self->includes.data[i];
+    const char* include       = self->includes.data[i];
+    const bool include_public = (is_header_only ||
+                                 self->includes_public & (1 << i));
 
-    print_app_include(self->includes_public & (1 << i) ? self->fp_decls
-                                                       : self->fp_defs,
-                      include);
+    print_app_include(include_public ? self->fp_decls : self->fp_defs, include);
 
-    self->includes_public & (1 << i) ? ++public_includes : ++private_includes;
+    include_public ? ++public_includes : ++private_includes;
   }
 
   // Formatting
