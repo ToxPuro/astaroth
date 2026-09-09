@@ -22,7 +22,6 @@ build-backend = "scikit_build_core.build"
 minimum-version = "build-system.requires"
 build-dir = "build/{wheel_tag}"
 cmake.args = [
-  "-DCMAKE_BUILD_TYPE=Release",
   "-DALLOW_DEAD_VARIABLES=ON",
   "-DBUILD_INTEGRATOR=ON",
   "-DBUILD_SAMPLES=OFF",
