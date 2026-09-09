@@ -29,7 +29,7 @@ cmake.args = [
   "-DBUILD_STANDALONE=OFF",
   "-DDSL_MODULE_DIR=samples/integrator/DSL",
 ]
-cmake.source-dir = ".."
+cmake.source-dir = "../.."
 ninja.make-fallback = true
 wheel.py-api = "cp312"
 wheel.packages = ["python/ac_integrator"]
