@@ -17,20 +17,20 @@
 # You should have received a copy of the GNU General Public License
 # along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys, os
-sys.setdlopenflags(os.RTLD_LOCAL | os.RTLD_LAZY)
-
-import pathlib
-
 import argparse
-import pyastaroth_benchmark.astaroth as ac
-from pyastaroth_benchmark import TestType, run_benchmark
+import pathlib
+import sys
+
+import benchmark.astaroth as ac
+from benchmark import TestType, run_benchmark
 
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser("benchmark")
 
-    parser.add_argument("-c", "--config", type=pathlib.Path, default=ac.get_default_config())
+    parser.add_argument(
+        "-c", "--config", type=pathlib.Path, default=ac.get_default_config()
+    )
     parser.add_argument("dimensions", nargs=3, type=int)
     parser.add_argument(
         "-t",
@@ -50,7 +50,10 @@ def main():
 
     args.config = args.config.absolute()
 
-    run_benchmark(args.config, args.type, args.dimensions, args.verify)
+    if run_benchmark(args.config, args.type, args.dimensions, args.verify):
+        sys.exit(0)
+    else:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
