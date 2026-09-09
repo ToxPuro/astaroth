@@ -174,7 +174,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
 }
 
 static __global__ void
-kernel_partial_pack_data_rb(const AcReal* const in[NUM_VTXBUF_HANDLES], const int3 vba_start, const int3 dims,
+kernel_partial_pack_data_rb(const void* const in[NUM_VTXBUF_HANDLES], const int3 vba_start, const int3 dims,
                          AcRealPacked* packed, GpuVtxBufHandles vtxbufs, size_t num_vtxbufs, const int3 offset)
 {
     KERNEL_DIMS_PREFIX
@@ -207,7 +207,7 @@ kernel_partial_pack_data_rb(const AcReal* const in[NUM_VTXBUF_HANDLES], const in
 	const int j = vtxbufs.data[i];
         const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
 	const int dst_idx = packed_idx + i * vtxbuf_offset;
-        packed[dst_idx] = in[j][unpacked_idx];
+        packed[dst_idx] = ((AcReal*)in[j])[unpacked_idx];
     }
     KERNEL_POSTFIX
 }
@@ -273,7 +273,7 @@ kernel_partial_pack_data(const void* const in[NUM_VTXBUF_HANDLES], const int3 vb
 }
 
 static __global__ void
-kernel_partial_move_data(AcReal* in[NUM_VTXBUF_HANDLES], const int3 src_start, const int3 dst_start, const int3 dims,
+kernel_partial_move_data(void* in[NUM_VTXBUF_HANDLES], const int3 src_start, const int3 dst_start, const int3 dims,
                          GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
 {
     KERNEL_DIMS_PREFIX
@@ -305,9 +305,9 @@ kernel_partial_move_data(AcReal* in[NUM_VTXBUF_HANDLES], const int3 src_start, c
 	const int j = vtxbufs.data[i];
         const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
         const int dst_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_dst, j_dst, k_dst,VAL(vtxbuf_device_dims[j]));
-        in[j][dst_idx] = in[j][unpacked_idx];
+        ((AcReal*)in[j])[dst_idx] = ((AcReal*)in[j])[unpacked_idx];
 #if AC_LAGRANGIAN_GRID
-        	in[j][dst_idx] += lagrangian_correction(vtxbufs.data[i], AC_COORDS, (int3){i_dst, j_dst, k_dst});
+        	((AcReal*)in[j])[dst_idx] += lagrangian_correction(vtxbufs.data[i], AC_COORDS, (int3){i_dst, j_dst, k_dst});
 #endif
     }
     KERNEL_POSTFIX
@@ -316,7 +316,7 @@ kernel_partial_move_data(AcReal* in[NUM_VTXBUF_HANDLES], const int3 src_start, c
 //TP: does not work with variable dimensions for now!!
 static __global__ void
 kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
-                           AcReal* in[NUM_VTXBUF_HANDLES], GpuVtxBufHandles vtxbufs , size_t num_vtxbufs
+                           void* in[NUM_VTXBUF_HANDLES], GpuVtxBufHandles vtxbufs , size_t num_vtxbufs
 			   , const AcShearInterpolationCoeffs coeffs, const int offset
 			   )
 {
@@ -374,7 +374,7 @@ kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_star
     	    res        += coeffs.c4*packed[get_index(x,y-1,z,vtxbuf_index)];
     	    res        += coeffs.c5*packed[get_index(x,y-2,z,vtxbuf_index)];
     	    res        += coeffs.c6*packed[get_index(x,y-3,z,vtxbuf_index)];
-	    in[vtxbufs.data[vtxbuf_index]][unpacked_idx] = res;
+	    ((AcReal*)in[vtxbufs.data[vtxbuf_index]])[unpacked_idx] = res;
     	}
     	else
     	{
@@ -384,7 +384,7 @@ kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_star
     	    res        += coeffs.c4*packed[get_index(x,y+1,z,vtxbuf_index)];
     	    res        += coeffs.c5*packed[get_index(x,y+2,z,vtxbuf_index)];
     	    res        += coeffs.c6*packed[get_index(x,y+3,z,vtxbuf_index)];
-	    in[vtxbufs.data[vtxbuf_index]][unpacked_idx] = res;
+	    ((AcReal*)in[vtxbufs.data[vtxbuf_index]])[unpacked_idx] = res;
     	}
     }
     KERNEL_POSTFIX
@@ -392,7 +392,7 @@ kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_star
 
 static __global__ void
 kernel_partial_unpack_data_rb(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
-                           AcReal* in[NUM_VTXBUF_HANDLES], GpuVtxBufHandles vtxbufs , size_t num_vtxbufs,
+                           void* in[NUM_VTXBUF_HANDLES], GpuVtxBufHandles vtxbufs , size_t num_vtxbufs,
 			   const int3 offset)
 {
     KERNEL_DIMS_PREFIX
@@ -423,9 +423,9 @@ kernel_partial_unpack_data_rb(const AcRealPacked* packed, const int3 vba_start, 
      {
 	     const int j = vtxbufs.data[i];
     	     const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
-	     in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
-#if AC_LAGRANGIAN_GRID
-             	in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked, j_unpacked, k_unpacked});
+	     ((AcReal*)in[j])[unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+#if AC_LAGRANGIAN_GRID       
+             ((AcReal*)in[j])[unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked, j_unpacked, k_unpacked});
 #endif
      }
      KERNEL_POSTFIX
@@ -568,7 +568,7 @@ acKernelPackDataRB(const cudaStream_t stream, const VertexBufferArray vba,
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_partial_pack_data_rb,bpg,tpb,0,stream)((AcReal**)vba.on_device.in, to_int3(vba_start), to_int3(dims), packed, gpu_handles,num_vtxbufs,offset);
+    KERNEL_LAUNCH(kernel_partial_pack_data_rb,bpg,tpb,0,stream)(vba.on_device.in, to_int3(vba_start), to_int3(dims), packed, gpu_handles,num_vtxbufs,offset);
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
@@ -620,7 +620,7 @@ acKernelUnpackDataRB(const cudaStream_t stream, const AcRealPacked* packed,
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_partial_unpack_data_rb,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), (AcReal**)vba.on_device.in, gpu_handles, num_vtxbufs, offset);
+    KERNEL_LAUNCH(kernel_partial_unpack_data_rb,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device.in, gpu_handles, num_vtxbufs, offset);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }
@@ -641,7 +641,7 @@ acKernelShearUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
     GpuVtxBufHandles gpu_handles{};
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_shear_partial_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), (AcReal**)vba.on_device.in, gpu_handles,
+    KERNEL_LAUNCH(kernel_shear_partial_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device.in, gpu_handles,
                                                         num_vtxbufs, coeffs, offset);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
@@ -665,7 +665,7 @@ acKernelMoveData(const cudaStream_t stream, const Volume src_start, const Volume
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_partial_move_data,bpg,tpb,0,stream)((AcReal**)vba.on_device.in,to_int3(src_start), to_int3(dst_start), to_int3(src_dims), gpu_handles,
+    KERNEL_LAUNCH(kernel_partial_move_data,bpg,tpb,0,stream)(vba.on_device.in,to_int3(src_start), to_int3(dst_start), to_int3(src_dims), gpu_handles,
                                                         num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
