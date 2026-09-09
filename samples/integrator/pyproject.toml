@@ -24,10 +24,10 @@ build-dir = "build/{wheel_tag}"
 cmake.args = [
   "-DCMAKE_BUILD_TYPE=Release",
   "-DALLOW_DEAD_VARIABLES=ON",
+  "-DBUILD_INTEGRATOR=ON",
   "-DBUILD_SAMPLES=OFF",
   "-DBUILD_STANDALONE=OFF",
-  "-DDSL_MODULE_FILE=solver.ac",
-  "-DBUILD_INTEGRATOR=ON",
+  "-DDSL_MODULE_DIR=samples/integrator/DSL",
 ]
 cmake.source-dir = ".."
 ninja.make-fallback = true
