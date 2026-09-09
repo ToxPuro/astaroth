@@ -66,7 +66,17 @@ endif()
 file(GLOB_RECURSE DSL_MODULE_SOURCES CONFIGURE_DEPENDS ${DSL_MODULE_DIR}/*.ac)
 
 ## Generate acc-runtime-headers
-set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
+if (DEFINED ENV{DSL_MODULE_FILE})
+    set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
+endif()
+if (DEFINED DSL_MODULE_FILE)
+    file(
+        REAL_PATH
+        "${DSL_MODULE_FILE}"
+        DSL_MODULE_FILE
+        EXPAND_TILDE
+    )
+endif()
 
 if (NOT DEFINED DSL_MODULE_FILE)
   set(DSL_SOURCES ${DSL_MODULE_SOURCES}
@@ -78,7 +88,7 @@ if (NOT DEFINED DSL_MODULE_FILE)
 else()
   set(DSL_SOURCES ${DSL_MODULE_SOURCES}
                   ${DSL_BUILTIN_SOURCES}
-                  ${DSL_MODULE_DIR}/${DSL_MODULE_FILE}
+                  ${DSL_MODULE_FILE}
                   ${DSL_STDLIB_SOURCES}
                   ${DSL_EXT_SOURCES}
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
