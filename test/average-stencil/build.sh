@@ -1,3 +1,3 @@
 #!/bin/bash
 #
-cmake -B build -S $AC_HOME -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_TESTS=ON -DDSL_MODULE_DIR=test/average-stencil/DSL && cmake --build build -t average-stencil -j
+cmake -B build -S $AC_HOME -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_TESTS=ON -DDSL_MODULE_DIR=../DSL && cmake --build build -t average-stencil -j

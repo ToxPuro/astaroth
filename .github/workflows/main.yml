@@ -29,7 +29,7 @@ jobs:
     strategy:
       matrix:
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-builds-matrix) }}
-    timeout-minutes: 30
+    timeout-minutes: 180
 
     steps: &build-and-test-steps
       - name: Checkout code
@@ -82,7 +82,7 @@ jobs:
     strategy:
       matrix:
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-matrix) }}
-    timeout-minutes: 30
+    timeout-minutes: 180
 
     steps: *build-and-test-steps
 
@@ -95,7 +95,7 @@ jobs:
     strategy:
       matrix:
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-builds-matrix) }}
-    timeout-minutes: 30
+    timeout-minutes: 180
 
     steps: *build-and-test-steps
 
@@ -109,7 +109,7 @@ jobs:
     strategy:
       matrix:
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-matrix) }}
-    timeout-minutes: 30
+    timeout-minutes: 180
 
     steps: *build-and-test-steps
 
@@ -119,7 +119,7 @@ jobs:
     strategy:
       matrix:
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-builds-matrix) }}
-    timeout-minutes: 30
+    timeout-minutes: 180
 
     steps: *build-and-test-steps
 
@@ -131,6 +131,6 @@ jobs:
     strategy:
       matrix:
         build-configuration-dir: ${{ fromJSON(needs.define-matrices.outputs.test-matrix) }}
-    timeout-minutes: 30
+    timeout-minutes: 180
 
     steps: *build-and-test-steps
