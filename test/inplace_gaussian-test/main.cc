@@ -60,7 +60,7 @@ main(void)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // Set random seed for reproducibility
-    acSrand(321654987);
+    acSrand(666);
 
     // CPU alloc
     AcMeshInfo info;
