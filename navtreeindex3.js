@@ -1,5 +1,8 @@
 var NAVTREEINDEX3 =
 {
+"functions.html":[4,2,0,0],
+"functions_a.html":[4,2,0,1],
+"functions_b.html":[4,2,0,2],
 "functions_c.html":[4,2,0,3],
 "functions_d.html":[4,2,0,4],
 "functions_e.html":[4,2,0,5],
@@ -246,8 +249,5 @@ var NAVTREEINDEX3 =
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1a6e11756d8b160f36bfabb7fa0f302a57":[5,0,2,23,10,4],
 "host__datatypes_8h.html#ab7f22e223840964be4be3d48a9546fe1ac3906aa83f2e1601606b5297cd4508a2":[5,0,2,23,10,0],
 "host__datatypes_8h.html#ac727fc264af97cb7ad3e5cd5cb23219a":[5,0,2,23,4],
-"host__datatypes_8h.html#ae5b8b9140c27551d8bef6277a775ccd0":[5,0,2,23,5],
-"host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7":[5,0,2,23,8],
-"host__datatypes_8h.html#af6803addfe2b39cc2c7e5d6868287091":[5,0,2,23,6],
-"host__datatypes_8h.html#aff8ab01b729f9e2b740d40e091a63d35":[5,0,2,23,7]
+"host__datatypes_8h.html#ae5b8b9140c27551d8bef6277a775ccd0":[5,0,2,23,5]
 };

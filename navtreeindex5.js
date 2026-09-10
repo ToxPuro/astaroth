@@ -1,5 +1,8 @@
 var NAVTREEINDEX5 =
 {
+"structAcTaskDefinition.html#a93de40e1c4a4559a5f73451333278e7e":[4,0,20,34],
+"structAcTaskDefinition.html#aa2be0c6334368e49b6fc91a1cb65e83f":[4,0,20,22],
+"structAcTaskDefinition.html#aac75979fb933568a869dc591a845a09a":[4,0,20,18],
 "structAcTaskDefinition.html#ab163715f4ffac3c0ec8d2e3532fd309c":[4,0,20,25],
 "structAcTaskDefinition.html#ab691d1815d9f12b0ca3a632592250440":[4,0,20,5],
 "structAcTaskDefinition.html#abb6babf7e9919d4a5aef5e0cde6f3e13":[4,0,20,21],
