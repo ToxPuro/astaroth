@@ -142,6 +142,7 @@ target_link_libraries(
         dl
         static_kernels
 )
+ac_link_mpi(astaroth_core)
 target_include_directories(astaroth_core
     PUBLIC
         $<BUILD_INTERFACE:${AC_BASE_PATH}/include>
