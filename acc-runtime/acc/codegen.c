@@ -11138,7 +11138,9 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
   }
 
   // Generate stencil definitions
-  FILE* proc = popen("./" STENCILGEN_EXEC " -definitions", "r");
+  char stencilgen_cmd[BUFSIZ] = {0};
+  snprintf(stencilgen_cmd, BUFSIZ, "./%s %s", STENCILGEN_EXEC, gen_mem_accesses ? "-definitions-analysis": "-definitions-kernels");
+  FILE* proc = popen(stencilgen_cmd, "r");
   assert(proc);
 
   char buf[4096] = {0};

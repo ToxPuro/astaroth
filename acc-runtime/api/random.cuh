@@ -35,7 +35,7 @@ acRandQuit(void)
 }
 #else
 typedef curandStateXORWOW_t acRandState;
-static __device__ __constant__ acRandState* rand_states;
+__device__ __constant__ acRandState* rand_states;
 
 __global__ void
 rand_init(const uint64_t seed, const size_t count, const size_t rank)
