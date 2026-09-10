@@ -34,19 +34,7 @@ acStreamCreateWithPriority(cudaStream_t*, int, int){return cudaSuccess;}
 cudaError_t
 acStreamDestroy(cudaStream_t){return cudaSuccess;}
 cudaError_t
-acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind)
-{
-	memcpy(dst,src,bytes);
-	return cudaSuccess;
-}
-cudaError_t
 acMemcpy(void* dst, const void* src, const size_t bytes, cudaMemcpyKind)
-{
-	memcpy(dst,src,bytes);
-	return cudaSuccess;
-}
-cudaError_t
-acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind, const cudaStream_t)
 {
 	memcpy(dst,src,bytes);
 	return cudaSuccess;

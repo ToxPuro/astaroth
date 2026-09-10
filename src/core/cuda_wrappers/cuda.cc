@@ -126,25 +126,9 @@ acStreamDestroy(cudaStream_t stream)
 	return res;
 }
 cudaError_t
-acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind)
-{
-	const auto res = cudaMemcpy(dst,src,bytes,kind);
-        ERRCHK_CUDA(res);
-
-	return res;
-}
-cudaError_t
 acMemcpy(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind)
 {
 	const auto res = cudaMemcpy(dst,src,bytes,kind);
-        ERRCHK_CUDA(res);
-
-	return res;
-}
-cudaError_t
-acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream)
-{
-	const auto res = cudaMemcpyAsync(dst,src,bytes,kind,stream);
         ERRCHK_CUDA(res);
 
 	return res;
