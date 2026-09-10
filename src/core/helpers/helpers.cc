@@ -18,7 +18,7 @@
 #include "errchk.h"
 #include "host_datatypes.h"
 
-#ifndef __APPLE_
+#ifndef __APPLE__
 static int original_excepts{};
 #endif
 
