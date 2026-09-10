@@ -306,7 +306,7 @@ kernel_partial_move_data(GpuVtxBufHandles in, const int3 src_start, const int3 d
 	const int j = in.field[i];
         const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
         const int dst_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_dst, j_dst, k_dst,VAL(vtxbuf_device_dims[j]));
-        ((AcReal*)in.ptr[j])[dst_idx] = ((AcReal*)in.ptr[i])[unpacked_idx];
+        ((AcReal*)in.ptr[i])[dst_idx] = ((AcReal*)in.ptr[i])[unpacked_idx];
 #if AC_LAGRANGIAN_GRID
         	((AcReal*)in.ptr[i])[dst_idx] += lagrangian_correction(vtxbufs.data[i], AC_COORDS, (int3){i_dst, j_dst, k_dst});
 #endif
