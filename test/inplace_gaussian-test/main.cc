@@ -46,11 +46,6 @@ acAbort(void)
     if (!finalized)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
 }
-double
-drand()
-{
-	return (double)(rand()) / (double)(rand());
-}
 
 int
 main(void)
@@ -65,7 +60,7 @@ main(void)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
 
     // CPU alloc
     AcMeshInfo info;
