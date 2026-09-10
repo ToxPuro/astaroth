@@ -57,7 +57,7 @@ arrayDestroy(Array* a)
 static real
 randd(void)
 {
-   acRand();
+   return acRand();
 }
 
 static void
