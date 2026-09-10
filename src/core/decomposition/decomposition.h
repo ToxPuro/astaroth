@@ -36,6 +36,8 @@ typedef struct {
     size_t* global_decomposition; // [ndims]
 } AcDecompositionInfo;
 
+AC_BEGIN_C_DECLARATIONS
+
 void acDecompositionInfoPrint(const AcDecompositionInfo info);
 
 AcDecompositionInfo acDecompositionInfoCreate(const size_t ndims, const size_t* global_dims,
@@ -64,7 +66,6 @@ int getPid(const int3 pid_raw, const uint3_64 decomp,const AcProcMappingStrategy
 int3 getPid3D(const uint64_t pid, const uint3_64 decomp,const AcProcMappingStrategy proc_mapping_strategy);
 void acVerifyDecomposition(const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy);
 
-AC_BEGIN_C_DECLARATIONS
 
 void acInitDecomposition(const AcMeshInfo info, const size_t nprocs);
 void acQuitDecomposition(const AcDecomposeStrategy decompose_strategy);
