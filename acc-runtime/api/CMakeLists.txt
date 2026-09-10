@@ -79,6 +79,7 @@ if (DEFINED DSL_MODULE_FILE)
         "${DSL_MODULE_FILE}"
         DSL_MODULE_FILE
         EXPAND_TILDE
+        BASE_DIRECTORY ${DSL_MODULE_DIR}
     )
 endif()
 
