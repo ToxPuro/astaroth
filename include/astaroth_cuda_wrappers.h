@@ -86,10 +86,16 @@ acProfilerStop();
 AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
-cudaError_t
-acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind);
-cudaError_t
-acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream);
+static cudaError_t
+acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind)
+{
+	return acMemcpy((void*)dst,(const void*)src,bytes,kind);
+}
+static cudaError_t
+acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream)
+{
+	return acMemcpyAsync((void*)dst,(const void*)src,bytes,kind,stream);
+}
 cudaError_t
 acStreamCreateWithPriority(cudaStream_t* dst, int option, int priority);
 
