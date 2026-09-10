@@ -1,5 +1,6 @@
 #pragma once
 #include "errchk.h"
+#include "astaroth_helpers.h"
 
 #if AC_DOUBLE_PRECISION
 #define DOUBLE_PRECISION (1)
