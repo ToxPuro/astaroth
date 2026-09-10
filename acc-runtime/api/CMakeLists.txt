@@ -91,9 +91,8 @@ if (NOT DEFINED DSL_MODULE_FILE)
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
                   "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp")
 else()
-  set(DSL_SOURCES ${DSL_MODULE_SOURCES}
+  set(DSL_SOURCES ${DSL_MODULE_FILE}
                   ${DSL_BUILTIN_SOURCES}
-                  ${DSL_MODULE_FILE}
                   ${DSL_STDLIB_SOURCES}
                   ${DSL_EXT_SOURCES}
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
