@@ -63,6 +63,28 @@ option(USE_VENDORED_PERFSTUBS      "Use the vendored perfstubs in 3rd_party/perf
 option(VERBOSE                     "Enables various status and warning messages" OFF)
 
 ## Project-wide compilation flags
+# To allow compiling device HIP code across multiple translation units (TUs) we
+# need to use all of the following flags.
+# -fgpu-rdc is the main flag that enables compiling GPU code as relocatable
+# device code.
+# --offload-new-driver controls what offload driver inside of LLVM is used.
+# Through testing I found that only this new one (available at least since
+# LLVM 15) is capable of properly linking device symbols. HIP officially
+# switched to this offload driver in LLVM 23 and has been dropped since.
+# Therefore we need to keep this option at least until that release. Here are
+# LLVM versions in important ROCm releases:
+# 10.0.0 -> 24.0.0
+# 7.14.0 -> 23.0.0
+# 7.2.0  -> 22.0.0
+# 7.0.0  -> 20.0.0
+# 6.0.0  -> 17.0.0
+# 5.3.0  -> 15.0.0
+# In other words, we need the flag for ROCm <7.14 and need to stop using it
+# since version 10.0.0. The condition is handled after finding the HIP
+# dependency using find_package().
+add_compile_options($<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
+add_link_options($<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
+
 # -Werror TODO read
 if(NOT SUPPRESS_COMPILER_WARNINGS)
     set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
@@ -70,6 +92,7 @@ if(NOT SUPPRESS_COMPILER_WARNINGS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 endif()
 
+set(MINIMUM_HIP_VERSION "5.3")
 
 set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
 add_definitions(-DAC_BASE_PATH="${AC_BASE_PATH}")
@@ -152,11 +175,22 @@ if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
 
     message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
 elseif (NOT CPU_BUILD AND (USE_HIP OR HIP_FOUND))
+    if (${HIP_VERSION} VERSION_LESS "${MINIMUM_HIP_VERSION}")
+        message(ERROR "Minimum required version of HIP is ${MINIMUM_HIP_VERSION}.")
+    endif()
+
     set(USE_HIP ON)
     message(STATUS "HIP found")
     enable_language(HIP)
-    add_compile_options(-DDEVICE_ENABLED)
-    add_compile_options(-DHIP_ENABLED)
+
+    if (${HIP_VERSION} VERSION_LESS "10.0.0")
+        add_compile_options($<$<COMPILE_LANGUAGE:HIP>:--offload-new-driver>)
+    endif()
+
+    add_compile_options(
+        -DDEVICE_ENABLED
+        -DHIP_ENABLED
+    )
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
     ##TP: do not set GPU architectures to speedup debug compilations
