@@ -15,11 +15,15 @@
 #endif
 
 #if AC_CPU_BUILD
+#include <random>
 __device__ __forceinline__ AcReal
 rand_uniform()
 {
-	return (AcReal)(rand() / (RAND_MAX + 1.));
+	//rng returns an int from [0,2^32-1] so dividing by 2^32 gives a real in [0,1)
+        static std::mt19937 rng(321654987);
+	return static_cast<AcReal>(rng()) / AcReal(4294967296.0);
 }
+
 AcResult
 acRandInitAlt(const uint64_t, const size_t, const size_t)
 {

@@ -52,6 +52,10 @@ FUNC_DEFINE(Volume, acGetMaxNN, (const AcMeshInfo info));
 FUNC_DEFINE(Volume, acGetGridMaxNN, (const AcMeshInfo info));
 FUNC_DEFINE(AcReal3, acGetLengths, (const AcMeshInfo info));
 
+AcResult acSrand(const size_t seed);
+AcReal   acRand();
+int      acRandInt(const int min, const int max);
+
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info)
 {

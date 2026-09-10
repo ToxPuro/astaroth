@@ -75,12 +75,6 @@ acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const
 	return res;
 }
 
-static AcReal
-randf(void)
-{
-    // TODO: rand() considered harmful, replace
-    return (AcReal)rand() / (AcReal)RAND_MAX;
-}
 
 AcResult
 acHostMeshRandomize(AcMesh* mesh)
@@ -89,7 +83,7 @@ acHostMeshRandomize(AcMesh* mesh)
 	if(mesh->vertex_buffer[w] == NULL) continue;
         const size_t n = acVertexBufferSize(mesh->info,VertexBufferHandle(w));
         for (size_t i = 0; i < n; ++i) {
-            mesh->vertex_buffer[w][i] = randf();
+            mesh->vertex_buffer[w][i] = acRand();
         }
     }
 
@@ -101,7 +95,7 @@ acHostGridMeshRandomize(AcMesh* mesh)
     const size_t n = acGridVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         for (size_t i = 0; i < n; ++i) {
-            mesh->vertex_buffer[w][i] = randf();
+            mesh->vertex_buffer[w][i] = acRand();
         }
     }
 

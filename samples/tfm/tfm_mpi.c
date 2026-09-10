@@ -52,7 +52,7 @@ main(void)
     MPI_Comm_rank(acGridMPIComm(), &pid);
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
 
     // CPU alloc
     AcMeshInfo info;

@@ -119,10 +119,8 @@ helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
 
     // Select the population of k-forces based on the parameters
     const auto& pop = k_force_populations[k_params];
-    std::uniform_int_distribution<uint32_t> k_distribution(0, pop.size() - 1);
-
     // Sample population
-    size_t idx = k_distribution(get_rng());
+    int idx = acRandInt(0,pop.size()-1);
     AcReal3 k  = pop[idx];
     // log_from_root_proc_with_sim_progress("{\"k\":[%lf,%lf,%lf]}\n", k.x, k.y, k.z);
     return k;
@@ -138,7 +136,7 @@ helical_forcing_e_generator(AcReal3* e_force, const AcReal3 k_force)
     k_cross_e                 = vec_norm(k_cross_e);
     AcReal3 k_cross_k_cross_e = cross(k_force, k_cross_e);
     k_cross_k_cross_e         = vec_norm(k_cross_k_cross_e);
-    AcReal phi                = AcReal(2.0) * AcReal(M_PI) * random_uniform_real_01();
+    AcReal phi                = AcReal(2.0) * AcReal(M_PI) * acRand();
     AcReal3 ee_tmp1           = vec_multi_scal(cos(phi), k_cross_e);
     AcReal3 ee_tmp2           = vec_multi_scal(sin(phi), k_cross_k_cross_e);
 
@@ -351,7 +349,7 @@ generateForcingParams(const AcMeshInfo& mesh_info)
     params.k_force = helical_forcing_k_generator(kmax, kmin);
 
     // Randomize the phase
-    params.phase = AcReal(2.0) * AcReal(M_PI) * random_uniform_real_01();
+    params.phase = AcReal(2.0) * AcReal(M_PI) * acRand();
 
     // Generate e for k. Needed for the sake of isotrophy.
     AcReal3 e_force;

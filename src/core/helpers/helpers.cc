@@ -395,3 +395,29 @@ get_reduce_state_flush_var_float(const AcReduceOp state)
 		(float)0.0;
 }
 #endif
+
+#include <random>
+static std::mt19937 rng{};
+
+AcResult
+acSrand(size_t seed)
+{
+	rng.seed(seed);
+	return AC_SUCCESS;
+}
+
+AcReal
+acRand()
+{
+	//rng returns an int from [0,2^32-1] so dividing by 2^32 gives a real in [0,1)
+	return static_cast<AcReal>(rng()) / AcReal(4294967296.0);
+}
+
+int
+acRandInt(const int min, const int max)
+{
+    const uint32_t r = rng();
+    const uint32_t range =
+        static_cast<uint32_t>(max - min) + 1;
+    return min + static_cast<int>(r % range);
+}

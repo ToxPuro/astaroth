@@ -1286,7 +1286,7 @@ int
 main(int argc, char** argv)
 {
     //Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
     // Use multi-threaded MPI
     {
 
@@ -1342,9 +1342,6 @@ main(int argc, char** argv)
     sink_mass     = info[AC_M_sink_init];
     accreted_mass = 0.0;
 #endif
-
-    // Set random seed for reproducibility
-    seed_rng(312256655);
 
     ////////////////////////////////////////
     // Initialize internal Astaroth state //

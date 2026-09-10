@@ -724,7 +724,7 @@ main(int argc, char* argv[])
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 
     // Random
-    srand(seed);
+    acSrand(seed);
 
     // Benchmark pipeline
     KernelConfig c = autotune(array_length, domain_length, pad, radius, stride);

@@ -16,7 +16,7 @@ main(void)
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
-    srand(321654987);
+    acSrand(321654987);
 
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);

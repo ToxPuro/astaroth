@@ -324,11 +324,6 @@ mod(const int a, const int b)
   return ((a%b) + b) % b;
 }
 
-static inline AcReal
-randr()
-{
-  return AcReal(rand()) / AcReal(RAND_MAX);
-}
 
 static inline bool
 is_power_of_two(const unsigned val)

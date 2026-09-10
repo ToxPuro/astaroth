@@ -26,12 +26,6 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
 
-static inline AcReal
-randr()
-{
-    return (AcReal)(rand()) / (AcReal)(RAND_MAX);
-}
-
 int
 main(void)
 {
@@ -39,7 +33,7 @@ main(void)
     const int pid = 0;
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
 
     // CPU alloc
     AcMeshInfo info;
@@ -122,7 +116,7 @@ main(void)
             WARNCHK_ALWAYS(retval);
         }
 
-        srand(123567);
+        acSrand(123567);
         acHostMeshRandomize(&model);
         // acHostMeshSet((AcReal)1.0, &model);
         acHostMeshApplyPeriodicBounds(&model);
@@ -270,7 +264,7 @@ main(void)
         AcReal model_profile[profile_count];
         AcReal candidate_profile[profile_count];
         for (size_t i = 0; i < profile_count; ++i)
-            initial_profile[i] = 2 * randr() - 1;
+            initial_profile[i] = 2 * acRand() - 1;
 
         // Device
         acDeviceLoadProfile(device, initial_profile, profile_count, profile);
@@ -304,7 +298,7 @@ main(void)
         AcReal model_profile[profile_count];
         AcReal candidate_profile[profile_count];
         for (size_t i = 0; i < profile_count; ++i)
-            initial_profile[i] = 2 * randr() - 1;
+            initial_profile[i] = 2 * acRand() - 1;
 
         // Device
         acDeviceLoadProfile(device, initial_profile, profile_count, profile);

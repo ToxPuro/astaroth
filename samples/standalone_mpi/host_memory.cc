@@ -719,7 +719,7 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
 {
     // OL: !!!! The RNG was being seeded multiple times. Why?
     // Please seed the RNG exactly once in main, unless you have a very good reason to do otherwise
-    // srand(123456789);
+    // acSrand(123456789);
 
     const int n = acVertexBufferSize(mesh->info);
 

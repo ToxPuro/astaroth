@@ -638,7 +638,7 @@ main(int argc, char* argv[])
     const size_t pid   = 0;
     const size_t count = acVertexBufferCompdomainSize(info);
     acRandInitAlt(seed, count, pid);
-    srand(seed);
+    acSrand(seed);
 
     // Dryrun
     acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);

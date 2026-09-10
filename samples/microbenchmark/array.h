@@ -56,7 +56,7 @@ arrayDestroy(Array* a)
 static real
 randd(void)
 {
-    return (real)rand() / RAND_MAX;
+   acRand();
 }
 
 static void

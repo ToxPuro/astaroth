@@ -47,11 +47,6 @@ acAbort(void)
     if (!finalized)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
 }
-double
-drand()
-{
-	return (double)(rand()) / (double)(rand());
-}
 
 void
 read_data_to_arr(AcMeshInfo& info, const AcRealArrayParam arr, const char* filename, const AcIntParam N_param)
@@ -512,7 +507,7 @@ void integrate(
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
     AcMeshInfo info = acInitInfo();
     populate_config(config, info);
 
@@ -548,7 +543,7 @@ main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
 
 
     // CPU alloc

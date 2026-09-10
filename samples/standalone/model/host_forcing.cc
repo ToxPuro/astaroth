@@ -34,8 +34,7 @@ using namespace std;
 AcReal
 get_random_number_01()
 {
-    // TODO: Implement better randon number generator http://www.cplusplus.com/reference/random/
-    return AcReal(rand()) / AcReal(RAND_MAX);
+	return acRand();
 }
 
 static AcReal3

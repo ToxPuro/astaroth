@@ -57,7 +57,7 @@ main(void)
     atexit(acAbort);
     int retval = 0;
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG,&info);

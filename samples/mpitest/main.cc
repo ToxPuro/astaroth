@@ -100,7 +100,7 @@ main(int argc, char* argv[])
 
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
 
     // CPU alloc
 

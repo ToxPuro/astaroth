@@ -501,7 +501,7 @@ run_simulation(const char* config_path)
     AcReal bin_crit_t       = bin_save_t;
 
     /* initialize random seed: */
-    srand(312256655);
+    acSrand(312256655);
 
 #if LSHOCK
 #endif

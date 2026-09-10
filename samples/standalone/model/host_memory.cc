@@ -50,7 +50,7 @@ ac_rand(void)
 }
 
 static void
-ac_srand(const uint32_t seed)
+ac_acSrand(const uint32_t seed)
 {
         ac_rand_next = seed;
 }
@@ -87,12 +87,6 @@ acmesh_clear(AcMesh* mesh)
 {
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
         vertex_buffer_set(VertexBufferHandle(w), 1, mesh); // Init all fields to 1 by default.
-}
-
-static AcReal
-randr(void)
-{
-    return AcReal(rand()) / AcReal(RAND_MAX);
 }
 
 void
@@ -200,7 +194,7 @@ inflow_vedge(AcMesh* mesh)
                 // Variarion to density
                 // AcReal rho = exp(mesh->vertex_buffer[VTXBUF_LNRHO][idx]);
                 // NO GAUSSIAN//rho = rho*exp(-(zz/gaussr)*(zz/gaussr));
-                // mesh->vertex_buffer[VTXBUF_LNRHO][idx] = log(rho + (range*rho) * (randr() -
+                // mesh->vertex_buffer[VTXBUF_LNRHO][idx] = log(rho + (range*rho) * (acRand() -
                 // AcReal(-0.5)));
             }
         }
@@ -772,7 +766,7 @@ gaussian_radial_explosion(AcMesh* mesh)
 void
 acmesh_init_to(const InitType& init_type, AcMesh* mesh)
 {
-    srand(123456789);
+    acSrand(123456789);
 
     const int n = acVertexBufferSize(mesh->info);
 
@@ -793,7 +787,7 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
         const AcReal range = AcReal(0.01);
         for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
             for (int i = 0; i < n; ++i)
-                mesh->vertex_buffer[w][i] = 2 * range * randr() - range;
+                mesh->vertex_buffer[w][i] = 2 * range * acRand() - range;
 
         break;
     }
