@@ -93,6 +93,7 @@ var NAVTREEINDEX4 =
 "random_8cuh.html":[5,0,0,1,13],
 "random_8cuh.html#a22cf856d289b680a38aecef937f1f61c":[5,0,0,1,13,3],
 "random_8cuh.html#a4113356a2e4968780156d946abcdbb59":[5,0,0,1,13,0],
+"random_8cuh.html#a5264aee449b962c52b2125f1708f53c6":[5,0,0,1,13,6],
 "random_8cuh.html#a6acc73ce0204c1e21b3e1fd3e9f0e688":[5,0,0,1,13,5],
 "random_8cuh.html#ace5609ed6aebe903ac7194104906cb2f":[5,0,0,1,13,4],
 "random_8cuh.html#ad6ea2fd2e242ee00b407f244e8d00ee4":[5,0,0,1,13,2],
@@ -248,6 +249,5 @@ var NAVTREEINDEX4 =
 "structAcTaskDefinition.html#a8420da4a803e5d69389685f08175cfe7":[4,0,20,2],
 "structAcTaskDefinition.html#a843d3eecd6bf43e3339cf947eb4f8501":[4,0,20,10],
 "structAcTaskDefinition.html#a862aece03c00414c59724e93222a706e":[4,0,20,27],
-"structAcTaskDefinition.html#a8bd6206e58db8767ff2372515587a84b":[4,0,20,15],
-"structAcTaskDefinition.html#a8d04c74283d1aaabaafb84d7187a8cfc":[4,0,20,11]
+"structAcTaskDefinition.html#a8bd6206e58db8767ff2372515587a84b":[4,0,20,15]
 };
