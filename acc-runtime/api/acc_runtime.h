@@ -373,6 +373,9 @@ acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
 #ifndef AC_RUNTIME_SOURCE
 #include "load_comp_info.h"
 
+
+AC_BEGIN_C_DECLARATIONS
+
 void acVBASwapBuffer(const Field field, VertexBufferArray* vba);
 
 void acVBASwapBuffers(VertexBufferArray* vba);
@@ -382,10 +385,6 @@ void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
 void acPBASwapBuffers(VertexBufferArray* vba);
 
 AcResult acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
-
-
-
-
 
 FUNC_DEFINE(AcResult, acLoadRealReduceRes,(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value));
 FUNC_DEFINE(AcResult, acLoadIntReduceRes,(cudaStream_t stream, const AcIntOutputParam param, const int* value));
@@ -405,6 +404,8 @@ FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba, const AcMeshDims* dims)
  * Returns 0 on succes and -1 on failure.
  */
 FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
+
+AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
 
