@@ -1,5 +1,5 @@
 ## Astaroth Core
-add_library(astaroth_core_obj)
+add_library(astaroth_core_obj OBJECT)
 set_target_properties(
     astaroth_core_obj
     PROPERTIES
