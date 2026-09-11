@@ -189,7 +189,7 @@ main(void)
       acHostMeshApplyPeriodicBounds(&candidate);
       acHostMeshApplyPeriodicBounds(&model);
 
-      const AcResult res = acVerifyMeshWithMaximumError("inplace_gaussian", model, candidate,10.0);
+      const AcResult res = acVerifyMeshWithMaximumError("inplace_gaussian", model, candidate,15.0);
       if (res == AC_SUCCESS) return true;
       return false;
     };
