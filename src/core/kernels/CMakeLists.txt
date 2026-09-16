@@ -71,10 +71,19 @@ else()
 			endif()
 			if(USE_HEFFTE)
 					add_library(ac_fft OBJECT heffte.cc)
+					if(DEFINED ENV{HEFFTE_DIR})
+					  target_include_directories(ac_fft PRIVATE
+						  "$ENV{HEFFTE_DIR}/include"
+						  "$ENV{HEFFTE_DIR}/build/include"
+					  )
+					  target_link_directories(ac_fft PUBLIC 
+						  "$ENV{HEFFTE_DIR}/build"
+					  )
+					endif()
 					if(USE_HIP)
 						target_link_libraries(ac_fft PRIVATE heffte roc::rocfft)
 					else()
-						target_link_libraries(ac_fft PRIVATE heffte CUDA:cufft)
+						target_link_libraries(ac_fft PRIVATE heffte CUDA::cufft)
 					endif()
 			else()
 				if(USE_HIP)
