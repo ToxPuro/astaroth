@@ -89,7 +89,7 @@ jobs:
   compile-base-builds-ubuntu-rocm:
     runs-on: ubuntu-latest
     container:
-      image: &ubuntu-rocm-container rocm/dev-ubuntu-26.04:7.14.0-full
+      image: &ubuntu-rocm-container rocm/dev-ubuntu-26.04:7.14.1-full
     needs:
       - define-matrices
     strategy:
