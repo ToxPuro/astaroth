@@ -50,9 +50,14 @@ typedef struct
 	AcComplexFloat* out;
 } AcComplexFloatInAndOut;
 
-static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
-static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans_single{};
-static std::unordered_map<size_t,heffte::fft3d_r2c<heffte::backend::rocfft>> plans_r2c{};
+#if AC_USE_HIP
+#define fft_backend rocfft
+#else
+#define fft_backend cufft
+#endif
+static std::unordered_map<size_t,heffte::fft3d<heffte::backend::fft_backend>> plans{};
+static std::unordered_map<size_t,heffte::fft3d<heffte::backend::fft_backend>> plans_single{};
+static std::unordered_map<size_t,heffte::fft3d_r2c<heffte::backend::fft_backend>> plans_r2c{};
 
 
 AcResult
@@ -102,7 +107,7 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
     {
         heffte::box3d<> const input_box  = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
         heffte::box3d<> const output_box = {{output_lower.x,output_lower.y,output_lower.z},{output_upper.x,output_upper.y,output_upper.z}};
-	heffte::plan_options options = heffte::default_options<heffte::backend::rocfft>();
+	heffte::plan_options options = heffte::default_options<heffte::backend::fft_backend>();
         options.algorithm = heffte::reshape_algorithm::p2p_plined;
         //options.algorithm = heffte::reshape_algorithm::alltoall;
         //options.algorithm = heffte::reshape_algorithm::p2p;
@@ -110,7 +115,7 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 	options.use_reorder = true;
         //options.algorithm = heffte::reshape_algorithm::alltoallv;
 	//options.use_gpu_aware = false;
-        heffte::fft3d_r2c<heffte::backend::rocfft> fft(stream, input_box, output_box, 2,communicator, options);
+        heffte::fft3d_r2c<heffte::backend::fft_backend> fft(stream, input_box, output_box, 2,communicator, options);
 	plans_r2c.emplace(count,std::move(fft));
 	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
     }
@@ -151,7 +156,7 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
     if(plans_single.find(count) == plans_single.end())
     {
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
+        heffte::fft3d<heffte::backend::fft_backend> fft(my_box, my_box, communicator);
 	plans_single.emplace(count,std::move(fft));
 	work_buffers[count] = get_fresh_complex_float_buffer(batch_size*fft.size_workspace());
     }
@@ -190,7 +195,7 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
     if(plans.find(count) == plans.end())
     {
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
+        heffte::fft3d<heffte::backend::fft_backend> fft(my_box, my_box, communicator);
 	plans.emplace(count,std::move(fft));
 	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
     }
