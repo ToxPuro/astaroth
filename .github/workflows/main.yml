@@ -24,7 +24,7 @@ jobs:
   compile-base-builds-ubuntu-cuda:
     runs-on: ubuntu-latest
     container:
-      image: &ubuntu-cuda-container nvidia/cuda:13.3.0-devel-ubuntu26.04
+      image: &ubuntu-cuda-container nvidia/cuda:13.3.1-devel-ubuntu26.04
     needs: define-matrices
     strategy:
       matrix:
