@@ -54,7 +54,7 @@ In recent years, GPUs have become the primary compute platform for data-parallel
 `Astaroth` is a GPU framework for stencil computations that has been developed to address this problem of scalable scientific computing.
 `Astaroth` provides its own domain-specific language (DSL), in which researchers can express such computations without having to focus on technical implementation details.
 It can run efficiently in both CUDA- and HIP-based environments, and for testing purposes on CPUs.
-While stencils are the core of `Astaroth`, it also accelerates other operations like reductions (e.g. sums), simple ray-tracing, and integrates with libraries performing GPU-accelerated Fourier transforms, all of which are important for simulations on structured grids.
+While stencils are the core of `Astaroth`, it also accelerates other operations like reductions (e.g., sums) and simple ray-tracing, and it integrates with libraries performing GPU-accelerated Fourier transforms, all of which are important for simulations on structured grids.
 `Astaroth` is optimized for multiphysics use cases and has primarily been used for turbulent astrophysical plasma simulations.
 
 # Statement of need
@@ -62,7 +62,7 @@ While stencils are the core of `Astaroth`, it also accelerates other operations 
 Due to the ubiquity and expense of stencil computations, a common library for implementing them
 efficiently on GPUs is needed, more so because high-performance codes require portability across
 multiple different computing platforms. Such a library is both needed for accelerating existing codes and writing new ones.
-Thus, its API has to enable good integration with existing and easy development of new code.
+Thus, its API has to enable good integration with existing code and easy development of new code.
 
 `Astaroth` strives to be this library, encapsulating the core steps and structures of stencil computations
 in its domain-specific language (DSL)[^sample_footnote], which enables researchers in different domains to write their
@@ -92,7 +92,7 @@ Further productivity advances can be gained with domain-specialized frameworks, 
 Examples closest to `Astaroth` are `Parthenon` [@grete_parthenonperformance_2023] and `AMReX` [@zhang_amrexframework_2019].
 Both are frameworks for distributed adaptive mesh refinement (AMR), where `Parthenon` uses `Kokkos` as the compute backend and `AMReX` provides compute features with parallel function wrappers and user-written C\texttt{++} lambdas.
 In contrast to these projects, `Astaroth`'s distributed abstraction layer focuses on structured grid computations without mesh refinement, and can thus make simplifying assumptions about the underlying data-movement patterns to better address on-chip data movement, batching, and data-processing pipelines.
-Similar to `Parthenon` and others [@pearson_movementplacement_2021], `Astaroth` implements its modification of topology-aware domain decomposition and rank reordering for improved portability across systems, and performs fused packing to alleviate communication overheads.
+Similar to `Parthenon` [@pearson_movementplacement_2021] and others, `Astaroth` implements its modification of topology-aware domain decomposition and rank reordering for improved portability across systems, and performs fused packing to alleviate communication overheads.
 Furthermore, Astaroth implements a task scheduler for compute and communication tasks [@lappi2021task].
 
 In the field, `Astaroth` stands out as a CUDA/HIP stencil-computing framework focused on addressing the performance-productivity trade-off in cache-heavy multiphysics applications with a domain-specific language, automated tile-size optimization, and topology handling, taking ownership of data structures and movement throughout the computational science pipeline.
@@ -111,13 +111,13 @@ The main operations, such as stencils, are written in a declarative syntax, and 
 The implementation is left to `Astaroth`'s DSL compiler `acc`, which applies a number of specialized optimizations.
 An especially important optimization is the unrolled and reordered computation of all required stencils at the start of the kernels, which enables instruction-level parallelism and efficient usage of caches [@pekkila_graphicsprocessors_2026].
 In addition to stencils, the DSL supports two other operations: 1) multi-GPU reductions -- which are commonly needed for stencil-based solvers; and 2) simplified distributed ray-tracing, where rays cannot change directions and are restricted to move through neighbouring grid points -- which is necessary for simulations incorporating radiative transfer [@heinemann2006radiative].
-`Astaroth`'s DSL also includes a standard library, providing, inter alia: derivative operators used in PDE solvers, implemented for generally spaced Cartesian, spherical or cylindrical grids; and Poisson solvers, e.g. for self-gravity [@krasnopolsky2026iterative].
+`Astaroth`'s DSL also includes a standard library, providing, inter alia: derivative operators used in PDE solvers, implemented for generally spaced Cartesian, spherical or cylindrical grids; and Poisson solvers, e.g., for self-gravity [@krasnopolsky2026iterative].
 
 `acc` transpiles the DSL source into CUDA or HIP source code, which is further compiled into machine code using a native CUDA or HIP compiler.
 The program thus produced is executed in the `acc` runtime system, which further optimizes the kernels by autotuning the thread block sizes for kernel execution.
 `acc` also supports run-time compilation, because run-time configuration parameters may change the evaluation of conditional statements, thereby changing the branches taken at run-time.
 With run-time compilation, `acc` compiles for a given configuration only those parts of the DSL source that will be executed.
-Information about which code is executed also allows `Astaroth` to optimize run-time behaviour more precisely, e.g. memory allocations or communication patterns.
+Information about which code is executed also allows `Astaroth` to optimize run-time behaviour more precisely, e.g., memory allocations or communication patterns.
 
 ## Multi-GPU runtime system and API
 
@@ -134,20 +134,20 @@ For fast data transfers and to support all possible hardware, both GPU-to-GPU re
 This runtime system can be accessed through `Astaroth`'s runtime API.
 The API is C-ABI compatible, supporting foreign function interfaces to external applications written in any programming language.
 The API is organized into two layers: the `Device` layer and the `Grid` layer.
-The `Device` layer provides access to single-GPU functionality, such as: moving data between CPU and GPU, launching kernels, and loading/storing snapshots from/to disk.
-The `Grid` layer provides access to multi-GPU functionality, such as: executing DAGs, distributed initialization, and distributed loading/storing of snapshots.
+The `Device` layer provides access to single-GPU functionality, such as moving data between CPU and GPU, launching kernels, and loading/storing snapshots from/to disk.
+The `Grid` layer provides access to multi-GPU functionality, such as executing DAGs, distributed initialization, and distributed loading/storing of snapshots.
 Other special functionality is also provided through the API, such as distributed Fourier transforms.
 
 ## Solver
 
 `Astaroth` also includes a standalone finite-difference PDE solver [@pekkila2022scalable], which takes full advantage of the DSL and the multi-GPU API, and can be used to write new simulation models. The solver scales to thousands of GPUs with a weak-scaling efficiency greater than 90% [@pekkila_graphicsprocessors_2026] and also works as a testbed for performance research.
 
-The solver uses an astrophysical magnetohydrodynamical setup (`acc-runtime/samples/mhd_modular`) by default, but can be configured to run any DSL code.
-The samples directory also includes other production-ready setups, e.g. `tfm-mpi` for the test-field method [@pekkila_graphicsprocessors_2026].
+The solver can be configured to run any DSL code, and uses an astrophysical magnetohydrodynamical setup (`acc-runtime/samples/mhd_modular`).
+The samples directory also includes other production-ready setups, e.g., `tfm-mpi` for the test-field method [@pekkila_graphicsprocessors_2026].
 
 The solver handles distributed initial conditions, domain decomposition, simulation diagnostics, and logging.
 It is also designed to react to a number of events, such as NaNs in the simulation data, simulation time limits, and a stop signal given through the file system.
-The directory `analysis/` contains Python-based data analysis tools, which can be used to process and work with the data produced by the standalone solver.
+The `analysis/` directory contains Python-based data analysis tools, which can be used to process and work with the data produced by the standalone solver.
 
 
 # Research impact statement
@@ -160,11 +160,11 @@ The associated speedup factor of 20-60 [@pekkila2022scalable] will enable more r
 
 # Acknowledgements
 
-We acknowledge the contributions of all developers and early users of `Astaroth` who have been instrumental in its evolution. These include Petr Bém, Jörn Warnecke, Frederick Gent, Ruben Krasnopolsky, Wei-Wen Li, Mordecai Mac Low, Chun-Fan Liu, Man Hei Li, Tzu-Chun Hsu and Indrani Das.
+We acknowledge the contributions of all developers and early users of `Astaroth` who have been instrumental in its evolution. These include Petr Bém, Jörn Warnecke, Frederick Gent, Ruben Krasnopolsky, Wei-Wen Li, Mordecai Mac Low, Chun-Fan Liu, Man Hei Li, Tzu-Chun Hsu, and Indrani Das.
 We acknowledge the computational resources and services provided by CSC — IT Center for Science, the Aalto Science-IT project, ASIAA High-Performance Computing, and National Center for High-Performance Computing (NCHC), National Applied Research Laboratories (NARLabs) in Taiwan, the Oak Ridge Leadership Computing Facility at the Oak Ridge National Laboratory, and resources from LUMI-G through the Euro-HPC joint undertaking. Furthermore, we appreciate the important technical assistance provided by CSC, by people like Fredrik Robertsén and others.
 The development of `Astaroth`  has received funding from the Academy of Finland, ReSoLVE Centre of Excellence, Grant/Award Number: 307411;
 The European Research Council, the European Union's Horizon 2020 research and innovation program, project UniSDyn, Grant/Award Number: 818665; KAUTE Foundation, Grant/Award Numbers: 20240173 and 20250154; Research Council of Finland, project MomEnt, Grant/Award Number: 373416.
-The authors acknowledge support for the CompAS Project from the Institute of Astronomy and Astrophysics, Academia Sinica (ASIAA), the Academia Sinica grant AS-IAIA-114-M01, and the National Science and Technology Council (NSTC) in Taiwan through grants 112-2112-M-001-030, 113-2112-M-001-008, and 114-2112-M-001-001-; the International Collaboration and Cooperation grant for COSMAGG that supports the exchanges between Taiwan and Finland: 113-2927-I-001-513-, 114-2927-I-001-506-, and Research Council of Finland project 359462.
+The authors acknowledge support for the CompAS Project from the Institute of Astronomy and Astrophysics, Academia Sinica (ASIAA), the Academia Sinica grant AS-IAIA-114-M01, and the National Science and Technology Council (NSTC) in Taiwan through grants 112-2112-M-001-030, 113-2112-M-001-008, and 114-2112-M-001-001; the International Collaboration and Cooperation grant for COSMAGG that supports the exchanges between Taiwan and Finland: 113-2927-I-001-513, 114-2927-I-001-506, and Research Council of Finland project 359462.
 MSV thanks the support of Jenny and Antti Wihuri Foundation and Finnish Cultural Foundation in his doctoral thesis work, and therefore the early development in Astaroth prototype.
 
 # AI usage disclosure
