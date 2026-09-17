@@ -51,9 +51,9 @@ bibliography: paper.bib
 
 Stencil computations[^stencil_footnote] are one of the bedrocks of high-performance scientific simulations, forming the core of many partial differential equation (PDE) and numerical linear algebra solvers.
 In recent years, GPUs have become the primary compute platform for data-parallel applications in high-performance computing, and it is difficult to run large simulations without them.
-`Astaroth` is a GPU framework for stencil computations, that has been developed to address this problem of scalable scientific computing.
-`Astaroth` provides its own domain specific language (DSL), in which researchers can express such computations without having to focus on technical implementation details.
-It can run efficiently both on CUDA- and HIP-based environments, and for testing purposes on CPUs.
+`Astaroth` is a GPU framework for stencil computations that has been developed to address this problem of scalable scientific computing.
+`Astaroth` provides its own domain-specific language (DSL), in which researchers can express such computations without having to focus on technical implementation details.
+It can run efficiently in both CUDA- and HIP-based environments, and for testing purposes on CPUs.
 While stencils are the core of `Astaroth`, it also accelerates other operations like reductions (e.g. sums), simple ray-tracing, and integrates with libraries performing GPU-accelerated Fourier transforms, all of which are important for simulations on structured grids.
 `Astaroth` is optimized for multiphysics use cases and has primarily been used for turbulent astrophysical plasma simulations.
 
@@ -62,15 +62,15 @@ While stencils are the core of `Astaroth`, it also accelerates other operations 
 Due to the ubiquity and expense of stencil computations, a common library for implementing them
 efficiently on GPUs is needed, more so because high-performance codes require portability across
 multiple different computing platforms. Such a library is both needed for accelerating existing codes and writing new ones.
-Thus, its API has to enable good integration with existing and easy writing of new code.
+Thus, its API has to enable good integration with existing and easy development of new code.
 
 `Astaroth` strives to be this library, encapsulating the core steps and structures of stencil computations
-in its domain specific language (DSL)[^sample_footnote], which enables researchers in different domains to write their
+in its domain-specific language (DSL)[^sample_footnote], which enables researchers in different domains to write their
 stencil computations in a compact and obvious way. This encapsulation allows `Astaroth` to provide
 the needed execution platform for different application cases, predominantly for partial differential equation (PDE) solvers, but also for image processing and numerical linear algebra.
 
-Multiphysics simulations in particular pose computationally challenging stencil calculations due to the need of
-holding values of many fields in working memory at the same time, and accelerating them was the original need
+Multiphysics simulations in particular pose computationally challenging stencil calculations due to the need to
+hold values of many fields in working memory at the same time, and accelerating them was the original need
 for which `Astaroth` was developed. As an example of this use case, `Astaroth` has been used to accelerate
 the widely used astrophysics framework `Pencil Code`, for which existing solutions were not fit.
 
@@ -83,10 +83,10 @@ Performance-portability is typically augmented with automated tuning and algorit
 These approaches are also adopted in `Astaroth`, which introduces a DSL, a code generator, and implements automated tile-size optimization.
 A distinctive feature of Astaroth is its algorithmic specialization for cache-constrained use cases in multiphysics, where the working set required to update interdependent physical fields is too large to fit into on-chip caches.
 This is addressed by reordering the computations into stages of higher and lower cache reuse, thereby enabling better utilization of on-chip caches [@pekkila2025stencil].
-`Astaroth` not only consider stencils in isolation, but also their combinations with other operations inside the same kernel, such as the automatic fusion of distributed reductions with other computations.
+`Astaroth` not only considers stencils in isolation, but also their combinations with other operations inside the same kernel, such as the automatic fusion of distributed reductions with other computations.
 
 Methods to improve the performance-portability-productivity dimensions in multiprocess applications include topology-aware workload distribution and abstractions for distributed operations.
-`Chapel` [@callahan_cascadehigh_2004], `Charm++` [@kale_charmportable_1993] improve the performance-portability-productivity dimensions by providing general-purpose distributed programming models, whereas `Cactus` [@goodale_cactusframework_2003], `PETSc` [@mills_towardperformance_2021] implement scientific computation toolkits.
+`Chapel` [@callahan_cascadehigh_2004] and `Charm++` [@kale_charmportable_1993] improve the performance-portability-productivity dimensions by providing general-purpose distributed programming models, whereas `Cactus` [@goodale_cactusframework_2003] and `PETSc` [@mills_towardperformance_2021] implement scientific computation toolkits.
 Further productivity advances can be gained with domain-specialized frameworks, which provide ready-made solutions for specific use cases and a simplified application programming interface.
 `Astaroth` also belongs to this class of frameworks.
 Examples closest to `Astaroth` are `Parthenon` [@grete_parthenonperformance_2023] and `AMReX` [@zhang_amrexframework_2019].
@@ -96,13 +96,13 @@ Similar to `Parthenon` and others [@pearson_movementplacement_2021], `Astaroth` 
 Furthermore, Astaroth implements a task scheduler for compute and communication tasks [@lappi2021task].
 
 In the field, `Astaroth` stands out as a CUDA/HIP stencil-computing framework focused on addressing the performance-productivity trade-off in cache-heavy multiphysics applications with a domain-specific language, automated tile-size optimization, and topology handling, taking ownership of data structures and movement throughout the computational science pipeline.
-This enables holistic optimizations of full scientific workflows and offers a lower barrier of entry to experimentation with optimization techniques spanning traditionally decoupled tasks (e.g., extensive kernel fusion of operations across the stack), which would not be practical with libraries utilizing opaque submodules for compute and communication.
+This enables holistic optimizations of full scientific workflows and offers a lower barrier to entry for experimentation with optimization techniques spanning traditionally decoupled tasks (e.g., extensive kernel fusion of operations across the stack), which would not be practical with libraries utilizing opaque submodules for compute and communication.
 
 
 # Software design
 
 `Astaroth` consists of three main components: 1) `acc`, a compiler and runtime system for a domain-specific language (DSL) for stencil computations, 2) an API for executing stencil applications on multi-GPU platforms, and 3) a standalone PDE solver.
-Below, we present a quick overview of these components. Extensive documentation is available at [@astaroth_doc].
+Below, we present a quick overview of these components. Extensive documentation is available [@astaroth_doc].
 
 ## `acc` compiler and runtime system
 
@@ -117,7 +117,7 @@ In addition to stencils, the DSL supports two other operations: 1) multi-GPU red
 The program thus produced is executed in the `acc` runtime system, which further optimizes the kernels by autotuning the thread block sizes for kernel execution.
 `acc` also supports run-time compilation, because run-time configuration parameters may change the evaluation of conditional statements, thereby changing the branches taken at run-time.
 With run-time compilation, `acc` compiles for a given configuration only those parts of the DSL source that will be executed.
-The information of what code gets executed also allows `Astaroth` to optimize run-time behaviour more precisely, e.g. memory allocations or communication patterns.
+Information about which code is executed also allows `Astaroth` to optimize run-time behaviour more precisely, e.g. memory allocations or communication patterns.
 
 ## Multi-GPU runtime system and API
 
@@ -140,7 +140,7 @@ Other special functionality is also provided through the API, such as distribute
 
 ## Solver
 
-`Astaroth` also includes a standalone finite-difference PDE solver [@pekkila2022scalable], which takes full advantage of the DSL and the multi-GPU API, and can be used to write new simulation models. The solver scales to thousands of GPUs with a weak scaling efficiency \>90% [@pekkila_graphicsprocessors_2026] and also works as a testbed for performance research.
+`Astaroth` also includes a standalone finite-difference PDE solver [@pekkila2022scalable], which takes full advantage of the DSL and the multi-GPU API, and can be used to write new simulation models. The solver scales to thousands of GPUs with a weak-scaling efficiency greater than 90% [@pekkila_graphicsprocessors_2026] and also works as a testbed for performance research.
 
 The solver uses an astrophysical magnetohydrodynamical setup (`acc-runtime/samples/mhd_modular`) by default, but can be configured to run any DSL code.
 The samples directory also includes other production-ready setups, e.g. `tfm-mpi` for the test-field method [@pekkila_graphicsprocessors_2026].
@@ -152,8 +152,8 @@ The directory `analysis/` contains Python-based data analysis tools, which can b
 
 # Research impact statement
 
-`Astaroth` has already been used in a number of papers as the core PDE-solver, mainly for astrophysical plasma simulations [@vaisala2021interaction; @vaisala2023exploring; @gent2026asymptotic], but also in seismology [@ladino2025acoustic].
-Additionally, it has been used for research on performance optimization methods[@pekkila_graphicsprocessors_2026;@pekkila2025stencil;@pekkila2017methods], communication techniques [@pekkila2022scalable;@lappi2021task], compiler techniques [@pekkila_masters_2019;@puro2023programmatic] and other topics [@yokelson2024soma; @puro2025gpu].
+`Astaroth` has already been used in a number of papers as the core PDE solver, mainly for astrophysical plasma simulations [@vaisala2021interaction; @vaisala2023exploring; @gent2026asymptotic], but also in seismology [@ladino2025acoustic].
+Additionally, it has been used for research on performance optimization methods [@pekkila_graphicsprocessors_2026;@pekkila2025stencil;@pekkila2017methods], communication techniques [@pekkila2022scalable;@lappi2021task], compiler techniques [@pekkila_masters_2019;@puro2023programmatic] and other topics [@yokelson2024soma; @puro2025gpu].
 We expect that the recent GPU-acceleration of `Pencil Code`, which was done by embedding `Astaroth`'s DSL and runtime system into it, will increase the number of `Astaroth` users.
 The associated speedup factor of 20-60 [@pekkila2022scalable] will enable more realistic astrophysical simulations in a wide range of use cases from modelling small-scale dynamos [@warnecke2025small] to processes producing primordial gravitational waves and their propagation [@roper2020numerical].
 
