@@ -90,7 +90,7 @@ Methods to improve the performance-portability-productivity dimensions in multip
 Further productivity advances can be gained with domain-specialized frameworks, which provide ready-made solutions for specific use cases and a simplified application programming interface.
 `Astaroth` also belongs to this class of frameworks.
 Examples closest to `Astaroth` are `Parthenon` [@grete_parthenonperformance_2023] and `AMReX` [@zhang_amrexframework_2019].
-Both are frameworks for distributed adaptive mesh refinement (AMR), where `Parthenon` uses `Kokkos` as the compute backend and `AMReX` provides compute features with parallel function wrappers and user-written C++ lambdas.
+Both are frameworks for distributed adaptive mesh refinement (AMR), where `Parthenon` uses `Kokkos` as the compute backend and `AMReX` provides compute features with parallel function wrappers and user-written C\texttt{++} lambdas.
 In contrast to these projects, `Astaroth`'s distributed abstraction layer focuses on structured grid computations without mesh refinement, and can thus make simplifying assumptions about the underlying data-movement patterns to better address on-chip data movement, batching, and data-processing pipelines.
 Similar to `Parthenon` and others [@pearson_movementplacement_2021], `Astaroth` implements its modification of topology-aware domain decomposition and rank reordering for improved portability across systems, and performs fused packing to alleviate communication overheads.
 Furthermore, Astaroth implements a task scheduler for compute and communication tasks [@lappi2021task].
@@ -175,4 +175,4 @@ AI tools have not been used in any step of software creation, documentation or i
 
 [^stencil_footnote]: Stencil computations are computations on structured grids where a given point is updated using a fixed neighborhood pattern. Examples are convolutions in image processing and convolutional neural networks, and different schemes for spatial derivatives like the finite-difference method.
 [^paradigm_footnote]: In declarative programming, computations are defined by describing what the results look like; in imperative programming, by describing the steps to perform.
-[^sample_footnote]: For a simple example of the Astaroth DSL and a program using it, see the advection solver example in https://github.com/ToxPuro/astaroth/tree/9295cbc4a649881e94af83971b52bfc167a72e69/samples/advection-example.
+[^sample_footnote]: For a simple example of the Astaroth DSL and a program using it, see the advection solver example from this [link](https://github.com/ToxPuro/astaroth/tree/9295cbc4a649881e94af83971b52bfc167a72e69/samples/advection-example).
