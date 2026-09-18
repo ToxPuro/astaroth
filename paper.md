@@ -142,7 +142,7 @@ Other special functionality is also provided through the API, such as distribute
 
 `Astaroth` also includes a standalone finite-difference PDE solver [@pekkila2022scalable], which takes full advantage of the DSL and the multi-GPU API, and can be used to write new simulation models. The solver scales to thousands of GPUs with a weak-scaling efficiency greater than 90% [@pekkila_graphicsprocessors_2026] and also works as a testbed for performance research.
 
-The solver can be configured to run any DSL code, and uses an astrophysical magnetohydrodynamical setup (`acc-runtime/samples/mhd_modular`).
+The solver can be configured to run any DSL code, and uses an astrophysical magnetohydrodynamical setup (`acc-runtime/samples/mhd_modular`) by default.
 The samples directory also includes other production-ready setups, e.g., `tfm-mpi` for the test-field method [@pekkila_graphicsprocessors_2026].
 
 The solver handles distributed initial conditions, domain decomposition, simulation diagnostics, and logging.
