@@ -169,7 +169,8 @@ MSV thanks the support of Jenny and Antti Wihuri Foundation and Finnish Cultural
 
 # AI usage disclosure
 
-AI tools have not been used in any step of software creation, documentation or in the authoring of this paper.
+AI tools have not been used for producing in documentation or in the authoring of this paper.
+For software development AI tools have been used for debugging and generating small snippets of code, which have been always validated by human review.
 
 # References
 
