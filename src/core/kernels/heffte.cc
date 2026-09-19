@@ -14,7 +14,7 @@
 #include "errchk.h"
 #include "host_datatypes.h"
 
-static MPI_Comm communicator{};
+static MPI_Comm communicator = MPI_COMM_NULL;
 [[maybe_unused]] static Volume global_offset = (Volume){0,0,0};
 
 static AcComplex*
@@ -51,13 +51,13 @@ typedef struct
 } AcComplexFloatInAndOut;
 
 #if AC_USE_HIP
-#define fft_backend rocfft
+#define fft_backend heffte::backend::rocfft
 #else
-#define fft_backend cufft
+#define fft_backend heffte::backend::cufft
 #endif
-static std::unordered_map<size_t,heffte::fft3d<heffte::backend::fft_backend>> plans{};
-static std::unordered_map<size_t,heffte::fft3d<heffte::backend::fft_backend>> plans_single{};
-static std::unordered_map<size_t,heffte::fft3d_r2c<heffte::backend::fft_backend>> plans_r2c{};
+static std::unordered_map<size_t,heffte::fft3d<fft_backend>> plans{};
+static std::unordered_map<size_t,heffte::fft3d<fft_backend>> plans_single{};
+static std::unordered_map<size_t,heffte::fft3d_r2c<fft_backend>> plans_r2c{};
 
 
 AcResult
@@ -105,9 +105,10 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
     const int3 output_upper = output_lower+output_dims-(int3){1,1,1};
     if(plans_r2c.find(count) == plans_r2c.end())
     {
+	ERRCHK_ALWAYS(communicator != MPI_COMM_NULL);
         heffte::box3d<> const input_box  = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
         heffte::box3d<> const output_box = {{output_lower.x,output_lower.y,output_lower.z},{output_upper.x,output_upper.y,output_upper.z}};
-	heffte::plan_options options = heffte::default_options<heffte::backend::fft_backend>();
+	heffte::plan_options options = heffte::default_options<fft_backend>();
         options.algorithm = heffte::reshape_algorithm::p2p_plined;
         //options.algorithm = heffte::reshape_algorithm::alltoall;
         //options.algorithm = heffte::reshape_algorithm::p2p;
@@ -115,7 +116,7 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 	options.use_reorder = true;
         //options.algorithm = heffte::reshape_algorithm::alltoallv;
 	//options.use_gpu_aware = false;
-        heffte::fft3d_r2c<heffte::backend::fft_backend> fft(stream, input_box, output_box, 2,communicator, options);
+        heffte::fft3d_r2c<fft_backend> fft(stream, input_box, output_box, 2,communicator, options);
 	plans_r2c.emplace(count,std::move(fft));
 	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
     }
@@ -156,7 +157,7 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
     if(plans_single.find(count) == plans_single.end())
     {
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<heffte::backend::fft_backend> fft(my_box, my_box, communicator);
+        heffte::fft3d<fft_backend> fft(my_box, my_box, communicator);
 	plans_single.emplace(count,std::move(fft));
 	work_buffers[count] = get_fresh_complex_float_buffer(batch_size*fft.size_workspace());
     }
@@ -195,11 +196,15 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
     if(plans.find(count) == plans.end())
     {
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<heffte::backend::fft_backend> fft(my_box, my_box, communicator);
+        heffte::fft3d<fft_backend> fft(my_box, my_box, communicator);
 	plans.emplace(count,std::move(fft));
-	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
     }
-    AcComplex* workspace = work_buffers[count];
+    const size_t work_buf_size = plans.at(count).size_workspace()*batch_size;
+    if(work_buffers.find(work_buf_size) == work_buffers.end())
+    {
+	work_buffers[work_buf_size] = get_fresh_complex_buffer(work_buf_size);
+    }
+    AcComplex* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
     	plans.at(count).backward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
@@ -340,7 +345,6 @@ acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src, const Volume do
     AcComplex* tmp_in  = tmp_buffers[count].in;
     AcComplex* tmp_out = tmp_buffers[count].out;
     acKernelVolumeCopyRealToComplexBatched(stream,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,batch_size);
-
     acFFTTransformR2CBase(stream,src,subdomain_size,tmp_out,false,batch_size);
     acKernelVolumeCopyComplexToPlanarBatched(stream,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size,batch_size);
 
