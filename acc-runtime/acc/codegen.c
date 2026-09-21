@@ -1386,13 +1386,18 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
 
 
-	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) return dummy; return %s_params[param];}\n",enum_name,uppr_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) return dummy; return %s_arrays[param];}\n",enum_name,uppr_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) return dummy; return %s_params[param];}\n",enum_name,uppr_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) return dummy; return %s_arrays[param];}\n",enum_name,uppr_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompParam ) const {return false;}\n",enum_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompArrayParam ) const {return false;}\n",enum_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
+	// OM: The semicolons at the end of the overloads are needed only for the
+	// Python bindings. The C/C++ parser used by litgen, the bindings generator,
+	// does not deal well the '&' symbol used with overloads. Until that problem
+	// is resolved, let's keep the semicolons in. They do not affect how the
+	// overloads work.
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) {return dummy;} return %s_params[param];};\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) {return dummy;} return %s_arrays[param];};\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) {return dummy;} return %s_params[param];};\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) {return dummy;} return %s_arrays[param];};\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompParam ) const {return false;};\n",enum_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompArrayParam ) const {return false;};\n",enum_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %s) const {return false;};\n",datatype_scalar);
 
 	fprintf_filename("array_decl.h","%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
 
@@ -1964,8 +1969,8 @@ gen_comp_declarations(const char* datatype_scalar)
 	//Based on naming these should not be here
 	//TODO: move them to an appropriately named function
 	fp = fopen("info_loaded_decl.h","a");
-	fprintf(fp,"bool  %s_params[NUM_%s_PARAMS];\n",define_name,upper);
-	fprintf(fp,"bool  %s_arrays[NUM_%s_ARRAYS];\n",define_name,upper);
+	fprintf(fp,"bool %s_params[NUM_%s_PARAMS];\n",define_name,upper);
+	fprintf(fp,"bool %s_arrays[NUM_%s_ARRAYS];\n",define_name,upper);
 	fclose(fp);
 
 
