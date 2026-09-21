@@ -153,8 +153,7 @@ typedef struct AcMeshInfoLoaded {
 #include "info_loaded_operator_decl.h"
 #endif
 #endif
-} AcMeshInfoLoadedInfo;
-
+} AcMeshInfoLoaded;
 
 typedef struct AcMeshInfoScalars {
 #include "device_mesh_info_decl.h"
@@ -166,7 +165,7 @@ typedef struct AcMeshInfo {
 #include "device_mesh_info_decl.h"
 #include "array_decl.h"
 
-  AcMeshInfoLoadedInfo is_loaded;
+  AcMeshInfoLoaded is_loaded;
   const char* runtime_compilation_log_dst;
   const char* runtime_compilation_build_path;
   const char* runtime_compilation_base_path;
