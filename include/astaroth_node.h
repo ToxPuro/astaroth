@@ -142,9 +142,4 @@ FUNC_DEFINE(AcResult, acNodeStoreIXYPlate,(const Node node, const Stream stream,
 FUNC_DEFINE(AcResult, acNodeLoadPlateXcomp,(const Node node, const Stream stream, const int3 start, const int3 end, 
                               AcMesh* host_mesh, AcReal* plateBuffer, int plate));
 
-#if AC_RUNTIME_COMPILATION == 0
-
-FUNC_DEFINE(AcResult, acNodeGetVBApointers,(Node* node_handle, AcReal *vbapointer[2]));
-#endif
-
 AC_END_C_DECLARATIONS
