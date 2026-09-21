@@ -115,21 +115,27 @@ typedef struct {
 typedef struct AcCompInfoLoaded {
 #include "comp_loaded_decl.h"
 #ifdef __cplusplus
+#ifndef AC_PYTHON_BINDINGS
 #include "loaded_info_access_operators.h"
+#endif
 #endif
 } AcCompInfoLoaded;
 
 typedef struct AcCompInfoHasDefaultValue {
 #include "comp_loaded_decl.h"
 #ifdef __cplusplus
+#ifndef AC_PYTHON_BINDINGS
 #include "loaded_info_access_operators.h"
+#endif
 #endif
 } AcCompInfoHasDefaultValue;
 
 typedef struct AcCompInfoConfig{
 #include "comp_decl.h"
 #ifdef __cplusplus
+#ifndef AC_PYTHON_BINDINGS
 #include "comp_info_access_operators.h"
+#endif
 #endif
 } AcCompInfoConfig;
 
@@ -143,7 +149,9 @@ typedef struct AcMeshInfoLoaded {
 #include "info_loaded_decl.h"
 
 #ifdef __cplusplus
+#ifndef AC_PYTHON_BINDINGS
 #include "info_loaded_operator_decl.h"
+#endif
 #endif
 } AcMeshInfoLoadedInfo;
 
@@ -169,7 +177,9 @@ typedef struct AcMeshInfo {
   AcCompInfo run_consts;
 
 #ifdef __cplusplus
+#ifndef AC_PYTHON_BINDINGS
 #include "info_access_operators.h"
+#endif
 #endif
 } AcMeshInfo;
 
