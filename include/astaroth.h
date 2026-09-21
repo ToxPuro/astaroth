@@ -259,6 +259,7 @@ acLoadLibrary(const AcMeshInfo info)
     LOAD_DSYM(acDeviceReduceVec);
     LOAD_DSYM(acDeviceReduceVecScalNoPostProcessing);
     LOAD_DSYM(acDeviceReduceVecScal);
+    LOAD_DSYM(acDevicePreprocessScratchPad);
     LOAD_DSYM(acDeviceUpdate);
     LOAD_DSYM(acDeviceGetKernelOutput);
     LOAD_DSYM(acDeviceLaunchKernel);
