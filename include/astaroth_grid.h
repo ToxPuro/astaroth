@@ -1,13 +1,22 @@
 #pragma once
 
+#include "func_define.h"
+
+#if AC_MPI_ENABLED
 #include "ac_mpi.h"
 #include "astaroth_device.h"
 #include "astaroth_helpers.h"
-#include "func_define.h"
+#endif
 
 #ifndef UNUSED
 #define UNUSED __attribute__((unused)) // Does not give a warning if unused
 #endif
+
+AC_BEGIN_C_DECLARATIONS
+
+bool acGridInitialized();
+
+AC_END_C_DECLARATIONS
 
 #if AC_MPI_ENABLED
 
@@ -380,17 +389,6 @@ FUNC_DEFINE(AcResult, acGridLoadStencils,(const Stream stream,
 
 FUNC_DEFINE(AcResult, acGridStoreStencils,(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
-static UNUSED bool
-ac_function_always_false()
-{
-    return false;
-}
-
-#if AC_RUNTIME_COMPILATION
-static UNUSED bool (*acGridInitialized)() = ac_function_always_false;
-#else
-FUNC_DEFINE(bool, acGridInitialized, ());
-#endif
 
 #if __cplusplus
 using KernelParamsLoader = std::function<void(ParamLoadingInfo step_info)>;

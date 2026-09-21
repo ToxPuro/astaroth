@@ -98,7 +98,6 @@ acLoadLibrary(const AcMeshInfo info)
     LOAD_DSYM(ac_MPI_Finalize);
     LOAD_DSYM(ac_MPI_Init);
     LOAD_DSYM(ac_MPI_Init_thread);
-    LOAD_DSYM(acGridInitialized);
     LOAD_DSYM(acGridMPIComm);
     LOAD_DSYM(acGridMPISubComms);
     LOAD_DSYM(acGridDecomposeMeshInfo);
