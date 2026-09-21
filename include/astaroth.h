@@ -76,6 +76,7 @@ acLoadLibrary(const AcMeshInfo info)
     LOAD_DSYM(acDeviceGetLocalConfig);
     LOAD_DSYM(acDeviceFinishReduceInt);
     LOAD_DSYM(acDeviceMemGetInfo);
+    LOAD_DSYM(acDeviceWriteMeshToDisk);
     LOAD_DSYM(acKernelFlushInt);
     LOAD_DSYM(acAnalysisGetKernelInfo);
     LOAD_DSYM(acAnalysisCheckForDSLErrors);

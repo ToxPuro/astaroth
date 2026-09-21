@@ -249,8 +249,7 @@ FUNC_DEFINE(AcMeshInfo,acDeviceGetLocalConfig,(const Device device));
 FUNC_DEFINE(AcResult, acDeviceGetVertexBufferPtrs,(Device device, const VertexBufferHandle vtxbuf, AcReal** in, AcReal** out));
 FUNC_DEFINE(AcResult, acDeviceMemGetInfo,(const Device device, size_t* free_mem, size_t* total_mem));
 
-AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
-                                 const char* filepath);
+FUNC_DEFINE(AcResult, acDeviceWriteMeshToDisk, (const Device device, const VertexBufferHandle vtxbuf, const char* filepath));
 
 #include "device_set_input_decls.h"
 #include "device_get_output_decls.h"
