@@ -40,6 +40,7 @@ target_sources(
     ac_push.cc
     core.cc
     core.c
+    grid.cc
 )
 
 if(NOT RUNTIME_COMPILATION)
@@ -51,7 +52,7 @@ if(NOT RUNTIME_COMPILATION)
         compute_steps.cc
         debug.cc
         device.cc
-        grid.cc
+        grid-runtime.cc
         legacy.cc
         node.cc
         stencil_accesses.cpp
