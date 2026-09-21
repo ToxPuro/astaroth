@@ -1,0 +1,52 @@
+[project]
+name = "mpitest"
+version = "2026.09.0"
+authors = [
+    { name = "Johannes Pekkilä", email = "johannes.pekkila@aalto.fi" },
+    { name = "Miikka Väisäla", email = "Miikka.Vaisala@oulu.fi" },
+    { name = "Ondřej Míchal", email = "harrymichal@seznam.cz" },
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "mpi4py",
+]
+
+[project.scripts]
+benchmark = "mpitest.__main__:main"
+
+[build-system]
+requires = [
+    "litgen @ git+https://github.com/martymichal/litgen@main",
+    "mpi4py",
+    "nanobind",
+    "ruff",
+    "scikit-build-core>=0.10",
+]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+build-dir = "build/{wheel_tag}"
+build.verbose = false
+cmake.build-type = "Debug"
+cmake.source-dir = "../../../"
+editable.rebuild-dir = "build/{wheel_tag}-editable"
+minimum-version = "build-system.requires"
+ninja.make-fallback = true
+wheel.py-api = "cp312"
+wheel.reproducible = true
+
+[tool.scikit-build.cmake.define]
+BUILD_SAMPLE = "python:mpitest"
+BUILD_STANDALONE = "OFF"
+CPU_BUILD = "ON"
+DOUBLE_PRECISION = "ON"
+MPI_ENABLED = "ON"
+RUNTIME_COMPILATION = "ON"
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "./**/*.{py,ac,c,h,cc,cpp,cu,cuh}" },
+    { file = "./**/CMakeLists.txt" },
+]
