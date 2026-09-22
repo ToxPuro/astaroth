@@ -53,6 +53,8 @@
 #include "astaroth_lib.h"
 #endif
 
+#include "astaroth_utils.h"
+
 AC_BEGIN_C_DECLARATIONS
 
 int3
