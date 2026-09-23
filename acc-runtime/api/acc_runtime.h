@@ -88,13 +88,13 @@ typedef struct KernelReduceOutput {
 } KernelReduceOutput;
 
 
-typedef struct
+typedef struct AcReduction
 {
-	const AcReduceOp reduce_op;
-	const AcReductionPostProcessingOp post_processing_op;
-	const AcKernel map_vtxbuf_single;
-	const AcKernel map_vtxbuf_vec;
-	const AcKernel map_vtxbuf_vec_scal;
+	AcReduceOp reduce_op;
+	AcReductionPostProcessingOp post_processing_op;
+	AcKernel map_vtxbuf_single;
+	AcKernel map_vtxbuf_vec;
+	AcKernel map_vtxbuf_vec_scal;
 	const char* name;
 } AcReduction;
 
