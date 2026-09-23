@@ -5,7 +5,6 @@
 #include "astaroth_utils.h"
 #include "errchk.h"
 #include "user_defines.h"
-#include "../../stdlib/reduction.h"
 
 #if !AC_MPI_ENABLED
 int

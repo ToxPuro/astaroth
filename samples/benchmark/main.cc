@@ -24,8 +24,6 @@
 #include "astaroth_utils.h"
 #include "astaroth_cuda_wrappers.h"
 
-#include "../../stdlib/reduction.h"
-
 #include "errchk.h"
 #include "timer_hires.h"
 

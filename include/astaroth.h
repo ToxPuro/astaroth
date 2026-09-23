@@ -49,6 +49,10 @@
 #include "user_defines.h"
 // clang-format on
 
+// clang-format off
+#include "reduction.h"
+// clang-format on
+
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
 #endif

@@ -22,7 +22,6 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
-#include "../../stdlib/reduction.h"
 
 #include <vector>
 

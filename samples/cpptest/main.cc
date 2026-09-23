@@ -22,7 +22,6 @@
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
-#include "../../stdlib/reduction.h"
 
 int
 main(void)

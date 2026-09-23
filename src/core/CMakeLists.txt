@@ -11,6 +11,7 @@ target_include_directories(
     ${AC_BASE_PATH}/include
     ${AC_BASE_PATH}/src
     ${AC_BASE_PATH}/src/core/kernels
+    ${AC_BASE_PATH}/stdlib
 )
 target_link_libraries(
     astaroth_core_obj
@@ -149,9 +150,11 @@ target_include_directories(astaroth_core
         $<BUILD_INTERFACE:${AC_BASE_PATH}/include>
         $<BUILD_INTERFACE:${AC_BASE_PATH}/src>
         $<BUILD_INTERFACE:${AC_BASE_PATH}/src/core/kernels>
+        $<BUILD_INTERFACE:${AC_BASE_PATH}/stdlib>
 
         $<INSTALL_INTERFACE:astaroth/include>
         $<INSTALL_INTERFACE:astaroth/acc-runtime/api>
+        $<INSTALL_INTERFACE:astaroth/stdlib>
 )
 
 if (USE_HIP)
