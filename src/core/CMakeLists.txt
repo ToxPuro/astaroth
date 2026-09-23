@@ -183,10 +183,12 @@ target_include_directories(astaroth_core
         $<BUILD_INTERFACE:${AC_BASE_PATH}/3rdparty/eigen>
 )
 
-install(TARGETS
-    astaroth_core
-    EXPORT AstarothTargets
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-)
+if (NOT DEFINED SKBUILD)
+    install(TARGETS
+        astaroth_core
+        EXPORT AstarothTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()

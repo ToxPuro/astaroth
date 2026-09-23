@@ -153,19 +153,21 @@ endif()
   )
 
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
-install(
-    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/
-    DESTINATION include/astaroth/generated
-    FILES_MATCHING PATTERN "*.h"
-)
+if (NOT DEFINED SKBUILD)
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/astaroth/generated
+        FILES_MATCHING PATTERN "*.h"
+    )
+endif()
 
 target_include_directories(acc-runtime-headers
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-        $<INSTALL_INTERFACE:include>
-	$<INSTALL_INTERFACE:include/astaroth/generated>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/astaroth/generated>
 )
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
@@ -224,10 +226,13 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
     endif()
 
 endif()
-install(TARGETS
-    acc-runtime-headers
-    EXPORT AstarothTargets
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-)
+
+if (NOT DEFINED SKBUILD)
+    install(TARGETS
+        acc-runtime-headers
+        EXPORT AstarothTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()

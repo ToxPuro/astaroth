@@ -23,6 +23,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_HIP_STANDARD_REQUIRED ON)
 
+# Module for installation directories
+include(GNUInstallDirs)
+
 ## Build type
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -349,31 +352,33 @@ endif()
 
 
 #Installation
-install(
-    DIRECTORY include/
-    DESTINATION astaroth/include
-)
-install(
-    DIRECTORY acc-runtime/api/
-    DESTINATION astaroth/acc-runtime/api/
-    FILES_MATCHING PATTERN "*.h"
-)
+if (NOT DEFINED SKBUILD)
+    install(
+        DIRECTORY include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/astaroth/
+    )
+    install(
+        DIRECTORY acc-runtime/api/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/astaroth/acc-runtime/api/
+        FILES_MATCHING PATTERN "*.h"
+    )
 
-install(
-    EXPORT AstarothTargets
-    FILE AstarothTargets.cmake
-    NAMESPACE Astaroth::
-    DESTINATION lib/cmake/Astaroth
-)
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-    cmake/AstarothConfig.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/AstarothConfig.cmake"
-    INSTALL_DESTINATION lib/cmake/Astaroth
-)
-
-install(
-    FILES
+    install(
+        EXPORT AstarothTargets
+        FILE AstarothTargets.cmake
+        NAMESPACE Astaroth::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Astaroth
+    )
+    include(CMakePackageConfigHelpers)
+    configure_package_config_file(
+        cmake/AstarothConfig.cmake.in
         "${CMAKE_CURRENT_BINARY_DIR}/AstarothConfig.cmake"
-    DESTINATION lib/cmake/Astaroth
-)
+        INSTALL_DESTINATION lib/cmake/Astaroth
+    )
+
+    install(
+        FILES
+            "${CMAKE_CURRENT_BINARY_DIR}/AstarothConfig.cmake"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Astaroth
+    )
+endif()

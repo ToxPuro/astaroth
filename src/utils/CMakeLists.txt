@@ -49,10 +49,12 @@ if(NOT RUNTIME_COMPILATION)
 	endif()
 endif()
 
-install(TARGETS
-    astaroth_utils
-    EXPORT AstarothTargets
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-)
+if (NOT DEFINED SKBUILD)
+    install(TARGETS
+        astaroth_utils
+        EXPORT AstarothTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
