@@ -4927,38 +4927,38 @@ string_vec
 get_array_elem_size(const char* arr_type_in)
 {
 	string_vec res = VEC_INITIALIZER;
-	char* arr_type = strdup(arr_type_in);
-	if(n_occurances(arr_type,'<') == 1)
+	if(n_occurances(arr_type_in,'<') != 1)
 	{
-		int start = 0;
-		while(arr_type[++start] != '<');
-		int end = start;
-		++start;
-		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
-		arr_type[end] = '\0';
-		++end;
-
-		start = end;
-		while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
-		const bool two_dimensional = arr_type[end] == ',';
-		arr_type[end] = '\0';
-		char* tmp = malloc(sizeof(char)*1000);
-		strcpy(tmp, &arr_type[start]);
-		push(&res,intern(tmp));
-
-		if(two_dimensional)
-		{
-			++end;
-			start = end;
-			while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
-			arr_type[end] = '\0';
-			strcpy(tmp, &arr_type[start]);
-			push(&res,intern(tmp));
-		}
-		
+		push(&res,intern(arr_type_in));
 		return res;
 	}
-	push(&res,intern(arr_type));
+	//TP: AcArray<elem,d0,d1,...,dN>: skip the element type, collect every dimension
+	const char* p = strchr(arr_type_in,'<') + 1;
+	int depth = 0;
+	while(*p && !(depth == 0 && (*p == ',' || *p == '>')))
+	{
+		if(*p == '(') ++depth;
+		else if(*p == ')') --depth;
+		++p;
+	}
+	while(*p == ',')
+	{
+		++p;
+		while(*p == ' ') ++p;
+		const char* start = p;
+		depth = 0;
+		while(*p && !(depth == 0 && (*p == ',' || *p == '>')))
+		{
+			if(*p == '(') ++depth;
+			else if(*p == ')') --depth;
+			++p;
+		}
+		const char* end = p;
+		while(end > start && end[-1] == ' ') --end;
+		char* tmp = strndup(start, end-start);
+		push(&res,intern(tmp));
+		free(tmp);
+	}
 	return res;
 }
 
@@ -5007,18 +5007,11 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		  {
 		  	fprintf(stream, "%s ", get_array_elem_type(tspecifier_out));
 		  	string_vec sizes = get_array_elem_size(tspecifier_out);
-			//TP: even though it is not intended rest of the dims come from traversing
-			//TP: works for now but a bit hacky
-			res = sprintf_intern("[%s]",sizes.data[0]);
-			/**
-			if(sizes.size == 1)
-			   res = sprintf_intern("[%s]",sizes.data[0]);
-			res = sprintf_intern("[%s]",sizes.data[0]);
-			else if(sizes.size == 2)
-				res = sprintf_intern("[%s]",sizes.data[0]);
-			else
-				fatal("Add missing dimensionality initialization!\n");
-			**/
+			//TP: all dims are emitted here; the declarator's array accesses are stripped
+			//    in transform_arrays_to_std_arrays_in_func
+			res = "";
+			for(size_t i = 0; i < sizes.size; ++i)
+				res = sprintf_intern("%s[%s]",res,sizes.data[i]);
 			free_str_vec(&sizes);
 		  }
 	  }
@@ -7806,9 +7799,20 @@ transform_arrays_to_std_arrays_in_func(ASTNode* node)
 	  astnode_sprintf(tspec->lhs,"%s>",tspec->lhs->buffer);
 	}
         free_node_vec(&dims);
-        node->rhs->lhs->infix = NULL;
-        node->rhs->lhs->postfix= NULL;
-        node->rhs->lhs->rhs = NULL;
+        //TP: strip every dimension from the declarator, not only the outermost one.
+        //    All sizes are now emitted by output_specifier from the AcArray type.
+        ASTNode* acc = node->rhs->lhs;
+        acc->infix   = NULL;
+        acc->postfix = NULL;
+        acc->rhs     = NULL;
+        acc = acc->lhs;
+        while(acc && (acc->type & NODE_ARRAY_ACCESS))
+        {
+                acc->infix   = NULL;
+                acc->postfix = NULL;
+                acc->rhs     = NULL;
+                acc = acc->lhs;
+        }
         //remove unneeded braces if assignment
         if(node->parent->type & NODE_ASSIGNMENT && node->parent->rhs)
                 node->parent->rhs->prefix = NULL;
