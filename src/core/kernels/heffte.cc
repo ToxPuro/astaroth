@@ -160,11 +160,13 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
     const int3 upper = lower+dims-(int3){1,1,1};
     if(plans_single.find(count) == plans_single.end())
     {
+	heffte::plan_options options = heffte::default_options<fft_backend>();
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<fft_backend> fft(my_box, my_box, communicator);
+        heffte::fft3d<fft_backend> fft(my_box, my_box, communicator, options);
 	plans_single.emplace(count,std::move(fft));
     }
-    const size_t work_buf_size = plans_single.at(count).size_workspace()*batch_size;
+    const auto& plan = plans.at(count);
+    const size_t work_buf_size = plan.size_workspace()*batch_size;
     if(work_buffers.find(work_buf_size) == work_buffers.end())
     {
 	work_buffers[work_buf_size] = get_fresh_complex_float_buffer(work_buf_size);
@@ -172,11 +174,11 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
     AcComplexFloat* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
-    	plans_single.at(count).backward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::none);
+    	plan.backward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::none);
     }
     else
     {
-    	plans_single.at(count).forward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::full);
+    	plan.forward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::full);
     }
     return AC_SUCCESS;
 }
