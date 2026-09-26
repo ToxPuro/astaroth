@@ -5013,7 +5013,16 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 			//    (template deduction on T(&)[N1][N2] fails) and some CUDA compilers reject them
 			res = "";
 			for(size_t i = 0; i < sizes.size; ++i)
-				res = sprintf_intern("%s[((%s) > 0 ? (%s) : 1)]",res,sizes.data[i],sizes.data[i]);
+			{
+				if(!strcmp(sizes.data[i],"0"))
+				{
+				  res = sprintf_intern("%s[1]",res);
+				}	
+				else
+				{
+				  res = sprintf_intern("%s[%s]",res,sizes.data[i]);
+				}
+			}
 			free_str_vec(&sizes);
 		  }
 	  }
