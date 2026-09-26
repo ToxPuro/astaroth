@@ -5009,9 +5009,11 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		  	string_vec sizes = get_array_elem_size(tspecifier_out);
 			//TP: all dims are emitted here; the declarator's array accesses are stripped
 			//    in transform_arrays_to_std_arrays_in_func
+			//TP: pad zero-length dims to 1: zero-sized arrays are not valid C++
+			//    (template deduction on T(&)[N1][N2] fails) and some CUDA compilers reject them
 			res = "";
 			for(size_t i = 0; i < sizes.size; ++i)
-				res = sprintf_intern("%s[%s]",res,sizes.data[i]);
+				res = sprintf_intern("%s[((%s) > 0 ? (%s) : 1)]",res,sizes.data[i],sizes.data[i]);
 			free_str_vec(&sizes);
 		  }
 	  }
