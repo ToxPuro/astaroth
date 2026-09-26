@@ -118,9 +118,13 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 	//options.use_gpu_aware = false;
         heffte::fft3d_r2c<fft_backend> fft(stream, input_box, output_box, 2,communicator, options);
 	plans_r2c.emplace(count,std::move(fft));
-	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
     }
-    AcComplex* workspace = work_buffers[count];
+    const size_t work_buf_size = plans_r2c.at(count).size_workspace()*batch_size;
+    if(work_buffers.find(work_buf_size) == work_buffers.end())
+    {
+	work_buffers[work_buf_size] = get_fresh_complex_buffer(work_buf_size);
+    }
+    AcComplex* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
     	;//plans_r2c.at(count).backward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
@@ -159,9 +163,13 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
         heffte::fft3d<fft_backend> fft(my_box, my_box, communicator);
 	plans_single.emplace(count,std::move(fft));
-	work_buffers[count] = get_fresh_complex_float_buffer(batch_size*fft.size_workspace());
     }
-    AcComplexFloat* workspace = work_buffers[count];
+    const size_t work_buf_size = plans_single.at(count).size_workspace()*batch_size;
+    if(work_buffers.find(work_buf_size) == work_buffers.end())
+    {
+	work_buffers[work_buf_size] = get_fresh_complex_float_buffer(work_buf_size);
+    }
+    AcComplexFloat* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
     	plans_single.at(count).backward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::none);
@@ -467,15 +475,22 @@ AcResult
 acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* dst)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp  = get_fresh_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_complex_buffer(count);
+    static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp  = get_fresh_complex_buffer(count);
+    	AcComplex* tmp2 = get_fresh_complex_buffer(count);
+	tmp_buffers[count].in  = tmp;
+	tmp_buffers[count].out = tmp2;
+    }
+
+    AcComplex* tmp  = tmp_buffers[count].in;
+    AcComplex* tmp2 = tmp_buffers[count].out;
 
     acPlanarToComplex(real_src,imag_src,count,tmp);
     acFFTBackwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
     acKernelVolumeCopyComplexToReal(0,tmp2,starting_point,subdomain_size,domain_size,dst,starting_point,subdomain_size,domain_size);
 
-    acDeviceFree(&tmp,0);
-    acDeviceFree(&tmp2,0);
     return AC_SUCCESS;
 }
 
@@ -492,6 +507,7 @@ AcResult
 acFFTQuit()
 {
 	plans.clear();
+	plans_single.clear();
 	plans_r2c.clear();
 	return AC_SUCCESS;
 }
