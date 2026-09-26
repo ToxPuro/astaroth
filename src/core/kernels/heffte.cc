@@ -209,7 +209,8 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
         heffte::fft3d<fft_backend> fft(my_box, my_box, communicator);
 	plans.emplace(count,std::move(fft));
     }
-    const size_t work_buf_size = plans.at(count).size_workspace()*batch_size;
+    const auto& plan = plans.at(count);
+    const size_t work_buf_size = plan.size_workspace()*batch_size;
     if(work_buffers.find(work_buf_size) == work_buffers.end())
     {
 	work_buffers[work_buf_size] = get_fresh_complex_buffer(work_buf_size);
@@ -217,11 +218,11 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
     AcComplex* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
-    	plans.at(count).backward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
+    	plan.backward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
     }
     else
     {
-    	plans.at(count).forward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    	plan.forward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
     }
     return AC_SUCCESS;
 }
