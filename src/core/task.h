@@ -20,6 +20,7 @@
 #include <mpi.h>
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -472,6 +473,20 @@ struct TraceFile {
     void trace(const Task* task, const std::string old_state, const std::string new_state) const;
 };
 
+// Which halo regions of which fields are in sync (exchanged and boundary conditions applied).
+// Carried between task graphs generated from DSL compute steps, see compute_steps.cc
+typedef struct AcHaloSyncState {
+    std::array<std::array<bool, NUM_FIELDS>, 27> in_sync{};
+    int bc_graph = -1; // The AcDSLTaskGraph of the boundary conditions applied to the halos in sync
+    bool operator==(const AcHaloSyncState& other) const
+    {
+        return in_sync == other.in_sync && bc_graph == other.bc_graph;
+    }
+} AcHaloSyncState;
+
+// The halo sync state left by the previously executed task graph, empty if fields were written since
+AcHaloSyncState acGridGetHaloSyncState();
+
 struct AcTaskGraph {
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
@@ -481,6 +496,14 @@ struct AcTaskGraph {
     AcBoundary periodic_boundaries;
 
     TraceFile trace_file;
+
+    // Set for task graphs generated from DSL compute steps. Other task graphs reset the halo sync state
+    bool tracks_halo_sync = false;
+    AcHaloSyncState halo_sync_assumed{};                // Halos the graph assumes to be in sync when it starts
+    AcHaloSyncState halo_sync_provided{};               // Halos the graph leaves in sync
+    std::array<bool, NUM_FIELDS> halo_sync_invalidated{}; // Fields whose halos the graph can leave out of sync
+    // The same graph without assumptions, executed instead if halo_sync_assumed does not hold
+    std::function<AcTaskGraph*()> get_cold_variant{};
 };
 
 AcBoundary boundary_from_normal(int3 normal);

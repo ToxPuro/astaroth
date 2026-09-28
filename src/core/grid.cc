@@ -1028,11 +1028,20 @@ acGridInitBase(const AcMesh user_mesh)
     return AC_SUCCESS;
 }
 
+// The halo sync state left by the last executed task graph.
+// Valid only as long as the fields are not written outside of task graphs.
+static struct
+{
+	AcHaloSyncState state{};
+	size_t field_write_count = 0;
+} halo_sync{};
+
 AcResult
 acGridQuit(void)
 {
     ERRCHK_ALWAYS(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
+    halo_sync.state = AcHaloSyncState{};
 
     acGridClearTaskGraphCache();
     // Random number generator
@@ -3038,10 +3047,66 @@ set_device_to_grid_device()
 	acSetDevice(acDeviceGetId(grid.device));
 }
 
+AcHaloSyncState
+acGridGetHaloSyncState()
+{
+	if(!grid.initialized || acDeviceGetFieldWriteCount(grid.device) != halo_sync.field_write_count) return AcHaloSyncState{};
+	return halo_sync.state;
+}
+
+static void
+set_halo_sync_state(const AcHaloSyncState state)
+{
+	halo_sync.state             = state;
+	halo_sync.field_write_count = acDeviceGetFieldWriteCount(grid.device);
+}
+
+static bool
+halo_sync_assumptions_hold(const AcTaskGraph* graph, const AcHaloSyncState current, const size_t n_iterations)
+{
+	const auto& assumed = graph->halo_sync_assumed;
+	for(size_t region = 0; region < 27; ++region)
+	{
+		for(size_t field = 0; field < NUM_FIELDS; ++field)
+		{
+			if(!assumed.in_sync[region][field]) continue;
+			if(current.bc_graph != assumed.bc_graph || !current.in_sync[region][field]) return false;
+			//TP: from the second iteration on the graph itself is the previous one
+			if(n_iterations > 1 && graph->halo_sync_invalidated[field]) return false;
+		}
+	}
+	return true;
+}
+
+static AcHaloSyncState
+halo_sync_state_after(const AcTaskGraph* graph, const AcHaloSyncState before)
+{
+	if(!graph->tracks_halo_sync) return AcHaloSyncState{};
+	const auto& provided = graph->halo_sync_provided;
+	const bool same_bcs  = before.bc_graph == provided.bc_graph;
+	AcHaloSyncState res{};
+	res.bc_graph = provided.bc_graph;
+	for(size_t region = 0; region < 27; ++region)
+	{
+		for(size_t field = 0; field < NUM_FIELDS; ++field)
+		{
+			res.in_sync[region][field] = provided.in_sync[region][field] ||
+						     (same_bcs && before.in_sync[region][field] && !graph->halo_sync_invalidated[field]);
+		}
+	}
+	return res;
+}
+
 
 AcResult
 acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool include_inactive)
 {
+    const AcHaloSyncState halo_sync_before = acGridGetHaloSyncState();
+    if(graph->tracks_halo_sync && !halo_sync_assumptions_hold(graph,halo_sync_before,n_iterations))
+    {
+	ERRCHK_ALWAYS(graph->get_cold_variant);
+	return acGridExecuteTaskGraphBase(graph->get_cold_variant(),n_iterations,include_inactive);
+    }
     preprocess_reduce_buffers(graph);
     ERRCHK(grid.initialized);
     // acGridSynchronizeStream(stream);
@@ -3080,6 +3145,7 @@ acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool i
             }
         }
     }
+    set_halo_sync_state(halo_sync_state_after(graph,halo_sync_before));
     return AC_SUCCESS;
 }
 
@@ -4968,6 +5034,8 @@ acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph)
 VertexBufferArray
 acGridGetVBA(void)
 {
+    //TP: the caller can write to the fields through the VBA
+    acDeviceNotifyFieldsWritten(grid.device);
     return acDeviceGetVBA(grid.device);
 }
 /*
