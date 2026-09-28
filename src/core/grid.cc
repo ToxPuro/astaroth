@@ -1041,6 +1041,7 @@ acGridQuit(void)
     grid.default_tasks = nullptr;
     grid.halo_exchange_tasks    = nullptr;
     grid.periodic_bc_tasks = nullptr;
+    taskgraph_resources_release();
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
@@ -2866,8 +2867,11 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
     check_ops(ops);
 
     //Construct tasks out of the task definitions
-    AcTaskGraph* graph = get_new_taskgraph(ops.size());  
+    //The streams and buffers of the tasks come from a pool shared by all task graphs
+    AcTaskGraph* graph = get_new_taskgraph(ops.size());
+    taskgraph_resources_begin_graph();
     const std::vector<size_t> op_indices = task_definitions_to_tasks(graph,ops,globally_imposed_bcs);
+    taskgraph_resources_end_graph();
 
     // In order to reduce redundant dependencies, we keep track of which tasks are connected
     calculate_dependencies(graph,ops,op_indices);

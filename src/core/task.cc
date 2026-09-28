@@ -1089,6 +1089,33 @@ get_grid_nn()
 	return acGetGridNN(acDeviceGetLocalConfig(acGridGetDevice()));
 }
 
+typedef struct
+{
+	size_t streams_in_use = 0;
+	std::vector<bool> buffer_taken{};
+} TaskGraphBuildScope;
+
+static struct
+{
+	std::vector<cudaStream_t> streams;
+	std::vector<std::unique_ptr<PooledBuffer>> buffers;
+	// The task graphs currently being built. A stack in case a build ever triggers another build
+	std::vector<TaskGraphBuildScope> building;
+} taskgraph_resources;
+
+void
+taskgraph_resources_begin_graph()
+{
+	taskgraph_resources.building.push_back({});
+}
+
+void
+taskgraph_resources_end_graph()
+{
+	ERRCHK_ALWAYS(!taskgraph_resources.building.empty());
+	taskgraph_resources.building.pop_back();
+}
+
 cudaStream_t
 get_stream(Device device)
 {
@@ -1098,12 +1125,100 @@ get_stream(Device device)
 	{
 		return cudaStream_t(0);
 	}
-	cudaStream_t stream;
-	set_device(device);
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-	return stream;
+	auto& pool = taskgraph_resources;
+	ERRCHK_ALWAYS(!pool.building.empty());
+	auto& scope = pool.building.back();
+	if(scope.streams_in_use == pool.streams.size())
+	{
+		cudaStream_t stream;
+		set_device(device);
+	        int low_prio, high_prio;
+	        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+	        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+		pool.streams.push_back(stream);
+	}
+	return pool.streams[scope.streams_in_use++];
+}
+
+static void
+release_from_previous_user(PooledBuffer* buffer)
+{
+	if(buffer->user == NULL) return;
+	auto& requests = buffer->user->requests;
+	MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
+	buffer->user = NULL;
+}
+
+// Returns the smallest pooled buffer of at least the given size not yet used by the task graph being built.
+// If there is none, the largest unused one is grown, and if all are used a new one is added to the pool.
+static PooledBuffer*
+acquire_buffer(const size_t bytes, const bool pinned)
+{
+	auto& pool = taskgraph_resources;
+	ERRCHK_ALWAYS(!pool.building.empty());
+	auto& taken = pool.building.back().buffer_taken;
+	taken.resize(pool.buffers.size(),false);
+
+	int best    = -1;
+	int largest = -1;
+	for(size_t i = 0; i < pool.buffers.size(); ++i)
+	{
+		if(taken[i]) continue;
+		const size_t size = pool.buffers[i]->bytes;
+		if(size >= bytes && (best == -1 || size < pool.buffers[best]->bytes)) best = i;
+		if(largest == -1 || size > pool.buffers[largest]->bytes) largest = i;
+	}
+	int index = best != -1 ? best : largest;
+	if(index == -1)
+	{
+		pool.buffers.push_back(std::make_unique<PooledBuffer>());
+		taken.push_back(false);
+		index = pool.buffers.size()-1;
+	}
+	taken[index] = true;
+
+	PooledBuffer* res = pool.buffers[index].get();
+	if(res->bytes < bytes)
+	{
+		release_from_previous_user(res);
+		if(res->data) acFree(res->data);
+		ERRCHK_CUDA_ALWAYS(acMalloc((void**)&res->data, bytes));
+		res->bytes = bytes;
+		++res->generation;
+	}
+	if(pinned && res->pinned_bytes < bytes)
+	{
+		release_from_previous_user(res);
+		if(res->data_pinned) acFreeHost(res->data_pinned);
+		ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&res->data_pinned, bytes));
+		res->pinned_bytes = bytes;
+		++res->generation;
+	}
+	return res;
+}
+
+void
+taskgraph_resources_release()
+{
+	auto& pool = taskgraph_resources;
+	ERRCHK_ALWAYS(pool.building.empty());
+	//TP: the buffer structs are kept since messages of still existing task graphs point to them
+	for(auto& buffer : pool.buffers)
+	{
+		release_from_previous_user(buffer.get());
+		if(buffer->data)        acFree(buffer->data);
+		if(buffer->data_pinned) acFreeHost(buffer->data_pinned);
+		buffer->data         = NULL;
+		buffer->data_pinned  = NULL;
+		buffer->bytes        = 0;
+		buffer->pinned_bytes = 0;
+		++buffer->generation;
+	}
+	for(auto& stream : pool.streams)
+	{
+		acStreamDestroy(stream);
+	}
+	pool.streams.clear();
 }
 
 
@@ -1348,18 +1463,8 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 bool
 ComputeTask::isComputeTask() { return true; }
 
-void
-destroy_stream(cudaStream_t stream)
-{
-    (void)stream;
-    if(ac_get_info()[AC_only_default_stream_for_taskgraphs]) return;
-    acStreamDestroy(stream);
-}
-
-ComputeTask::~ComputeTask()
-{
-    destroy_stream(stream);
-}
+//TP: the stream belongs to the task graph resource pool
+ComputeTask::~ComputeTask() {}
 
 
 AcKernel
@@ -1439,19 +1544,16 @@ HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_leng
     {
 	    all_bytes_per_process /= counterpart_ranks.size();
     }
-    ERRCHK_CUDA_ALWAYS(acMalloc((void**)&all_data, all_bytes));
-    if(!ac_get_info()[AC_use_cuda_aware_mpi])
+    all_data        = NULL;
+    all_data_pinned = NULL;
+    real_data   = NULL; real_data_pinned   = NULL;
+    single_data = NULL; single_data_pinned = NULL;
+    half_data   = NULL; half_data_pinned   = NULL;
+    //TP: the memory comes from the pool shared by all task graphs, the pointers are set in bind()
+    if(all_bytes > 0)
     {
-    	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&all_data_pinned, all_bytes));
+    	buffer = acquire_buffer(all_bytes, !ac_get_info()[AC_use_cuda_aware_mpi]);
     }
-    real_data        = (AcReal*)all_data;
-    real_data_pinned = (AcReal*)all_data_pinned;
-
-    single_data        = (float*)(all_data + real_bytes);
-    single_data_pinned = (float*)(all_data_pinned + real_bytes);
-
-    half_data        = (__half*)(all_data + real_bytes + single_bytes);
-    half_data_pinned = (__half*)(all_data_pinned + real_bytes + single_bytes);
 
     for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
     {
@@ -1459,23 +1561,47 @@ HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_leng
     }
 }
 
+// Takes the pooled buffer into use: waits for the MPI requests of a message of another task graph
+// that used it before and refreshes the data pointers in case the buffer was reallocated.
+void
+HaloMessage::bind()
+{
+    if(buffer == NULL) return;
+    if(buffer->user != this)
+    {
+	release_from_previous_user(buffer);
+	buffer->user = this;
+    }
+    if(buffer_generation == buffer->generation) return;
+    buffer_generation = buffer->generation;
+
+    all_data        = buffer->data;
+    all_data_pinned = buffer->data_pinned;
+
+    real_data        = (AcReal*)all_data;
+    real_data_pinned = (AcReal*)all_data_pinned;
+
+    single_data        = (float*)(all_data + real_bytes);
+    single_data_pinned = all_data_pinned ? (float*)(all_data_pinned + real_bytes) : NULL;
+
+    half_data        = (__half*)(all_data + real_bytes + single_bytes);
+    half_data_pinned = all_data_pinned ? (__half*)(all_data_pinned + real_bytes + single_bytes) : NULL;
+}
+
 HaloMessage::~HaloMessage()
 {
     MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
     real_length = -1;
-    acFree(all_data);
-    if(!ac_get_info()[AC_use_cuda_aware_mpi])
-    {
-    	acFreeHost(all_data_pinned);
-	all_data_pinned    = NULL;
-	real_data_pinned   = NULL;
-	single_data_pinned = NULL;
-	half_data_pinned   = NULL;
-    }
+    if(buffer && buffer->user == this) buffer->user = NULL;
+    buffer       = NULL;
     all_data     = NULL;
     real_data    = NULL;
     single_data  = NULL;
     half_data    = NULL;
+    all_data_pinned    = NULL;
+    real_data_pinned   = NULL;
+    single_data_pinned = NULL;
+    half_data_pinned   = NULL;
 }
 
 void
@@ -1534,6 +1660,7 @@ HaloMessageSwapChain::update_counterpart_ranks(const std::vector<int> counterpar
 HaloMessage*
 HaloMessageSwapChain::get_current_buffer()
 {
+    buffers[buf_idx].bind();
     return &buffers[buf_idx];
 }
 
@@ -1542,6 +1669,7 @@ HaloMessageSwapChain::get_fresh_buffer()
 {
     buf_idx         = (buf_idx + 1) % SWAP_CHAIN_LENGTH;
     MPI_Waitall(buffers[buf_idx].requests.size(), buffers[buf_idx].requests.data(), MPI_STATUSES_IGNORE);
+    buffers[buf_idx].bind();
     return &buffers[buf_idx];
 }
 
@@ -1780,7 +1908,6 @@ HaloExchangeTask::~HaloExchangeTask()
 
     set_device(device);
     // dependents.clear();
-    destroy_stream(stream);
 }
 int3
 get_red_black_offset(const Volume pos, const AcRedBlackState state)
@@ -2240,7 +2367,6 @@ PeriodicRayTask::~PeriodicRayTask()
     }
 
     set_device(device);
-    destroy_stream(stream);
 }
 
 bool
@@ -2427,7 +2553,6 @@ MPIScanTask::~MPIScanTask()
 
     set_device(device);
     // dependents.clear();
-    destroy_stream(stream);
 }
 
 bool
