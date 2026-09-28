@@ -13,6 +13,7 @@
 #include "common_kernels.h"
 #include "errchk.h"
 #include "host_datatypes.h"
+#include "math_utils.h"
 
 static MPI_Comm communicator = MPI_COMM_NULL;
 [[maybe_unused]] static Volume global_offset = (Volume){0,0,0};
