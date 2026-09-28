@@ -6307,19 +6307,25 @@ gen_const_variables(const ASTNode* node, FILE* fp, FILE* fp_bi,FILE* fp_non_scal
 int_vec
 dfuncs_in_topological_order(void)
 {
-	int_vec res = VEC_INITIALIZER;
-	for(size_t i = 0; i< calling_info.names.size; ++i)
+	//TP: the topological indexes are a permutation of 0..n-1, so invert it instead of searching for each index
+	const size_t n = calling_info.names.size;
+	int* func_at_index = (int*)malloc(sizeof(int)*n);
+	for(size_t i = 0; i < n; ++i) func_at_index[i] = -1;
+	for(size_t j = 0; j < n; ++j)
 	{
-		for(size_t j = 0; j < calling_info.names.size; ++j)
-		{
-			const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,calling_info.names.data[j],NULL,NULL);
-			if(!is_dfunc) continue;
-			if(calling_info.topological_index[j] == (int)i) 
-			{
-				push_int(&res, get_symbol_index(NODE_DFUNCTION_ID,calling_info.names.data[j],0));
-			}
-		}
+		const int index = calling_info.topological_index[j];
+		if(index >= 0 && index < (int)n) func_at_index[index] = j;
 	}
+	int_vec res = VEC_INITIALIZER;
+	for(size_t i = 0; i < n; ++i)
+	{
+		const int j = func_at_index[i];
+		if(j == -1) continue;
+		const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,calling_info.names.data[j],NULL,NULL);
+		if(!is_dfunc) continue;
+		push_int(&res, get_symbol_index(NODE_DFUNCTION_ID,calling_info.names.data[j],0));
+	}
+	free(func_at_index);
 	return res;
 }
 static void
@@ -6420,6 +6426,7 @@ write_calling_info_for_stencilgen(const string_vec* stencils_called)
     fprintf(fp,"};\n");
     fclose(fp);
 }
+static char* mem_accesses_sdefinitions = NULL;
 static void
 gen_kernels_recursive(const ASTNode* node, char** dfunctions,
             const bool gen_mem_accesses, int* curr_kernel)
@@ -6445,29 +6452,36 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     strcat(prefix, compound_statement->prefix);
 
     // Generate stencil FMADs
-    char* cmdoptions = malloc(sizeof(char)*4096);
-    cmdoptions[0] = '\0';
-    if (gen_mem_accesses) {
-      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
+    //TP: the output of -mem-accesses does not depend on the kernel so it is generated only once per gen_kernels
+    if (!gen_mem_accesses || !mem_accesses_sdefinitions) {
+      char* cmdoptions = malloc(sizeof(char)*4096);
+      cmdoptions[0] = '\0';
+      if (gen_mem_accesses) {
+        sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
+      }
+      else {
+        sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", *curr_kernel);
+        ++(*curr_kernel);
+      }
+      FILE* proc = popen(cmdoptions, "r");
+      assert(proc);
+
+      const size_t sdefinitions_size = 10 * 1024 * 1024;
+      char* sdefinitions = malloc(sdefinitions_size);
+      assert(sdefinitions);
+      const size_t read_len = fread(sdefinitions, 1, sdefinitions_size - 1, proc);
+      sdefinitions[read_len] = '\0';
+      if (!feof(proc)) fatal("Output of %s does not fit into %zu bytes\n", cmdoptions, sdefinitions_size);
+
+      pclose(proc);
+      free(cmdoptions);
+      if (gen_mem_accesses) mem_accesses_sdefinitions = sdefinitions;
+      else {
+        strcat(prefix, sdefinitions);
+        free(sdefinitions);
+      }
     }
-    else {
-      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", *curr_kernel);
-      ++(*curr_kernel);
-    }
-    FILE* proc = popen(cmdoptions, "r");
-    assert(proc);
-
-    char* sdefinitions = malloc(10 * 1024 * 1024);
-    assert(sdefinitions);
-    sdefinitions[0] = '\0';
-    char* buf = malloc(sizeof(char)*4096);
-    while (fgets(buf, sizeof(buf), proc))
-      strcat(sdefinitions, buf);
-
-    pclose(proc);
-
-    strcat(prefix, sdefinitions);
-    free(sdefinitions);
+    if (gen_mem_accesses) strcat(prefix, mem_accesses_sdefinitions);
     int_vec topological_order = dfuncs_in_topological_order();
     for(size_t index = 0; index < num_dfuncs; ++index)
     {
@@ -6485,7 +6499,6 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
 
     astnode_set_prefix(prefix, compound_statement);
     free(prefix);
-    free(cmdoptions);
   }
 
 
@@ -6500,6 +6513,8 @@ gen_kernels(const ASTNode* node, char** dfunctions,
   	traverse(node, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
 	int curr_kernel = 0;
 	gen_kernels_recursive(node,dfunctions,gen_mem_accesses,&curr_kernel);
+	free(mem_accesses_sdefinitions);
+	mem_accesses_sdefinitions = NULL;
   	symboltable_reset();
 }
 
@@ -11879,12 +11894,46 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 }
 
 
+//TP: the kernels include the non-scalar constants once per kernel, which is needed for the actual kernels.
+//The analysis kernels are compiled only for the CPU so there the includes can be done once at the top,
+//which makes compiling the analysis much faster since the headers are not parsed once per kernel
+static void
+write_analysis_kernels(const char* src, const char* dst)
+{
+  const char* hoisted_includes[] = {
+	  "#include \"kernel_user_non_scalar_constants.h\"",
+	  "#include \"kernel_user_builtin_non_scalar_constants.h\"",
+  };
+  const size_t num_hoisted_includes = sizeof(hoisted_includes)/sizeof(hoisted_includes[0]);
+  FILE* in  = fopen(src,"r");
+  FILE* out = fopen(dst,"w");
+  if(!in || !out) fatal("Could not open %s or %s\n",src,dst);
+  for(size_t i = 0; i < num_hoisted_includes; ++i) fprintf(out,"%s\n",hoisted_includes[i]);
+  char* line = NULL;
+  size_t line_capacity = 0;
+  ssize_t line_len;
+  while((line_len = getline(&line,&line_capacity,in)) != -1)
+  {
+	  const char* start = line;
+	  while(*start == ' ' || *start == '\t') ++start;
+	  size_t len = line_len - (start-line);
+	  while(len > 0 && isspace((unsigned char)start[len-1])) --len;
+	  bool is_hoisted = false;
+	  for(size_t i = 0; i < num_hoisted_includes; ++i)
+		  is_hoisted |= (len == strlen(hoisted_includes[i]) && !strncmp(start,hoisted_includes[i],len));
+	  if(!is_hoisted) fputs(line,out);
+  }
+  free(line);
+  fclose(in);
+  fclose(out);
+}
+
 void
 compile_helper(const bool log)
 {
   format_source("user_kernels.cu.raw","user_kernels.cu");
   copy_file("user_kernels.cu","user_kernels_backup.cu");
-  copy_file("user_kernels.cu","user_analysis_kernels.cpp");
+  write_analysis_kernels("user_kernels.cu","user_analysis_kernels.cpp");
   acc_sources_manager_flush(acc_sources_manager_singleton());
 
   if(log)
