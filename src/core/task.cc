@@ -1089,9 +1089,9 @@ get_grid_nn()
 	return acGetGridNN(acDeviceGetLocalConfig(acGridGetDevice()));
 }
 
-typedef struct
+typedef struct TaskGraphBuildScope
 {
-	size_t streams_in_use = 0;
+	size_t streams_in_use{};
 	std::vector<bool> buffer_taken{};
 } TaskGraphBuildScope;
 
