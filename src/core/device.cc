@@ -75,7 +75,29 @@ struct device_s {
     // Memory
     VertexBufferArray vba;
     AcDeviceKernelOutput output;
+
+    // Incremented whenever fields are (possibly) written outside of task graphs.
+    // Used to invalidate the halo sync state carried between task graphs.
+    size_t field_writes;
 };
+
+static void
+fields_written(const Device device)
+{
+    ++device->field_writes;
+}
+
+size_t
+acDeviceGetFieldWriteCount(const Device device)
+{
+    return device->field_writes;
+}
+
+void
+acDeviceNotifyFieldsWritten(const Device device)
+{
+    fields_written(device);
+}
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
@@ -527,6 +549,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     device->id           = id;
     device->local_config = device_config;
+    device->field_writes = 0;
     memset(&device->input,0,sizeof(device->input));
     memset(&device->output,0,sizeof(device->output));
 
@@ -596,6 +619,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 }
 
 AcResult acDeviceGetVertexBufferPtrs(Device device, const VertexBufferHandle vtxbuf, AcReal** in, AcReal** out) {
+    //TP: the caller can write through the pointers
+    fields_written(device);
     *in  = (AcReal*)device->vba.on_device.in[vtxbuf];
     *out = (AcReal*)device->vba.on_device.out[vtxbuf];
     return AC_SUCCESS;
@@ -638,6 +663,7 @@ AcResult
 acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle)
 {
     ERRCHK_CUDA(acSetDevice(device->id));
+    fields_written(device);
 
     void* tmp             = device->vba.on_device.in[handle];
     device->vba.on_device.in[handle]  = device->vba.on_device.out[handle];
@@ -666,6 +692,7 @@ acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, con
     if (!vtxbuf_is_alive[vtxbuf_handle] || vtxbuf_is_device_only[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     if (host_mesh.vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
     ERRCHK_CUDA(acSetDevice(device->id));
+    fields_written(device);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, host_mesh.info,vtxbuf_handle);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, device->local_config,vtxbuf_handle);
 
@@ -745,6 +772,7 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
 {
     if(!vtxbuf_is_alive[handle]) return AC_NOT_ALLOCATED;
     ERRCHK_CUDA(acSetDevice(device->id));
+    fields_written(device);
 
     const size_t count = acVertexBufferSize(device->local_config,handle);
     AcReal* data       = (AcReal*)calloc(count, sizeof(AcReal));
@@ -768,6 +796,8 @@ AcResult
 acDeviceFlushOutputBuffers(const Device device, const Stream stream)
 {
     ERRCHK_CUDA(acSetDevice(device->id));
+    //TP: auxiliary fields have in == out
+    fields_written(device);
 
     int retval = 0;
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
@@ -856,6 +886,7 @@ acDeviceTransferVertexBufferWithOffset(const Device src_device, const Stream str
     //TP: to still allow transfering the whole mesh between devices transfering dead VertexBuffers is a no-op
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     ERRCHK_CUDA(acSetDevice(src_device->id));
+    fields_written(dst_device);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, src_device->local_config,vtxbuf_handle);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, dst_device->local_config,vtxbuf_handle);
 
@@ -913,6 +944,8 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const AcKernel ke
                      const Volume start, const Volume end)
 {
     ERRCHK_CUDA(acSetDevice(device->id));
+    //TP: kernels can write auxiliary fields (in == out) in place
+    fields_written(device);
     return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
 }
 
@@ -922,6 +955,7 @@ AcResult
 acDeviceBenchmarkKernel(const Device device, const AcKernel kernel, const int3 start, const int3 end)
 {
     ERRCHK_CUDA(acSetDevice(device->id));
+    fields_written(device);
     return acBenchmarkKernel(kernel, start, end, device->vba);
 }
 
@@ -939,6 +973,7 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 #ifdef AC_INTEGRATION_ENABLED
     const AcReal current_time = device->local_config[AC_current_time];
     ERRCHK_CUDA(acSetDevice(device->id));
+    fields_written(device);
 
 #ifdef AC_SINGLEPASS_INTEGRATION
     device->vba.on_device.kernel_input_params.singlepass_solve.step_num = step_number;
@@ -1123,6 +1158,7 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
                    AcReal* out, const Volume out_offset, const Volume out_volume)
 {
     ERRCHK_CUDA(acSetDevice(device->id));
+    fields_written(device);
     return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
                               out_volume);
 }
@@ -1132,6 +1168,7 @@ AcResult
 acDeviceResetMesh(const Device device, const Stream stream)
 {
     ERRCHK_CUDA(acSetDevice(device->id));
+    fields_written(device);
     acDeviceSynchronizeStream(device, stream);
     return acVBAReset(device->streams[stream], &device->vba);
 }

@@ -449,6 +449,12 @@ dconst bool AC_autotuning_at_work = false
  */
 run_const bool AC_only_default_stream_for_taskgraphs = false
 /**
+ * If true halos exchanged by a DSL compute step and not written afterwards are considered
+ * to be in sync in the following compute steps, which skips redundant halo exchanges.
+ * Set to false e.g. if boundary conditions depend on inputs changing between compute steps.
+ */
+run_const bool AC_carry_halo_sync_between_compute_steps = true
+/**
  * By default the grid has to be divisible evenly to processes
  */
 run_const bool AC_allow_non_divisible_grid = false

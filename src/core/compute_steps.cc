@@ -1167,10 +1167,11 @@ struct VectorHash {
         return seed;
     }
 };
-using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume,bool,std::vector<KernelAnalysisInfo>>;
+//TP: the last element are the halos assumed to be in sync at the start
+using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume,bool,std::vector<KernelAnalysisInfo>,AcHaloSyncState>;
 struct KeyHash {
     std::size_t operator()(const KeyType &key) const {
-        const auto &[vec1, vec2,start,end,bcs_everywhere,info] = key;
+        const auto &[vec1, vec2,start,end,bcs_everywhere,info,halo_sync] = key;
         std::size_t seed = 0;
         hash_combine(seed, VectorHash{}(vec1));
         hash_combine(seed, VectorHash{}(vec2));
@@ -1185,6 +1186,10 @@ struct KeyHash {
 	{
 		hash_kernel_analysis_info(seed,elem);
 	}
+        hash_combine(seed, halo_sync.bc_graph);
+	for(const auto& region : halo_sync.in_sync)
+		for(const bool in_sync : region)
+			hash_combine(seed, in_sync);
         return seed;
     }
 };
@@ -1198,8 +1203,11 @@ struct KeyEqual {
 };
 
 
+//TP: incoming are the halos in sync before the compute steps.
+//    assumed gets the part of them that is used to skip halo exchanges.
 static std::vector<level_set>
-gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vector<KernelAnalysisInfo>& info)
+gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vector<KernelAnalysisInfo>& info,
+	       const AcHaloSyncState& incoming, AcHaloSyncState& assumed)
 {
 	auto kernel_calls = optimized ?
 				get_optimized_kernels(graph,true) :
@@ -1220,8 +1228,10 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vect
 	std::array<bool, NUM_KERNELS> next_level_set{};
 
 	std::array<std::array<bool, NUM_FIELDS>,27> field_need_halo_to_be_in_sync{};
-	std::array<std::array<bool, NUM_FIELDS>,27> field_halo_in_sync{};
+	std::array<std::array<bool, NUM_FIELDS>,27> field_halo_in_sync = incoming.in_sync;
+	std::array<std::array<bool, NUM_FIELDS>,27> field_halo_in_sync_from_incoming = incoming.in_sync;
 	std::array<std::array<bool, NUM_VTXBUF_HANDLES>,27> field_need_to_communicate{};
+	assumed = AcHaloSyncState{};
 
 	while(!all_processed)
 	{
@@ -1342,7 +1352,10 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vect
 		    if(field_out_from_last_level_set[j])
 		    {
 			    for(size_t region = 0; region < 27; ++region)
+			    {
 			    	field_halo_in_sync[region][j] = 0;
+			    	field_halo_in_sync_from_incoming[region][j] = 0;
+			    }
 		    }
 		}
 		for(size_t j = 0; j < NUM_FIELDS; ++j)
@@ -1350,6 +1363,11 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vect
 		    for(size_t region = 0; region < 27; ++region)
 		    {
 		    	field_need_to_communicate[region][j] |= (!field_halo_in_sync[region][j] && field_need_halo_to_be_in_sync[region][j]);
+			if(field_need_halo_to_be_in_sync[region][j] && field_halo_in_sync_from_incoming[region][j])
+			{
+				assumed.in_sync[region][j] = true;
+				assumed.bc_graph = incoming.bc_graph;
+			}
 		    }
 		}
 		for(size_t j = 0; j < NUM_FIELDS; ++j)
@@ -1529,9 +1547,10 @@ fuse_calls_between_level_sets(std::vector<level_set>& level_sets)
 }
 
 static std::vector<level_set>
-get_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vector<KernelAnalysisInfo>& info)
+get_level_sets(const AcDSLTaskGraph graph, const bool optimized, const std::vector<KernelAnalysisInfo>& info,
+	       const AcHaloSyncState& incoming, AcHaloSyncState& assumed)
 {
-	auto level_sets = gen_level_sets(graph,optimized,info);
+	auto level_sets = gen_level_sets(graph,optimized,info,incoming,assumed);
 	bool fused_call_between_level_sets = true;
 	while(fused_call_between_level_sets)
 	{
@@ -1569,9 +1588,66 @@ get_field_ray_directions(const std::vector<AcKernel> kernels,const std::vector<K
 
 
 
-std::vector<AcTaskDefinition>
-acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication, const AcDSLTaskGraph bc_graph)
+// How the halo sync state changes when the ops of the compute steps are executed
+typedef struct
 {
+	bool tracks; // false if the effect on the halos is not known, e.g. for bc task graphs
+	AcHaloSyncState assumed;
+	AcHaloSyncState provided;
+	std::array<bool,NUM_FIELDS> invalidated;
+} HaloSyncInfo;
+
+static bool
+red_black_halo_exchanges()
+{
+	return acDeviceGetInput(acGridGetDevice(),AC_red_black_halo_exchange) != AC_RED_BLACK_STATE_NONE;
+}
+
+static bool
+field_has_rays(const std::array<std::vector<int3>,NUM_FIELDS>& field_ray_directions, const int field)
+{
+	for(const auto& dir : field_ray_directions[field])
+		if(dir != (int3){0,0,0}) return true;
+	return false;
+}
+
+static bool
+field_has_bc_modifying_computational_domain(const FieldBCs& field_boundconds, const int field)
+{
+	for(int region = 0; region < 27; ++region)
+		if(field_boundconds[field][region].kernel != AC_NULL_KERNEL && field_boundconds[field][region].info.larger_output) return true;
+	return false;
+}
+
+static HaloSyncInfo
+get_halo_sync_info(const std::vector<level_set>& level_sets, const std::vector<KernelAnalysisInfo>& info,
+		   const FieldBCs& field_boundconds, const std::array<std::vector<int3>,NUM_FIELDS>& field_ray_directions,
+		   const AcHaloSyncState& assumed, const bool no_communication, const bool red_black, const AcDSLTaskGraph bc_graph)
+{
+	HaloSyncInfo res{};
+	res.tracks  = true;
+	res.assumed = assumed;
+	res.provided.bc_graph = bc_graph;
+	for(int field = 0; field < NUM_FIELDS; ++field)
+	{
+		bool written = false;
+		for(const auto& kernel_info : info) written |= kernel_info.written_fields[field];
+		//TP: ray exchanges are one-directional and bcs modifying the computational domain can make halos of neighbors stale
+		res.invalidated[field] = written || field_has_rays(field_ray_directions,field) || field_has_bc_modifying_computational_domain(field_boundconds,field);
+	}
+	if(no_communication || red_black) return res;
+	for(const auto& set : level_sets)
+		for(int region = 0; region < 27; ++region)
+			for(int field = 0; field < NUM_FIELDS; ++field)
+				res.provided.in_sync[region][field] |= set.communicated_regions[region][field] && !res.invalidated[field];
+	return res;
+}
+
+static std::vector<AcTaskDefinition>
+get_dsl_taskgraph_ops(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication, const AcDSLTaskGraph bc_graph,
+		      const AcHaloSyncState& incoming, HaloSyncInfo* halo_sync_info)
+{
+	if(halo_sync_info) *halo_sync_info = HaloSyncInfo{};
 	if(is_bc_taskgraph(graph))
 		return acGetDSLBCTaskGraphOps(graph,optimized);
 	auto kernel_calls = optimized ?
@@ -1584,7 +1660,13 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	const auto info = get_dynamic_info(graph);
 	const FieldBCs  field_boundconds = get_field_boundconds(bc_graph,optimized);
 	std::vector<AcTaskDefinition> res{};
-	auto level_sets = get_level_sets(graph,optimized,info);	
+	AcHaloSyncState assumed{};
+	auto level_sets = get_level_sets(graph,optimized,info,incoming,assumed);
+	if(halo_sync_info)
+	{
+		*halo_sync_info = get_halo_sync_info(level_sets,info,field_boundconds,get_field_ray_directions(kernel_calls,info),
+						     assumed,no_communication,red_black_halo_exchanges(),bc_graph);
+	}
 
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);
@@ -1728,6 +1810,12 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	return res;
 }
 
+std::vector<AcTaskDefinition>
+acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication, const AcDSLTaskGraph bc_graph)
+{
+	return get_dsl_taskgraph_ops(graph,optimized,no_communication,bc_graph,AcHaloSyncState{},NULL);
+}
+
 static std::unordered_map<KeyType, AcTaskGraph*, KeyHash, KeyEqual> task_graphs{};
 
 AcResult
@@ -1744,21 +1832,75 @@ acGridClearTaskGraphCache()
 }
 
 
-AcTaskGraph*
-acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
+static void
+set_halo_sync_info(AcTaskGraph* task_graph, const HaloSyncInfo& info)
 {
-	ac_unset_floating_point_exceptions();
+	task_graph->tracks_halo_sync      = info.tracks;
+	task_graph->halo_sync_assumed     = info.assumed;
+	task_graph->halo_sync_provided    = info.provided;
+	task_graph->halo_sync_invalidated = info.invalidated;
+}
+
+//TP: the part of the current halo sync state the compute steps can use.
+//    Restricted to the fields read by the compute steps so that irrelevant differences do not create new task graphs.
+static AcHaloSyncState
+get_incoming_halo_sync_state(const std::vector<AcKernel>& kernels, const std::vector<KernelAnalysisInfo>& info, const bool no_communication, const AcDSLTaskGraph bc_graph)
+{
+	if(!get_info()[AC_carry_halo_sync_between_compute_steps] || no_communication || red_black_halo_exchanges()) return AcHaloSyncState{};
+	const AcHaloSyncState current = acGridGetHaloSyncState();
+	if(current.bc_graph != bc_graph) return AcHaloSyncState{};
+	const auto field_ray_directions = get_field_ray_directions(kernels,info);
+	AcHaloSyncState res{};
+	for(int field = 0; field < NUM_FIELDS; ++field)
+	{
+		bool read = false;
+		for(const auto& kernel_info : info) read |= kernel_info.read_fields[field] || kernel_info.field_has_stencil_op[field];
+		if(!read || !vtxbuf_is_communicated[field] || field_has_rays(field_ray_directions,field)) continue;
+		for(int region = 0; region < 27; ++region)
+		{
+			res.in_sync[region][field] = current.in_sync[region][field];
+			if(res.in_sync[region][field]) res.bc_graph = bc_graph;
+		}
+	}
+	return res;
+}
+
+static AcTaskGraph*
+get_optimized_dsl_taskgraph(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph,
+			    const bool use_incoming_halo_sync)
+{
 	ERRCHK_ALWAYS(to_int3(end) >= to_int3(start));
 	auto optimized_kernels = get_optimized_kernels(graph,false);
 	auto optimized_bcs      = get_optimized_kernels(bc_graph,false);
 	const auto info = get_dynamic_info(graph);
-	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end,bcs_everywhere,info);
+	const AcHaloSyncState incoming = use_incoming_halo_sync ? get_incoming_halo_sync_state(optimized_kernels,info,bcs_everywhere,bc_graph) : AcHaloSyncState{};
+	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end,bcs_everywhere,info,incoming);
 	if(task_graphs.find(key) != task_graphs.end())
 		return task_graphs[key];
 
-	auto ops = acGetDSLTaskGraphOps(graph,true,bcs_everywhere,bc_graph);
+	HaloSyncInfo halo_sync_info{};
+	auto ops = get_dsl_taskgraph_ops(graph,true,bcs_everywhere,bc_graph,incoming,&halo_sync_info);
 	auto res = acGridBuildTaskGraph(ops,start,end,bcs_everywhere);
+	set_halo_sync_info(res,halo_sync_info);
+	if(!(incoming == AcHaloSyncState{}))
+	{
+		res->get_cold_variant = [=]()
+		{
+			ac_unset_floating_point_exceptions();
+			auto cold = get_optimized_dsl_taskgraph(graph,start,end,bcs_everywhere,bc_graph,false);
+			ac_restore_floating_point_exceptions();
+			return cold;
+		};
+	}
 	task_graphs[key] = res;
+	return res;
+}
+
+AcTaskGraph*
+acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
+{
+	ac_unset_floating_point_exceptions();
+	auto res = get_optimized_dsl_taskgraph(graph,start,end,bcs_everywhere,bc_graph,true);
 	ac_restore_floating_point_exceptions();
 	return res;
 }
@@ -1777,7 +1919,10 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 AcTaskGraph*
 acGetDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
-	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false,false,DSLTaskGraphBCs[graph]),start,end);
+	HaloSyncInfo halo_sync_info{};
+	auto res = acGridBuildTaskGraph(get_dsl_taskgraph_ops(graph,false,false,DSLTaskGraphBCs[graph],AcHaloSyncState{},&halo_sync_info),start,end);
+	set_halo_sync_info(res,halo_sync_info);
+	return res;
 }
 
 AcTaskGraph*

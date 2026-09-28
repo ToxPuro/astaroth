@@ -1,6 +1,13 @@
 VertexBufferArray
 acDeviceGetVBA(const Device device);
 
+// Counts (possible) writes to the fields outside of task graphs
+size_t
+acDeviceGetFieldWriteCount(const Device device);
+
+void
+acDeviceNotifyFieldsWritten(const Device device);
+
 int
 acDeviceGetId(const Device);
 

@@ -1,0 +1,54 @@
+Field F
+Field G
+Field H
+
+//TP: reaches the whole halo (NGHOST = 3) so that halos written by a kernel
+//    are never enough for the next kernel and stale halos are always observable
+Stencil wide_average
+{
+	[0][0][0]  = (1.0/7.0),
+	[-3][0][0] = (1.0/7.0),
+	[3][0][0]  = (1.0/7.0),
+	[0][-3][0] = (1.0/7.0),
+	[0][3][0]  = (1.0/7.0),
+	[0][0][-3] = (1.0/7.0),
+	[0][0][3]  = (1.0/7.0)
+}
+
+//TP: reads F with a stencil but does not write it
+Kernel smooth_f_to_g()
+{
+	write(G, wide_average(F))
+}
+
+//TP: F exchanged by step_a is still in sync here
+Kernel smooth_f_to_h()
+{
+	write(H, wide_average(F) + G)
+}
+
+//TP: writes F, invalidating its halos for the following steps
+Kernel smooth_f()
+{
+	write(F, wide_average(F))
+}
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps step_a(bcs)
+{
+	smooth_f_to_g()
+}
+
+ComputeSteps step_b(bcs)
+{
+	smooth_f_to_h()
+}
+
+ComputeSteps step_w(bcs)
+{
+	smooth_f()
+}
