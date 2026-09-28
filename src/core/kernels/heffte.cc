@@ -90,7 +90,12 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 	    (int)domain_size.y,
 	    (int)domain_size.z
     };
-    const int3 upper = lower+dims-(int3){1,1,1};
+    const int3 upper = 
+    {
+	    lower.x+dims.x-1,
+	    lower.y+dims.y-1,
+	    lower.z+dims.z-1
+    };
     const int3 output_lower = (int3)
     {
 	    (int)global_offset.x,
@@ -158,7 +163,12 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
 	    (int)domain_size.y,
 	    (int)domain_size.z
     };
-    const int3 upper = lower+dims-(int3){1,1,1};
+    const int3 upper = 
+    {
+	    lower.x+dims.x-1,
+	    lower.y+dims.y-1,
+	    lower.z+dims.z-1
+    };
     if(plans_single.find(count) == plans_single.end())
     {
 	heffte::plan_options options = heffte::default_options<fft_backend>();
@@ -203,7 +213,12 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
 	    (int)domain_size.y,
 	    (int)domain_size.z
     };
-    const int3 upper = lower+dims-(int3){1,1,1};
+    const int3 upper = 
+    {
+	    lower.x+dims.x-1,
+	    lower.y+dims.y-1,
+	    lower.z+dims.z-1
+    };
     if(plans.find(count) == plans.end())
     {
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
