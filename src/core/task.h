@@ -248,6 +248,27 @@ typedef class ComputeTask : public Task {
 	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries);
 } ComputeTask;
 
+// Resources shared by all task graphs
+//TP: task graphs are never executed concurrently, so the CUDA streams and message buffers
+//    allocated for one task graph are reused by all later task graphs.
+//    Within a single task graph each task still gets its own stream and each message its own buffer.
+struct HaloMessage;
+typedef struct PooledBuffer {
+    char* data        = NULL;
+    char* data_pinned = NULL;
+    size_t bytes        = 0;
+    size_t pinned_bytes = 0;
+    size_t generation   = 0; // incremented each time data or data_pinned is reallocated
+    // The last message that used the buffer: its MPI requests (e.g. unfinished sends) have to complete before the buffer is reused
+    HaloMessage* user = NULL;
+} PooledBuffer;
+
+// Call around the construction of the tasks of a task graph
+void taskgraph_resources_begin_graph();
+void taskgraph_resources_end_graph();
+// Frees all pooled streams and buffers
+void taskgraph_resources_release();
+
 // Communication
 enum class HaloMessageType { Send, Receive};
 typedef struct HaloMessage {
@@ -273,9 +294,12 @@ typedef struct HaloMessage {
     int tag;
     int non_namespaced_tag;
     std::vector<int> counterpart_ranks;
+    PooledBuffer* buffer = NULL;
+    size_t buffer_generation = 0;
 
     HaloMessage(size_t size, size_t single_length_, size_t half_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();
+    void bind();
     void pin(const Device device, const cudaStream_t stream);
     void unpin(const Device device, const cudaStream_t stream);
 } HaloMessage;
