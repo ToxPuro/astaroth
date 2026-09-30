@@ -61,17 +61,17 @@ While stencils are the core of `Astaroth`, it also accelerates other operations 
 
 Due to the ubiquity and expense of stencil computations, a common library for implementing them
 efficiently on GPUs is needed, more so because high-performance codes require portability across
-multiple different computing platforms. Such a library is both needed for accelerating existing codes and writing new ones.
-Thus, its API has to enable good integration with existing and easy development of new code.
+different computing platforms. Such a library is both needed for accelerating existing codes and writing new ones.
+Thus, its API has to enable good integration with existing code and easy development of new code.
 
-`Astaroth` strives to be this library, encapsulating the core steps and structures of stencil computations
-in its domain-specific language (DSL)[^sample_footnote], which enables researchers in different domains to write their
-stencil computations in a compact and obvious way. This encapsulation allows `Astaroth` to provide
-the needed execution platform for different application cases, predominantly for partial differential equation (PDE) solvers, but also for image processing and numerical linear algebra.
+`Astaroth` strives to be this library, by creating abstractions of common stencil structures and operations in its domain-specific language (DSL)[^sample_footnote], 
+which enables researchers in different domains to write their stencil computations in a compact and clear way. 
+These abstractions allows `Astaroth` to provide the needed execution platform for different application cases, 
+predominantly for partial differential equation (PDE) solvers, but also for image processing and numerical linear algebra.
 
-Multiphysics simulations in particular pose computationally challenging stencil calculations due to the need to
-hold values of many fields in working memory at the same time, and accelerating them was the original need
-for which `Astaroth` was developed. As an example of this use case, `Astaroth` has been used to accelerate
+In particular, multiphysics simulations pose computationally challenging stencil calculations due to the need to
+hold values of many fields in working memory at the same time. Accelerating them was the original need
+for which `Astaroth` was developed. As an example, `Astaroth` has been used to accelerate
 the widely used astrophysics framework `Pencil Code`, for which existing solutions were not fit.
 
 # State of the field
@@ -95,8 +95,8 @@ In contrast to these projects, `Astaroth`'s distributed abstraction layer focuse
 Similar to `Parthenon` and others [@pearson_movementplacement_2021], `Astaroth` implements its modification of topology-aware domain decomposition and rank reordering for improved portability across systems, and performs fused packing to alleviate communication overheads.
 Furthermore, Astaroth implements a task scheduler for compute and communication tasks [@lappi2021task].
 
-In the field, `Astaroth` stands out as a CUDA/HIP stencil-computing framework focused on addressing the performance-productivity trade-off in cache-heavy multiphysics applications with a domain-specific language, automated tile-size optimization, and topology handling, taking ownership of data structures and movement throughout the computational science pipeline.
-This enables holistic optimizations of full scientific workflows and offers a lower barrier to entry for experimentation with optimization techniques spanning traditionally decoupled tasks (e.g., extensive kernel fusion of operations across the stack), which would not be practical with libraries utilizing opaque submodules for compute and communication.
+In the field, `Astaroth` stands out as a CUDA/HIP stencil-computing framework focused on addressing the performance-productivity trade-off in cache-heavy multiphysics applications with its DSL.
+This enables holistic optimizations of complex multiphysics simulations and allows for experimentation with optimization techniques spanning traditionally decoupled tasks (e.g., extensive kernel fusion of operations across the stack), which would not be practical with libraries utilizing opaque submodules for compute and communication.
 
 
 # Software design
@@ -111,7 +111,7 @@ The main operations, such as stencils, are written in a declarative syntax, and 
 The implementation is left to `Astaroth`'s DSL compiler `acc`, which applies a number of specialized optimizations.
 An especially important optimization is the unrolled and reordered computation of all required stencils at the start of the kernels, which enables instruction-level parallelism and efficient usage of caches [@pekkila_graphicsprocessors_2026].
 In addition to stencils, the DSL supports two other operations: 1) multi-GPU reductions -- which are commonly needed for stencil-based solvers; and 2) simplified distributed ray-tracing, where rays cannot change directions and are restricted to move through neighbouring grid points -- which is necessary for simulations incorporating radiative transfer [@heinemann2006radiative].
-`Astaroth`'s DSL also includes a standard library, providing, inter alia: derivative operators used in PDE solvers, implemented for generally spaced Cartesian, spherical or cylindrical grids; and Poisson solvers, e.g. for self-gravity [@krasnopolsky2026iterative].
+`Astaroth`'s DSL also includes a standard library, providing, among others: derivative operators used in PDE solvers, implemented for arbitrarily spaced Cartesian, spherical or cylindrical grids; and Poisson solvers, e.g. for self-gravity [@krasnopolsky2026iterative].
 
 `acc` transpiles the DSL source into CUDA or HIP source code, which is further compiled into machine code using a native CUDA or HIP compiler.
 The program thus produced is executed in the `acc` runtime system, which further optimizes the kernels by autotuning the thread block sizes for kernel execution.
@@ -170,7 +170,7 @@ MSV thanks the support of Jenny and Antti Wihuri Foundation and Finnish Cultural
 # AI usage disclosure
 
 AI tools have not been used for producing in documentation or in the authoring of this paper.
-For software development AI tools have been used for debugging and generating small snippets of code, which have been always validated by human review.
+For software development AI tools have been used for debugging and generating small snippets of code, which have always been validated by human review.
 
 # References
 
