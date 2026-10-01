@@ -263,7 +263,8 @@ is_called(const ASTNode* node)
 #define STENCILGEN_EXEC "stencilgen.out"
 #define STENCILACC_SRC AC_BASE_PATH "/src/core/stencil_accesses.cpp"
 #define STENCILACC_EXEC "acc_stencil_accesses.o"
-//TP: the helper programs above are only used for the analysis during the DSL compilation and their compilation is on the critical path.
+//TP: the helper programs above are only used for the analysis during the DSL compilation and their compilation dominates the time taken
+//    by acc.
 //    Hence always compile them with the fastest compilation options, independent of the defaults of the used compiler (wrapper):
 //    e.g. -O1 makes the compilation of stencilgen.c take ~20min instead of ~7s
 #define ACC_HELPER_COMPILE_FLAGS "-O0 -g0 -pipe"
