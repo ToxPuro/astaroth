@@ -49,6 +49,15 @@ else()
 	## Executable
 	add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
 	target_include_directories(acc PUBLIC "${AC_BASE_PATH}/acc-runtime/api")
+	#TP: acc is on the critical path of the (runtime) compilation so always optimize it,
+	#    independent of the build type and of the flags given by the caller (target options come after them so take precedence)
+	target_compile_options(acc PRIVATE -O2)
+	#TP: lets the hashmaps use the hardware crc32 instruction. Gives the same hash values as the software fallback
+	include(CheckCCompilerFlag)
+	check_c_compiler_flag(-msse4.2 ACC_HAS_SSE42_FLAG)
+	if(ACC_HAS_SSE42_FLAG AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+		target_compile_options(acc PRIVATE -msse4.2)
+	endif()
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		target_compile_definitions(acc PRIVATE -DACC_ARRAY_BOUND_CHECKS=1)
