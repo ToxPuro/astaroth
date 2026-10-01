@@ -715,12 +715,15 @@ acc_sources_manager_invalidate_source(AccSourcesManager* self, const char* name)
     acc_source_invalidate(source);
 
     for (int j = i + 1; j < self->sources_n; ++j) {
-      AccSource* prev = &self->sources[i - 1];
-      AccSource* curr = &self->sources[i];
+      AccSource* prev = &self->sources[j - 1];
+      AccSource* curr = &self->sources[j];
 
       memcpy(prev, curr, sizeof(AccSource));
     }
 
+    // Reset the memory left after the last moved AccSource which should now
+    // left unused.
+    memset(&self->sources[self->sources_n], 0, sizeof(AccSource));
     self->sources_n -= 1;
     return;
   }
