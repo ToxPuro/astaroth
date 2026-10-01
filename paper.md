@@ -96,7 +96,7 @@ Similar to `Parthenon` and others [@pearson_movementplacement_2021], `Astaroth` 
 Furthermore, Astaroth implements a task scheduler for compute and communication tasks [@lappi2021task].
 
 In the field, `Astaroth` stands out as a CUDA/HIP stencil-computing framework focused on addressing the performance-productivity trade-off in cache-heavy multiphysics applications with its DSL.
-This enables holistic optimizations of complex multiphysics simulations and allows for experimentation with optimization techniques spanning traditionally decoupled tasks (e.g., extensive kernel fusion of operations across the stack), which would not be practical with libraries utilizing opaque submodules for compute and communication.
+This enables holistic optimizations of complex multiphysics simulations and allows for experimentation with optimization techniques across traditionally decoupled tasks (e.g., extensive kernel fusion of operations across the stack), which would not be practical with libraries utilizing opaque submodules for compute and communication.
 
 
 # Software design
