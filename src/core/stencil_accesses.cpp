@@ -1224,6 +1224,21 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
 	}
 	return AC_SUCCESS;
 }
+//TP: leaves out the trailing zeros of the row since they are zero-initialized anyways.
+//    Almost all entries of the arrays written to stencil_accesses.h are zero, so this keeps the header small
+//    (e.g. 17MB -> few hundred kB), which speeds up the compilation of the files including it considerably.
+//    Works both in C and C++ and the values stay as compile-time initializers.
+static void
+print_trimmed_row(FILE* fp, const int* row, const size_t n)
+{
+  size_t len = n;
+  while (len > 0 && row[len-1] == 0) --len;
+  fprintf(fp,"{");
+  for (size_t i = 0; i < len; ++i)
+    fprintf(fp, "%d,", row[i]);
+  fprintf(fp,"},");
+}
+
 template <const size_t N>
 void
 print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N])
@@ -1231,12 +1246,8 @@ print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N])
   fprintf(fp,
           "static int %s[NUM_KERNELS][%ld] "
           "__attribute__((unused)) =  {",name,N);
-  for (size_t k = 0; k < NUM_KERNELS; ++k) {
-    fprintf(fp,"{");
-    for (size_t j = 0; j < N; ++j)
-        fprintf(fp, "%d,", arr[k][j]);
-    fprintf(fp,"},");
-  }
+  for (size_t k = 0; k < NUM_KERNELS; ++k)
+    print_trimmed_row(fp,arr[k],N);
   fprintf(fp, "};\n");
 }
 
@@ -1250,15 +1261,7 @@ print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N][M])
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     fprintf(fp,"{");
     for (size_t j = 0; j < N; ++j)
-    {
-
-        fprintf(fp,"{");
-	for(size_t i = 0; i < M; ++ i)
-	{
-        	fprintf(fp, "%d,", arr[k][j][i]);
-	}
-    	fprintf(fp,"},");
-    }
+      print_trimmed_row(fp,arr[k][j],M);
     fprintf(fp,"},");
   }
   fprintf(fp, "};\n");
@@ -1362,14 +1365,7 @@ main(int argc, char* argv[])
 
     fprintf(fp,"{");
     for (size_t j = 0; j < NUM_ALL_FIELDS+NUM_PROFILES; ++j)
-    { 
-      fprintf(fp,"{");
-      for (size_t i = 0; i < NUM_STENCILS; ++i)
-      {
-        fprintf(fp,"%d,",stencils_accessed[j][i]);
-      }
-      fprintf(fp,"},");
-    }
+      print_trimmed_row(fp,stencils_accessed[j],NUM_STENCILS);
     fprintf(fp,"},");
 
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);

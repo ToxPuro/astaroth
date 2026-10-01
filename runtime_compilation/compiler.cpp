@@ -11,6 +11,9 @@
 #endif
 #include <sys/stat.h>
 #include <unistd.h>
+#if defined(__linux__)
+#include <sched.h>
+#endif
 
 const size_t max_string_size = 20000;
 
@@ -383,7 +386,27 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 	AcResult res = AC_SUCCESS;
 	if(pid == 0)
 	{
+		//TP: the compilation (cmake, make -j, acc and the compilers) is run by child processes of this thread
+		//    which inherit its CPU affinity. If the caller has bound this thread to a single core,
+		//    e.g. OpenMP with OMP_PROC_BIND set binds the initial thread to the first place,
+		//    the whole parallel build would be run on that single core.
+		//    Hence allow the compilation to use all CPUs available to the process and restore the affinity afterwards.
+#if defined(__linux__)
+		cpu_set_t original_affinity;
+		const bool got_affinity = sched_getaffinity(0,sizeof(original_affinity),&original_affinity) == 0;
+		if(got_affinity)
+		{
+			cpu_set_t all_cpus;
+			CPU_ZERO(&all_cpus);
+			for(int i = 0; i < CPU_SETSIZE; ++i) CPU_SET(i,&all_cpus);
+			//TP: the kernel drops the CPUs not allowed by the cpuset of the job
+			sched_setaffinity(0,sizeof(all_cpus),&all_cpus);
+		}
+#endif
 		res = acCompileFromRootProc(user_cmake_options,target,mesh_info);
+#if defined(__linux__)
+		if(got_affinity) sched_setaffinity(0,sizeof(original_affinity),&original_affinity);
+#endif
 	}
 #if AC_MPI_ENABLED
 	MPI_Barrier(mesh_info.comm->handle);

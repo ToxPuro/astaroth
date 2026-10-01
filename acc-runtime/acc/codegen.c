@@ -263,6 +263,10 @@ is_called(const ASTNode* node)
 #define STENCILGEN_EXEC "stencilgen.out"
 #define STENCILACC_SRC AC_BASE_PATH "/src/core/stencil_accesses.cpp"
 #define STENCILACC_EXEC "acc_stencil_accesses.o"
+//TP: the helper programs above are only used for the analysis during the DSL compilation and their compilation is on the critical path.
+//    Hence always compile them with the fastest compilation options, independent of the defaults of the used compiler (wrapper):
+//    e.g. -O1 makes the compilation of stencilgen.c take ~20min instead of ~7s
+#define ACC_HELPER_COMPILE_FLAGS "-O0 -g0 -pipe"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
 #define INCL_DIR ACC_DIR "/../../include"
 //
@@ -11243,7 +11247,7 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
   char build_cmd[4096];
   const int block_size = gen_mem_accesses ? 1 : 4;
   snprintf(build_cmd, 4096,
-           "%s -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
+           "%s " ACC_HELPER_COMPILE_FLAGS " -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-Wfloat-conversion -Wshadow -I. -I %s %s -lm "
@@ -11949,7 +11953,7 @@ compile_helper(const bool log)
   }
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "%s -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
+  sprintf(cmd, "%s " ACC_HELPER_COMPILE_FLAGS " -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
   ,get_compiler(true),api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );
