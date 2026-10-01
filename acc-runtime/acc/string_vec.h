@@ -15,9 +15,12 @@ typedef struct string_vec
 static inline void
 init_str_vec(string_vec* vec)
 {
-	vec -> size = 0;
-	vec -> capacity = 1;
-	vec -> data = (const char**)malloc(sizeof(char*)*vec ->capacity);
+  vec->size     = 0;
+  vec->capacity = 1;
+
+  int data_size = sizeof(char*) * vec->capacity;
+  vec->data     = (const char**)malloc(data_size);
+  memset(vec->data, 0, data_size);
 }
 static inline void
 free_str_vec(string_vec* vec)
@@ -65,7 +68,10 @@ push(string_vec* dst, const char* src)
 	{
 		dst->capacity = 4;
 		free(dst -> data);
-		dst->data = (const char**)malloc(sizeof(char*)*dst->capacity);
+
+		int data_size = sizeof(char*)*dst->capacity;
+		dst->data = (const char**)malloc(data_size);
+		memset(dst->data, 0, data_size);
 	}
 	/**
 	if(src != intern(src))
@@ -80,7 +86,9 @@ push(string_vec* dst, const char* src)
 	if(dst->size == (size_t)dst->capacity)
 	{
 		dst->capacity = dst->capacity*2;
-		const char** tmp = (const char**)malloc(sizeof(char*)*dst->capacity);
+		int data_size = sizeof(char*)*dst->capacity;
+		const char** tmp = (const char**)malloc(data_size);
+		memset(tmp, 0, data_size);
 		for(size_t i = 0; i < dst->size; ++i)
 			tmp[i] = dst->data[i];
 		free(dst->data);
