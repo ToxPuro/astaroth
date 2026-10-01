@@ -266,10 +266,6 @@ is_called(const ASTNode* node)
 #define STENCILGEN_EXEC "stencilgen.out"
 #define STENCILACC_SRC AC_BASE_PATH "/src/core/stencil_accesses.cpp"
 #define STENCILACC_EXEC "acc_stencil_accesses.o"
-//TP: the helper programs above are only used for the analysis during the DSL compilation and their compilation is on the critical path.
-//    Hence always compile them with the fastest compilation options, independent of the defaults of the used compiler (wrapper):
-//    e.g. -O1 makes the compilation of stencilgen.c take ~20min instead of ~7s
-#define ACC_HELPER_COMPILE_FLAGS "-O0 -g0 -pipe"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
 #define INCL_DIR ACC_DIR "/../../include"
 //
@@ -1395,10 +1391,10 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
 
 
-	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) return dummy; return %s_params[param];}\n",enum_name,uppr_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) return dummy; return %s_arrays[param];}\n",enum_name,uppr_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) return dummy; return %s_params[param];}\n",enum_name,uppr_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) return dummy; return %s_arrays[param];}\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {return %s_params[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {return %s_params[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {return %s_arrays[param];}\n",enum_name,define_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompParam ) const {return false;}\n",enum_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompArrayParam ) const {return false;}\n",enum_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
@@ -3489,9 +3485,8 @@ void
 check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 {
 	TRAVERSE_PREAMBLE_PARAMS(check_for_undeclared_functions,root);
-	//TP: check the node type first since get_node searches the whole subtree, which done for every node would be quadratic
-	if(!(node->type & NODE_FUNCTION_CALL)) return;
 	if(get_node(NODE_MEMBER_ID,node)) return;
+	if(!(node->type & NODE_FUNCTION_CALL)) return;
 
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	if(strstr(func_name,"__AC_INTERNAL_NUMBERING")) return;
@@ -4288,7 +4283,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 		{
 			if(!written_fields[i + num_fields*kernel_index]) continue;
 	  		const char* name = get_symbol_by_index(NODE_VARIABLE_ID,i,FIELD_STR)->identifier;
-			astnode_sprintf_postfix(compound_statement,"((AcReal*)vba.out[%s])[idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
+			astnode_sprintf_postfix(compound_statement,"vba.out[%s][idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
 		}
 	}
 	if(func_calls_reduce(fn_name) && BUFFERED_REDUCTIONS && !has_block_loops(kernel_index))
@@ -4794,38 +4789,38 @@ string_vec
 get_array_elem_size(const char* arr_type_in)
 {
 	string_vec res = VEC_INITIALIZER;
-	if(n_occurances(arr_type_in,'<') != 1)
+	char* arr_type = strdup(arr_type_in);
+	if(n_occurances(arr_type,'<') == 1)
 	{
-		push(&res,intern(arr_type_in));
+		int start = 0;
+		while(arr_type[++start] != '<');
+		int end = start;
+		++start;
+		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
+		arr_type[end] = '\0';
+		++end;
+
+		start = end;
+		while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
+		const bool two_dimensional = arr_type[end] == ',';
+		arr_type[end] = '\0';
+		char* tmp = malloc(sizeof(char)*1000);
+		strcpy(tmp, &arr_type[start]);
+		push(&res,intern(tmp));
+
+		if(two_dimensional)
+		{
+			++end;
+			start = end;
+			while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
+			arr_type[end] = '\0';
+			strcpy(tmp, &arr_type[start]);
+			push(&res,intern(tmp));
+		}
+		
 		return res;
 	}
-	//TP: AcArray<elem,d0,d1,...,dN>: skip the element type, collect every dimension
-	const char* p = strchr(arr_type_in,'<') + 1;
-	int depth = 0;
-	while(*p && !(depth == 0 && (*p == ',' || *p == '>')))
-	{
-		if(*p == '(') ++depth;
-		else if(*p == ')') --depth;
-		++p;
-	}
-	while(*p == ',')
-	{
-		++p;
-		while(*p == ' ') ++p;
-		const char* start = p;
-		depth = 0;
-		while(*p && !(depth == 0 && (*p == ',' || *p == '>')))
-		{
-			if(*p == '(') ++depth;
-			else if(*p == ')') --depth;
-			++p;
-		}
-		const char* end = p;
-		while(end > start && end[-1] == ' ') --end;
-		char* tmp = strndup(start, end-start);
-		push(&res,intern(tmp));
-		free(tmp);
-	}
+	push(&res,intern(arr_type));
 	return res;
 }
 
@@ -4874,22 +4869,18 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		  {
 		  	fprintf(stream, "%s ", get_array_elem_type(tspecifier_out));
 		  	string_vec sizes = get_array_elem_size(tspecifier_out);
-			//TP: all dims are emitted here; the declarator's array accesses are stripped
-			//    in transform_arrays_to_std_arrays_in_func
-			//TP: pad zero-length dims to 1: zero-sized arrays are not valid C++
-			//    (template deduction on T(&)[N1][N2] fails) and some CUDA compilers reject them
-			res = "";
-			for(size_t i = 0; i < sizes.size; ++i)
-			{
-				if(!strcmp(sizes.data[i],"0"))
-				{
-				  res = sprintf_intern("%s[1]",res);
-				}	
-				else
-				{
-				  res = sprintf_intern("%s[%s]",res,sizes.data[i]);
-				}
-			}
+			//TP: even though it is not intended rest of the dims come from traversing
+			//TP: works for now but a bit hacky
+			res = sprintf_intern("[%s]",sizes.data[0]);
+			/**
+			if(sizes.size == 1)
+			   res = sprintf_intern("[%s]",sizes.data[0]);
+			res = sprintf_intern("[%s]",sizes.data[0]);
+			else if(sizes.size == 2)
+				res = sprintf_intern("[%s]",sizes.data[0]);
+			else
+				fatal("Add missing dimensionality initialization!\n");
+			**/
 			free_str_vec(&sizes);
 		  }
 	  }
@@ -4963,9 +4954,7 @@ void
 refresh_current_hashmap()
 {
     hashmap_destroy(&symbol_table_hashmap[current_nest]);
-    //TP: this is called for every scope that is entered and most scopes have only few symbols,
-    //    so start small since allocating and zeroing a large hashmap each time is costly. The hashmap grows if needed
-    const unsigned initial_size = 32;
+    const unsigned initial_size = 2000;
     hashmap_create(initial_size, &symbol_table_hashmap[current_nest]);
 }
 const char* 
@@ -5530,21 +5519,18 @@ get_nodes(const ASTNode* node, node_vec* nodes, string_vec* names, const NodeTyp
 	push_node(nodes,node);
 	push(names,get_node_by_token(IDENTIFIER,node)->buffer);
 }
-static inline bool
-primary_expression_or_func_call_has_type(const ASTNode* node)
-{
-	if(node->type != NODE_PRIMARY_EXPRESSION && !(node->type & NODE_FUNCTION_CALL))
-		return true;
-	return node->expr_type != NULL;
-}
 bool
 all_primary_expressions_and_func_calls_have_type(const ASTNode* node)
 {
-	//TP: stops at the first node without a type
-	if(!primary_expression_or_func_call_has_type(node)) return false;
-	if(node->lhs && !all_primary_expressions_and_func_calls_have_type(node->lhs)) return false;
-	if(node->rhs && !all_primary_expressions_and_func_calls_have_type(node->rhs)) return false;
-	return true;
+	bool res = true;
+	if(node->lhs)
+		res &= all_primary_expressions_and_func_calls_have_type(node->lhs);
+	if(node->rhs)
+		res &= all_primary_expressions_and_func_calls_have_type(node->rhs);
+	if(node->type != NODE_PRIMARY_EXPRESSION && !(node->type & NODE_FUNCTION_CALL))
+		return res;
+	res &= node->expr_type != NULL;
+	return res;
 }
 
 
@@ -5904,18 +5890,16 @@ turn_assignment_to_comma(ASTNode* node)
 	astnode_set_buffer(",",assignment->rhs->lhs);
 }
 
-//TP: inside_global tells whether some ancestor of node is NODE_GLOBAL, passed down to avoid walking up to the root for each identifier
-static void
-gen_multidimensional_field_accesses_base(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims, const bool inside_global)
+void
+gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims)
 {
-	const bool children_inside_global = inside_global || (node->type & NODE_GLOBAL);
 	if(!(node->type & NODE_STRUCT_EXPRESSION) && node->lhs)
 	{
-		gen_multidimensional_field_accesses_base(node->lhs,gen_mem_accesses,field_dims,children_inside_global);
+		gen_multidimensional_field_accesses_recursive(node->lhs,gen_mem_accesses,field_dims);
 	}
 	if(node->rhs)
 	{
-		gen_multidimensional_field_accesses_base(node->rhs,gen_mem_accesses,field_dims,children_inside_global);
+		gen_multidimensional_field_accesses_recursive(node->rhs,gen_mem_accesses,field_dims);
 	}
 	
 	if(node->token != IDENTIFIER)
@@ -5925,7 +5909,7 @@ gen_multidimensional_field_accesses_base(ASTNode* node, const bool gen_mem_acces
 	if(!node->parent)
 		return;
 	//discard global const declarations
-	if(inside_global)
+	if(get_parent_node(NODE_GLOBAL,node))
 		return;
 	const char* type = get_expr_type(node->parent);
 	if(!type || strcmps(type,COMPLEX_FIELD_STR,FIELD_STR,FIELD3_STR,FIELD4_STR,"VertexBufferHandle"))
@@ -6000,11 +5984,6 @@ gen_multidimensional_field_accesses_base(ASTNode* node, const bool gen_mem_acces
 		astnode_set_postfix(",",lhs);
 	}
 	lhs->parent = array_access;
-}
-void
-gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims)
-{
-	gen_multidimensional_field_accesses_base(node,gen_mem_accesses,field_dims,get_parent_node(NODE_GLOBAL,node) != NULL);
 }
 
 void
@@ -6186,25 +6165,19 @@ gen_const_variables(const ASTNode* node, FILE* fp, FILE* fp_bi,FILE* fp_non_scal
 int_vec
 dfuncs_in_topological_order(void)
 {
-	//TP: the topological indexes are a permutation of 0..n-1, so invert it instead of searching for each index
-	const size_t n = calling_info.names.size;
-	int* func_at_index = (int*)malloc(sizeof(int)*n);
-	for(size_t i = 0; i < n; ++i) func_at_index[i] = -1;
-	for(size_t j = 0; j < n; ++j)
-	{
-		const int index = calling_info.topological_index[j];
-		if(index >= 0 && index < (int)n) func_at_index[index] = j;
-	}
 	int_vec res = VEC_INITIALIZER;
-	for(size_t i = 0; i < n; ++i)
+	for(size_t i = 0; i< calling_info.names.size; ++i)
 	{
-		const int j = func_at_index[i];
-		if(j == -1) continue;
-		const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,calling_info.names.data[j],NULL,NULL);
-		if(!is_dfunc) continue;
-		push_int(&res, get_symbol_index(NODE_DFUNCTION_ID,calling_info.names.data[j],0));
+		for(size_t j = 0; j < calling_info.names.size; ++j)
+		{
+			const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,calling_info.names.data[j],NULL,NULL);
+			if(!is_dfunc) continue;
+			if(calling_info.topological_index[j] == (int)i) 
+			{
+				push_int(&res, get_symbol_index(NODE_DFUNCTION_ID,calling_info.names.data[j],0));
+			}
+		}
 	}
-	free(func_at_index);
 	return res;
 }
 static void
@@ -6305,79 +6278,20 @@ write_calling_info_for_stencilgen(const string_vec* stencils_called)
     fprintf(fp,"};\n");
     fclose(fp);
 }
-static char* mem_accesses_sdefinitions = NULL;
-//TP: info about the dfuncs that does not depend on the kernel, computed once per gen_kernels instead of once per kernel
-typedef struct
-{
-	int*  dfunc_index; //dfunc indexes in topological order, inline dfuncs excluded
-	int*  call_index;  //corresponding indexes in calling_info
-	size_t n;
-	bool* called;      //scratch: called[call_index] is true if called by the current kernel
-} gen_kernels_dfunc_info;
-
-static gen_kernels_dfunc_info
-get_gen_kernels_dfunc_info(void)
-{
-	gen_kernels_dfunc_info res = {.n = 0};
-	//TP: get_symbol_by_index is linear in the number of symbols so collect all dfunc symbols in one pass
-	const Symbol** dfunc_symbols = (const Symbol**)calloc(num_symbols[0]+1,sizeof(Symbol*));
-	size_t num_dfunc_symbols = 0;
-	for (size_t i = 0; i < num_symbols[0]; ++i)
-		if (symbol_table[i].type & NODE_DFUNCTION_ID) dfunc_symbols[num_dfunc_symbols++] = &symbol_table[i];
-
-	int_vec topological_order = dfuncs_in_topological_order();
-	const size_t n = topological_order.size < num_dfuncs ? topological_order.size : num_dfuncs;
-	res.dfunc_index = (int*)malloc(sizeof(int)*(n+1));
-	res.call_index  = (int*)malloc(sizeof(int)*(n+1));
-	for(size_t index = 0; index < n; ++index)
-	{
-		const int i = topological_order.data[index];
-		const Symbol* dfunc_symbol = (i >= 0 && (size_t)i < num_dfunc_symbols) ? dfunc_symbols[i] : NULL;
-		if(!dfunc_symbol) continue;
-		if(str_vec_contains(dfunc_symbol->tqualifiers,INLINE_STR)) continue;
-		res.dfunc_index[res.n] = i;
-		res.call_index[res.n]  = str_vec_get_index(calling_info.names,dfunc_symbol->identifier);
-		++res.n;
-	}
-	free_int_vec(&topological_order);
-	free(dfunc_symbols);
-	res.called = (bool*)calloc(calling_info.names.size+1,sizeof(bool));
-	return res;
-}
-
-static void
-free_gen_kernels_dfunc_info(gen_kernels_dfunc_info* info)
-{
-	free(info->dfunc_index);
-	free(info->call_index);
-	free(info->called);
-}
-
-static void
-append_to_prefix(char* prefix, size_t* len, const size_t capacity, const char* str)
-{
-	const size_t str_len = strlen(str);
-	if(*len + str_len + 1 > capacity) fatal("Kernel prefix does not fit into %zu bytes\n",capacity);
-	memcpy(prefix + *len, str, str_len+1);
-	*len += str_len;
-}
-
 static void
 gen_kernels_recursive(const ASTNode* node, char** dfunctions,
-            const bool gen_mem_accesses, int* curr_kernel, gen_kernels_dfunc_info* dfunc_info)
+            const bool gen_mem_accesses, int* curr_kernel)
 {
   assert(node);
 
   if (node->lhs)
-    gen_kernels_recursive(node->lhs, dfunctions, gen_mem_accesses,curr_kernel,dfunc_info);
+    gen_kernels_recursive(node->lhs, dfunctions, gen_mem_accesses,curr_kernel);
   if (node->type & NODE_KFUNCTION) {
 
     const size_t len = 64 * 1024 * 1024;
     char* prefix     = malloc(len);
     assert(prefix);
     prefix[0] = '\0';
-    //TP: keep track of the length since repeated strcat calls are quadratic in the length of the prefix
-    size_t prefix_len = 0;
 
     const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
     const int_vec called_dfuncs = calling_info.called_funcs[str_vec_get_index(calling_info.names,name)];
@@ -6386,57 +6300,55 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     assert(node->rhs->rhs);
     ASTNode* compound_statement = node->rhs->rhs;
 
-    append_to_prefix(prefix, &prefix_len, len, compound_statement->prefix ? compound_statement->prefix : "");
+    strcat(prefix, compound_statement->prefix);
 
     // Generate stencil FMADs
-    //TP: the output of -mem-accesses does not depend on the kernel so it is generated only once per gen_kernels
-    if (!gen_mem_accesses || !mem_accesses_sdefinitions) {
-      char* cmdoptions = malloc(sizeof(char)*4096);
-      cmdoptions[0] = '\0';
-      if (gen_mem_accesses) {
-        sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
-      }
-      else {
-        sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", *curr_kernel);
-        ++(*curr_kernel);
-      }
-      FILE* proc = popen(cmdoptions, "r");
-      assert(proc);
-
-      const size_t sdefinitions_size = 10 * 1024 * 1024;
-      char* sdefinitions = malloc(sdefinitions_size);
-      assert(sdefinitions);
-      const size_t read_len = fread(sdefinitions, 1, sdefinitions_size - 1, proc);
-      sdefinitions[read_len] = '\0';
-      if (!feof(proc)) fatal("Output of %s does not fit into %zu bytes\n", cmdoptions, sdefinitions_size);
-
-      pclose(proc);
-      free(cmdoptions);
-      if (gen_mem_accesses) mem_accesses_sdefinitions = sdefinitions;
-      else {
-        append_to_prefix(prefix, &prefix_len, len, sdefinitions);
-        free(sdefinitions);
-      }
+    char* cmdoptions = malloc(sizeof(char)*4096);
+    cmdoptions[0] = '\0';
+    if (gen_mem_accesses) {
+      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
     }
-    if (gen_mem_accesses) append_to_prefix(prefix, &prefix_len, len, mem_accesses_sdefinitions);
-    for(size_t j = 0; j < called_dfuncs.size; ++j)
-	    if(called_dfuncs.data[j] >= 0 && (size_t)called_dfuncs.data[j] < calling_info.names.size) dfunc_info->called[called_dfuncs.data[j]] = true;
-    for(size_t index = 0; index < dfunc_info->n; ++index)
+    else {
+      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", *curr_kernel);
+      ++(*curr_kernel);
+    }
+    FILE* proc = popen(cmdoptions, "r");
+    assert(proc);
+
+    char* sdefinitions = malloc(10 * 1024 * 1024);
+    assert(sdefinitions);
+    sdefinitions[0] = '\0';
+    char* buf = malloc(sizeof(char)*4096);
+    while (fgets(buf, sizeof(buf), proc))
+      strcat(sdefinitions, buf);
+
+    pclose(proc);
+
+    strcat(prefix, sdefinitions);
+    free(sdefinitions);
+    int_vec topological_order = dfuncs_in_topological_order();
+    for(size_t index = 0; index < num_dfuncs; ++index)
     {
-            const int call_index = dfunc_info->call_index[index];
-            if(call_index >= 0 && dfunc_info->called[call_index])
-                    append_to_prefix(prefix, &prefix_len, len, dfunctions[dfunc_info->dfunc_index[index]]);
+            const int i = topological_order.data[index];
+            const Symbol* dfunc_symbol = get_symbol_by_index(NODE_DFUNCTION_ID,i,0);
+            if(!dfunc_symbol) continue;
+            if(str_vec_contains(dfunc_symbol->tqualifiers,INLINE_STR)) continue;
+            const int call_index = str_vec_get_index(calling_info.names,dfunc_symbol->identifier);
+            if(int_vec_contains(called_dfuncs,call_index))
+            {
+                    strcat(prefix,dfunctions[i]);
+            }
     }
-    for(size_t j = 0; j < called_dfuncs.size; ++j)
-	    if(called_dfuncs.data[j] >= 0 && (size_t)called_dfuncs.data[j] < calling_info.names.size) dfunc_info->called[called_dfuncs.data[j]] = false;
+    free_int_vec(&topological_order);
 
     astnode_set_prefix(prefix, compound_statement);
     free(prefix);
+    free(cmdoptions);
   }
 
 
   if (node->rhs)
-    gen_kernels_recursive(node->rhs, dfunctions, gen_mem_accesses,curr_kernel,dfunc_info);
+    gen_kernels_recursive(node->rhs, dfunctions, gen_mem_accesses,curr_kernel);
 }
 
 static void
@@ -6445,11 +6357,7 @@ gen_kernels(const ASTNode* node, char** dfunctions,
 {
   	traverse(node, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
 	int curr_kernel = 0;
-	gen_kernels_dfunc_info dfunc_info = get_gen_kernels_dfunc_info();
-	gen_kernels_recursive(node,dfunctions,gen_mem_accesses,&curr_kernel,&dfunc_info);
-	free_gen_kernels_dfunc_info(&dfunc_info);
-	free(mem_accesses_sdefinitions);
-	mem_accesses_sdefinitions = NULL;
+	gen_kernels_recursive(node,dfunctions,gen_mem_accesses,&curr_kernel);
   	symboltable_reset();
 }
 
@@ -7090,7 +6998,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   for (size_t i = 0; i < s_info.user_structs.size; ++i)
   {
-	  fprintf_filename("to_str_funcs.h","static std::string to_str(const %s value)\n"
+	  fprintf_filename("to_str_funcs.h","std::string to_str(const %s value)\n"
 		       "{\n"
 		       "std::string res = \"{\";"
 		       "std::string tmp;\n"
@@ -7110,7 +7018,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 	  );
 	  const char* dsl_type = to_dsl_type(s_info.user_structs.data[i]);
 	  const char* res = dsl_type ? dsl_type : s_info.user_structs.data[i];
-	  fprintf_filename("to_str_funcs.h","template <>\n inline std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], res);
+	  fprintf_filename("to_str_funcs.h","template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], res);
   }
 
 
@@ -7734,20 +7642,9 @@ transform_arrays_to_std_arrays_in_func(ASTNode* node)
 	  astnode_sprintf(tspec->lhs,"%s>",tspec->lhs->buffer);
 	}
         free_node_vec(&dims);
-        //TP: strip every dimension from the declarator, not only the outermost one.
-        //    All sizes are now emitted by output_specifier from the AcArray type.
-        ASTNode* acc = node->rhs->lhs;
-        acc->infix   = NULL;
-        acc->postfix = NULL;
-        acc->rhs     = NULL;
-        acc = acc->lhs;
-        while(acc && (acc->type & NODE_ARRAY_ACCESS))
-        {
-                acc->infix   = NULL;
-                acc->postfix = NULL;
-                acc->rhs     = NULL;
-                acc = acc->lhs;
-        }
+        node->rhs->lhs->infix = NULL;
+        node->rhs->lhs->postfix= NULL;
+        node->rhs->lhs->rhs = NULL;
         //remove unneeded braces if assignment
         if(node->parent->type & NODE_ASSIGNMENT && node->parent->rhs)
                 node->parent->rhs->prefix = NULL;
@@ -8129,51 +8026,43 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 	}
 	return res;
 }
-static void
-get_constexpr_info_funcs(ASTNode* node, node_vec* dst)
+bool
+gen_constexpr_info_base(ASTNode* node, const bool gen_mem_accesses)
 {
-	if(node->type & NODE_GLOBAL) return;
+	bool res = false;
+	if(node->type & NODE_GLOBAL)
+		return res;
 	if(node->type & NODE_FUNCTION)
 	{
-		push_node(dst,node);
-		return;
+		struct hashmap_s assignments;
+  		const unsigned initial_size = 2000;
+  		hashmap_create(initial_size, &assignments);
+		count_num_of_assignments(node,&assignments);
+		string_vec tmp = VEC_INITIALIZER;
+		res |= gen_constexpr_in_func(node,gen_mem_accesses,&assignments,(gen_constexpr_params){false,NULL},&tmp);
+  		hashmap_destroy(&assignments);
+		set_identifiers_constexpr(node,tmp);
+		free_str_vec(&tmp);
 	}
-	if(node->lhs) get_constexpr_info_funcs(node->lhs,dst);
-	if(node->rhs) get_constexpr_info_funcs(node->rhs,dst);
+	else
+	{
+		if(node->lhs)
+			res |= gen_constexpr_info_base(node->lhs,gen_mem_accesses);
+		if(node->rhs)
+			res |= gen_constexpr_info_base(node->rhs,gen_mem_accesses);
+	}
+	return res;
 }
 
 void
 gen_constexpr_info(ASTNode* root, const bool gen_mem_accesses)
 {
-	//TP: same as calling gen_constexpr_info_base until nothing changes but the functions and their assignment counts
-	//    are collected only once, since the iterations only change the constexpr info and not the assignments
-	node_vec funcs = VEC_INITIALIZER;
-	get_constexpr_info_funcs(root,&funcs);
-	struct hashmap_s* assignments = (struct hashmap_s*)malloc(sizeof(struct hashmap_s)*(funcs.size+1));
-	for(size_t i = 0; i < funcs.size; ++i)
-	{
-  		const unsigned initial_size = 2000;
-  		hashmap_create(initial_size, &assignments[i]);
-		count_num_of_assignments(funcs.data[i],&assignments[i]);
-	}
 	bool has_changed = true;
 	while(has_changed) 
 	{
-		has_changed = false;
-		for(size_t i = 0; i < funcs.size; ++i)
-		{
-			ASTNode* func = (ASTNode*)funcs.data[i];
-			string_vec tmp = VEC_INITIALIZER;
-			has_changed |= gen_constexpr_in_func(func,gen_mem_accesses,&assignments[i],(gen_constexpr_params){false,NULL},&tmp);
-			//TP: nothing to do if no new constexpr variables, skips walking the whole function
-			if(tmp.size) set_identifiers_constexpr(func,tmp);
-			free_str_vec(&tmp);
-		}
+		has_changed = gen_constexpr_info_base(root,gen_mem_accesses);
 	}
-	for(size_t i = 0; i < funcs.size; ++i)
-  		hashmap_destroy(&assignments[i]);
-	free(assignments);
-	free_node_vec(&funcs);
+
 }
 
 bool
@@ -8194,30 +8083,17 @@ gen_declared_type_info(ASTNode* node)
 	res |=  node -> expr_type != NULL;
 	return res;
 }
-//TP: all_typed returns whether all primary expressions and function calls in the subtree had a type at the end of processing it.
-//    Types are not removed during the pass so a subtree that was fully typed stays fully typed,
-//    which avoids rechecking the whole subtree for every expression node (quadratic in the depth of the tree).
-//    If the subtree was not fully typed it is rechecked since processing the rest of the tree can give types to it.
-static bool
-gen_local_type_info_base(ASTNode* node, bool* all_typed)
+bool
+gen_local_type_info(ASTNode* node)
 {
 	bool res = false;
 	if(node->type & NODE_GLOBAL)
-	{
-		*all_typed = all_primary_expressions_and_func_calls_have_type(node);
 		return res;
-	}
-	bool lhs_typed = true;
-	bool rhs_typed = true;
 	if(node->lhs)
-		res |= gen_local_type_info_base(node->lhs,&lhs_typed);
+		res |= gen_local_type_info(node->lhs);
 	if(node->rhs)
-		res |= gen_local_type_info_base(node->rhs,&rhs_typed);
-	if(node->expr_type)
-	{
-		*all_typed = lhs_typed && rhs_typed;
-		return res;
-	}
+		res |= gen_local_type_info(node->rhs);
+	if(node->expr_type) return res;
 	if(is_return_node(node))
 	{
 		const char* expr_type = get_expr_type(node->rhs);
@@ -8238,23 +8114,14 @@ gen_local_type_info_base(ASTNode* node, bool* all_typed)
 	}
 	if(node->type & (NODE_PRIMARY_EXPRESSION | NODE_FUNCTION_CALL) ||
 		(node->type & NODE_DECLARATION && get_node(NODE_TSPEC,node)) ||
-		(node->type & NODE_EXPRESSION && primary_expression_or_func_call_has_type(node)
-		 && (lhs_typed || all_primary_expressions_and_func_calls_have_type(node->lhs))
-		 && (rhs_typed || all_primary_expressions_and_func_calls_have_type(node->rhs))) ||
+		(node->type & NODE_EXPRESSION && all_primary_expressions_and_func_calls_have_type(node)) ||
 		(node->type & NODE_ASSIGNMENT && node->rhs && get_parent_node(NODE_FUNCTION,node) &&  !get_node(NODE_MEMBER_ID,node->lhs))
 		|| (node->token == IN_RANGE)
 		|| (node->token == CAST)
 	)
 		get_expr_type(node);
 	res |=  node -> expr_type != NULL;
-	*all_typed = lhs_typed && rhs_typed && primary_expression_or_func_call_has_type(node);
 	return res;
-}
-bool
-gen_local_type_info(ASTNode* node)
-{
-	bool all_typed;
-	return gen_local_type_info_base(node,&all_typed);
 }
 bool
 flow_type_info_in_func(ASTNode* node, struct hashmap_s* types, const struct hashmap_s* func_return_types, const char* in_func_name, const char** ptr_table, int* index)
@@ -9976,60 +9843,8 @@ get_used_vars(const ASTNode* node, string_vec* dst)
         get_used_vars_base(node,dst,false,NULL);
 }
 
-//TP: set of (interned) string pointers, used instead of linear str_vec_contains searches in hot loops
-typedef struct
-{
-	const char** slots;
-	size_t capacity; //power of two
-	size_t size;
-} ptr_set;
-
-static inline size_t
-ptr_set_slot(const ptr_set* set, const char* ptr)
-{
-	return (size_t)(((uintptr_t)ptr >> 3) * 11400714819323198485ull) & (set->capacity-1);
-}
-
-static bool
-ptr_set_contains(const ptr_set* set, const char* ptr)
-{
-	if(!set->capacity) return false;
-	for(size_t i = ptr_set_slot(set,ptr);; i = (i+1) & (set->capacity-1))
-	{
-		if(set->slots[i] == ptr) return true;
-		if(!set->slots[i]) return false;
-	}
-}
-
-static void
-ptr_set_add(ptr_set* set, const char* ptr)
-{
-	if(!ptr || ptr_set_contains(set,ptr)) return;
-	if(2*(set->size+1) > set->capacity)
-	{
-		ptr_set old = *set;
-		set->capacity = old.capacity ? 2*old.capacity : 64;
-		set->slots = (const char**)calloc(set->capacity,sizeof(char*));
-		set->size = 0;
-		for(size_t i = 0; i < old.capacity; ++i)
-			if(old.slots[i]) ptr_set_add(set,old.slots[i]);
-		free(old.slots);
-	}
-	size_t i = ptr_set_slot(set,ptr);
-	while(set->slots[i]) i = (i+1) & (set->capacity-1);
-	set->slots[i] = ptr;
-	++set->size;
-}
-
-static void
-ptr_set_free(ptr_set* set)
-{
-	free(set->slots);
-	*set = (ptr_set){NULL,0,0};
-}
-
 bool
-remove_dead_assignments(ASTNode* node, const ptr_set* vars_used)
+remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 {
 	bool res = false;
 	if(node->lhs)
@@ -10053,7 +9868,7 @@ remove_dead_assignments(ASTNode* node, const ptr_set* vars_used)
 	//if(strstr(expr_type,"*")) return;
 	if(strstr(var,"AC_INTERNAL_gmem_")) return res;
 	if(calls_non_pure_returning_func(node->rhs)) return res;
-	if(!ptr_set_contains(vars_used,var))
+	if(!str_vec_contains(vars_used,var))
 	{
 		node->lhs = NULL;
 		node->rhs = NULL;
@@ -10064,7 +9879,7 @@ remove_dead_assignments(ASTNode* node, const ptr_set* vars_used)
 	return res;
 }
 bool
-remove_dead_declarations(ASTNode* node, const ptr_set* vars_used)
+remove_dead_declarations(ASTNode* node, const string_vec vars_used)
 {
 	bool res = false;
 	if(node->lhs)
@@ -10078,7 +9893,7 @@ remove_dead_declarations(ASTNode* node, const ptr_set* vars_used)
 	if(!(node->type & NODE_DECLARATION)) return res;
 	if(node->parent->token != VARIABLE_DECLARATION) return res;
 	const char* var = get_node_by_token(IDENTIFIER,node)->buffer;
-	if(!ptr_set_contains(vars_used,var))
+	if(!str_vec_contains(vars_used,var))
 	{
 		node->lhs = NULL;
 		node->rhs = NULL;
@@ -10114,17 +9929,12 @@ remove_dead_writes_base(ASTNode* node)
           add_all_variables(node->rhs->lhs,&vars_used);
         }
 
-	ptr_set vars_used_set = {NULL,0,0};
-	size_t num_added = 0;
 	for(int i = (int)statements.size-1; i >= 0; --i)
 	{
 		get_used_vars(statements.data[i],&vars_used);
-		for(; num_added < vars_used.size; ++num_added) ptr_set_add(&vars_used_set,vars_used.data[num_added]);
-		res |= remove_dead_assignments((ASTNode*)statements.data[i],&vars_used_set);
+		res |= remove_dead_assignments((ASTNode*)statements.data[i],vars_used);
 	}
-	for(; num_added < vars_used.size; ++num_added) ptr_set_add(&vars_used_set,vars_used.data[num_added]);
-	res |= remove_dead_declarations(node,&vars_used_set);
-	ptr_set_free(&vars_used_set);
+	res |= remove_dead_declarations(node,vars_used);
 	free_str_vec(&vars_used);
 	free_node_vec(&statements);
 	return res;
@@ -11239,7 +11049,7 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
   char build_cmd[4096];
   const int block_size = gen_mem_accesses ? 1 : 4;
   snprintf(build_cmd, 4096,
-           "%s " ACC_HELPER_COMPILE_FLAGS " -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
+           "%s -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-Wfloat-conversion -Wshadow -I. -I %s %s -lm "
@@ -11880,46 +11690,12 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 }
 
 
-//TP: the kernels include the non-scalar constants once per kernel, which is needed for the actual kernels.
-//The analysis kernels are compiled only for the CPU so there the includes can be done once at the top,
-//which makes compiling the analysis much faster since the headers are not parsed once per kernel
-static void
-write_analysis_kernels(const char* src, const char* dst)
-{
-  const char* hoisted_includes[] = {
-	  "#include \"kernel_user_non_scalar_constants.h\"",
-	  "#include \"kernel_user_builtin_non_scalar_constants.h\"",
-  };
-  const size_t num_hoisted_includes = sizeof(hoisted_includes)/sizeof(hoisted_includes[0]);
-  FILE* in  = fopen(src,"r");
-  FILE* out = fopen(dst,"w");
-  if(!in || !out) fatal("Could not open %s or %s\n",src,dst);
-  for(size_t i = 0; i < num_hoisted_includes; ++i) fprintf(out,"%s\n",hoisted_includes[i]);
-  char* line = NULL;
-  size_t line_capacity = 0;
-  ssize_t line_len;
-  while((line_len = getline(&line,&line_capacity,in)) != -1)
-  {
-	  const char* start = line;
-	  while(*start == ' ' || *start == '\t') ++start;
-	  size_t len = line_len - (start-line);
-	  while(len > 0 && isspace((unsigned char)start[len-1])) --len;
-	  bool is_hoisted = false;
-	  for(size_t i = 0; i < num_hoisted_includes; ++i)
-		  is_hoisted |= (len == strlen(hoisted_includes[i]) && !strncmp(start,hoisted_includes[i],len));
-	  if(!is_hoisted) fputs(line,out);
-  }
-  free(line);
-  fclose(in);
-  fclose(out);
-}
-
 void
 compile_helper(const bool log)
 {
   format_source("user_kernels.h.raw","user_kernels.h");
   copy_file("user_kernels.h","user_kernels_backup.h");
-  write_analysis_kernels("user_kernels.h","user_analysis_kernels.h");
+  copy_file("user_kernels.h","user_analysis_kernels.h");
   if(log)
   {
   	printf("Compiling %s...\n", STENCILACC_SRC);
@@ -11933,7 +11709,7 @@ compile_helper(const bool log)
   }
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "%s " ACC_HELPER_COMPILE_FLAGS " -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
+  sprintf(cmd, "%s -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
   ,get_compiler(true),api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );
