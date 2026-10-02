@@ -198,7 +198,9 @@ elseif (NOT CPU_BUILD AND (USE_HIP OR HIP_FOUND))
     message(STATUS "HIP found")
     enable_language(HIP)
 
-    if (${HIP_VERSION} VERSION_LESS "10.0.0")
+    if (${HIP_VERSION} VERSION_LESS "10.0.0" AND
+        NOT (${HIP_VERSION} VERSION_GREATER "6.2.99" AND ${HIP_VERSION} VERSION_LESS "6.4")
+    )
         add_compile_options($<$<COMPILE_LANGUAGE:HIP>:--offload-new-driver>)
     endif()
 
