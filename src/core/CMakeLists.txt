@@ -132,9 +132,12 @@ add_library(astaroth_core
     $<TARGET_OBJECTS:astaroth_core_obj>
 )
 
-set_target_properties(astaroth_core PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+set_target_properties(
+    astaroth_core
+    PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+)
+target_needs_device_side_linking(astaroth_core)
 target_link_libraries(
     astaroth_core
     PUBLIC

@@ -13,8 +13,8 @@ set_target_properties(
 	astaroth_utils
 	PROPERTIES
 		POSITION_INDEPENDENT_CODE ON
-		CUDA_RESOLVE_DEVICE_SYMBOLS ON
 )
+target_needs_device_side_linking(astaroth_utils)
 target_link_libraries(
 	astaroth_utils
 	PUBLIC

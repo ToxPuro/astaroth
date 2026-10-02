@@ -47,9 +47,9 @@ else()
 		kernels_obj
 		PROPERTIES
 			POSITION_INDEPENDENT_CODE ON
-			CUDA_SEPARABLE_COMPILATION ON
-			CUDA_RESOLVE_DEVICE_SYMBOLS ON
 	)
+	target_needs_separable_compilation(kernels_obj)
+	target_needs_device_side_linking(kernels_obj)
 	if (NOT USE_HIP AND CPU_BUILD)
           target_compile_options(kernels_obj PRIVATE
              $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
@@ -138,8 +138,8 @@ set_target_properties(
 	static_kernels
 	PROPERTIES
 		POSITION_INDEPENDENT_CODE ON
-		CUDA_RESOLVE_DEVICE_SYMBOLS ON
 )
+target_needs_device_side_linking(static_kernels)
 
 if (USE_HIP)
     set_property(TARGET static_kernels PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
