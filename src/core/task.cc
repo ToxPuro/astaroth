@@ -1115,9 +1115,19 @@ taskgraph_resources_end_graph()
 	ERRCHK_ALWAYS(!taskgraph_resources.building.empty());
 	taskgraph_resources.building.pop_back();
 }
+cudaStream_t
+create_high_priority_stream(Device device)
+{
+  cudaStream_t stream;
+  set_device(device);
+  int low_prio, high_prio;
+  acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+  acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+  return stream;
+}
 
 cudaStream_t
-get_stream(Device device)
+acquire_stream(Device device)
 {
 	//TP: using only the default stream saves memory which is useful on
 	//    low-level hardware test environments
@@ -1130,12 +1140,7 @@ get_stream(Device device)
 	auto& scope = pool.building.back();
 	if(scope.streams_in_use == pool.streams.size())
 	{
-		cudaStream_t stream;
-		set_device(device);
-	        int low_prio, high_prio;
-	        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-	        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-		pool.streams.push_back(stream);
+		pool.streams.push_back(create_high_priority_stream(device));
 	}
 	return pool.streams[scope.streams_in_use++];
 }
@@ -1235,7 +1240,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 		   op.outputs_out, op.num_outputs_out},max_facet_class,op.red_black_state),
            op, device_, swap_offset_)
 {
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     auto& input_region = input_regions[0];
     const auto dimension_inactive = ac_get_info()[AC_dimension_inactive];
     if(kernel_only_writes_profile(PROFILE_X,op.analysis_info))
@@ -1324,7 +1329,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, std::vector<Region> in
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     (void)fields_already_depend_on_boundaries;
-    stream = get_stream(device);
+    stream = acquire_stream(device);
 
     syncVBA();
 
@@ -1347,7 +1352,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     (void)fields_already_depend_on_boundaries;
-    stream = get_stream(device);
+    stream = acquire_stream(device);
 
     syncVBA();
 
@@ -1857,7 +1862,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
     auto& input_region = input_regions[0];
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done creating CUDA stream\n");
 
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: syncing VBA\n");
@@ -2352,7 +2357,7 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
     }
     // Create stream for packing/unpacking
     (void)grid_info;
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     nprocs = get_nprocs(op.ray_direction);
 }
 
@@ -2538,7 +2543,7 @@ MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, co
     }
     // Create stream for packing/unpacking
     (void)grid_info;
-    stream = get_stream(device);
+    stream = acquire_stream(device);
 }
 
 MPIScanTask::~MPIScanTask()
@@ -2660,7 +2665,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
            Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_)
 {
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     ERRCHK_ALWAYS(!(op.num_profiles_in  == 0 && op.num_outputs_in  == 0));
     ERRCHK_ALWAYS(!(op.num_profiles_reduce_out == 0 && op.num_outputs_out == 0));
     ERRCHK_ALWAYS(op.num_profiles_reduce_out == op.num_profiles_in);
@@ -3125,7 +3130,7 @@ BoundaryConditionTask::BoundaryConditionTask(
        fieldwise(op.fieldwise)
 {
     // Create stream for boundary condition task
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     syncVBA();
 
 
