@@ -200,9 +200,9 @@ if(NOT RUNTIME_COMPILATION)
 		acc-runtime-driver
 		PROPERTIES
 			POSITION_INDEPENDENT_CODE ON
-			CUDA_SEPARABLE_COMPILATION ON
-			CUDA_RESOLVE_DEVICE_SYMBOLS ON
 	)
+	target_needs_separable_compilation(acc-runtime-driver)
+	target_needs_device_side_linking(acc-runtime-driver)
 	target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers astaroth_helpers)
 	target_include_directories(acc-runtime-driver 
 		PUBLIC

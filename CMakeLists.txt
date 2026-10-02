@@ -82,8 +82,23 @@ option(VERBOSE                     "Enables various status and warning messages"
 # In other words, we need the flag for ROCm <7.14 and need to stop using it
 # since version 10.0.0. The condition is handled after finding the HIP
 # dependency using find_package().
-add_compile_options($<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
-add_link_options($<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
+macro(target_needs_separable_compilation target)
+    target_compile_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
+    set_target_properties(
+        ${target}
+        PROPERTIES
+            CUDA_SEPARABLE_COMPILATION ON
+    )
+endmacro()
+
+macro(target_needs_device_side_linking target)
+    target_link_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
+    set_target_properties(
+        ${target}
+        PROPERTIES
+            CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    )
+endmacro()
 
 # -Werror TODO read
 if(NOT SUPPRESS_COMPILER_WARNINGS)
