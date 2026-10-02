@@ -33,7 +33,7 @@ acLibLoadLibrary(const AcMeshInfo* info, const char* lib_path, const char* lib_f
     char* original_lib_path = NULL;
     if (asprintf(&original_lib_path, "%s/runtime_build/%s/%s.%s",
                  info->runtime_compilation_build_path ? info->runtime_compilation_build_path
-                                                      : AC_BINARY_PATH,
+                                                      : astaroth_binary_path,
                  lib_path, lib_filename, lib_extension) == -1) {
         fprintf(stderr, "Fatal error while preparing path to library %s\n", lib_filename);
         exit(EXIT_FAILURE);
