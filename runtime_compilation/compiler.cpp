@@ -353,6 +353,38 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 	return AC_SUCCESS;
 }
 
+enum AcAffinity
+{
+	ALL,
+	ORIGINAL
+};
+
+
+void
+set_affinity(const AcAffinity affinity)
+{
+#if defined(__linux__)
+  static bool got_affinity = false;
+  static cpu_set_t original_affinity{};
+  if(affinity == ALL)
+  {
+   got_affinity = sched_getaffinity(0,sizeof(original_affinity),&original_affinity) == 0;
+   if(got_affinity)
+   {
+   	cpu_set_t all_cpus;
+   	CPU_ZERO(&all_cpus);
+   	for(int i = 0; i < CPU_SETSIZE; ++i) CPU_SET(i,&all_cpus);
+   	//TP: the kernel drops the CPUs not allowed by the cpuset of the job
+   	sched_setaffinity(0,sizeof(all_cpus),&all_cpus);
+   }
+  }
+  else if(affinity == ORIGINAL)
+  {
+    if(got_affinity) sched_setaffinity(0,sizeof(original_affinity),&original_affinity);
+  }
+#endif
+}
+
 AcResult
 acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
@@ -391,22 +423,9 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 		//    e.g. OpenMP with OMP_PROC_BIND set binds the initial thread to the first place,
 		//    the whole parallel build would be run on that single core.
 		//    Hence allow the compilation to use all CPUs available to the process and restore the affinity afterwards.
-#if defined(__linux__)
-		cpu_set_t original_affinity;
-		const bool got_affinity = sched_getaffinity(0,sizeof(original_affinity),&original_affinity) == 0;
-		if(got_affinity)
-		{
-			cpu_set_t all_cpus;
-			CPU_ZERO(&all_cpus);
-			for(int i = 0; i < CPU_SETSIZE; ++i) CPU_SET(i,&all_cpus);
-			//TP: the kernel drops the CPUs not allowed by the cpuset of the job
-			sched_setaffinity(0,sizeof(all_cpus),&all_cpus);
-		}
-#endif
+		set_affinity(ALL);
 		res = acCompileFromRootProc(user_cmake_options,target,mesh_info);
-#if defined(__linux__)
-		if(got_affinity) sched_setaffinity(0,sizeof(original_affinity),&original_affinity);
-#endif
+		set_affinity(ORIGINAL);
 	}
 #if AC_MPI_ENABLED
 	MPI_Barrier(mesh_info.comm->handle);
