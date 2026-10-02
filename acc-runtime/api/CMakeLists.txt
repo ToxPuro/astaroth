@@ -49,12 +49,30 @@ if (NOT DEFINED DSL_MODULE_DIR)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd_modular) # Default
 else()
     get_filename_component(
-        resolved_module_dir
+        module_dir_source
         "${DSL_MODULE_DIR}"
         REALPATH
         BASE_DIR ${CMAKE_SOURCE_DIR}
     )
-    set(DSL_MODULE_DIR ${resolved_module_dir})
+    get_filename_component(
+        module_dir_binary
+        "${DSL_MODULE_DIR}"
+        REALPATH
+        BASE_DIR ${CMAKE_BINARY_DIR}
+    )
+
+    foreach(module_dir IN ITEMS ${module_dir_source} ${module_dir_binary})
+        if (EXISTS "${module_dir}")
+            set(dsl_module_dir ${module_dir})
+            break()
+        endif()
+    endforeach()
+
+    if (NOT DEFINED dsl_module_dir OR NOT EXISTS "${dsl_module_dir}")
+        message(ERROR "The value of DSL_MODULE_DIR ${DSL_MODULE_DIR} does not lead to a valid directory")
+    endif()
+
+    set(DSL_MODULE_DIR "${dsl_module_dir}")
 endif()
 
 set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
