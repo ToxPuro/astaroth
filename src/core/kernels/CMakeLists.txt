@@ -34,7 +34,7 @@ target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers acc-runtime-headers)
 
 
 if (RUNTIME_COMPILATION)
-	add_library(static_kernels STATIC 
+	add_library(static_kernels OBJECT
     		$<TARGET_OBJECTS:ac_transpose>
     		$<TARGET_OBJECTS:ac_reindex>
 	)

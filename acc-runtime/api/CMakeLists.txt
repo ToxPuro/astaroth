@@ -224,7 +224,7 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
-    add_library(acc-runtime STATIC acc_runtime.cu)
+    add_library(acc-runtime OBJECT acc_runtime.cu)
     set_property(TARGET acc-runtime PROPERTY POSITION_INDEPENDENT_CODE ON)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
