@@ -32,7 +32,6 @@ acSupportsCooperativeLaunches();
 size_t acGetSizeFromDim(const int dim, const Volume dims);
 
 Volume acGetVolumeFromShape(const AcShape shape);
-int acMemUsage();
 
 size_t
 acGetAmountOfDeviceMemoryFree();
