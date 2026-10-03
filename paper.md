@@ -152,7 +152,7 @@ The directory `analysis/` contains `Python`-based data analysis tools, which can
 
 # Research impact statement
 
-`Astaroth` has already been used in a number of papers as the core PDE solver, mainly for astrophysical plasma simulations [@vaisala2021interaction; @vaisala2023exploring; @gent2026asymptotic], but also in seismology [@ladino2025acoustic].
+`Astaroth` has already been used in a number of papers as the core PDE solver, mainly for astrophysical plasma simulations [@vaisala_magneticphenomena_2017; @vaisala2021interaction; @vaisala2023exploring; @gent2026asymptotic], but also in seismology [@ladino2025acoustic].
 Additionally, it has been used for research on performance optimization methods [@pekkila_graphicsprocessors_2026;@pekkila2025stencil;@pekkila2017methods], communication techniques [@pekkila2022scalable;@lappi2021task], compiler techniques [@pekkila_masters_2019;@puro2023programmatic] and other topics [@yokelson2024soma; @puro2025gpu].
 We expect that the recent GPU-acceleration of `Pencil Code`, which was done by embedding `Astaroth`'s DSL and runtime system into it, will increase the number of `Astaroth` users.
 The associated speedup factor of 20-60 [@pekkila2022scalable] will enable more realistic astrophysical simulations in a wide range of use cases from modelling small-scale dynamos [@warnecke2025small] to processes producing primordial gravitational waves and their propagation [@roper2020numerical].
