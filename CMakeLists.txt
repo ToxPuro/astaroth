@@ -83,7 +83,7 @@ option(VERBOSE                     "Enables various status and warning messages"
 # since version 10.0.0. The condition is handled after finding the HIP
 # dependency using find_package().
 macro(target_needs_separable_compilation target)
-    target_compile_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
+    target_compile_options(${target} PUBLIC $<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
     set_target_properties(
         ${target}
         PROPERTIES
