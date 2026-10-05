@@ -95,8 +95,8 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "3d__caching__implementations_8h.html",
-"astaroth__base_8h.html#ac7f86c76a4d3ce7b11f00fcfdba809b8",
-"astaroth__helpers_8h.html#a574bc91b492a8d6794b4ef1264ac331f",
+"astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076",
+"astaroth__helpers_8h.html#a59a9a5f184a241bc841f69ca5d427c4c",
 "functions.html",
 "host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7",
 "structAcTaskDefinition.html#a8d04c74283d1aaabaafb84d7187a8cfc"

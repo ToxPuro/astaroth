@@ -423,7 +423,7 @@ var searchData=
   ['acmeasurementgatherfunc_420',['AcMeasurementGatherFunc',['../acc__runtime_8h.html#a6847c8ebb7b2d105a6342c92c78ef6bc',1,'acc_runtime.h']]],
   ['acmemcpypeerasync_421',['acMemcpyPeerAsync',['../astaroth__cuda__wrappers_8h.html#a594d11f3c0c9866138b9b63439f3c3fc',1,'astaroth_cuda_wrappers.h']]],
   ['acmemgetinfo_422',['acMemGetInfo',['../astaroth__cuda__wrappers_8h.html#a484c5fc425e6877e73b40dfb1f8d857d',1,'astaroth_cuda_wrappers.h']]],
-  ['acmemusage_423',['acMemUsage',['../ac__helpers_8h.html#a64e84b1d1aa3e9020bbdb51650876794',1,'ac_helpers.h']]],
+  ['acmemusage_423',['acMemUsage',['../astaroth__helpers_8h.html#a64e84b1d1aa3e9020bbdb51650876794',1,'astaroth_helpers.h']]],
   ['acmesh_424',['AcMesh',['../structAcMesh.html',1,'']]],
   ['acmeshdiffwrite_425',['acMeshDiffWrite',['../astaroth__utils_8h.html#adee35b3cec405a2d3c20e7a13bd8f2bf',1,'astaroth_utils.h']]],
   ['acmeshdiffwriteslicez_426',['acMeshDiffWriteSliceZ',['../astaroth__utils_8h.html#a12499b3b5ad72e1b8c859857e14d8f05',1,'astaroth_utils.h']]],

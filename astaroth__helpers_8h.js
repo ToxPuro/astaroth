@@ -41,6 +41,7 @@ var astaroth__helpers_8h =
     [ "acHostUpdateCompParams", "astaroth__helpers_8h.html#adba57979964a107aae4e813e5df95c22", null ],
     [ "acHostUpdateParams", "astaroth__helpers_8h.html#a59eb83a1da734a5f03bb0473347d0bcf", null ],
     [ "acLibraryVersion", "astaroth__helpers_8h.html#a166a68e7e170c1d1b732b3aac0123d9c", null ],
+    [ "acMemUsage", "astaroth__helpers_8h.html#a64e84b1d1aa3e9020bbdb51650876794", null ],
     [ "acQueryKernels", "astaroth__helpers_8h.html#a9f55994cf8b604a946cdc11b1b6b9f8d", null ],
     [ "acRand", "astaroth__helpers_8h.html#a2d80252d8d3b51db4b0c1be04eb151e9", null ],
     [ "acRandInt", "astaroth__helpers_8h.html#a9da0d03c53bb0bcc11182c46fb384fec", null ],

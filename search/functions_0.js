@@ -338,7 +338,7 @@ var searchData=
   ['acmapcrossreduce_335',['acMapCrossReduce',['../mapreduce_8cuh.html#a64a97f365d05c9ec522cfde183e969b3',1,'mapreduce.cuh']]],
   ['acmemcpypeerasync_336',['acMemcpyPeerAsync',['../astaroth__cuda__wrappers_8h.html#a594d11f3c0c9866138b9b63439f3c3fc',1,'astaroth_cuda_wrappers.h']]],
   ['acmemgetinfo_337',['acMemGetInfo',['../astaroth__cuda__wrappers_8h.html#a484c5fc425e6877e73b40dfb1f8d857d',1,'astaroth_cuda_wrappers.h']]],
-  ['acmemusage_338',['acMemUsage',['../ac__helpers_8h.html#a64e84b1d1aa3e9020bbdb51650876794',1,'ac_helpers.h']]],
+  ['acmemusage_338',['acMemUsage',['../astaroth__helpers_8h.html#a64e84b1d1aa3e9020bbdb51650876794',1,'astaroth_helpers.h']]],
   ['acmeshdiffwrite_339',['acMeshDiffWrite',['../astaroth__utils_8h.html#adee35b3cec405a2d3c20e7a13bd8f2bf',1,'astaroth_utils.h']]],
   ['acmeshdiffwriteslicez_340',['acMeshDiffWriteSliceZ',['../astaroth__utils_8h.html#a12499b3b5ad72e1b8c859857e14d8f05',1,'astaroth_utils.h']]],
   ['acmultiplyinplace_341',['acMultiplyInplace',['../common__kernels_8h.html#aba44b2648ee0895316f7ccd04cbe0a56',1,'common_kernels.h']]],
