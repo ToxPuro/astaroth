@@ -105,7 +105,7 @@ else()
 	target_include_directories(ac_fft PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
 	target_link_libraries(ac_fft PRIVATE ac_cuda_wrappers acc-runtime-headers)
 
-	add_library(static_kernels STATIC 
+	add_library(static_kernels OBJECT
     		$<TARGET_OBJECTS:kernels_obj>
     		$<TARGET_OBJECTS:ac_transpose>
     		$<TARGET_OBJECTS:ac_reindex>
