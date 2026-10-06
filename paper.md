@@ -91,7 +91,7 @@ Further productivity advances can be gained with domain-specialized frameworks, 
 `Astaroth` also belongs to this class of frameworks.
 Examples closest to `Astaroth` are `Parthenon` [@grete_parthenonperformance_2023] and `AMReX` [@zhang_amrexframework_2019].
 Both are frameworks for distributed adaptive mesh refinement (AMR), where `Parthenon` uses `Kokkos` as the compute backend and `AMReX` provides compute features with parallel function wrappers and user-written C\texttt{++} lambdas.
-In contrast to these projects, `Astaroth`'s distributed abstraction layer focuses on structured grid computations without mesh refinement, and can thus make simplifying assumptions about the underlying data-movement patterns to better address on-chip data movement, batching, and data-processing pipelines.
+In contrast to these projects, `Astaroth`'s distributed abstraction layer focuses on structured grid computations without mesh refinement, and can thus make simplifying assumptions about the underlying data-movement patterns to better address on-chip data movement, kernel fusion, and data-processing pipelines.
 Similar to `Parthenon` and others [@pearson_movementplacement_2021], `Astaroth` implements its version of topology-aware domain decomposition and rank reordering for improved portability across systems, and performs fused packing to alleviate communication overheads.
 Furthermore, Astaroth implements a task scheduler for compute and communication tasks [@lappi2021task].
 
