@@ -15,7 +15,7 @@
 #include <sched.h>
 #endif
 
-const size_t max_string_size = 20000;
+const size_t max_string_size = 400000;
 
 
 #if AC_MPI_ENABLED
@@ -136,7 +136,7 @@ file_exists(const char* filename)
 static void
 check_for_cmake()
 {
-   char cmd[2*10000];
+   static char cmd[402000];
    snprintf(cmd,max_string_size,"cmake --help > /dev/null");
    const int retval = system(cmd);
    if(retval)
@@ -172,9 +172,9 @@ static AcResult
 run_cmake(const char* user_cmake_options, const char* log_dst)
 {
   
-  char cmd[2*10000];
+  static char cmd[402000];
   const char* options = get_cmake_options(user_cmake_options);
-  snprintf(cmd,max_string_size,"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options);
+  snprintf(cmd,sizeof(cmd),"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options);
 #if AC_USE_HIP
 #else
   //TP: needed to ensure nvcc does not write under /tmp which on compute nodes does not have enough memory
@@ -214,13 +214,13 @@ static AcResult
 acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
 	acStoreRunConsts(mesh_info,"tmp_astaroth_run_consts.h");
-	char cmd[2*20000];
+	static char cmd[402000];
 	char cwd[5024];
 	if (getcwd(cwd, sizeof(cwd)) == NULL) {
 		fprintf(stderr,"Failed to get current working directory!\n");
 		exit(EXIT_FAILURE);
 	}
-	char log_buffer[20024];
+	static char log_buffer[402000];
 
 	if(mesh_info.runtime_compilation_log_dst == NULL)
 		snprintf(log_buffer,max_string_size,"%s","/dev/stderr");
@@ -241,10 +241,10 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 	snprintf(cmd,max_string_size,"echo %s | diff - %s",get_cmake_options(user_cmake_options),previous_cmake_options_path().c_str());
 	const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
 	const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
-	char logging_to_message[100000];
+	static char logging_to_message[402000];
 	if(mesh_info.runtime_compilation_skip_autotuning)
 	{
-		char autotune_csv_filename[20004];
+		static char autotune_csv_filename[402000];
 		snprintf(autotune_csv_filename,max_string_size, "%s/acc-runtime/api/autotune.csv",runtime_astaroth_build_path().c_str());
 		if(file_exists(autotune_csv_filename))
 		{
@@ -337,7 +337,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 	}
 	if(mesh_info.runtime_compilation_skip_autotuning)
 	{
-		char autotune_csv_filename[100000];
+		static char autotune_csv_filename[402000];
 		snprintf(autotune_csv_filename,max_string_size, "autotune.csv");
 		if(file_exists(autotune_csv_filename))
 		{
