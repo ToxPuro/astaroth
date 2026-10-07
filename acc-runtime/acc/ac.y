@@ -26,6 +26,10 @@
 extern struct hashmap_s string_intern_hashmap;
 extern const char* binary_op_val;
 
+//Id counter for Ast. 
+//Declared here to make all compilation objects share a common counter.
+int id_counter = 0;
+
 const char* INT_STR = NULL;
 const char* TEN_STR = NULL;
 const char* EXTERN_STR = NULL;
