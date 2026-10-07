@@ -184,7 +184,8 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 		res->rhs= astnode_dup(node->rhs,res);
 	return res;
 }
-static int id_counter = 0;
+//Declared in ac.y
+extern int id_counter;
 
 
 static inline void
