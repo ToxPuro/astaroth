@@ -59,46 +59,55 @@ else()
 	ac_link_mpi(kernels_obj)
 	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
 
+	add_library(ac_fft OBJECT)
 	if(FFT_ENABLED)
 		if(CPU_BUILD)
-			add_library(ac_fft OBJECT kissfft/kiss_fft.c kissfft/kiss_fftnd.c cpufft.cc)
+			target_sources(
+				ac_fft
+				PRIVATE
+				kissfft/kiss_fft.c
+				kissfft/kiss_fftnd.c
+				cpufft.cc
+			)
 			if(DOUBLE_PRECISION)
 				target_compile_definitions(ac_fft PUBLIC kiss_fft_scalar=double)
 			endif()
 		else()
 			if(USE_HIP)
-	   			        find_package(rocfft REQUIRED)
+				find_package(rocfft REQUIRED)
+				target_link_libraries(ac_fft PUBLIC roc::rocfft)
+			else()
+				target_link_libraries(ac_fft PUBLIC CUDA::cufft)
 			endif()
+
 			if(USE_HEFFTE)
-					add_library(ac_fft OBJECT heffte.cc)
-					if(DEFINED ENV{HEFFTE_DIR})
-					  target_include_directories(ac_fft PRIVATE
-						  "$ENV{HEFFTE_DIR}/include"
-						  "$ENV{HEFFTE_DIR}/build/include"
-					  )
-					  target_link_directories(ac_fft PUBLIC 
-						  "$ENV{HEFFTE_DIR}/build"
-					  )
-					endif()
-					if(USE_HIP)
-						target_link_libraries(ac_fft PRIVATE heffte roc::rocfft)
-					else()
-						target_link_libraries(ac_fft PRIVATE heffte CUDA::cufft)
-					endif()
+				target_sources(ac_fft PRIVATE heffte.cc)
+				if(DEFINED ENV{HEFFTE_DIR})
+					target_include_directories(
+						ac_fft
+						PRIVATE
+						"$ENV{HEFFTE_DIR}/include"
+						"$ENV{HEFFTE_DIR}/build/include"
+					)
+					target_link_directories(
+						ac_fft
+						PUBLIC
+						"$ENV{HEFFTE_DIR}/build"
+					)
+				endif()
+				target_link_libraries(ac_fft PUBLIC heffte)
 			else()
 				if(USE_HIP)
-					add_library(ac_fft OBJECT rocfft.cc)
-	   			        target_link_libraries(ac_fft PUBLIC roc::rocfft)
+					target_sources(ac_fft PRIVATE rocfft.cc)
 				        #TP: there could a cleaner way to do this put to enable debuging now on LUMI explicitly include
 				        target_include_directories(ac_fft PUBLIC /opt/rocm/include/rocfft)
 				else()
-					add_library(ac_fft OBJECT cufft.cc)
-	    				target_link_libraries(ac_fft PUBLIC CUDA::cufft)
+					target_sources(ac_fft PRIVATE cufft.cc)
 				endif()
 			endif()
 		endif()
 	else()
-		add_library(ac_fft OBJECT nofft.cc)
+		target_sources(ac_fft PRIVATE nofft.cc)
 	endif()
 	set_property(TARGET ac_fft PROPERTY POSITION_INDEPENDENT_CODE ON)
 	ac_link_mpi(ac_fft)
