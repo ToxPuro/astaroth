@@ -7328,35 +7328,61 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   fclose(fp);
 }
 
-
 static void
-gen_user_kernels(const char* out, const bool analysis_kernels)
+gen_user_kernels(const bool analysis_kernels)
 {
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
-  const char* default_param_list = "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
+  const char* default_param_list = "(const int3 start, const int3 end, DeviceVertexBufferArray vba)";
   const char* kernel_name_prefix = analysis_kernels
                                        ? KERNEL_NAME_PREFIX_ANALYSIS
                                        : KERNEL_NAME_PREFIX_DEFAULT;
+  const char* kernels_filename   = analysis_kernels
+                                       ? "user_analysis_kernel_declarations"
+                                       : "user_kernel_declarations";
 
-  FILE* fp_dec = fopen(out, "a");
+  AccSource* user_kernel_declarations = acc_sources_manager_get_source(
+      acc_sources_manager_singleton(), kernels_filename,
+      ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+
   for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
-    if (symbol_table[i].tspecifier == KERNEL_STR) {
-      fprintf(fp_dec, "static void __global__ %s_%s %s);\n", kernel_name_prefix,
-              symbol_table[i].identifier, default_param_list);
-    }
+    if (symbol_table[i].tspecifier != KERNEL_STR)
+      continue;
+
+    AccSourceFunction* func = acc_source_get_function(
+        user_kernel_declarations, 0, "%s_%s", kernel_name_prefix,
+        symbol_table[i].identifier);
+    acc_source_function_set_qualifiers(func, "void __global__");
+    acc_source_function_set_params(func, default_param_list);
   }
 
-  fprintf(fp_dec, "static const Kernel kernels[] = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].tspecifier == KERNEL_STR)
-    {
-      fprintf(fp_dec, "%s_%s,", kernel_name_prefix, symbol_table[i].identifier);
-    }
-  fprintf(fp_dec, "};");
+  // Using asprintf which allocates a new string on every call is a little too
+  // costly. At the same time it seems to be the better option than to use
+  // a fixed sized buffer on the stack. It would be faster but could potentially
+  // overflow and the code was generally more difficult to read.
+  char *kernels_arr_impl = NULL;
+  asprintf(&kernels_arr_impl, "static const Kernel kernels[] = {\n");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].tspecifier != KERNEL_STR)
+      continue;
 
-  fclose(fp_dec);
+    char *impl_prev = kernels_arr_impl;
+    asprintf(&kernels_arr_impl, "%s  %s_%s,\n", impl_prev, kernel_name_prefix, symbol_table[i].identifier);
+    free(impl_prev);
+  }
 
+  char *impl_prev = kernels_arr_impl;
+  asprintf(&kernels_arr_impl, "%s};", impl_prev);
+  free(impl_prev);
+
+  acc_source_add_declaration(user_kernel_declarations,
+                             ACC_SRC_DECL_UNMANAGED | ACC_SRC_DECL_PUBLIC |
+                                 ACC_SRC_DECL_EPILOGUE,
+                             kernels_arr_impl);
+
+  acc_source_flush(user_kernel_declarations);
+
+  free(kernels_arr_impl);
   // Astaroth 2.0 backwards compatibility END
 }
 
@@ -10803,8 +10829,8 @@ gen_output_files(ASTNode* root)
   gen_user_defines(root, "user_defines.h");
   gen_kernel_structs(root);
   stencilgen(root);
-  gen_user_kernels("user_kernel_declarations.h",false);
-  gen_user_kernels("user_analysis_kernel_declarations.h",true);
+  gen_user_kernels(false);
+  gen_user_kernels(true);
   FILE *fp = fopen("user_typedefs.h","a");
   fprintf(fp,"typedef enum{\n");
   string_vec datatypes = get_all_datatypes();
@@ -11722,8 +11748,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   generate_error_messages();
 
-  // Generate user_kernels.h
-  fprintf(stream, "#pragma once\n");
+  // Generate user_kernels.cu
+  fprintf(stream, "#include \"user_kernel.h\"\n\n");
 
   generate_fields_info(root);
   symboltable_reset();
@@ -11830,9 +11856,11 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 void
 compile_helper(const bool log)
 {
-  format_source("user_kernels.h.raw","user_kernels.h");
-  copy_file("user_kernels.h","user_kernels_backup.h");
-  copy_file("user_kernels.h","user_analysis_kernels.h");
+  format_source("user_kernels.cu.raw","user_kernels.cu");
+  copy_file("user_kernels.cu","user_kernels_backup.cu");
+  copy_file("user_kernels.cu","user_analysis_kernels.cpp");
+  acc_sources_manager_flush(acc_sources_manager_singleton());
+
   if(log)
   {
   	printf("Compiling %s...\n", STENCILACC_SRC);
@@ -11895,8 +11923,8 @@ get_executed_nodes(const int round)
 {
 	compile_helper(false);
 	char dst[4096];
-	sprintf(dst,"user_kernels_round_%d.h",round);
-  	format_source("user_kernels.h",dst);
+	sprintf(dst,"user_kernels_round_%d.cu",round);
+  	format_source("user_kernels.cu",dst);
   	FILE* proc = popen("./" STENCILACC_EXEC " -C", "r");
   	assert(proc);
 	check_status(pclose(proc));
