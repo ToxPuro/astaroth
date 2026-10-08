@@ -54,20 +54,20 @@ In recent years, GPUs have become the primary compute platform for data-parallel
 `Astaroth` is a GPU framework for stencil computations that has been developed to address this problem of scalable scientific computing.
 `Astaroth` provides its own domain-specific language (DSL), in which researchers can express such computations without having to focus on technical implementation details.
 It can run efficiently in both CUDA- and HIP-based environments, and for testing purposes on CPUs.
-While stencils are the core of `Astaroth`, it also accelerates other operations like reductions (e.g. sums), simple ray-tracing, and integrates with libraries performing GPU-accelerated Fourier transforms, all of which are important for simulations on structured grids.
+While stencils are the core of `Astaroth`, it also accelerates other operations like reductions (e.g., sums) and simple ray-tracing, and it integrates with libraries performing GPU-accelerated Fourier transforms, all of which are important for simulations on structured grids.
 `Astaroth` is optimized for multiphysics use cases and has primarily been used for turbulent astrophysical plasma simulations.
 
 # Statement of need
 
 Due to the ubiquity and expense of stencil computations, a common library for implementing them
 efficiently on GPUs is needed, more so because high-performance codes require portability across
-different computing platforms. Such a library is both needed for accelerating existing codes and writing new ones.
+different computing platforms. Such a library is needed both for accelerating existing codes and for writing new ones.
 Thus, its API has to enable good integration with existing code and easy development of new code.
 
-`Astaroth` strives to be this library, by creating abstractions of common stencil structures and operations in its domain-specific language (DSL)[^sample_footnote], 
+`Astaroth` strives to be this library, by creating abstractions of common stencil structures and operations in its DSL[^sample_footnote], 
 which enables researchers in different domains to write their stencil computations in a compact and clear way. 
 These abstractions allows `Astaroth` to provide the needed execution platform for different application cases, 
-predominantly for partial differential equation (PDE) solvers, but also for image processing and numerical linear algebra.
+predominantly for PDE solvers, but also for image processing and numerical linear algebra.
 
 In particular, multiphysics simulations include computationally challenging stencil calculations due to the need to
 hold values of many fields in working memory at the same time. Accelerating them was the original need
@@ -80,7 +80,7 @@ Several approaches have been proposed to improve the performance, portability, a
 Single-process approaches include DSLs, e.g., `Halide` [@ragan2013halide], `PolyMage` [@mullapudi2015polymage], `Delite` [@sujeeth_delitecompiler_2014], and `Lift` [@steuwer_liftfunctional_2017], and general parallel processing abstractions, e.g., `Kokkos` [@trott2021kokkos] and `RAJA` [@beckingsale2019raja].
 The primary benefit of a DSL is that assumptions about the structure of computations can be made to improve the performance of the generated code while maintaining a high-level representation for the user.
 Performance-portability is typically augmented with automated tuning and algorithm selection (e.g., `PATUS` [@christen_patuscode_2011], `PARTANS` [@lutz_partansautotuning_2013]).
-These approaches are also adopted in `Astaroth`, which introduces a DSL, a code generator, and implements automated thread block size optimizations.
+These approaches are also adopted in `Astaroth`, which introduces a DSL and a code generator, and implements automated thread block size optimizations.
 A distinctive feature of Astaroth is its algorithmic specialization for cache-constrained use cases in multiphysics, where the working set required to update interdependent physical fields is too large to fit into on-chip caches.
 This is addressed by reordering the computations into stages of higher and lower cache reuse, thereby enabling better utilization of on-chip caches [@pekkila2025stencil].
 `Astaroth` not only considers stencils in isolation, but also their combinations with other operations inside the same kernel, such as distributed reductions.
@@ -110,14 +110,14 @@ Below, we present a quick overview of these components. Extensive documentation 
 The main operations, such as stencils, are written in a declarative syntax, and the kernels that use them are written in an imperative syntax.[^paradigm_footnote]
 Their implementation is left to `Astaroth`'s DSL compiler `acc`, which applies a number of specialized optimizations.
 An especially important one is the unrolled and reordered computation of all required stencils at the start of the kernels, which enables instruction-level parallelism and efficient usage of caches [@pekkila_graphicsprocessors_2026].
-In addition to stencils, the DSL supports two other operations: 1) multi-GPU reductions -- which are commonly needed for stencil-based solvers; and 2) simplified distributed ray-tracing for simulations incorporating  radiative transfer [@heinemann2006radiative], with the restriction that the rays keep their directions and move only through neighbouring grid points.
-`Astaroth`'s DSL also includes a standard library, providing, among others: derivative operators used in PDE solvers, implemented for arbitrarily spaced Cartesian, spherical or cylindrical grids; and Poisson solvers, e.g. for self-gravity [@krasnopolsky2026iterative].
+In addition to stencils, the DSL supports two other operations: 1) multi-GPU reductions, which are commonly needed for stencil-based solvers; and 2) simplified distributed ray-tracing for simulations incorporating  radiative transfer [@heinemann2006radiative], with the restriction that the rays keep their directions and move only through neighboring grid points.
+`Astaroth`'s DSL also includes a standard library, providing, among others: derivative operators used in PDE solvers, implemented for arbitrarily spaced Cartesian, spherical or cylindrical grids; and Poisson solvers, e.g., for self-gravity [@krasnopolsky2026iterative].
 
 `acc` transpiles the DSL source into CUDA or HIP source code, which is further compiled into machine code using a native CUDA or HIP compiler.
 The program thus produced is executed in the `acc` runtime system, which further optimizes the kernels by autotuning the thread block sizes for kernel execution.
 `acc` also supports run-time compilation, because run-time configuration parameters may change the evaluation of conditional statements, thereby changing the branches taken at run-time.
 With run-time compilation, `acc` compiles for a given configuration only those parts of the DSL source that will be executed.
-Information about which code is executed also allows `Astaroth` to optimize run-time behaviour more precisely, e.g. memory allocations or communication patterns.
+Information about which code is executed also allows `Astaroth` to optimize run-time behaviour more precisely, e.g., memory allocations or communication patterns.
 
 ## Multi-GPU runtime system and API
 
@@ -142,8 +142,8 @@ Other special functionality is also provided through the API, such as distribute
 
 `Astaroth` also includes a standalone finite-difference PDE solver [@pekkila2022scalable], which takes full advantage of the DSL and the multi-GPU API, and can be extented to new simulation models. The solver scales to thousands of GPUs with a weak-scaling efficiency greater than 90% [@pekkila_graphicsprocessors_2026] and also works as a testbed for performance research.
 
-The solver uses an astrophysical magnetohydrodynamical setup (`acc-runtime/samples/mhd_modular`) by default, but can be configured to run any DSL code.
-The samples directory also includes other production-ready setups, e.g. `tfm-mpi` for the test-field method [@pekkila_graphicsprocessors_2026].
+The solver uses `acc-runtime/samples/mhd_modular`, an astrophysical magnetohydrodynamical setup, by default, but can be configured to run any DSL code.
+The samples directory also includes other production-ready setups, e.g., `tfm-mpi` for the test-field method [@pekkila_graphicsprocessors_2026].
 
 The solver handles distributed initial conditions, domain decomposition, simulation diagnostics, and logging.
 It is also designed to react to a number of events, such as NaNs in the simulation data, simulation time limits, and a stop signal given through the file system.
