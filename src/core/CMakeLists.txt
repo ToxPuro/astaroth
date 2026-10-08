@@ -123,28 +123,33 @@ if(NOT RUNTIME_COMPILATION)
 endif()
 
 if(RUNTIME_COMPILATION)
-  add_library(astaroth_core
-      $<TARGET_OBJECTS:acc_runtime_compiler>
-      $<TARGET_OBJECTS:ac_decomposition>
-      $<TARGET_OBJECTS:ac_update_params>
-      $<TARGET_OBJECTS:ac_cuda_wrappers>
-      $<TARGET_OBJECTS:astaroth_helpers>
-      $<TARGET_OBJECTS:astaroth_core_obj>
-  )
+    add_library(astaroth_core
+        $<TARGET_OBJECTS:acc_runtime_compiler>
+        $<TARGET_OBJECTS:ac_decomposition>
+        $<TARGET_OBJECTS:ac_update_params>
+        $<TARGET_OBJECTS:ac_cuda_wrappers>
+        $<TARGET_OBJECTS:astaroth_helpers>
+        $<TARGET_OBJECTS:astaroth_core_obj>
+    )
 else()
-  add_library(astaroth_core
-      $<TARGET_OBJECTS:acc_runtime_compiler>
-      $<TARGET_OBJECTS:ac_decomposition>
-      $<TARGET_OBJECTS:ac_update_params>
-      $<TARGET_OBJECTS:ac_cuda_wrappers>
-      $<TARGET_OBJECTS:astaroth_helpers>
-      $<TARGET_OBJECTS:astaroth_core_obj>
-      $<TARGET_OBJECTS:kernels_obj>
-      $<TARGET_OBJECTS:ac_transpose>
-      $<TARGET_OBJECTS:ac_reindex>
-      $<TARGET_OBJECTS:acc-runtime-driver>
-  )
-  target_link_options(astaroth_core PRIVATE -Wl,-Bsymbolic) 
+    add_library(astaroth_core
+        $<TARGET_OBJECTS:acc_runtime_compiler>
+        $<TARGET_OBJECTS:ac_decomposition>
+        $<TARGET_OBJECTS:ac_update_params>
+        $<TARGET_OBJECTS:ac_cuda_wrappers>
+        $<TARGET_OBJECTS:astaroth_helpers>
+        $<TARGET_OBJECTS:astaroth_core_obj>
+        $<TARGET_OBJECTS:kernels_obj>
+        $<TARGET_OBJECTS:ac_transpose>
+        $<TARGET_OBJECTS:ac_reindex>
+        $<TARGET_OBJECTS:acc-runtime-driver>
+    )
+
+    check_linker_flag(C "LINKER:-Bsymbolic" C_HAVE_B_SYMBOLIC)
+    check_linker_flag(CXX "LINKER:-Bsymbolic" CXX_HAVE_B_SYMBOLIC)
+    if (C_HAVE_B_SYMBOLIC AND CXX_HAVE_B_SYMBOLIC)
+        target_link_options(astaroth_core PRIVATE "LINKER:-Bsymbolic")
+    endif()
 endif()
 
 set_target_properties(

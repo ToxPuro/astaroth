@@ -28,6 +28,10 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+# Global CMake modules
+include(CheckLinkerFlag)
+include(FetchContent)
+
 ## Options
 option(2D                          "Compile Astaroth for 2D simulation" OFF)
 option(BUILD_ACM                   "Whether to build to the Astaroth Communication Module (ACM)." OFF)
@@ -231,8 +235,6 @@ if(CPU_BUILD)
 else()
     add_definitions(-DAC_CPU_BUILD=0)
 endif()
-
-include(FetchContent)
 
 ## Global flags
 if (USE_HIP)
