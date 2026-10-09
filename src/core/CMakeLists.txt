@@ -128,10 +128,9 @@ if(RUNTIME_COMPILATION)
         $<TARGET_OBJECTS:ac_decomposition>
         $<TARGET_OBJECTS:ac_update_params>
         $<TARGET_OBJECTS:ac_cuda_wrappers>
-        $<TARGET_OBJECTS:ac_reindex>
-        $<TARGET_OBJECTS:ac_transpose>
         $<TARGET_OBJECTS:astaroth_helpers>
         $<TARGET_OBJECTS:astaroth_core_obj>
+        $<TARGET_OBJECTS:astaroth_kernels>
     )
 else()
     add_library(astaroth_core
@@ -141,9 +140,7 @@ else()
         $<TARGET_OBJECTS:ac_cuda_wrappers>
         $<TARGET_OBJECTS:astaroth_helpers>
         $<TARGET_OBJECTS:astaroth_core_obj>
-        $<TARGET_OBJECTS:kernels_obj>
-        $<TARGET_OBJECTS:ac_reindex>
-        $<TARGET_OBJECTS:ac_transpose>
+        $<TARGET_OBJECTS:astaroth_kernels>
         $<TARGET_OBJECTS:acc-runtime-driver>
     )
 
@@ -167,11 +164,11 @@ target_link_libraries(
         dl
 )
 if(NOT RUNTIME_COMPILATION)
-target_link_libraries(
-    astaroth_core
-    PUBLIC
-    ac_fft
-)
+    target_link_libraries(
+        astaroth_core
+        PUBLIC
+        $<BUILD_LOCAL_INTERFACE:astaroth_kernels>
+    )
 endif()
 ac_link_mpi(astaroth_core)
 target_include_directories(astaroth_core

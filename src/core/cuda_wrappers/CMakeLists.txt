@@ -9,3 +9,11 @@ set_property(TARGET ac_cuda_wrappers PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(ac_cuda_wrappers PRIVATE acc-runtime-headers)
 target_include_directories(ac_cuda_wrappers PRIVATE ${AC_BASE_PATH}/include)
 target_include_directories(ac_cuda_wrappers PRIVATE ${AC_BASE_PATH}/acc-runtime/api)
+
+install(TARGETS
+    ac_cuda_wrappers
+    EXPORT AstarothTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
