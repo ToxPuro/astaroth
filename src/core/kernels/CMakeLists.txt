@@ -7,165 +7,147 @@ else ()
 endif ()
 
 if (USE_HIP)
-    set_source_files_properties(kernels.cu transpose.cu reductions.cu reindex.cu PROPERTIES LANGUAGE HIP)
+	set_source_files_properties(
+		kernels.cu
+		reductions.cu
+		reindex.cu
+		transpose.cu
+		PROPERTIES
+			LANGUAGE HIP
+	)
 endif()
  
 if (CPU_BUILD)
-	set_source_files_properties(kernels.cu reductions.cu reindex.cu PROPERTIES LANGUAGE CXX)
+	set_source_files_properties(
+		kernels.cu
+		reductions.cu
+		reindex.cu
+		PROPERTIES
+			LANGUAGE CXX
+	)
 endif()
+
+add_library(
+	astaroth_kernels
+	OBJECT
+	$<TARGET_OBJECTS:ac_cuda_wrappers>
+	$<TARGET_OBJECTS:astaroth_helpers>
+	reindex.cu
+)
+
+set_target_properties(
+	astaroth_kernels
+	PROPERTIES
+	POSITION_INDEPENDENT_CODE ON
+)
+target_needs_separable_compilation(astaroth_kernels)
+target_needs_device_side_linking(astaroth_kernels)
+
+if (NOT CPU_BUILD)
+	if (USE_HIP)
+		set_target_properties(
+			astaroth_kernels
+			PROPERTIES
+			HIP_ARCHITECTURES "${CMAKE_HIP_ARCHITECTURES}"
+		)
+	else()
+		set_target_properties(
+			astaroth_kernels
+			PROPERTIES
+			CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
+		)
+	endif()
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	target_compile_definitions(astaroth_kernels PRIVATE -DACC_ARRAY_BOUND_CHECKS=1)
+else()
+	target_compile_definitions(astaroth_kernels PRIVATE -DACC_ARRAY_BOUND_CHECKS=0)
+endif()
+
+target_include_directories(
+	astaroth_kernels
+	PRIVATE
+	${AC_BASE_PATH}/acc-runtime/api
+	${AC_BASE_PATH}/include
+	${AC_BASE_PATH}/src/core/kernels
+	${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(astaroth_kernels PRIVATE ac_cuda_wrappers acc-runtime-headers)
+ac_link_mpi(astaroth_kernels)
 
 if(CPU_BUILD)
-	add_library(ac_transpose OBJECT transpose.cc)
+	target_sources(astaroth_kernels PRIVATE transpose.cc)
 else()
-	add_library(ac_transpose OBJECT transpose.cu)
+	target_sources(astaroth_kernels PRIVATE transpose.cu)
 endif()
-ac_link_mpi(ac_transpose)
-
-add_library(ac_reindex OBJECT reindex.cu)
-set_property(TARGET ac_reindex PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(ac_reindex PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-target_link_libraries(ac_reindex PRIVATE ac_cuda_wrappers acc-runtime-headers)
-
-set_property(TARGET ac_transpose PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-target_include_directories(ac_transpose PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers acc-runtime-headers)
-
-
 
 if (RUNTIME_COMPILATION)
-	add_library(static_kernels OBJECT
-    		$<TARGET_OBJECTS:ac_transpose>
-    		$<TARGET_OBJECTS:ac_reindex>
-	)
-	#TP: kernels lib not needed anymore
-	#add_library(kernels empty.cc)
-	#target_link_libraries(kernels PUBLIC static_kernels)
+	target_link_libraries(astaroth_kernels PRIVATE acc-runtime-driver)
 else()
-	add_library(kernels_obj OBJECT kernels.cu reductions.cu)
-	set_target_properties(
-		kernels_obj
-		PROPERTIES
-			POSITION_INDEPENDENT_CODE ON
+	target_sources(
+		astaroth_kernels
+		PRIVATE
+		kernels.cu
+		reductions.cu
 	)
-	target_needs_separable_compilation(kernels_obj)
-	target_needs_device_side_linking(kernels_obj)
-	if (NOT USE_HIP AND CPU_BUILD)
-          target_compile_options(kernels_obj PRIVATE
-             $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
-           )
-        endif()
-	target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
-	ac_link_mpi(kernels_obj)
-	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
 
-	add_library(ac_fft OBJECT)
+	if (NOT USE_HIP AND CPU_BUILD)
+		target_compile_options(
+			astaroth_kernels
+			PRIVATE
+			$<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
+		)
+        endif()
+
 	if(FFT_ENABLED)
 		if(CPU_BUILD)
 			target_sources(
-				ac_fft
+				astaroth_kernels
 				PRIVATE
 				kissfft/kiss_fft.c
 				kissfft/kiss_fftnd.c
 				cpufft.cc
 			)
 			if(DOUBLE_PRECISION)
-				target_compile_definitions(ac_fft PUBLIC kiss_fft_scalar=double)
+				target_compile_definitions(astaroth_kernels PUBLIC kiss_fft_scalar=double)
 			endif()
 		else()
 			if(USE_HIP)
 				find_package(rocfft REQUIRED)
-				target_link_libraries(ac_fft PUBLIC roc::rocfft)
+				target_link_libraries(astaroth_kernels PUBLIC roc::rocfft)
 			else()
-				target_link_libraries(ac_fft PUBLIC CUDA::cufft)
+				target_link_libraries(astaroth_kernels PUBLIC CUDA::cufft)
 			endif()
 
 			if(USE_HEFFTE)
-				target_sources(ac_fft PRIVATE heffte.cc)
+				target_sources(astaroth_kernels PRIVATE heffte.cc)
 				if(DEFINED ENV{HEFFTE_DIR})
 					target_include_directories(
-						ac_fft
+						astaroth_kernels
 						PRIVATE
 						"$ENV{HEFFTE_DIR}/include"
 						"$ENV{HEFFTE_DIR}/build/include"
 					)
 					target_link_directories(
-						ac_fft
+						astaroth_kernels
 						PUBLIC
 						"$ENV{HEFFTE_DIR}/build"
 					)
 				endif()
-				target_link_libraries(ac_fft PUBLIC heffte)
+				target_link_libraries(astaroth_kernels PUBLIC heffte)
 			else()
 				if(USE_HIP)
-					target_sources(ac_fft PRIVATE rocfft.cc)
+					target_sources(astaroth_kernels PRIVATE rocfft.cc)
 				        #TP: there could a cleaner way to do this put to enable debuging now on LUMI explicitly include
-				        target_include_directories(ac_fft PUBLIC /opt/rocm/include/rocfft)
+				        target_include_directories(astaroth_kernels PUBLIC /opt/rocm/include/rocfft)
 				else()
-					target_sources(ac_fft PRIVATE cufft.cc)
+					target_sources(astaroth_kernels PRIVATE cufft.cc)
 				endif()
 			endif()
 		endif()
 	else()
-		target_sources(ac_fft PRIVATE nofft.cc)
+		target_sources(astaroth_kernels PRIVATE nofft.cc)
 	endif()
-	set_property(TARGET ac_fft PROPERTY POSITION_INDEPENDENT_CODE ON)
-	ac_link_mpi(ac_fft)
-	target_include_directories(ac_fft PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-	target_link_libraries(ac_fft PRIVATE ac_cuda_wrappers acc-runtime-headers)
-
-	add_library(static_kernels OBJECT
-    		$<TARGET_OBJECTS:kernels_obj>
-    		$<TARGET_OBJECTS:ac_transpose>
-    		$<TARGET_OBJECTS:ac_reindex>
-    		$<TARGET_OBJECTS:acc-runtime-driver>
-    		$<TARGET_OBJECTS:ac_cuda_wrappers>
-    		$<TARGET_OBJECTS:astaroth_helpers>
-	)
-	#TP: kernels lib not used anymore
-	#add_library(kernels 
-    	#	$<TARGET_OBJECTS:kernels_obj>
-    	#	$<TARGET_OBJECTS:ac_transpose>
-    	#	$<TARGET_OBJECTS:ac_reindex>
-    	#	$<TARGET_OBJECTS:acc-runtime-driver>
-    	#	$<TARGET_OBJECTS:ac_cuda_wrappers>
-    	#	$<TARGET_OBJECTS:astaroth_helpers>
-	#)
-	#TP: this is important if kernels and astaroth_core are an .so to get the correct linking flags
-	#target_link_libraries(kernels PUBLIC ac_fft)
-	target_link_libraries(static_kernels PUBLIC ac_fft)
-        install(TARGETS
-            ac_fft
-            EXPORT AstarothTargets
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib
-            RUNTIME DESTINATION bin
-         )
 endif()
-
-set_target_properties(
-	static_kernels
-	PROPERTIES
-		POSITION_INDEPENDENT_CODE ON
-)
-target_needs_device_side_linking(static_kernels)
-
-if (USE_HIP)
-    set_property(TARGET static_kernels PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
-else()
-    set_property(TARGET static_kernels PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
-endif()
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	target_compile_definitions(static_kernels PRIVATE -DACC_ARRAY_BOUND_CHECKS=1)
-else()
-	target_compile_definitions(static_kernels PRIVATE -DACC_ARRAY_BOUND_CHECKS=0)
-endif()
-install(TARGETS
-    ac_cuda_wrappers
-    static_kernels
-    EXPORT AstarothTargets
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-)
