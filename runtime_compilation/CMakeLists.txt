@@ -15,7 +15,7 @@ else()
         BASE_DIR ${CMAKE_BINARY_DIR}
     )
 
-    foreach(module_dir IN ITEMS ${module_dir_source} ${module_dir_binary})
+    foreach(module_dir IN ITEMS ${module_dir_binary} ${module_dir_source})
         if (EXISTS "${module_dir}")
             set(dsl_module_dir ${module_dir})
             break()
