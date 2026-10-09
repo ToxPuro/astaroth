@@ -128,6 +128,8 @@ if(RUNTIME_COMPILATION)
         $<TARGET_OBJECTS:ac_decomposition>
         $<TARGET_OBJECTS:ac_update_params>
         $<TARGET_OBJECTS:ac_cuda_wrappers>
+        $<TARGET_OBJECTS:ac_reindex>
+        $<TARGET_OBJECTS:ac_transpose>
         $<TARGET_OBJECTS:astaroth_helpers>
         $<TARGET_OBJECTS:astaroth_core_obj>
     )
@@ -140,8 +142,8 @@ else()
         $<TARGET_OBJECTS:astaroth_helpers>
         $<TARGET_OBJECTS:astaroth_core_obj>
         $<TARGET_OBJECTS:kernels_obj>
-        $<TARGET_OBJECTS:ac_transpose>
         $<TARGET_OBJECTS:ac_reindex>
+        $<TARGET_OBJECTS:ac_transpose>
         $<TARGET_OBJECTS:acc-runtime-driver>
     )
 
