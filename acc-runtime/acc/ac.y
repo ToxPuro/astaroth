@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <hash.h>
-#include <libgen.h>  // dirname
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
@@ -974,16 +973,11 @@ main(int argc, char** argv)
     RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-2]),"1"); 
     READ_OVERRIDES          = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-3]),"1"); 
     ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-4]),"1"); 
+    const char* dir         = argc == 2 ? false : argv[argc-5];
 
-
-    if(argc == 2 || argc == 6)
+    if(argc == 2 || argc == 7)
     {
 	file = argv[1];
-    }
-    else if(argc > 6)
-    {
-	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[argc-5])));
-	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[argc-5]);
     }
     else {
         puts("Usage: ./acc [source file]");
@@ -1000,7 +994,6 @@ main(int argc, char** argv)
     strcpy(stage0, file);
     const char* stage1 = "user_kernels.ac.pp_stage1";
     const char* stage2 = "user_kernels.ac.pp_stage2";
-    const char* dir = dirname(file); // WARNING: dirname has side effects!
     dir_backup = dir;
     
     reset_extra_files();
