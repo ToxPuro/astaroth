@@ -262,6 +262,10 @@ is_called(const ASTNode* node)
 
 
 #define STENCILGEN_HEADER "stencilgen.h"
+//Opt-in: pair the symmetric points of linear stencils in the generated kernels (see stencilgen.c), changes rounding
+#ifndef PAIR_SYMMETRIC_STENCILS
+#define PAIR_SYMMETRIC_STENCILS 0
+#endif
 #define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
 #define STENCILACC_SRC AC_BASE_PATH "/src/core/stencil_accesses.cpp"
@@ -271,6 +275,10 @@ is_called(const ASTNode* node)
 //    Hence always compile them with the fastest compilation options, independent of the defaults of the used compiler (wrapper):
 //    e.g. -O1 makes the compilation of stencilgen.c take ~20min instead of ~7s
 #define ACC_HELPER_COMPILE_FLAGS "-O0 -g0 -pipe"
+//TP: how stencilgen emits the stencil weights, see printf_stencil_point in stencilgen.c
+#ifndef AC_STENCIL_INLINE_WEIGHTS
+#define AC_STENCIL_INLINE_WEIGHTS 0
+#endif
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
 #define INCL_DIR ACC_DIR "/../../include"
 //
@@ -11482,6 +11490,8 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
 	   "-DXBLOCK_SIZE=%d "
 	   "-DYBLOCK_SIZE=%d "
 	   "-DZBLOCK_SIZE=%d "
+	   "-DAC_STENCIL_INLINE_WEIGHTS=%d "
+	   "-DAC_PAIR_SYMMETRIC_STENCILS=%d "
            "-o %s",
            get_compiler(false),IMPLEMENTATION, MAX_THREADS_PER_BLOCK, 
 	   ACC_RUNTIME_API_DIR,
@@ -11489,6 +11499,8 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
 	   BUFFERED_REDUCTIONS,
 	   AC_CPU_BUILD | gen_mem_accesses,
 	   block_size,block_size,block_size,
+	   AC_STENCIL_INLINE_WEIGHTS,
+	   PAIR_SYMMETRIC_STENCILS,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);

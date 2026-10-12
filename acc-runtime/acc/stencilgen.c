@@ -2471,17 +2471,235 @@ max(const uint64_t a, const uint64_t b)
 {
   return a > b ? a : b;
 }
+// How the stencil weights are emitted into the generated kernels.
+// Set at acc build time with the CMake cache variable AC_STENCIL_INLINE_WEIGHTS (passed on by acc when it compiles this file):
+//   0 (default): every weight is loaded from the `stencils` array uploaded at runtime (acLoadStencil)
+//   1:           weights whose expression does not contain DCONST are inlined, the rest are loaded
+//   2:           all weights are inlined, also those containing DCONST (with runtime compilation the run_consts are
+//                compile-time constants so the weights fold into immediates). Weights that are exactly zero are skipped
+//                for sum-stencils.
+// Weights that are exactly "1" are never multiplied.
+// NOTE: with 1 and 2 the kernels ignore the inlined weights' values in the `stencils` array,
+//       i.e. custom stencils uploaded with acDeviceLoadStencil(s)/acLoadStencil(s) have no effect for them.
+#ifndef AC_STENCIL_INLINE_WEIGHTS
+#define AC_STENCIL_INLINE_WEIGHTS 0
+#endif
+
+static bool
+stencil_coeff_is_zero(const char* coeff)
+{
+	if(!coeff) return true;
+	char* end = NULL;
+	const double val = strtod(coeff,&end);
+	if(end == coeff) return false;
+	while(*end == ' ') ++end;
+	return *end == '\0' && val == 0.0;
+}
+
+static bool
+stencil_point_skippable_zero(const int stencil, const int depth, const int height, const int width)
+{
+	if(AC_STENCIL_INLINE_WEIGHTS != 2) return false;
+	if(strcmp(stencil_binary_ops[stencil],"sum")) return false;
+	if(!stencil_coeff_is_zero(stencils[stencil][depth][height][width])) return false;
+	//TP: keep at least one point so that the stencil variable gets declared
+	for (int d = 0; d < STENCIL_DEPTH; ++d)
+	  for (int h = 0; h < STENCIL_HEIGHT; ++h)
+	    for (int w = 0; w < STENCIL_WIDTH; ++w)
+		if(!stencil_coeff_is_zero(stencils[stencil][d][h][w])) return true;
+	return false;
+}
+
+static bool
+stencil_point_emitted(const int stencil, const int depth, const int height, const int width)
+{
+	return stencils[stencil][depth][height][width] != NULL && !stencil_point_skippable_zero(stencil,depth,height,width);
+}
+
 void
 printf_stencil_point(const int stencil, const int depth, const int height, const int width)
 {
-	const bool no_load = false;
 	const char* coeff = stencils[stencil][depth][height][width];
 	if(!strcmp(coeff,"1")) return;
-	if(!strstr(coeff,"DCONST") && no_load)
-	    printf("%s *",coeff);
+	const bool inline_weight = AC_STENCIL_INLINE_WEIGHTS == 2 ||
+	                           (AC_STENCIL_INLINE_WEIGHTS == 1 && !strstr(coeff,"DCONST"));
+	if(inline_weight)
+	    printf("(%s) *",coeff);
 	else
 	    printf("stencils[%d][%d][%d][%d] *",stencil,depth,height,width);
 }
+// Opt-in (cmake -DPAIR_SYMMETRIC_STENCILS=ON): for linear stencils (binary op `sum`, unary op `val`)
+// combine the points p and -p whose weights are equal or exact negatives of each other into
+// w*(f[p] + f[-p]) or w*(f[p] - f[-p]), and skip points whose weight is exactly zero.
+// Halves the number of multiplies (and weight loads) of the symmetric/antisymmetric derivative stencils
+// but changes the rounding, which is why it is not on by default.
+#ifndef AC_PAIR_SYMMETRIC_STENCILS
+#define AC_PAIR_SYMMETRIC_STENCILS 0
+#endif
+
+// The expression the weight is computed from at runtime (coeffs.h is generated from dynamic_coeffs)
+static const char*
+stencil_coeff_str(const int stencil, const int depth, const int height, const int width)
+{
+	const char* dyn = dynamic_coeffs[stencil][depth][height][width];
+	return dyn ? dyn : stencils[stencil][depth][height][width];
+}
+
+static bool
+is_linear_sum_stencil(const int stencil)
+{
+	return !strcmp(stencil_binary_ops[stencil], "sum") && !strcmp(stencil_unary_ops[stencil], "val");
+}
+
+static bool
+is_ident_char(const char c)
+{
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '.';
+}
+
+// True if `s` (of length n) is a pure chain of factors combined with '*' and '/' at the top level,
+// where each factor is an identifier/number/function call/parenthesized expression, optionally
+// preceded by a unary sign directly after a '*' or '/'.
+// For such an expression X, the C expression -X evaluates to (-f0)*f1/f2... which in IEEE arithmetic is
+// bitwise -(f0*f1/f2...), i.e. the weights "X" and "-X" are exact negatives of each other.
+static bool
+is_product_chain(const char* s, const size_t n)
+{
+	if (n == 0) return false;
+	int paren_depth = 0;
+	char prev = 0; // previous non-space char at depth 0
+	for (size_t i = 0; i < n; ++i) {
+		const char c = s[i];
+		if (c == '(') { ++paren_depth; continue; }
+		if (c == ')') { if (--paren_depth < 0) return false; prev = ')'; continue; }
+		if (paren_depth > 0) continue;
+		if (c == ' ' || c == '\t') continue;
+		if (is_ident_char(c) || c == '*' || c == '/') { prev = c; continue; }
+		if ((c == '-' || c == '+') && (prev == '*' || prev == '/')) { prev = 0; continue; }
+		return false;
+	}
+	return paren_depth == 0 && prev != '*' && prev != '/';
+}
+
+// True if `a` is "-X" or "-(X)" with X == b and b a product chain, i.e. a == -b bitwise at runtime
+static bool
+is_exact_negation_of(const char* a, const char* b)
+{
+	if (a[0] != '-') return false;
+	const size_t na = strlen(a);
+	const size_t nb = strlen(b);
+	// "-(X)" is always exactly -(X)
+	if (na == nb + 3 && a[1] == '(' && a[na - 1] == ')' && !strncmp(a + 2, b, nb)) return true;
+	// "-X" parses as (-f0)*f1/... which is exactly -(f0*f1/...) only if X is a product chain
+	return is_product_chain(b, nb) && !strcmp(a + 1, b);
+}
+
+// True if the expression s[0..n) is certainly exactly zero: a zero literal, or a product chain
+// in which a numerator factor is exactly zero (e.g. "0", "AcReal(0.0)", "AC_inv_ds.x*(AcReal(0.)/AcReal(6.))")
+static bool
+is_zero_expr(const char* s, size_t n)
+{
+	while (n && (*s == ' ' || *s == '\t')) { ++s; --n; }
+	while (n && (s[n - 1] == ' ' || s[n - 1] == '\t')) --n;
+	while (n && (*s == '-' || *s == '+')) { ++s; --n; }
+	if (n == 0) return false;
+	// Whole expression wrapped in parentheses or in a cast AcReal(...)
+	const char* wrappers[] = {"(", "AcReal("};
+	for (size_t i = 0; i < sizeof(wrappers) / sizeof(wrappers[0]); ++i) {
+		const size_t nw = strlen(wrappers[i]);
+		if (n > nw && !strncmp(s, wrappers[i], nw) && s[n - 1] == ')') {
+			// make sure the opening paren matches the final one
+			int depth = 0;
+			size_t j = nw - 1;
+			for (; j < n; ++j) {
+				if (s[j] == '(') ++depth;
+				else if (s[j] == ')' && --depth == 0) break;
+			}
+			if (j == n - 1) return is_zero_expr(s + nw, n - nw - 1);
+		}
+	}
+	if (!is_product_chain(s, n)) return false;
+	// Split at top-level '*' and '/' and check the factors not in a denominator
+	int depth = 0;
+	size_t start = 0;
+	bool denominator = false;
+	bool has_operator = false;
+	for (size_t i = 0; i <= n; ++i) {
+		const char c = i < n ? s[i] : 0;
+		if (c == '(') ++depth;
+		else if (c == ')') --depth;
+		if (depth == 0 && (c == '*' || c == '/' || i == n)) {
+			if (i < n) has_operator = true;
+			if (!denominator && i > start && (has_operator || i < n)) {
+				if (is_zero_expr(s + start, i - start)) return true;
+			}
+			denominator = (c == '/');
+			start = i + 1;
+		}
+	}
+	if (has_operator) return false;
+	// A single literal
+	char buf[64];
+	if (n >= sizeof(buf)) return false;
+	memcpy(buf, s, n);
+	buf[n] = 0;
+	char* end = NULL;
+	const double val = strtod(buf, &end);
+	while (end && (*end == 'f' || *end == 'F' || *end == 'l' || *end == 'L')) ++end;
+	return end && end != buf && *end == 0 && val == 0.0;
+}
+
+static bool
+is_zero_stencil_point(const int stencil, const int depth, const int height, const int width)
+{
+	if (!AC_PAIR_SYMMETRIC_STENCILS) return false;
+	// 0*f contributes nothing to a sum (for finite f)
+	if (strcmp(stencil_binary_ops[stencil], "sum")) return false;
+	if (!stencils[stencil][depth][height][width]) return false;
+	const char* coeff = stencil_coeff_str(stencil, depth, height, width);
+	return is_zero_expr(coeff, strlen(coeff));
+}
+
+typedef struct {
+	int kind; // 0: no pair, 1: equal weights (w*(f[p]+f[m])), -1: negated weights (w*(f[p]-f[m]))
+	int depth, height, width; // the mirrored point m
+	bool first; // whether p is visited before m in the (depth,height,width) loop order
+} StencilPair;
+
+static StencilPair
+get_stencil_pair(const int stencil, const int depth, const int height, const int width)
+{
+	StencilPair res = {0, 0, 0, 0, false};
+	if (!AC_PAIR_SYMMETRIC_STENCILS) return res;
+	if (!is_linear_sum_stencil(stencil)) return res;
+	const int md = STENCIL_ORDER - depth;
+	const int mh = STENCIL_ORDER - height;
+	const int mw = STENCIL_ORDER - width;
+	if (md < 0 || md >= STENCIL_DEPTH || mh < 0 || mh >= STENCIL_HEIGHT || mw < 0 || mw >= STENCIL_WIDTH) return res;
+	if (md == depth && mh == height && mw == width) return res;
+	if (!stencils[stencil][depth][height][width] || !stencils[stencil][md][mh][mw]) return res;
+	if (is_zero_stencil_point(stencil, depth, height, width) || is_zero_stencil_point(stencil, md, mh, mw)) return res;
+	// Require both the analysis strings and the runtime strings to agree
+	const char* a  = stencils[stencil][depth][height][width];
+	const char* b  = stencils[stencil][md][mh][mw];
+	const char* ra = stencil_coeff_str(stencil, depth, height, width);
+	const char* rb = stencil_coeff_str(stencil, md, mh, mw);
+	if (!strcmp(a, b) && !strcmp(ra, rb))
+		res.kind = 1;
+	else if ((is_exact_negation_of(a, b) || is_exact_negation_of(b, a)) &&
+	         (is_exact_negation_of(ra, rb) || is_exact_negation_of(rb, ra)))
+		res.kind = -1;
+	else
+		return res;
+	res.depth  = md;
+	res.height = mh;
+	res.width  = mw;
+	const int lin_p = (depth * STENCIL_HEIGHT + height) * STENCIL_WIDTH + width;
+	const int lin_m = (md * STENCIL_HEIGHT + mh) * STENCIL_WIDTH + mw;
+	res.first = lin_p < lin_m;
+	return res;
+}
+
 void
 printf_stencil_read(const int curr_kernel, const int original_field, const int width, const int height, const int depth)
 {
@@ -2633,7 +2851,12 @@ gen_kernel_body(const int curr_kernel)
                   if (!(stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL))
                     continue;
 		  const int original_field = get_original_index(field_remappings,field);
-                  if (stencils[stencil][depth][height][width]) {
+                  if (stencil_point_emitted(stencil,depth,height,width)) {
+                    // AC_PAIR_SYMMETRIC_STENCILS: zero weights contribute nothing to a sum
+                    if (is_zero_stencil_point(stencil,depth,height,width)) continue;
+                    // AC_PAIR_SYMMETRIC_STENCILS: the mirrored point -p is accumulated together with p
+                    const StencilPair pair = get_stencil_pair(stencil,depth,height,width);
+                    if (pair.kind && !pair.first) continue;
                     if (!stencil_initialized[field][stencil]) {
                       printf("auto f%s_s%s = ", field_names[original_field], stencil_names[stencil]);
 		    }
@@ -2644,10 +2867,19 @@ gen_kernel_body(const int curr_kernel)
                              stencil_names[stencil]);
 		    }
 		    printf_stencil_point(stencil,depth,height,width);
-                    printf("%s(", stencil_unary_ops[stencil]);
-		    printf_stencil_read(curr_kernel,original_field,width,height,depth);
-		    printf(")"
-		           "%s"
+		    if (pair.kind) {
+		      printf("(%s(", stencil_unary_ops[stencil]);
+		      printf_stencil_read(curr_kernel,original_field,width,height,depth);
+		      printf(")%s%s(", pair.kind > 0 ? "+" : "-", stencil_unary_ops[stencil]);
+		      printf_stencil_read(curr_kernel,original_field,pair.width,pair.height,pair.depth);
+		      printf("))");
+		    }
+		    else {
+                      printf("%s(", stencil_unary_ops[stencil]);
+		      printf_stencil_read(curr_kernel,original_field,width,height,depth);
+		      printf(")");
+		    }
+		    printf("%s"
 		           ";"
 			   ,stencil_initialized[field][stencil] ? ")" : ""
 		           );
@@ -2656,6 +2888,24 @@ gen_kernel_body(const int curr_kernel)
                 }
               }
             }
+          }
+        }
+      }
+      // AC_PAIR_SYMMETRIC_STENCILS: a stencil whose weights were all skipped as exactly zero
+      if (AC_PAIR_SYMMETRIC_STENCILS) {
+        for (int field = 0; field < NUM_ALL_FIELDS; ++field) {
+          for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+            if (!(stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL)) continue;
+            if (stencil_initialized[field][stencil]) continue;
+            bool has_points = false;
+            for (int depth = 0; depth < STENCIL_DEPTH; ++depth)
+              for (int height = 0; height < STENCIL_HEIGHT; ++height)
+                for (int width = 0; width < STENCIL_WIDTH; ++width)
+                  has_points |= stencils[stencil][depth][height][width] != NULL;
+            if (!has_points) continue;
+            const int original_field = get_original_index(field_remappings,field);
+            printf("auto f%s_s%s = AcReal(0.0);", field_names[original_field], stencil_names[stencil]);
+            stencil_initialized[field][stencil] = 1;
           }
         }
       }
@@ -2789,7 +3039,7 @@ gen_kernel_body(const int curr_kernel)
 					 prof_types[profile] == PROFILE_Z ? -STENCIL_ORDER/2 + depth :
 					 0;
 
-                if (stencils[stencil][depth][height][width]) {
+                if (stencil_point_emitted(stencil,depth,height,width)) {
                   if (!stencil_initialized[NUM_ALL_FIELDS + profile][stencil]) {
                     printf("auto p%d_s%d = ", profile, stencil);
 		    printf_stencil_point(stencil,depth,height,width);

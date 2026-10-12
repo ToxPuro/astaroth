@@ -15,6 +15,7 @@ option(OPTIMIZE_ARRAYS            "Does not allocate arrays that are not used ba
 option(OPTIMIZE_FIELDS            "Optimizes fields to be auxiliary,(non-)communicated and if allowed dead based on writes, reads and stencil accesses in kernels. Pitfalls are conditional accesses and writes, which runtime compilation can lessen" OFF)
 option(OPTIMIZE_INPUT_PARAMS "Generates optimized kernels for each possible combination of kernel input parameters (taking only those into account that can have a finite number of different values), works well with OPTIMIZE_MEM_ACCESSES since reduces the amount of conditional control-flow in kernels" ON)
 option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time, runtime compilation lessens this" ON)
+option(PAIR_SYMMETRIC_STENCILS    "Generated stencil code computes w*(f[p]+-f[-p]) for symmetric/antisymmetric linear stencils and skips zero weights: fewer multiplies but different rounding" OFF)
 option(USE_ONLY_OPTIMIZED_KERNELS "For kernels for which optimized versions exist because of optimization depending on input params make the original kernel empty" OFF)
 
 if(CPU_BUILD)
@@ -25,6 +26,7 @@ endif()
 if (NOT DEFINED AC_STENCIL_ORDER)
   set(AC_STENCIL_ORDER -1)
 endif()
+set(AC_STENCIL_INLINE_WEIGHTS 0 CACHE STRING "How stencil weights are emitted into kernels: 0 = loaded from the runtime-uploaded stencils array, 1 = inline weights without DCONST, 2 = inline all weights (see stencilgen.c)")
 
 #TP: if defined the user already has the executable and has exported a path to it
 set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
@@ -65,6 +67,7 @@ else()
 		target_compile_definitions(acc PRIVATE -DACC_ARRAY_BOUND_CHECKS=0)
 	endif()
 	target_compile_definitions(acc PRIVATE -DAC_STENCIL_ORDER=${AC_STENCIL_ORDER})
+	target_compile_definitions(acc PRIVATE -DAC_STENCIL_INLINE_WEIGHTS=${AC_STENCIL_INLINE_WEIGHTS})
 	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_PATH="${AC_BASE_PATH}/acc-runtime/built-in")
 	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_FUNCS="${AC_BASE_PATH}/acc-runtime/built-in/functions.h")
 	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_TYPEDEFS="${AC_BASE_PATH}/acc-runtime/built-in/typedefs.h")
@@ -135,6 +138,13 @@ else()
 	else()
 		set(FUSE_KERNELS_VAL 0)
 	endif()
+
+	if (PAIR_SYMMETRIC_STENCILS)
+		set(PAIR_SYMMETRIC_STENCILS_VAL 1)
+	else()
+		set(PAIR_SYMMETRIC_STENCILS_VAL 0)
+	endif()
+	target_compile_definitions(acc PRIVATE -DPAIR_SYMMETRIC_STENCILS=${PAIR_SYMMETRIC_STENCILS_VAL})
 	
 	
 	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_INPUT_PARAMS=${OPTIMIZE_INPUT_PARAMS_VAL} -DUSE_ONLY_OPTIMIZED_KERNELS=${USE_ONLY_OPTIMIZED_KERNELS} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL} -DFUSE_KERNELS=${FUSE_KERNELS_VAL} -DBUFFERED_REDUCTIONS=${BUFFERED_REDUCTIONS_VAL} -DALLOW_DEAD_VARIABLES=${ALLOW_DEAD_VARIABLES_VAL})
