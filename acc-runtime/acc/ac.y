@@ -1,5 +1,6 @@
 %{
 //#define _GNU_SOURCE
+#include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -124,8 +125,9 @@ int yylex();
 int yyparse();
 int yyerror(const char* str);
 int yyget_lineno();
-#define AC_INCLUDE "PREPROCESSOR_AC_INCLUDE" 
 
+#define AC_INCLUDE                         "PREPROCESSOR_AC_INCLUDE"
+#define AC_DEFAULT_NUM_OUTPUT_KERNEL_FILES 1
 
 //These are used to generate better error messages in case of errors
 FILE* yyin_backup;
@@ -866,8 +868,11 @@ populate_global_strings()
 }
 
 static void
-split_user_kernels()
+split_user_kernels(int num_output_kernel_files)
 {
+  // We want to use this only when more than 1 output file is requested.
+  assert(num_output_kernel_files > 1);
+
   DIR *ac_kernels_dir = opendir("ac_kernels");
   if (errno == ENOENT) {
     mkdir("ac_kernels", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -887,11 +892,10 @@ split_user_kernels()
 
   char *kernel_start = strstr(user_kernels_cu, "__global__ void");
   int counter = 0;
-  const int NUM_FILES = 8;
-  for(int file = 0; file < NUM_FILES; ++file)
+  for(int file = 0; file < num_output_kernel_files; ++file)
   {
     char filename[BUFFER_SIZE] = {0};
-    snprintf(filename,BUFFER_SIZE,"kernel_%d.cu",file % NUM_FILES);
+    snprintf(filename,BUFFER_SIZE,"kernel_%d.cu",file % num_output_kernel_files);
     FILE *stream = fdopen(
       openat(
         dirfd(ac_kernels_dir),
@@ -912,8 +916,7 @@ split_user_kernels()
     *kernel_name_end = '\0';
 
     char filename[BUFFER_SIZE] = {0};
-    snprintf(filename,BUFFER_SIZE,"kernel_%d.cu",counter % NUM_FILES);
-    //snprintf(filename, BUFFER_SIZE, "%s.cu", kernel_name + 1);
+    snprintf(filename,BUFFER_SIZE,"kernel_%d.cu",counter % num_output_kernel_files);
 
     *kernel_name_end = backup;
 
@@ -955,9 +958,12 @@ split_user_kernels()
 int
 main(int argc, char** argv)
 {
+    const char* usage_str = "Usage: ./acc [source file]\n"
+    "Usage: ./acc [source_file] [base_include_dir] [eliminate_conditionals] [read_overrides] [runtime_compilation] [acc_overrides_path] [num_output_kernel_files]\n";
+
     if(argc == 1)
     {
-        puts("Usage: ./acc [source file]");
+        fprintf(stderr, "%s", usage_str);
         return EXIT_FAILURE;
     }
 
@@ -969,18 +975,25 @@ main(int argc, char** argv)
 
     atexit(&cleanup);
     char* file = NULL;
-    ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-1]);
-    RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-2]),"1"); 
-    READ_OVERRIDES          = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-3]),"1"); 
-    ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-4]),"1"); 
-    const char* dir         = argc == 2 ? false : argv[argc-5];
+    int num_output_kernel_files = AC_DEFAULT_NUM_OUTPUT_KERNEL_FILES;
+    if (argc != 2) {
+      num_output_kernel_files = strtol(argv[argc-1], NULL, 10);
+      if (errno != 0 || num_output_kernel_files < 1) {
+        fprintf(stderr, "Error: The num_output_kernel_files parameter needs to be a non-zero positive integer.\n%s", usage_str);
+      }
+    }
+    ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-2]);
+    RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-3]),"1"); 
+    READ_OVERRIDES          = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-4]),"1"); 
+    ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-5]),"1"); 
+    const char* dir         = argc == 2 ? false : argv[argc-6];
 
-    if(argc == 2 || argc == 7)
+    if(argc == 2 || argc == 8)
     {
 	file = argv[1];
     }
     else {
-        puts("Usage: ./acc [source file]");
+        fprintf(stderr, "%s", usage_str);
         return EXIT_FAILURE;
     }
     //HACK to find if multiple .ac files without DSL_MODULE_FILE
@@ -1008,7 +1021,8 @@ main(int argc, char** argv)
     // Writes all the source files managed by the sources manager onto disk.
     acc_sources_manager_flush(acc_sources_manager_singleton());
 
-    split_user_kernels();
+    if (num_output_kernel_files > 1)
+      split_user_kernels(num_output_kernel_files);
 
     return EXIT_SUCCESS;
 }

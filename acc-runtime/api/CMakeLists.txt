@@ -135,20 +135,18 @@ else()
 			)
 endif()
 
-# OM: For now the number of kernel source files is hardcoded. Ideally this
-# would not be the case but it's just simpler to get done than a more generic
-# solution. Baby steps :).
 set(ACC_GENERATED_KERNELS_SOURCES
-    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_0.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_1.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_2.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_3.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_4.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_5.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_6.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_7.cu
     ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/stencils.cu
 )
+cmake_host_system_information(RESULT HOST_LOGICAL_CORES QUERY NUMBER_OF_LOGICAL_CORES)
+foreach(core RANGE 1 ${HOST_LOGICAL_CORES})
+    math(EXPR core "${core} - 1")
+    set(
+        ACC_GENERATED_KERNELS_SOURCES
+        ${ACC_GENERATED_KERNELS_SOURCES}
+        "${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_${core}.cu"
+    )
+endforeach()
 
 set(ACC_GENERATED_SOURCES
     "memcpy_from_gmem_arrays.cu"
@@ -168,13 +166,14 @@ if (CPU_BUILD)
 endif()
 
 if (NOT DEFINED DSL_MODULE_FILE)
-	set(ACC_COMPILER_ARGS 
-		"${DSL_MODULE_DIR}/*.ac" 
+	set(ACC_COMPILER_ARGS
+		"${DSL_MODULE_DIR}/*.ac"
 		"${DSL_MODULE_DIR}"
-		"${ELIMINATE_CONDITIONALS_VAL}" 
-		"${READ_OVERRIDES_VAL}"  
-		"${RUNTIME_COMPILATION_VAL}" 
+		"${ELIMINATE_CONDITIONALS_VAL}"
+		"${READ_OVERRIDES_VAL}"
+		"${RUNTIME_COMPILATION_VAL}"
 		"${AC_BINARY_PATH}/overrides.h"
+		"${HOST_LOGICAL_CORES}"
 	)
 else()
 	set(ACC_COMPILER_ARGS
@@ -184,6 +183,7 @@ else()
 		"${READ_OVERRIDES_VAL}"
 		"${RUNTIME_COMPILATION_VAL}"
 		"${AC_BINARY_PATH}/overrides.h"
+		"${HOST_LOGICAL_CORES}"
 	)
 endif()
   add_custom_command (
