@@ -2507,16 +2507,40 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
    
    else
    {
+	// Offset relative to the per-field base pointer (see printf_stencil_base_pointers).
+	// Only the offset depends on the stencil point, so with compile-time dims it folds into an immediate
    	printf("(AcReal)AC_READ_ONLY_LOAD(");
-   	printf("((%s)vba.in[%s])"
-   	       "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-   	       "vertexIdx.z+(%d),VAL(%s))])",
-	       get_ptr_type(original_field),
+   	printf("f%s_base_ptr"
+   	       "[DEVICE_VARIABLE_VTXBUF_IDX((%d),(%d),(%d),VAL(%s))])",
    	       field_names[original_field], -STENCIL_ORDER / 2 + width,
    	       -STENCIL_ORDER / 2 + height,
    	       -STENCIL_ORDER / 2 + depth,
    	       vtxbuf_dims_str[original_field]
    	       );
+   }
+}
+static bool
+stencil_reads_use_base_pointer(const int curr_kernel)
+{
+   if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD) return false;
+   if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS && !AC_CPU_BUILD) return false;
+   return true;
+}
+void
+printf_stencil_base_pointers(const int curr_kernel)
+{
+   if(!stencil_reads_use_base_pointer(curr_kernel)) return;
+   for (int field = 0; field < NUM_ALL_FIELDS; ++field) {
+	bool accessed = false;
+	for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+		accessed |= (stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL) != 0;
+	if(!accessed) continue;
+	const int original_field = get_original_index(field_remappings,field);
+	printf("const %s const f%s_base_ptr = ((const %s)vba.in[%s])"
+	       " + DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s));",
+	       get_ptr_type(original_field), field_names[original_field],
+	       get_ptr_type(original_field), field_names[original_field],
+	       vtxbuf_dims_str[original_field]);
    }
 }
 
@@ -2594,7 +2618,7 @@ gen_kernel_body(const int curr_kernel)
                   "NUM_ALL_FIELDS in stencilgen.c\n");
     }
 
-
+      printf_stencil_base_pointers(curr_kernel);
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
