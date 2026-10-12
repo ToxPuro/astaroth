@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - develop
+      # TEMPORARY!
+      - wip/martymichal/split-kernels-and-pencil-a
 
 jobs:
   define-matrices:
