@@ -10587,7 +10587,7 @@ bool can_fuse_kernels(const node_vec kernels)
 	bool updated_profiles[num_profiles];
 	memset(updated_fields,false,num_fields*sizeof(bool));
 	memset(updated_profiles,false,num_profiles*sizeof(bool));
-	memset(stencil_used,false,num_profiles*sizeof(bool));
+	memset(stencil_used,false,num_fields*sizeof(bool));
 
 	for(size_t i = 0; i < kernels.size; ++i)
 	{
