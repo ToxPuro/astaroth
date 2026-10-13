@@ -135,16 +135,22 @@ else()
 			)
 endif()
 
+set(ACC_MAX_KERNEL_SOURCE_FILES 32)
 set(ACC_GENERATED_KERNELS_SOURCES
     ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/stencils.cu
 )
-cmake_host_system_information(RESULT HOST_LOGICAL_CORES QUERY NUMBER_OF_LOGICAL_CORES)
-foreach(core RANGE 1 ${HOST_LOGICAL_CORES})
-    math(EXPR core "${core} - 1")
+
+cmake_host_system_information(RESULT ACC_NUM_KERNEL_SOURCE_FILES QUERY NUMBER_OF_PHYSICAL_CORES)
+if (${ACC_NUM_KERNEL_SOURCE_FILES} GREATER ${ACC_MAX_KERNEL_SOURCE_FILES})
+    set(ACC_NUM_KERNEL_SOURCE_FILES ${ACC_MAX_KERNEL_SOURCE_FILES})
+endif()
+
+foreach(num RANGE 1 ${ACC_NUM_KERNEL_SOURCE_FILES})
+    math(EXPR num "${num} - 1")
     set(
         ACC_GENERATED_KERNELS_SOURCES
         ${ACC_GENERATED_KERNELS_SOURCES}
-        "${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_${core}.cu"
+        "${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_${num}.cu"
     )
 endforeach()
 
@@ -173,7 +179,7 @@ if (NOT DEFINED DSL_MODULE_FILE)
 		"${READ_OVERRIDES_VAL}"
 		"${RUNTIME_COMPILATION_VAL}"
 		"${AC_BINARY_PATH}/overrides.h"
-		"${HOST_LOGICAL_CORES}"
+		"${ACC_NUM_KERNEL_SOURCE_FILES}"
 	)
 else()
 	set(ACC_COMPILER_ARGS
@@ -183,7 +189,7 @@ else()
 		"${READ_OVERRIDES_VAL}"
 		"${RUNTIME_COMPILATION_VAL}"
 		"${AC_BINARY_PATH}/overrides.h"
-		"${HOST_LOGICAL_CORES}"
+		"${ACC_NUM_KERNEL_SOURCE_FILES}"
 	)
 endif()
   add_custom_command (
