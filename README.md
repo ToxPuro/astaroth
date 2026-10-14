@@ -21,6 +21,7 @@ Or
 
 * an AMD GPU that has HIP support
 
+
 ## Dependencies
 Relative recent versions of
 
@@ -218,6 +219,21 @@ See also config parameter `AC_num_snapshots` for more control over how many snap
 * `astaroth/include/astaroth.h`: Astaroth main header. Contains the interface for accessing single- and multi-GPU layers.
 * `astaroth/include/astaroth_utils.h`: Utility library header. Provides functions for performing common tasks on host, such as allocating and verifying meshes.
 * `acc-runtime/api/acc_runtime.h`: Low-level single-GPU library for running kernels generated from user-defined DSL files.
+
+## Citing and Papers
+When you use Astaroth please cite the following papers as relevant:
+
+Markdown:
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.10631/status.svg)](https://doi.org/10.21105/joss.10631)
+
+HTML:
+<a style="border-width:0" href="https://doi.org/10.21105/joss.10631">
+  <img src="https://joss.theoj.org/papers/10.21105/joss.10631/status.svg" alt="DOI badge" >
+</a>
+
+reStructuredText:
+.. image:: https://joss.theoj.org/papers/10.21105/joss.10631/status.svg
+   :target: https://doi.org/10.21105/joss.10631
 
 ## FAQ
 
