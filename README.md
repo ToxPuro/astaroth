@@ -219,6 +219,16 @@ See also config parameter `AC_num_snapshots` for more control over how many snap
 * `astaroth/include/astaroth_utils.h`: Utility library header. Provides functions for performing common tasks on host, such as allocating and verifying meshes.
 * `acc-runtime/api/acc_runtime.h`: Low-level single-GPU library for running kernels generated from user-defined DSL files.
 
+## Citing and Papers
+When you use Astaroth please cite the following papers as appropriate:
+
+JOSS paper, General usage of the code:
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.10631/status.svg)](https://doi.org/10.21105/joss.10631)
+
+Communication optimizations: [CUDA-aware MPI](https://www.sciencedirect.com/science/article/pii/S0167819122000102), [Hierarchical decomposition and kernel fusion](https://journals.sagepub.com/doi/full/10.1177/10943420261465459), [Taskgraph system for overlapping communication and computation](https://www.doria.fi/handle/10024/180949).
+
+[GPU kernels optimizations for stencil computations](https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/cpe.70129).
+
 ## FAQ
 
 Can I use the code even if I don't make my changes public?
