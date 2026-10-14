@@ -221,7 +221,7 @@ See also config parameter `AC_num_snapshots` for more control over how many snap
 * `acc-runtime/api/acc_runtime.h`: Low-level single-GPU library for running kernels generated from user-defined DSL files.
 
 ## Citing and Papers
-When you use Astaroth please cite the following papers as relevant:
+When you use Astaroth please cite the following papers as appropriate:
 
 JOSS paper, General usage of the code:
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.10631/status.svg)](https://doi.org/10.21105/joss.10631)
