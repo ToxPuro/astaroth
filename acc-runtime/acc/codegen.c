@@ -7524,18 +7524,18 @@ gen_user_kernels(const bool analysis_kernels)
   // a fixed sized buffer on the stack. It would be faster but could potentially
   // overflow and the code was generally more difficult to read.
   char *kernels_arr_impl = NULL;
-  asprintf(&kernels_arr_impl, "static const Kernel kernels[] = {\n");
+  my_asprintf(&kernels_arr_impl, "static const Kernel kernels[] = {\n");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
     if (symbol_table[i].tspecifier != KERNEL_STR)
       continue;
 
     char *impl_prev = kernels_arr_impl;
-    asprintf(&kernels_arr_impl, "%s  %s_%s,\n", impl_prev, kernel_name_prefix, symbol_table[i].identifier);
+    my_asprintf(&kernels_arr_impl, "%s  %s_%s,\n", impl_prev, kernel_name_prefix, symbol_table[i].identifier);
     free(impl_prev);
   }
 
   char *impl_prev = kernels_arr_impl;
-  asprintf(&kernels_arr_impl, "%s};", impl_prev);
+  my_asprintf(&kernels_arr_impl, "%s};", impl_prev);
   free(impl_prev);
 
   acc_source_add_declaration(user_kernel_declarations,
