@@ -1020,9 +1020,8 @@ main(int argc, char** argv)
 
     // Writes all the source files managed by the sources manager onto disk.
     acc_sources_manager_flush(acc_sources_manager_singleton());
-
-    if (num_output_kernel_files > 1)
-      split_user_kernels(num_output_kernel_files);
+    
+    split_user_kernels(num_output_kernel_files);
 
     return EXIT_SUCCESS;
 }
