@@ -10,3 +10,29 @@ acCompile(const char*, const char*, AcMeshInfo)
 
 void
 acLoadRunConsts(AcMeshInfo){}
+
+#include "astaroth_lib.h"
+
+extern "C"
+{
+
+AcLibHandle
+acLibLoadLibrary(const AcMeshInfo* info, const char* lib_path, const char* lib_filename,
+                 int* counter)
+{
+	return NULL;
+}
+
+AcResult 
+acLoadLibrary(const AcMeshInfo info)
+{
+    return AC_FAILURE;
+}
+
+AcResult 
+acCloseLibrary()
+{
+    return AC_FAILURE;
+}
+
+}

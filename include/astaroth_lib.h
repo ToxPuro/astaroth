@@ -18,38 +18,11 @@ AC_BEGIN_C_DECLARATIONS
 
 typedef void* AcLibHandle;
 
-static AcLibHandle UNUSED astarothLibHandle = NULL, utilsLibHandle = NULL, kernelsLibHandle = NULL;
 
-static AcLibHandle
+AcLibHandle
 acLibLoadLibrary(const AcMeshInfo* info, const char* lib_path, const char* lib_filename,
-                 int* counter)
-{
-#ifdef __APPLE__
-    const char* lib_extension = "dylib";
-#else
-    const char* lib_extension = "so";
-#endif
+                 int* counter);
 
-    char* original_lib_path = NULL;
-    if (asprintf(&original_lib_path, "%s/runtime_build/%s/%s.%s",
-                 info->runtime_compilation_build_path ? info->runtime_compilation_build_path
-                                                      : astaroth_binary_path,
-                 lib_path, lib_filename, lib_extension) == -1) {
-        fprintf(stderr, "Fatal error while preparing path to library %s\n", lib_filename);
-        exit(EXIT_FAILURE);
-    }
-
-    const char* new_lib_path = acLibraryVersion(original_lib_path, *counter, info->comm);
-    ++counter;
-
-    void* lib_handle = dlopen(new_lib_path, RTLD_NOW | RTLD_LOCAL);
-    if (!lib_handle) {
-        fprintf(stderr, "Fatal error while loading library %s: %s\n", new_lib_path, dlerror());
-        exit(EXIT_FAILURE);
-    }
-
-    return lib_handle;
-}
 
 AC_END_C_DECLARATIONS
 

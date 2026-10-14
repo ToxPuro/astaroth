@@ -107,45 +107,7 @@ FUNC_DEFINE(AcResult, acHostInitProfileToSineWave, (const AcReal spacing, const 
 /** Initialize a profile to a constant value */
 FUNC_DEFINE(AcResult, acHostInitProfileToValue, (const long double value, const size_t profile_count, AcReal* profile));
 
-#include "astaroth_lib.h"
-#if AC_RUNTIME_COMPILATION
-static AcResult __attribute__((unused))
-acLoadUtils(const AcMeshInfo info)
-{
-	static int counter = 0;
-	AcLibHandle handle = utilsLibHandle = acLibLoadLibrary(&info, "src/utils", "libastaroth_utils", &counter);
-
-	LOAD_DSYM(acHostVertexBufferSet);
-	LOAD_DSYM(acHostMeshSet);
-	LOAD_DSYM(acHostMeshApplyPeriodicBounds);
-	LOAD_DSYM(acHostMeshApplyConstantBounds);
-	LOAD_DSYM(acHostMeshClear);
-	LOAD_DSYM(acHostReduceScal);
-	LOAD_DSYM(acHostReduceVec);
-	LOAD_DSYM(acHostReduceVecScal);
-	LOAD_DSYM(acEvalError);
-	LOAD_DSYM(acEvalErrorWithMaximumError);
-	LOAD_DSYM(acVerifyMesh);
-	LOAD_DSYM(acVerifyMeshWithMaximumError);
-	LOAD_DSYM(acMeshDiffWriteSliceZ);
-	LOAD_DSYM(acMeshDiffWrite);
-	LOAD_DSYM(acHostMeshWriteToFile);
-	LOAD_DSYM(acHostMeshReadFromFile);
-	LOAD_DSYM(acGetError);
-	LOAD_DSYM(acHostIntegrateStep);
-	LOAD_DSYM(acHostWriteProfileToFile);
-	LOAD_DSYM(acHostInitProfileToCosineWave);
-	LOAD_DSYM(acHostInitProfileToSineWave);
-	LOAD_DSYM(acHostInitProfileToValue);
-
-	return AC_SUCCESS;
-}
-#else
-static AcResult __attribute__((unused)) acLoadUtils(const AcMeshInfo info)
-{
-	return AC_FAILURE;
-}
-#endif
+AcResult acLoadUtils(const AcMeshInfo info);
 
 AcResult UNUSED
 acLoadConfig(const char* config_path, AcMeshInfo* config);

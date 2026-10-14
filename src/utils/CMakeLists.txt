@@ -8,6 +8,7 @@ target_sources(
 	PRIVATE
 	config_loader.cc
 	utils.cc
+	load.cc
 )
 set_target_properties(
 	astaroth_utils
