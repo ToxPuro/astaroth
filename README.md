@@ -223,17 +223,13 @@ See also config parameter `AC_num_snapshots` for more control over how many snap
 ## Citing and Papers
 When you use Astaroth please cite the following papers as relevant:
 
-Markdown:
+JOSS paper, General usage of the code:
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.10631/status.svg)](https://doi.org/10.21105/joss.10631)
 
-HTML:
-<a style="border-width:0" href="https://doi.org/10.21105/joss.10631">
-  <img src="https://joss.theoj.org/papers/10.21105/joss.10631/status.svg" alt="DOI badge" >
-</a>
+Communication optimizations: [CUDA-aware MPI](https://www.sciencedirect.com/science/article/pii/S0167819122000102), [Hierarchical decomposition and kernel fusion](https://journals.sagepub.com/doi/full/10.1177/10943420261465459), [Taskgraph system for overlapping communication and computation](https://www.doria.fi/handle/10024/180949).
 
-reStructuredText:
-.. image:: https://joss.theoj.org/papers/10.21105/joss.10631/status.svg
-   :target: https://doi.org/10.21105/joss.10631
+[GPU kernels optimizations for stencil computations](https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/cpe.70129).
+
 
 ## FAQ
 
