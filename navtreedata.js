@@ -27,46 +27,46 @@ var NAVTREE =
   [ "Astaroth", "index.html", [
     [ "Astaroth - A Scalable Multi-GPU Library for Stencil Computations", "index.html", "index" ],
     [ "Contributing", "md_CONTRIBUTING.html", [
-      [ "Basic workflow", "md_CONTRIBUTING.html#autotoc_md14", null ],
-      [ "Programming", "md_CONTRIBUTING.html#autotoc_md15", null ],
-      [ "Committing", "md_CONTRIBUTING.html#autotoc_md16", null ],
-      [ "Formatting", "md_CONTRIBUTING.html#autotoc_md17", null ],
-      [ "Header example:", "md_CONTRIBUTING.html#autotoc_md18", null ],
-      [ "Source example:", "md_CONTRIBUTING.html#autotoc_md19", null ],
-      [ "Managing feature branches", "md_CONTRIBUTING.html#autotoc_md20", null ],
-      [ "About branches in general", "md_CONTRIBUTING.html#autotoc_md21", null ],
-      [ "Pull requests", "md_CONTRIBUTING.html#autotoc_md22", null ]
+      [ "Basic workflow", "md_CONTRIBUTING.html#autotoc_md15", null ],
+      [ "Programming", "md_CONTRIBUTING.html#autotoc_md16", null ],
+      [ "Committing", "md_CONTRIBUTING.html#autotoc_md17", null ],
+      [ "Formatting", "md_CONTRIBUTING.html#autotoc_md18", null ],
+      [ "Header example:", "md_CONTRIBUTING.html#autotoc_md19", null ],
+      [ "Source example:", "md_CONTRIBUTING.html#autotoc_md20", null ],
+      [ "Managing feature branches", "md_CONTRIBUTING.html#autotoc_md21", null ],
+      [ "About branches in general", "md_CONTRIBUTING.html#autotoc_md22", null ],
+      [ "Pull requests", "md_CONTRIBUTING.html#autotoc_md23", null ]
     ] ],
     [ "GNU GENERAL PUBLIC LICENSE", "md_LICENCE.html", null ],
     [ "Astaroth Specification and User Manual", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html", [
-      [ "Introduction and Background", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md71", [
-        [ "Publications", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md72", null ]
+      [ "Introduction and Background", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md72", [
+        [ "Publications", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md73", null ]
       ] ],
-      [ "Astaroth API", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md73", [
-        [ "List of Astaroth API Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md74", [
-          [ "Initialization, Quitting and Helper Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md75", null ],
-          [ "Loading and Storing", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md76", null ],
-          [ "Integration, Reductions and Boundary Conditions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md77", null ]
+      [ "Astaroth API", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md74", [
+        [ "List of Astaroth API Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md75", [
+          [ "Initialization, Quitting and Helper Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md76", null ],
+          [ "Loading and Storing", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md77", null ],
+          [ "Integration, Reductions and Boundary Conditions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md78", null ]
         ] ],
-        [ "Stream Synchronization", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md78", null ],
-        [ "Data Synchronization", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md79", null ],
-        [ "Input and Output Buffers", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md80", null ],
-        [ "Devices", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md81", null ],
-        [ "Nodes", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md82", null ],
-        [ "Meshes", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md83", null ]
+        [ "Stream Synchronization", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md79", null ],
+        [ "Data Synchronization", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md80", null ],
+        [ "Input and Output Buffers", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md81", null ],
+        [ "Devices", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md82", null ],
+        [ "Nodes", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md83", null ],
+        [ "Meshes", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md84", null ]
       ] ],
-      [ "Astaroth Domain-Specific Language 2.0 (<b>DEPRECATED</b>. See acc-runtime/README.md for the Astaroth 3.0 DSL syntax)", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md84", [
-        [ "Overview", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md85", null ],
-        [ "Data Types", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md86", null ],
-        [ "Precision", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md87", null ],
-        [ "Control Flow", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md88", null ],
-        [ "Kernels", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md89", null ],
-        [ "Preprocessed Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md90", null ],
-        [ "Device Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md91", null ],
-        [ "Uniforms", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md92", null ],
-        [ "Standard Libraries", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md93", null ],
-        [ "Performance Considerations", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md94", null ],
-        [ "Notes on autotesting", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md95", null ]
+      [ "Astaroth Domain-Specific Language 2.0 (<b>DEPRECATED</b>. See acc-runtime/README.md for the Astaroth 3.0 DSL syntax)", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md85", [
+        [ "Overview", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md86", null ],
+        [ "Data Types", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md87", null ],
+        [ "Precision", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md88", null ],
+        [ "Control Flow", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md89", null ],
+        [ "Kernels", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md90", null ],
+        [ "Preprocessed Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md91", null ],
+        [ "Device Functions", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md92", null ],
+        [ "Uniforms", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md93", null ],
+        [ "Standard Libraries", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md94", null ],
+        [ "Performance Considerations", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md95", null ],
+        [ "Notes on autotesting", "md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md96", null ]
       ] ]
     ] ],
     [ "Data Structures", "annotated.html", [
@@ -99,7 +99,7 @@ var NAVTREEINDEX =
 "astaroth__helpers_8h.html#a59a9a5f184a241bc841f69ca5d427c4c",
 "functions.html",
 "host__datatypes_8h.html#ae8c0528a80fb71cf6bf4a6f13b4810d7",
-"structAcTaskDefinition.html#a8d04c74283d1aaabaafb84d7187a8cfc"
+"structAcTaskDefinition.html#a8bd6206e58db8767ff2372515587a84b"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';

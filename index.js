@@ -14,5 +14,6 @@ var index =
       [ "Restarting from distributed snapshots", "index.html#autotoc_md10", null ]
     ] ],
     [ "Interface", "index.html#autotoc_md11", null ],
-    [ "FAQ", "index.html#autotoc_md12", null ]
+    [ "Citing and Papers", "index.html#autotoc_md12", null ],
+    [ "FAQ", "index.html#autotoc_md13", null ]
 ];

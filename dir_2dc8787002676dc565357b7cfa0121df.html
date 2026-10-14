@@ -145,7 +145,7 @@ Directories</h2></td></tr>
 <tr class="memitem:api" id="r_api"><td class="memItemLeft" align="right" valign="top"><span class="iconfolder"><div class="folder-icon"></div></span>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="dir_baf4bc5b9097ff9e9c19bf0a5b16f14e.html">api</a></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<h1 class="doxsection"><a class="anchor" id="autotoc_md45"></a>
+<h1 class="doxsection"><a class="anchor" id="autotoc_md46"></a>
 Building ACC runtime (incl. DSL files)</h1>
 <p>The DSL source files should have a postfix <span class="tt">*.ac</span> and by default there should be only one <span class="tt">*.ac</span> file per directory. Optionally you can give the <span class="tt">*.ac</span> file to be compiled. </p><pre class="fragment">* `mkdir build`
 
@@ -155,7 +155,7 @@ Building ACC runtime (incl. DSL files)</h1>
          [-DSL_MODULE_FILE=&lt;you can optionally give the file in DSL_MODULE_DIR to be compiled&gt;] ..`
 
 * `make -j`
-</pre><h1 class="doxsection"><a class="anchor" id="autotoc_md46"></a>
+</pre><h1 class="doxsection"><a class="anchor" id="autotoc_md47"></a>
 Debugging</h1>
 <p>As ACC is in active development, compiler bugs and cryptic error messages are expected. In case of issues, please check the following files in <span class="tt">acc-runtime/api</span> in the build directory.</p>
 <p>Intermediate files:</p>
@@ -170,21 +170,21 @@ Debugging</h1>
 <li><span class="tt">user_kernels.h</span>. The generated CUDA kernels.</li>
 </ol>
 <p>To make inspecting the code easier, we recommend using an autoformatting tool, for example, <span class="tt">clang-format</span> or GNU <span class="tt">indent</span>.</p>
-<h1 class="doxsection"><a class="anchor" id="autotoc_md47"></a>
+<h1 class="doxsection"><a class="anchor" id="autotoc_md48"></a>
 The Astaroth Domain-Specific Language</h1>
 <p>The Astaroth Domain-Specific Language (DSL) is a high-level general-purpose(GP)GPU language designed for improved productivity and performance in stencil computations. The Astaroth DSL compiler (&lt; build dir &gt;/acc-runtime/acc) is a source-to-source compiler, which converts DSL kernels into CUDA/HIP kernels. The generated kernels provide performance that is on-par with hand-tuned low-level GPGPU code in stencil computations. Special care has been taken to ensure efficient code generation in use cases encountered in computational physics, where there are multiple coupled fields, which makes manual caching notoriously difficult.</p>
 <p>The Astaroth DSL is based on the stream processing model, where an array of instructions is executed on streams of data in parallel. A kernel is a small GPU program, which defines the operations performed on a number of data streams. In our case, data streams correspond to vertices in a grid, similar to how vertex shaders operate in graphics shading languages.</p>
 <p>Since the language is still an active development user recommendations/requests for new features are <b>highly desirable</b>. To make a recommendation/request for a new feature make pull request where you outline the new feature and the use case it would be needed in.</p>
-<h2 class="doxsection"><a class="anchor" id="autotoc_md48"></a>
+<h2 class="doxsection"><a class="anchor" id="autotoc_md49"></a>
 Comments and preprocessor directives</h2>
 <p>The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception:</p>
 <p>By default include files are searched relative to DSL_MODULE_DIR.</p>
 <p>With two extensions: </p><div class="fragment"><div class="line">hostdefine ONE  (1) // Macro definition visible in both device and host code</div>
 <div class="line">#include ../stdlib/math //Includes all files and directories in ../stdlib/math</div>
-</div><!-- fragment --> <h2 class="doxsection"><a class="anchor" id="autotoc_md49"></a>
+</div><!-- fragment --> <h2 class="doxsection"><a class="anchor" id="autotoc_md50"></a>
 Datatypes</h2>
 <p>The Astaroth DSL language is statically typed. All global variables require an explicit datatype declaration. Otherwise explicit typing is allowed but not required, with the exception of the parameters of overloaded functions. Some advanced features also require an explicit type declaration. By default we use C++ type inference rules (<span class="tt">auto</span>) with extensions where they would be ambiguous.</p>
-<h3 class="doxsection"><a class="anchor" id="autotoc_md50"></a>
+<h3 class="doxsection"><a class="anchor" id="autotoc_md51"></a>
 Fields</h3>
 <p>A <span class="tt">Field</span> is a scalar array that can be used in conjuction with <span class="tt">Stencil</span> operations and for operations involving only the current vertex point. The array containing the values of a <span class="tt">Field</span> is size of the local subdomain with the halos included so in other terms the array is of size <span class="tt">[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z]</span> A vector field can be constructed either by combining three scalar <span class="tt">Fields</span> into a <span class="tt">Field3</span> structure or one declaring a <span class="tt">Field3</span> structure on its own.</p>
 <p>To get the value of a <span class="tt">Field</span> at the current vertex use the built-in function <span class="tt">value</span>. A <span class="tt">Field</span> can be used directly in unary expressions and binary arithmetic expressions (<span class="tt">+</span>, <span class="tt">-</span>, <span class="tt">/</span>,<span class="tt">*</span>) which is equivalent to calling <span class="tt">value</span> on the <span class="tt">Field</span>. Also, calling a built-in math functions with <span class="tt">Field</span> is equivalent to first calling <span class="tt">value</span> on the <span class="tt">Field</span>. The same applies for <span class="tt">Field3</span> and for arrays of them (<span class="tt">Field[]</span> and <span class="tt">Field3[]</span>).</p>
@@ -203,7 +203,7 @@ Fields</h3>
 <div class="line">    species_val = value(chemistry[i])</div>
 <div class="line">    ...</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3 class="doxsection"><a class="anchor" id="autotoc_md51"></a>
+</div><!-- fragment --><h3 class="doxsection"><a class="anchor" id="autotoc_md52"></a>
 Primitive types</h3>
 <p>The following primitive C++ types are usable:</p><ul>
 <li><span class="tt">int</span></li>
@@ -217,7 +217,7 @@ Primitive types</h3>
 <blockquote class="doxtable">
 <p>Note: Whenever possible one should prefer using bools compared to e.g. integers which only have the values 0 and 1, since using bools gives the DSL compiler more information, which it can use to perform optimizations. </p>
 </blockquote>
-<h3 class="doxsection"><a class="anchor" id="autotoc_md52"></a>
+<h3 class="doxsection"><a class="anchor" id="autotoc_md53"></a>
 Additional built-in types</h3>
 <ul>
 <li><span class="tt">complex</span></li>
@@ -228,9 +228,9 @@ Additional built-in types</h3>
 <li><span class="tt">Matrix</span> (3x3 matrix of reals)</li>
 </ul>
 <p>We support <span class="tt">Matrix*real3</span>,<span class="tt">real*Matrix</span> and <span class="tt">-Matrix</span>.</p>
-<h3 class="doxsection"><a class="anchor" id="autotoc_md53"></a>
+<h3 class="doxsection"><a class="anchor" id="autotoc_md54"></a>
 User-defined types</h3>
-<h4 class="doxsection"><a class="anchor" id="autotoc_md54"></a>
+<h4 class="doxsection"><a class="anchor" id="autotoc_md55"></a>
 Structures</h4>
 <p>Structures can be defined similar to the C syntax: </p><div class="fragment"><div class="line">struct your_struct</div>
 <div class="line">{</div>
@@ -247,10 +247,10 @@ Structures</h4>
 <blockquote class="doxtable">
 <p>Note: Currently, declaring multiple members from a single type specifier is not allowed. </p>
 </blockquote>
-<h5 class="doxsection"><a class="anchor" id="autotoc_md55"></a>
+<h5 class="doxsection"><a class="anchor" id="autotoc_md56"></a>
 Operators</h5>
 <p>If all of the members of the structure are <span class="tt">real</span> we provide member-wise arithmetic operators (<span class="tt">+</span>, <span class="tt">-</span>, <span class="tt">/</span>, <span class="tt">*</span>) with <span class="tt">real</span> scalars. Additionally <span class="tt">+</span> and <span class="tt">-</span> are supported between structures of the same type, all of the members of which are <span class="tt">real</span> or <span class="tt">int</span>. For all operators the corresponding compound assignment operator is also supported.</p>
-<h4 class="doxsection"><a class="anchor" id="autotoc_md56"></a>
+<h4 class="doxsection"><a class="anchor" id="autotoc_md57"></a>
 Enums</h4>
 <p>Enums are declared in the C syntax </p><div class="fragment"><div class="line">enum Characters</div>
 <div class="line">{</div>
@@ -261,10 +261,10 @@ Enums</h4>
 </div><!-- fragment --> <blockquote class="doxtable">
 <p>Note: Whenever possible one should prefer using enums compared to e.g. named integers, since using enums gives the DSL compiler more information which it can use to perform optimizations. </p>
 </blockquote>
-<h5 class="doxsection"><a class="anchor" id="autotoc_md57"></a>
+<h5 class="doxsection"><a class="anchor" id="autotoc_md58"></a>
 Built-in enums</h5>
 <p><a href="https://toxpuro.github.io/astaroth/typedefs_8h.html">See here</a> </p>
-<h3 class="doxsection"><a class="anchor" id="autotoc_md58"></a>
+<h3 class="doxsection"><a class="anchor" id="autotoc_md59"></a>
 Type qualifiers</h3>
 <ul>
 <li><span class="tt">const</span> Effectively the same as C++ constexpr i.e. a compile-time constant.</li>
@@ -275,7 +275,7 @@ Type qualifiers</h3>
 <ul>
 <li><span class="tt">run_const</span> Variables that are constant during the execution context of Astaroth (e.g. during a timeloop in a simulation). By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effectively const in the compiled kernels.</li>
 </ul>
-<h3 class="doxsection"><a class="anchor" id="autotoc_md59"></a>
+<h3 class="doxsection"><a class="anchor" id="autotoc_md60"></a>
 Advanced</h3>
 <ul>
 <li><span class="tt">communicated</span> The implicit qualifier for <span class="tt">Fields</span> if no qualifiers are defined, their halos are updated.</li>
@@ -308,10 +308,10 @@ Advanced</h3>
 <li><span class="tt">fixed_boundary</span> Tells the compiler that in <span class="tt">ComputeSteps</span> before the kernel boundary values inside the local subdomain should not be updated via boundary conditions. Rather the values on the boundaries should be carried over from before, i.e. the boundary values stay fixed from previous <span class="tt">Kernel</span> calls.</li>
 <li><span class="tt">boundary_condition</span> Tells the compiler that this kernel is supposed to be used as a boundary condition. As of now the only effect for boundary condition kernels is that all vertices in the computational subdomain (i.e. not halo regions) are skipped. So for example you can calculate periodic boundary conditions in all directions on a single device by launching BOUNDCOND_PERIODIC_DEVICE on the whole subdomain with halos included.</li>
 </ul>
-<h2 class="doxsection"><a class="anchor" id="autotoc_md60"></a>
+<h2 class="doxsection"><a class="anchor" id="autotoc_md61"></a>
 Variables</h2>
 <p>Variable declaration and naming conventions follow C, except shadowing is not allowed: all identifiers within a scope must be unique.</p>
-<h3 class="doxsection"><a class="anchor" id="autotoc_md61"></a>
+<h3 class="doxsection"><a class="anchor" id="autotoc_md62"></a>
 Arrays</h3>
 <p>Instead of <span class="tt">{</span> <span class="tt">}</span> initializer of C++ we use <span class="tt">[</span> <span class="tt">]</span> </p><div class="fragment"><div class="line">int arr0 = [1, 2, 3] </div>
 <div class="line">arr1 = [1.0, 2.0, 3.0] //type real is inferred</div>
@@ -335,12 +335,12 @@ Arrays</h3>
 <div class="line">                                  //if the writes have the same values the array will end up with the correct value otherwise</div>
 <div class="line">                                  //the resulting value can be arbitrarily one of the unique values written.</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3 class="doxsection"><a class="anchor" id="autotoc_md62"></a>
+</div><!-- fragment --><h3 class="doxsection"><a class="anchor" id="autotoc_md63"></a>
 Casting</h3>
 <p>One can use C and C++ casting. </p><div class="fragment"><div class="line">var7 = real(1)        // Cast</div>
 <div class="line">vec0 = real3(1, 2, 3) // Cast</div>
 <div class="line">complex_val = (complex){real_val,imag_val} // Cast</div>
-</div><!-- fragment --><h2 class="doxsection"><a class="anchor" id="autotoc_md63"></a>
+</div><!-- fragment --><h2 class="doxsection"><a class="anchor" id="autotoc_md64"></a>
 Looping</h2>
 <p>Loops follow the Python style </p><div class="fragment"><div class="line">int arr = [1, 2, 3]</div>
 <div class="line">for var in arr {</div>
@@ -355,7 +355,7 @@ Looping</h2>
 <div class="line">for i in 0:10 { // Note: 10 is exclusive</div>
 <div class="line">  print(&quot;%d&quot;, i)</div>
 <div class="line">}</div>
-</div><!-- fragment --><h2 class="doxsection"><a class="anchor" id="autotoc_md64"></a>
+</div><!-- fragment --><h2 class="doxsection"><a class="anchor" id="autotoc_md65"></a>
 Functions</h2>
 <p>Functions follow the C declaration syntax.</p>
 <p>For functions which have take in a <span class="tt">real</span> parameter one can also provide a <span class="tt">Field</span> expression in the function call, with the expression being automatically converted to <span class="tt">real</span> by calling <span class="tt">value</span> with the value of the expression. The same is also true for <span class="tt">Field3,real3</span>,<span class="tt">Field[],real[]</span> and <span class="tt">Field3[],real3[]</span>.</p>
@@ -568,22 +568,22 @@ Functions</h2>
 <p>write(Q_PMP,incoming_pmp_ray(Q_PMP)+1.0) write(Q_ZMP,incoming_zmp_ray(Q_ZMP)+1.0) write(Q_MMP,incoming_mmp_ray(Q_MMP)+1.0) }  Since all the rays were moving in the positive z-direction they depend on the -z vertex before them. Thus there are 9 rays depending on -z,9 depending on +z,3 on -y, 3 on +y, 1 on -x and 1 on +x. We favour grouping rays in the z and y-directions since they are more performant since dependencies in the x-direction are less performant due to x being the fastest growing index. For a more expansive test case using rays see <span class="tt">test/ray-test</span>.</p>
 <p></p>
 </blockquote>
-<h3 class="doxsection"><a class="anchor" id="autotoc_md65"></a>
+<h3 class="doxsection"><a class="anchor" id="autotoc_md66"></a>
 1D and 2D setups.</h3>
 <p>Dimensions can be set as inactive using the <span class="tt">bool3</span> variable <span class="tt">AC_dimension_inactive</span> or by setting the grid dimensions in the corresponding dimension to unity. The operators and derivative stencils in <span class="tt">stdlib/general_operators.h</span> and <span class="tt">stdlib/general_derivs.h</span> take the inactive dimensions correctly into account (namely derivatives across inactive dimensions are always zero). Additionally the ghost layers in the direction of inactive dimensions will not be allocated, which produces a memory saving of times 7 in 2d and and 49 in 1d for stencil of radius three.</p>
-<h1 class="doxsection"><a class="anchor" id="autotoc_md66"></a>
+<h1 class="doxsection"><a class="anchor" id="autotoc_md67"></a>
 Interaction with the Astaroth Core and Utils libraries</h1>
-<h2 class="doxsection"><a class="anchor" id="autotoc_md67"></a>
+<h2 class="doxsection"><a class="anchor" id="autotoc_md68"></a>
 Loading and storing stencil coefficients at runtime</h2>
 <p>The Astaroth Runtime API provides the functions <span class="tt"><a class="el" href="acc__runtime_8h.html#a159280d4a7c5e3674ebfa181761c6fab">acLoadStencil</a></span> and <span class="tt"><a class="el" href="acc__runtime_8h.html#adb3af412efe8efd0f278d00c430be7ef">acStoreStencil</a></span> for loading/storing stencil coefficients at runtime. This is useful for, say, for setting the coefficients programmatically if too cumbersome by hand. We however highly recommend to use device constant variables in the stencil coefficients instead of separately loading stencil coefficients at runtime , since it eliminates coding errors where the actual stencil coefficients are calculated separately from the stencil declarations.</p>
 <p>See also the functions <span class="tt"><a class="el" href="astaroth__device_8h.html#a4896684b19fd5828e833bad3c374b356">acDeviceLoadStencil</a></span>, <span class="tt"><a class="el" href="astaroth__device_8h.html#a48a9c9073c276e4a22595782b952aa4f">acDeviceStoreStencil</a></span>, <span class="tt"><a class="el" href="astaroth__grid_8h.html#a0668e0405c5478dced7a6081165307e8">acGridLoadStencil</a></span>, and <span class="tt"><a class="el" href="astaroth__grid_8h.html#a669ea5f1565b24b49b853c99c328ea16">acGridStoreStencil</a></span> provided by the Astaroth Core library.</p>
-<h2 class="doxsection"><a class="anchor" id="autotoc_md68"></a>
+<h2 class="doxsection"><a class="anchor" id="autotoc_md69"></a>
 Additional physics-specific API functions</h2>
 <p>To enable additional API functions in the Astaroth Core library for integration (<span class="tt"><a class="el" href="astaroth__legacy_8h.html#a52b93ca2c10fbf6f3c8c685ca68aec56">acIntegrate</a></span> function family) and MHD-specific tasks (automated testing, MHD samples), one must set <span class="tt">hostdefine AC_INTEGRATION_ENABLED (1)</span> in the DSL file. Note that if used in the DSL code, the hostdefine must not define anything that is not visible at compile-time. For example, <span class="tt">hostdefine R_PI (M_PI)</span>, where <span class="tt">M_PI</span> is defined is some host header, <span class="tt">M_PI</span> will not be visible in the DSL code and will result in a compilation error. Additionally, code such as <span class="tt">#<a class="el" href="ast_8h.html#a7b50077bef75e0e1697a39b905253930">if</a> M_PI</span> will be always false in the DSL source if <span class="tt">M_PI</span> is not visible in the DSL file.</p>
 <blockquote class="doxtable">
 <p>Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (<span class="tt">acc-runtime/samples/mhd</span>) or its derivatives. </p>
 </blockquote>
-<h2 class="doxsection"><a class="anchor" id="autotoc_md69"></a>
+<h2 class="doxsection"><a class="anchor" id="autotoc_md70"></a>
 Stencil order</h2>
 <p>The stencil order can be set by the user by <span class="tt">hostdefine STENCIL_ORDER (x)</span>, where <span class="tt">x</span> is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.</p>
 <p>Alternatively it can be set via CMAKE with <span class="tt">-DAC_STENCIL_ORDER=N</span>.</p>

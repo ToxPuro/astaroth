@@ -36,13 +36,13 @@ var searchData=
   ['hashmap_5fuint64_5ft_33',['hashmap_uint64_t',['../hashtable_8h.html#adb4f5f1c89ab27db75ffc115682573a3',1,'hashtable.h']]],
   ['hashmap_5fuint8_5ft_34',['hashmap_uint8_t',['../hashtable_8h.html#ad81d2b7bbda6afa3690af5090b098a44',1,'hashtable.h']]],
   ['hashtable_2eh_35',['hashtable.h',['../hashtable_8h.html',1,'']]],
-  ['having_20copies_36',['9. Acceptance Not Required for Having Copies.',['../md_LICENCE.html#autotoc_md35',1,'']]],
-  ['header_20example_3a_37',['Header example:',['../md_CONTRIBUTING.html#autotoc_md18',1,'']]],
-  ['helper_20functions_38',['Initialization, Quitting and Helper Functions',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md75',1,'']]],
+  ['having_20copies_36',['9. Acceptance Not Required for Having Copies.',['../md_LICENCE.html#autotoc_md36',1,'']]],
+  ['header_20example_3a_37',['Header example:',['../md_CONTRIBUTING.html#autotoc_md19',1,'']]],
+  ['helper_20functions_38',['Initialization, Quitting and Helper Functions',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md76',1,'']]],
   ['hip_2eh_39',['hip.h',['../hip_8h.html',1,'']]],
   ['host_5fdatatypes_2eh_40',['host_datatypes.h',['../host__datatypes_8h.html',1,'']]],
   ['host_5fdevice_41',['HOST_DEVICE',['../func__attributes_8h.html#a9e64b37aa76347c9bf88985c9dec78c9',1,'func_attributes.h']]],
   ['host_5fdevice_5finline_42',['HOST_DEVICE_INLINE',['../func__attributes_8h.html#a652a53d224ff3f9092f9f5e82a339ae9',1,'func_attributes.h']]],
   ['host_5finline_43',['HOST_INLINE',['../func__attributes_8h.html#a3ecbf5173855036dcf23e50973d5e275',1,'func_attributes.h']]],
-  ['how_20to_20apply_20these_20terms_20to_20your_20new_20programs_44',['How to Apply These Terms to Your New Programs',['../md_LICENCE.html#autotoc_md44',1,'']]]
+  ['how_20to_20apply_20these_20terms_20to_20your_20new_20programs_44',['How to Apply These Terms to Your New Programs',['../md_LICENCE.html#autotoc_md45',1,'']]]
 ];
