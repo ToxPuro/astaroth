@@ -1008,6 +1008,7 @@ main(int argc, char** argv)
     const char* stage1 = "user_kernels.ac.pp_stage1";
     const char* stage2 = "user_kernels.ac.pp_stage2";
     dir_backup = dir;
+    acc_num_analysis_source_files = num_output_kernel_files;
     
     reset_extra_files();
 

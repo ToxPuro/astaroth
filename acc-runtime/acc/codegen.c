@@ -1942,7 +1942,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
         }
 
 
-	fprintf_filename("arrays_accessed_decl.h","int %s_arrays_accessed[NUM_%s_ARRAYS]{};\n",define_name,uppr_name);
+	fprintf_filename("arrays_accessed_decl.h","AC_ANALYSIS_SHARED int %s_arrays_accessed[NUM_%s_ARRAYS]{};\n",define_name,uppr_name);
 	
 	fprintf_filename("arrays_output_accesses.h",
 			"{\nFILE* fp_arr_accesses = fopen(\"%s_arr_accesses\", \"wb\");"
@@ -11038,10 +11038,10 @@ gen_analysis_stencils(FILE* stream)
   string_vec stencil_names = get_names(STENCIL_STR);
   for (size_t i = 0; i < stencil_names.size; ++i)
   {
-    fprintf(stream,"AcReal %s(const Field& field_in)"
+    fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s(const Field& field_in)"
            "{stencils_accessed[field_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
            stencil_names.data[i], stencil_names.data[i]);
-    fprintf(stream,"AcReal %s_profile(const Profile& profile_in)"
+    fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s_profile(const Profile& profile_in)"
            "{stencils_accessed[NUM_ALL_FIELDS+profile_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
            stencil_names.data[i], stencil_names.data[i]);
   }
@@ -11050,10 +11050,10 @@ gen_analysis_stencils(FILE* stream)
   string_vec ray_names = get_names(RAYTRACE_STR);
   for (size_t i = 0; i < ray_names.size; ++i)
   {
-    fprintf(stream,"AcReal incoming_%s(const Field& field_in)"
+    fprintf(stream,"AC_ANALYSIS_SHARED AcReal incoming_%s(const Field& field_in)"
            "{incoming_ray_value_accessed[field_in][ray_%s] |= 1;return AcReal(1.0);};\n",
            ray_names.data[i], ray_names.data[i]);
-    fprintf(stream,"AcReal outgoing_%s(const Field& field_in)"
+    fprintf(stream,"AC_ANALYSIS_SHARED AcReal outgoing_%s(const Field& field_in)"
            "{outgoing_ray_value_accessed[field_in][ray_%s] |= 1;return AcReal(1.0);};\n",
            ray_names.data[i], ray_names.data[i]);
   }
@@ -12156,6 +12156,142 @@ write_analysis_kernels(const char* src, const char* dst)
   fclose(out);
 }
 
+#define STENCILACC_SPLIT_DIR "ac_analysis_kernels"
+int acc_num_analysis_source_files = 1;
+
+typedef struct
+{
+  size_t start;
+  size_t len;
+  int    file;
+} analysis_kernel_span;
+
+static int
+compare_analysis_kernel_spans_by_len(const void* a, const void* b)
+{
+  const analysis_kernel_span* lhs = *(const analysis_kernel_span* const*)a;
+  const analysis_kernel_span* rhs = *(const analysis_kernel_span* const*)b;
+  if(lhs->len != rhs->len) return lhs->len < rhs->len ? 1 : -1;
+  return lhs->start < rhs->start ? -1 : 1;
+}
+
+//TP: like split_user_kernels does for the CUDA kernels, splits the analysis kernels in src to at most max_files translation units in STENCILACC_SPLIT_DIR.
+//    Each translation unit includes the part of STENCILACC_SRC preceding the analysis kernels followed by the common prefix of src (the hoisted includes and stencils)
+//    and its subset of the kernels.
+//    The analysis kernels can differ a lot in size so they are distributed greedily, largest first, to the translation unit with the least code to balance the compilation times.
+//    Returns the number of translation units written
+static int
+split_analysis_kernels(const char* src, const int max_files)
+{
+  FILE* in = fopen(src,"r");
+  if(!in) fatal("Could not open %s\n",src);
+  fseek(in,0,SEEK_END);
+  const long src_len = ftell(in);
+  rewind(in);
+  char* text = malloc(src_len+1);
+  assert(text);
+  if(fread(text,1,src_len,in) != (size_t)src_len) fatal("Could not read %s\n",src);
+  text[src_len] = '\0';
+  fclose(in);
+
+  const char* kernel_start_str = "__global__ void";
+  const char* first_kernel = strstr(text,kernel_start_str);
+  if(!first_kernel || max_files < 2)
+  {
+    free(text);
+    return 0;
+  }
+  const size_t prefix_len = first_kernel - text;
+
+  size_t num_kernels = 0;
+  for(const char* kernel = first_kernel; kernel; kernel = strstr(kernel+1,kernel_start_str)) ++num_kernels;
+  analysis_kernel_span*  spans = malloc(sizeof(analysis_kernel_span)*num_kernels);
+  analysis_kernel_span** sorted_spans = malloc(sizeof(analysis_kernel_span*)*num_kernels);
+  assert(spans && sorted_spans);
+  {
+    size_t i = 0;
+    for(const char* kernel = first_kernel; kernel; ++i)
+    {
+      const char* next = strstr(kernel+1,kernel_start_str);
+      spans[i].start  = kernel - text;
+      spans[i].len    = (next ? next : text + src_len) - kernel;
+      sorted_spans[i] = &spans[i];
+      kernel = next;
+    }
+  }
+
+  const int num_files = (size_t)max_files < num_kernels ? max_files : (int)num_kernels;
+  qsort(sorted_spans,num_kernels,sizeof(analysis_kernel_span*),compare_analysis_kernel_spans_by_len);
+  size_t* file_sizes = calloc(num_files,sizeof(size_t));
+  assert(file_sizes);
+  for(size_t i = 0; i < num_kernels; ++i)
+  {
+    int smallest = 0;
+    for(int file = 1; file < num_files; ++file)
+      if(file_sizes[file] < file_sizes[smallest]) smallest = file;
+    sorted_spans[i]->file = smallest;
+    file_sizes[smallest] += sorted_spans[i]->len;
+  }
+
+  if(mkdir(STENCILACC_SPLIT_DIR, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0 && errno != EEXIST)
+    fatal("Could not create directory " STENCILACC_SPLIT_DIR ": %s\n",strerror(errno));
+  for(int file = 0; file < num_files; ++file)
+  {
+    char filename[4096];
+    sprintf(filename, STENCILACC_SPLIT_DIR "/analysis_kernels_%d.cpp",file);
+    FILE* out = fopen(filename,"w");
+    if(!out) fatal("Could not open %s\n",filename);
+    fprintf(out,"#define AC_STENCIL_ACCESSES_KERNELS_ONLY 1\n");
+    fprintf(out,"#include \"%s\"\n",STENCILACC_SRC);
+    fwrite(text,1,prefix_len,out);
+    for(size_t i = 0; i < num_kernels; ++i)
+    {
+      if(spans[i].file != file) continue;
+      fwrite(text + spans[i].start,1,spans[i].len,out);
+      fprintf(out,"\n");
+    }
+    fclose(out);
+  }
+
+  free(file_sizes);
+  free(sorted_spans);
+  free(spans);
+  free(text);
+  return num_files;
+}
+
+//TP: posix_spawn instead of fork since copying the page tables of the large acc process is costly
+static void
+run_helper_compile_commands_in_parallel(char** cmds, const int num_cmds)
+{
+  pid_t* pids = malloc(sizeof(pid_t)*num_cmds);
+  assert(pids);
+  fflush(stdout);
+  fflush(stderr);
+  for(int i = 0; i < num_cmds; ++i)
+  {
+    char* const argv[] = {(char*)"sh", (char*)"-c", cmds[i], NULL};
+    const int err = posix_spawn(&pids[i], "/bin/sh", NULL, NULL, argv, environ);
+    if(err) fatal("Was not able to launch %s: %s\n", cmds[i], strerror(err));
+  }
+  bool success = true;
+  for(int i = 0; i < num_cmds; ++i)
+  {
+    int status;
+    if(waitpid(pids[i],&status,0) < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+    {
+      fprintf(stderr, "Failed compile command: %s\n", cmds[i]);
+      success = false;
+    }
+  }
+  free(pids);
+  if(!success)
+  {
+    fprintf(stderr, "Catastrophic error: could not compile the stencil access generator.\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
 void
 compile_helper(const bool log)
 {
@@ -12175,33 +12311,67 @@ compile_helper(const bool log)
   	printf("--- ACC_RUNTIME_API_DIR: `%s`\n", ACC_RUNTIME_API_DIR);
   	printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
   }
-  char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "%s " ACC_HELPER_COMPILE_FLAGS " -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
-	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
+  char flags[4096];
+  sprintf(flags, "%s " ACC_HELPER_COMPILE_FLAGS " -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 -std=c++1z"
   ,get_compiler(true),api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );
 
-  /*
-  const char* cmd = "gcc -Wshadow -I. "
-#if AC_USE_HIP
-                    "-DAC_USE_HIP=1 "
-#endif
-                    "-I " GPU_API_INCLUDES " "    //
-                    "-I " ACC_RUNTIME_API_DIR " " //
-      STENCILACC_SRC " -lm "
-                    "-o " STENCILACC_EXEC;
-  */
-  if(log)
-  	printf("Compile command: %s\n", cmd);
+  //TP: compiling the analysis kernels dominates the compilation time so compile them in parallel in separate translation units
+  const int num_kernel_files = split_analysis_kernels("user_analysis_kernels.cpp",acc_num_analysis_source_files);
+  if(num_kernel_files > 0)
   {
-	const int retval = system(cmd);
-  	if (retval != 0) {
-  	  fprintf(stderr, "Catastrophic error: could not compile the stencil access "
-  	                  "generator.\n");
-  	  fprintf(stderr, "Compiler error code: %d\n",retval);
-  	  exit(EXIT_FAILURE);
-  	}
+    const int num_cmds = num_kernel_files+1;
+    char** cmds = malloc(sizeof(char*)*num_cmds);
+    assert(cmds);
+    char link_cmd[4096*8];
+    int link_len = sprintf(link_cmd, "%s " ACC_HELPER_COMPILE_FLAGS, get_compiler(true));
+    for(int i = 0; i < num_cmds; ++i)
+    {
+      char src[4096];
+      char obj[4096];
+      if(i == 0)
+      {
+        sprintf(src, "%s", STENCILACC_SRC);
+        sprintf(obj, STENCILACC_SPLIT_DIR "/stencil_accesses.o");
+      }
+      else
+      {
+        sprintf(src, STENCILACC_SPLIT_DIR "/analysis_kernels_%d.cpp", i-1);
+        sprintf(obj, STENCILACC_SPLIT_DIR "/analysis_kernels_%d.o", i-1);
+      }
+      cmds[i] = malloc(strlen(flags) + strlen(src) + strlen(obj) + 128);
+      assert(cmds[i]);
+      sprintf(cmds[i], "%s -DAC_STENCIL_ACCESSES_SPLIT=1 -c %s -o %s", flags, src, obj);
+      link_len += sprintf(link_cmd + link_len, " %s", obj);
+      if(log) printf("Compile command: %s\n", cmds[i]);
+    }
+    sprintf(link_cmd + link_len, " -lm -o " STENCILACC_EXEC);
+    run_helper_compile_commands_in_parallel(cmds, num_cmds);
+    for(int i = 0; i < num_cmds; ++i) free(cmds[i]);
+    free(cmds);
+
+    if(log) printf("Link command: %s\n", link_cmd);
+    const int retval = system(link_cmd);
+    if (retval != 0) {
+      fprintf(stderr, "Catastrophic error: could not link the stencil access generator.\n");
+      fprintf(stderr, "Linker error code: %d\n",retval);
+      exit(EXIT_FAILURE);
+    }
+  }
+  else
+  {
+    char cmd[4096*2];
+    sprintf(cmd, "%s " STENCILACC_SRC " -lm -o " STENCILACC_EXEC, flags);
+    if(log)
+    	printf("Compile command: %s\n", cmd);
+    const int retval = system(cmd);
+    if (retval != 0) {
+      fprintf(stderr, "Catastrophic error: could not compile the stencil access "
+                      "generator.\n");
+      fprintf(stderr, "Compiler error code: %d\n",retval);
+      exit(EXIT_FAILURE);
+    }
   }
   if(log)
   	printf("%s compilation done\n", STENCILACC_SRC);

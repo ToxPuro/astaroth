@@ -25,6 +25,9 @@ void generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses, co
 
 void generate_mem_accesses(void);
 
+//Number of translation units the analysis kernels are split into when compiling the stencil access generator
+extern int acc_num_analysis_source_files;
+
 void gen_extra_funcs(const ASTNode* root, FILE* stream);
 
 void preprocess(ASTNode* root, const bool optimize_conditionals);
