@@ -25,6 +25,8 @@ var searchData=
   ['loading_20and_20storing_22',['Loading and Storing',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md77',1,'']]],
   ['loading_20and_20storing_20stencil_20coefficients_20at_20runtime_23',['Loading and storing stencil coefficients at runtime',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md68',1,'']]],
   ['loadkernelparamsfunc_24',['LoadKernelParamsFunc',['../astaroth__grid_8h.html#ac2944870a54d36393fe59fc62e8ad19f',1,'astaroth_grid.h']]],
-  ['log2_5fcapacity_25',['log2_capacity',['../structhashmap__t.html#aa2f30705f95eaa6a6c5cefcbc8fd8341',1,'hashmap_t']]],
-  ['looping_26',['Looping',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md64',1,'']]]
+  ['local_5fcompdomain_5fidx_25',['LOCAL_COMPDOMAIN_IDX',['../user__kernel_8h.html#ad8692c7f802633cb0f769dc39b06efcb',1,'user_kernel.h']]],
+  ['log2_5fcapacity_26',['log2_capacity',['../structhashmap__t.html#aa2f30705f95eaa6a6c5cefcbc8fd8341',1,'hashmap_t']]],
+  ['longlong_27',['longlong',['../user__kernel_8h.html#af25d1911ed951caf594252e1a419b4f3',1,'user_kernel.h']]],
+  ['looping_28',['Looping',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md64',1,'']]]
 ];

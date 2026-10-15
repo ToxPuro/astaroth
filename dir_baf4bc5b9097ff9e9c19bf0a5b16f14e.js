@@ -8,11 +8,13 @@ var dir_baf4bc5b9097ff9e9c19bf0a5b16f14e =
     [ "datatypes.h", "datatypes_8h.html", "datatypes_8h" ],
     [ "device_details.h", "device__details_8h.html", "device__details_8h" ],
     [ "errchk.h", "errchk_8h.html", "errchk_8h" ],
+    [ "extern_arrays_decl.h", "extern__arrays__decl_8h.html", "extern__arrays__decl_8h" ],
     [ "func_attributes.h", "func__attributes_8h.html", "func__attributes_8h" ],
     [ "hip.h", "hip_8h.html", "hip_8h" ],
     [ "mapreduce.cuh", "mapreduce_8cuh.html", "mapreduce_8cuh" ],
     [ "math_utils.h", "math__utils_8h.html", "math__utils_8h" ],
     [ "math_utils_base.h", "math__utils__base_8h.html", null ],
     [ "random.cuh", "random_8cuh.html", "random_8cuh" ],
-    [ "static_analysis.h", "static__analysis_8h.html", "static__analysis_8h" ]
+    [ "static_analysis.h", "static__analysis_8h.html", "static__analysis_8h" ],
+    [ "user_kernel.h", "user__kernel_8h.html", "user__kernel_8h" ]
 ];

@@ -1,5 +1,8 @@
 var searchData=
 [
-  ['va_5fend_0',['va_end',['../vecs_8h.html#aa694120a0e2e1e38b7bebb913a0fe88e',1,'vecs.h']]],
-  ['va_5fstart_1',['va_start',['../vecs_8h.html#a25419a391fdd4ad7954699c58cfeb3b9',1,'vecs.h']]]
+  ['te_5fcompile_0',['te_compile',['../tinyexpr_8h.html#a7c2f4f3ec7775f44ae8e98b7314ce570',1,'tinyexpr.h']]],
+  ['te_5feval_1',['te_eval',['../tinyexpr_8h.html#a598ef628827369f2bb2cb202b64ae87c',1,'tinyexpr.h']]],
+  ['te_5ffree_2',['te_free',['../tinyexpr_8h.html#a3cb88a7549ca780bef926f626fb6539d',1,'tinyexpr.h']]],
+  ['te_5finterp_3',['te_interp',['../tinyexpr_8h.html#a0efab36d0741747d26b3538ed704325e',1,'tinyexpr.h']]],
+  ['te_5fprint_4',['te_print',['../tinyexpr_8h.html#af9e091b8cdc5ad07d4288909c4679240',1,'tinyexpr.h']]]
 ];

@@ -132,15 +132,28 @@ $(function(){initNavTree('random_8cuh.html','',''); });
   <div class="headertitle"><div class="title">random.cuh File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;curand.h&gt;</code><br />
+<div class="textblock"><code>#include &lt;cstdint&gt;</code><br />
+<code>#include &lt;curand.h&gt;</code><br />
 <code>#include &lt;curand_kernel.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="astaroth__cuda__wrappers_8h_source.html">astaroth_cuda_wrappers.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="func__define_8h_source.html">func_define.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Include dependency graph for random.cuh:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="random_8cuh__incl.svg" width="238" height="115"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="random_8cuh__incl.svg" width="100%" height="556"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
-</div><table class="memberdecls">
+</div><div class="textblock"><div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>This graph shows which files directly or indirectly include this file:</div>
+<div id="dynsection-1-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-1-content" class="dyncontent" style="display:none;">
+<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="random_8cuh__dep__incl.svg" width="215" height="131"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+</div>
+</div>
+<p><a href="random_8cuh_source.html">Go to the source code of this file.</a></p>
+<table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-define-members" class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
 <tr class="memitem:a4113356a2e4968780156d946abcdbb59" id="r_a4113356a2e4968780156d946abcdbb59"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4113356a2e4968780156d946abcdbb59">rand_uniform</a>()</td></tr>
@@ -151,10 +164,8 @@ Typedefs</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:ad6ea2fd2e242ee00b407f244e8d00ee4" id="r_ad6ea2fd2e242ee00b407f244e8d00ee4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad6ea2fd2e242ee00b407f244e8d00ee4">acRandInitAlt</a> (const uint64_t seed, const size_t count, const size_t rank)</td></tr>
+<tr class="memitem:a75ef4d917ccf1dce32459ed7826b2183" id="r_a75ef4d917ccf1dce32459ed7826b2183"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a75ef4d917ccf1dce32459ed7826b2183">acRandInitAlt</a> (const uint64_t, const size_t, const size_t)</td></tr>
 <tr class="memitem:a22cf856d289b680a38aecef937f1f61c" id="r_a22cf856d289b680a38aecef937f1f61c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a22cf856d289b680a38aecef937f1f61c">acRandQuit</a> (void)</td></tr>
-<tr class="memitem:ace5609ed6aebe903ac7194104906cb2f" id="r_ace5609ed6aebe903ac7194104906cb2f"><td class="memItemLeft" align="right" valign="top">__global__ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ace5609ed6aebe903ac7194104906cb2f">rand_init</a> (const uint64_t seed, const size_t count, const size_t rank)</td></tr>
-<tr class="memitem:a6acc73ce0204c1e21b3e1fd3e9f0e688" id="r_a6acc73ce0204c1e21b3e1fd3e9f0e688"><td class="memItemLeft" align="right" valign="top">__device__ __forceinline__ <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6acc73ce0204c1e21b3e1fd3e9f0e688">random_uniform</a> (const size_t idx)</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -177,7 +188,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 <b>Value:</b><div class="fragment"><div class="line"><a class="code hl_define" href="hip_8h.html#a81997ae07d427e6164daf439b17cae32">curand_uniform</a>(&amp;<a class="code hl_variable" href="#a5264aee449b962c52b2125f1708f53c6">rand_states</a>[local_compdomain_idx])</div>
 <div class="ttc" id="ahip_8h_html_a81997ae07d427e6164daf439b17cae32"><div class="ttname"><a href="hip_8h.html#a81997ae07d427e6164daf439b17cae32">curand_uniform</a></div><div class="ttdeci">#define curand_uniform</div><div class="ttdef"><b>Definition</b> hip.h:103</div></div>
-<div class="ttc" id="arandom_8cuh_html_a5264aee449b962c52b2125f1708f53c6"><div class="ttname"><a href="#a5264aee449b962c52b2125f1708f53c6">rand_states</a></div><div class="ttdeci">__device__ __constant__ acRandState * rand_states</div><div class="ttdef"><b>Definition</b> random.cuh:38</div></div>
+<div class="ttc" id="arandom_8cuh_html_a5264aee449b962c52b2125f1708f53c6"><div class="ttname"><a href="#a5264aee449b962c52b2125f1708f53c6">rand_states</a></div><div class="ttdeci">__device__ __constant__ acRandState * rand_states</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -197,8 +208,8 @@ Variables</h2></td></tr>
 </div>
 </div>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
-<a id="ad6ea2fd2e242ee00b407f244e8d00ee4" name="ad6ea2fd2e242ee00b407f244e8d00ee4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad6ea2fd2e242ee00b407f244e8d00ee4">&#9670;&#160;</a></span>acRandInitAlt()</h2>
+<a id="a75ef4d917ccf1dce32459ed7826b2183" name="a75ef4d917ccf1dce32459ed7826b2183"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a75ef4d917ccf1dce32459ed7826b2183">&#9670;&#160;</a></span>acRandInitAlt()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -206,17 +217,17 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a> acRandInitAlt </td>
           <td>(</td>
-          <td class="paramtype">const uint64_t</td>          <td class="paramname"><span class="paramname"><em>seed</em></span>, </td>
+          <td class="paramtype">const uint64_t</td>          <td class="paramname"><span class="paramname"><em></em></span>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const size_t</td>          <td class="paramname"><span class="paramname"><em>count</em></span>, </td>
+          <td class="paramtype">const size_t</td>          <td class="paramname"><span class="paramname"><em></em></span>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const size_t</td>          <td class="paramname"><span class="paramname"><em>rank</em></span>&#160;)</td>
+          <td class="paramtype">const size_t</td>          <td class="paramname"><span class="paramname"><em></em></span>&#160;)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -240,60 +251,25 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a id="ace5609ed6aebe903ac7194104906cb2f" name="ace5609ed6aebe903ac7194104906cb2f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ace5609ed6aebe903ac7194104906cb2f">&#9670;&#160;</a></span>rand_init()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">__global__ void rand_init </td>
-          <td>(</td>
-          <td class="paramtype">const uint64_t</td>          <td class="paramname"><span class="paramname"><em>seed</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const size_t</td>          <td class="paramname"><span class="paramname"><em>count</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const size_t</td>          <td class="paramname"><span class="paramname"><em>rank</em></span>&#160;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a6acc73ce0204c1e21b3e1fd3e9f0e688" name="a6acc73ce0204c1e21b3e1fd3e9f0e688"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6acc73ce0204c1e21b3e1fd3e9f0e688">&#9670;&#160;</a></span>random_uniform()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">__device__ __forceinline__ <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> random_uniform </td>
-          <td>(</td>
-          <td class="paramtype">const size_t</td>          <td class="paramname"><span class="paramname"><em>idx</em></span></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a name="doc-var-members" id="doc-var-members"></a><h2 id="header-doc-var-members" class="groupheader">Variable Documentation</h2>
 <a id="a5264aee449b962c52b2125f1708f53c6" name="a5264aee449b962c52b2125f1708f53c6"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5264aee449b962c52b2125f1708f53c6">&#9670;&#160;</a></span>rand_states</h2>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">__device__ __constant__ <a class="el" href="#ae68bf4d330b6693422b11ef68767a65f">acRandState</a>* rand_states</td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel extern">extern</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 </div>

@@ -1,8 +1,10 @@
 <map id="acc&#45;runtime/api/func_attributes.h" name="acc&#45;runtime/api/func_attributes.h">
 <area shape="rect" id="Node000001" title=" " alt="" coords="8,5,164,50"/>
 <area shape="rect" id="Node000002" href="$math__utils_8h.html" title="Brief info." alt="" coords="5,191,167,235"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="64,66,55,99,52,120,55,142,64,167,75,190,70,190,59,169,50,143,47,120,50,97,66,61"/>
-<area shape="rect" id="Node000003" href="$math__utils__base_8h.html" title=" " alt="" coords="65,98,227,143"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="109,60,135,98,129,98,108,66"/>
-<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="126,154,102,192,98,189,121,157"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="65,66,55,99,52,120,55,142,64,167,75,190,70,191,59,169,50,143,47,120,50,97,66,61"/>
+<area shape="rect" id="Node000004" href="$math__utils__base_8h.html" title=" " alt="" coords="65,98,227,143"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="109,60,135,97,129,98,109,66"/>
+<area shape="rect" id="Node000003" href="$user__kernel_8h.html" title=" " alt="" coords="8,283,164,328"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="88,249,89,284,83,282,84,253"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="125,153,102,192,98,189,122,158"/>
 </map>

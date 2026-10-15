@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['vec_5finitializer_0',['VEC_INITIALIZER',['../string__vec_8h.html#a8f3b91283882c14a45d415b3025adada',1,'string_vec.h']]]
+  ['unused_0',['UNUSED',['../func__attributes_8h.html#addf5ec070e9499d36b7f2009ce736076',1,'UNUSED:&#160;func_attributes.h'],['../astaroth__base_8h.html#addf5ec070e9499d36b7f2009ce736076',1,'UNUSED:&#160;astaroth_base.h']]]
 ];

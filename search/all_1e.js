@@ -6,6 +6,7 @@ var searchData=
   ['use_20with_20the_20gnu_20affero_20general_20public_20license_3',['13. Use with the GNU Affero General Public License.',['../md_LICENCE.html#autotoc_md40',1,'']]],
   ['user_20defined_20types_4',['User-defined types',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md54',1,'']]],
   ['user_20manual_5',['Astaroth Specification and User Manual',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html',1,'']]],
-  ['users_20legal_20rights_20from_20anti_20circumvention_20law_6',['3. Protecting Users&apos; Legal Rights From Anti-Circumvention Law.',['../md_LICENCE.html#autotoc_md30',1,'']]],
-  ['utils_20libraries_7',['Interaction with the Astaroth Core and Utils libraries',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md67',1,'']]]
+  ['user_5fkernel_2eh_6',['user_kernel.h',['../user__kernel_8h.html',1,'']]],
+  ['users_20legal_20rights_20from_20anti_20circumvention_20law_7',['3. Protecting Users&apos; Legal Rights From Anti-Circumvention Law.',['../md_LICENCE.html#autotoc_md30',1,'']]],
+  ['utils_20libraries_8',['Interaction with the Astaroth Core and Utils libraries',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md67',1,'']]]
 ];

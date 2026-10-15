@@ -173,7 +173,7 @@ $(function(){initNavTree('vecs_8h_source.html','',''); });
 <div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>free_int_vec(<a class="code hl_struct" href="structint__vec.html">int_vec</a>* vec)</div>
 <div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span>{</div>
 <div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>    free(vec-&gt;<a class="code hl_variable" href="structint__vec.html#a16a26d17fab0bfea5268d92e6fce90e5">data</a>);</div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>    vec -&gt; size = 0;</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>    vec -&gt; <a class="code hl_define" href="user__kernel_8h.html#abe573881d0168a5509f3837df08013e1">size</a> = 0;</div>
 <div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>    vec -&gt; capacity = 0;</div>
 <div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>    vec -&gt; data = NULL;</div>
 <div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>}</div>
@@ -182,7 +182,7 @@ $(function(){initNavTree('vecs_8h_source.html','',''); });
 <div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>free_op_vec(<a class="code hl_struct" href="structop__vec.html">op_vec</a>* vec)</div>
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>{</div>
 <div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>    free(vec-&gt;<a class="code hl_variable" href="structop__vec.html#a4178cff7e32d8d1844db60199ae43976">data</a>);</div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>    vec -&gt; size = 0;</div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>    vec -&gt; <a class="code hl_define" href="user__kernel_8h.html#abe573881d0168a5509f3837df08013e1">size</a> = 0;</div>
 <div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>    vec -&gt; capacity = 0;</div>
 <div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>    vec -&gt; data = NULL;</div>
 <div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>    vec = NULL;</div>
@@ -191,7 +191,7 @@ $(function(){initNavTree('vecs_8h_source.html','',''); });
 <div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">void</span></div>
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>init_int_vec(<a class="code hl_struct" href="structint__vec.html">int_vec</a>* vec)</div>
 <div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>{</div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>    vec -&gt; size = 0;</div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>    vec -&gt; <a class="code hl_define" href="user__kernel_8h.html#abe573881d0168a5509f3837df08013e1">size</a> = 0;</div>
 <div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>    vec -&gt; capacity = 1;</div>
 <div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>    vec -&gt; data = (<span class="keywordtype">int</span>*)malloc(<span class="keyword">sizeof</span>(<span class="keywordtype">int</span>)*vec -&gt;capacity);</div>
 <div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>}</div>
@@ -225,7 +225,7 @@ $(function(){initNavTree('vecs_8h_source.html','',''); });
 <div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keywordtype">void</span></div>
 <div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>init_op_vec(<a class="code hl_struct" href="structop__vec.html">op_vec</a>* vec)</div>
 <div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>{</div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    vec -&gt; size = 0;</div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    vec -&gt; <a class="code hl_define" href="user__kernel_8h.html#abe573881d0168a5509f3837df08013e1">size</a> = 0;</div>
 <div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>    vec -&gt; capacity = 1;</div>
 <div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>    vec -&gt; data = (<a class="code hl_enumeration" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>*)malloc(<span class="keyword">sizeof</span>(<a class="code hl_enumeration" href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a>)*vec -&gt;capacity);</div>
 <div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>}</div>
@@ -389,6 +389,7 @@ $(function(){initNavTree('vecs_8h_source.html','',''); });
 <div class="ttc" id="astructop__vec_html_a4178cff7e32d8d1844db60199ae43976"><div class="ttname"><a href="structop__vec.html#a4178cff7e32d8d1844db60199ae43976">op_vec::data</a></div><div class="ttdeci">ReduceOp * data</div><div class="ttdef"><b>Definition</b> vecs.h:25</div></div>
 <div class="ttc" id="astructop__vec_html_a6c424746cd76239dfa2aff238fef3235"><div class="ttname"><a href="structop__vec.html#a6c424746cd76239dfa2aff238fef3235">op_vec::size</a></div><div class="ttdeci">size_t size</div><div class="ttdef"><b>Definition</b> vecs.h:26</div></div>
 <div class="ttc" id="astructop__vec_html_ae4a40d90f22f20b170c51a582d61a110"><div class="ttname"><a href="structop__vec.html#ae4a40d90f22f20b170c51a582d61a110">op_vec::capacity</a></div><div class="ttdeci">int capacity</div><div class="ttdef"><b>Definition</b> vecs.h:27</div></div>
+<div class="ttc" id="auser__kernel_8h_html_abe573881d0168a5509f3837df08013e1"><div class="ttname"><a href="user__kernel_8h.html#abe573881d0168a5509f3837df08013e1">size</a></div><div class="ttdeci">#define size(arr)</div><div class="ttdef"><b>Definition</b> user_kernel.h:75</div></div>
 <div class="ttc" id="avecs_8h_html_a1c3bc08749070d6f6b4702e44752d11f"><div class="ttname"><a href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f">ReduceOp</a></div><div class="ttdeci">ReduceOp</div><div class="ttdef"><b>Definition</b> vecs.h:8</div></div>
 <div class="ttc" id="avecs_8h_html_a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38"><div class="ttname"><a href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa001a4778587eaec0d67ffbcf4279ce38">NO_REDUCE</a></div><div class="ttdeci">@ NO_REDUCE</div><div class="ttdef"><b>Definition</b> vecs.h:9</div></div>
 <div class="ttc" id="avecs_8h_html_a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088"><div class="ttname"><a href="vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11fa1c72e5bd0886194ac31d693e50294088">REDUCE_MAX</a></div><div class="ttdeci">@ REDUCE_MAX</div><div class="ttdef"><b>Definition</b> vecs.h:11</div></div>

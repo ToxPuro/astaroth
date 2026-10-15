@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['timer_0',['Timer',['../timer__hires_8h.html#a7ae30853a48233eb21cf83baf34e6c0c',1,'timer_hires.h']]]
+  ['size3_5ft_0',['size3_t',['../host__datatypes_8h.html#a4fbe89db7871cf2ab32327a60eb4520f',1,'host_datatypes.h']]]
 ];

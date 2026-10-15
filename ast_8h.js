@@ -52,6 +52,7 @@ var ast_8h =
     ] ],
     [ "if", "ast_8h.html#a7b50077bef75e0e1697a39b905253930", null ],
     [ "if", "ast_8h.html#adadbe985a0a930e6d3bf3126bdd24adb", null ],
+    [ "id_counter", "ast_8h.html#a289fa4e5184cc8f29ab4547d7c7909bc", null ],
     [ "new_qualifier", "ast_8h.html#a08187fcca9bba11b127584ec4e70318a", null ],
     [ "old_qualifier", "ast_8h.html#aedfcc3248ad933627f319b985f23ae9f", null ]
 ];
