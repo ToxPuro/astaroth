@@ -214,7 +214,7 @@ static AcResult
 acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
 	acStoreRunConsts(mesh_info,"tmp_astaroth_run_consts.h");
-	static char cmd[402000];
+	static char cmd[max_string_size];
 	char cwd[5024];
 	if (getcwd(cwd, sizeof(cwd)) == NULL) {
 		fprintf(stderr,"Failed to get current working directory!\n");
@@ -315,14 +315,18 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 		fflush(stderr);
 		return AC_FAILURE;
 	}
-	if(log_dst)
-	{
-		snprintf(cmd,max_string_size+1000,"cd %s && make %s -j >> %s 2>&1",runtime_astaroth_build_path().c_str(),target,log_dst);
-	}
-	else
-	{
-		snprintf(cmd,max_string_size,"cd %s && make %s -j",runtime_astaroth_build_path().c_str(),target);
-	}
+
+        // Chaining this many %s parameters is quite gnarly but this way we can avoid even more
+        // conditionals or allocations on the heap.
+        snprintf(cmd, max_string_size,
+		"cd %s && cmake --build . -j%s%s%s%s%s",
+		runtime_astaroth_build_path().c_str(),
+		strcmp(target, "") != 0 ? " -t " : "",
+		strcmp(target, "") != 0 ? target : "",
+		log_dst ? " >>" : "",
+		log_dst ? log_dst : "",
+		log_dst ? " 2>&1" : "");
+
 	retval = system(cmd);
 	if(retval)
 	{
