@@ -7,5 +7,6 @@ var codegen_8h =
     [ "gen_output_files", "codegen_8h.html#a6e71b4a11f6f97a70148838256e3f55d", null ],
     [ "generate", "codegen_8h.html#ad7a2e8e9b460de7937db7f624bbd2d51", null ],
     [ "generate_mem_accesses", "codegen_8h.html#aec386ebc54b3a34fcddfa3bd63adcaec", null ],
-    [ "preprocess", "codegen_8h.html#a1f6c7f7114cfc0eca1876855ff13a98a", null ]
+    [ "preprocess", "codegen_8h.html#a1f6c7f7114cfc0eca1876855ff13a98a", null ],
+    [ "acc_num_analysis_source_files", "codegen_8h.html#a07a25853718dcc678f6cfae02a310ef3", null ]
 ];

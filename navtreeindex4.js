@@ -1,5 +1,6 @@
 var NAVTREEINDEX4 =
 {
+"hip_8h.html#af92b2f62fb7b9f604f3d3a90b35a9af1":[5,0,0,1,10,20],
 "hip_8h.html#afe3a2a06ed6140d2f41c4a5d41d392f9":[5,0,0,1,10,63],
 "hip_8h.html#afe8c41d4b71a220f0080dede2d3ba17a":[5,0,0,1,10,33],
 "hip_8h_source.html":[5,0,0,1,10],
@@ -248,6 +249,5 @@ var NAVTREEINDEX4 =
 "structAcReduceBuffer.html#abc58b9c57a916b5a957f52f42f51f4d4":[4,0,16,0],
 "structAcReduceBuffer.html#ad1e82adc51e7ca1eb0dca35a3b58d0ee":[4,0,16,4],
 "structAcReduceBuffer.html#aecb927b0a24d609b682e67e94cefa888":[4,0,16,1],
-"structAcReduction.html":[4,0,17],
-"structAcReduction.html#a29a3bf94741cd64340c6384374bd236c":[4,0,17,5]
+"structAcReduction.html":[4,0,17]
 };
