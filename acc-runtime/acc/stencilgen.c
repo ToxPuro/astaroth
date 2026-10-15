@@ -150,26 +150,26 @@ gen_stencil_definitions(bool gen_analysis)
 
   printf(
       "%s__device__ __attribute__((unused)) /*const*/ AcReal /*__restrict__*/ "
-      "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={",
+      "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\n",
       gen_analysis ? "static " : "");
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-    printf("{");
+    printf("  {\n");
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-      printf("{");
+      printf("    {\n");
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-        printf("{");
+        printf("      { ");
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
           // const char* coeff = stencils[stencil][depth][height][width];
           // printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff :
           // "AcReal(NAN)"); TP: always have initially nans in the stencils to
           // ensure stencils are always loaded at runtime
-          printf("AcReal(NAN),");
+          printf("AcReal(NAN), ");
         }
-        printf("},");
+        printf("},\n");
       }
-      printf("},");
+      printf("    },\n");
     }
-    printf("},");
+    printf("  },\n");
   }
     printf("};");
   FILE* stencil_coeffs_file= fopen("coeffs.h", "w");
