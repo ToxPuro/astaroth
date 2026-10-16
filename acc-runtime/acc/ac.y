@@ -141,6 +141,11 @@ string_vec const_int_values;
 string_vec run_const_ints;
 string_vec run_const_int_values;
 
+string_vec const_int_arrays;
+string_vec const_int_array_elems;
+string_vec const_int_array_elem_values;
+
+
 
 void
 cleanup(void)
@@ -174,6 +179,7 @@ astnode_hostdefine(const char* buffer, const int token)
 
 static void process_global_assignment(ASTNode* node, ASTNode* variable_definition,ASTNode* declaration_list);
 static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier);
+static void process_global_const_int_array(ASTNode* node, const ASTNode* type_specifier);
 static void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
@@ -1114,7 +1120,10 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
 	    else if(are_arrays)
+	    {
 		process_global_array_declaration(variable_definition,declaration_list, type_specifier);
+                process_global_const_int_array($$, type_specifier);
+	    }
 	    else if (assignment)
 		process_global_assignment($$,variable_definition,declaration_list);
 
@@ -2255,6 +2264,41 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			exit(EXIT_FAILURE);
 		}
 }
+
+//TP: record the values of const int arrays with an initializer e.g. const int arr = [1,2,3], to make them usable in compile-time int expressions e.g. field_order(arr[2]-1)
+static void process_global_const_int_array(ASTNode* node, const ASTNode* type_specifier)
+{
+       if(!has_qualifier(node->rhs,CONST_STR)) return;
+       if(!type_specifier || !type_specifier->lhs || !type_specifier->lhs->buffer) return;
+       if(strcmp(type_specifier->lhs->buffer,"int*") && strcmp(type_specifier->lhs->buffer,"int")) return;
+       const ASTNode* assign_list = get_node(NODE_ASSIGN_LIST,node->rhs);
+       if(!assign_list) return;
+       node_vec vars = get_nodes_in_list(assign_list->rhs);
+       for(size_t i = 0; i < vars.size; ++i)
+       {
+               const ASTNode* elem = (ASTNode*) vars.data[i];
+               const ASTNode* initializer = get_node(NODE_ARRAY_INITIALIZER,elem->rhs);
+               if(!initializer) continue;
+               const char* name = get_node_by_token(IDENTIFIER,elem->lhs)->buffer;
+               if(str_vec_get_index(const_int_arrays,name) != -1) continue;
+               push(&const_int_arrays,name);
+               node_vec values = get_nodes_in_list(initializer->lhs);
+               for(size_t j = 0; j < values.size; ++j)
+               {
+                       if(!values.data[j]) continue;
+                       //TP: evaluate a copy since eval_int modifies the tree
+                       ASTNode* value = astnode_dup(values.data[j],NULL);
+                       int err = 0;
+                       const int val = eval_int(value, const_int_values, const_ints, (string_vec)VEC_INITIALIZER, (string_vec)VEC_INITIALIZER, false, &err);
+                       if(err) continue;
+                       push(&const_int_array_elems,sprintf_intern("%s[%zu]",name,j));
+                       push(&const_int_array_elem_values,intern(itoa(val)));
+               }
+               free_node_vec(&values);
+       }
+       free_node_vec(&vars);
+}
+
 static void process_global_assignment(ASTNode* node,ASTNode* variable_definition, ASTNode* declaration_list)
 	    {
                 variable_definition->type |= NODE_VARIABLE;

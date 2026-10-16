@@ -29,12 +29,57 @@ static void eval_ternaries(ASTNode* node, const string_vec values,
                            const string_vec names, const string_vec run_values,
                            const string_vec run_names, const bool failure_fatal,
                            int* err);
+//TP: elements of global const int arrays, stored as "name[i]" --> value, such that e.g. field_order(arr[2]-1) can be evaluated
+extern string_vec const_int_arrays;
+extern string_vec const_int_array_elems;
+extern string_vec const_int_array_elem_values;
+
+static inline int
+eval_int(ASTNode* node, const string_vec values, const string_vec names,
+         const string_vec run_values, const string_vec run_names,
+         const bool failure_fatal, int* error_code);
+
+static void
+replace_const_int_array_accesses(ASTNode* node, const string_vec values, const string_vec names,
+                                 const string_vec run_values, const string_vec run_names,
+                                 const bool failure_fatal)
+{
+       if(node->lhs)
+               replace_const_int_array_accesses(node->lhs, values, names, run_values, run_names, failure_fatal);
+       if(node->rhs)
+               replace_const_int_array_accesses(node->rhs, values, names, run_values, run_names, failure_fatal);
+       if(!(node->type & NODE_ARRAY_ACCESS) || !node->lhs || !node->rhs) return;
+       if(!(node->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
+       const ASTNode* id = get_node_by_token(IDENTIFIER, node->lhs);
+       if(!id || !id->buffer || str_vec_get_index(const_int_arrays, id->buffer) == -1) return;
+       int err = 0;
+       const int index = eval_int(node->rhs, values, names, run_values, run_names, failure_fatal, &err);
+       if(err) return;
+       const int elem = str_vec_get_index(const_int_array_elems, sprintf_intern("%s[%d]", id->buffer, index));
+       if(elem == -1)
+       {
+               if(failure_fatal)
+               {
+                       fprintf(stderr,"Index %d out of bounds for const int array %s\n", index, id->buffer);
+                       exit(EXIT_FAILURE);
+               }
+               return;
+       }
+       set_buffers_empty(node);
+       node->lhs = NULL;
+       node->rhs = NULL;
+       astnode_set_buffer(const_int_array_elem_values.data[elem], node);
+       node->type = NODE_UNKNOWN;
+       node->token = NUMBER;
+}
+
 
 static inline int
 eval_int(ASTNode* node, const string_vec values, const string_vec names,
          const string_vec run_values, const string_vec run_names,
          const bool failure_fatal, int* error_code)
 {
+	replace_const_int_array_accesses(node, values, names, run_values, run_names, failure_fatal);
 	replace_const_ints(node, values, names);
         replace_const_ints(node, run_values, run_names);
         eval_ternaries(node, values, names, run_values, run_names,
