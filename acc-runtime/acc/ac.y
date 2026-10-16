@@ -693,7 +693,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
 	
 	//TP: I lex the code now twice as a very hacky way to enable out of order struct definitions.
-	//    A better way would to take away the the struct logic out of the lexer and to a separate pass,
+	//    A better way would to take away the the struct logic out of the lexer into a separate pass,
 	//    but this works for now.
 
 	const int save_line_num = yylineno;
