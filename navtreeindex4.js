@@ -1,5 +1,8 @@
 var NAVTREEINDEX4 =
 {
+"hip_8h.html#af20c9c34d6f54254a6c6c30d18d7ff87":[5,0,0,1,10,77],
+"hip_8h.html#af319507e914f356729654a2251ed7843":[5,0,0,1,10,48],
+"hip_8h.html#af47e582d1110438a837fc3394f6791ab":[5,0,0,1,10,14],
 "hip_8h.html#af92b2f62fb7b9f604f3d3a90b35a9af1":[5,0,0,1,10,20],
 "hip_8h.html#afe3a2a06ed6140d2f41c4a5d41d392f9":[5,0,0,1,10,63],
 "hip_8h.html#afe8c41d4b71a220f0080dede2d3ba17a":[5,0,0,1,10,33],
@@ -246,8 +249,5 @@ var NAVTREEINDEX4 =
 "structAcReduceBuffer.html":[4,0,16],
 "structAcReduceBuffer.html#a8a10ca099bd09f31e28137de38454650":[4,0,16,2],
 "structAcReduceBuffer.html#a9f8eb812bca05b78fb8ee54a1734b0fa":[4,0,16,3],
-"structAcReduceBuffer.html#abc58b9c57a916b5a957f52f42f51f4d4":[4,0,16,0],
-"structAcReduceBuffer.html#ad1e82adc51e7ca1eb0dca35a3b58d0ee":[4,0,16,4],
-"structAcReduceBuffer.html#aecb927b0a24d609b682e67e94cefa888":[4,0,16,1],
-"structAcReduction.html":[4,0,17]
+"structAcReduceBuffer.html#abc58b9c57a916b5a957f52f42f51f4d4":[4,0,16,0]
 };

@@ -97,9 +97,9 @@ var NAVTREEINDEX =
 "3d__caching__implementations_8h.html",
 "astaroth__base_8h.html#abcf296f8f5059823fbab222b0f218ce0",
 "astaroth__helpers_8h.html#a484a9efc3716f90720deff6250dc2522",
-"func__attributes_8h.html#a652a53d224ff3f9092f9f5e82a339ae9",
-"hip_8h.html#af92b2f62fb7b9f604f3d3a90b35a9af1",
-"structAcReduction.html#a29a3bf94741cd64340c6384374bd236c"
+"files.html",
+"hip_8h.html#af20c9c34d6f54254a6c6c30d18d7ff87",
+"structAcReduceBuffer.html#ad1e82adc51e7ca1eb0dca35a3b58d0ee"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';
