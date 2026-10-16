@@ -180,6 +180,7 @@ astnode_hostdefine(const char* buffer, const int token)
 static void process_global_assignment(ASTNode* node, ASTNode* variable_definition,ASTNode* declaration_list);
 static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier);
 static void process_global_const_int_array(ASTNode* node, const ASTNode* type_specifier);
+static void process_global_const_int3(ASTNode* node);
 static void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
@@ -2556,6 +2557,42 @@ static void process_global_const_int_array(ASTNode* node, const ASTNode* type_sp
        }
        free_node_vec(&vars);
 }
+
+//TP: record the members of const int3s with an initializer e.g. const int3 vec = {1,2,3} as "vec.x" etc., to make them usable in compile-time int expressions e.g. field_order(vec.x-1)
+static void process_global_const_int3(ASTNode* node)
+{
+       const ASTNode* assign_list = get_node(NODE_ASSIGN_LIST,node->rhs);
+       if(!assign_list) return;
+       node_vec vars = get_nodes_in_list(assign_list->rhs);
+       for(size_t i = 0; i < vars.size; ++i)
+       {
+               const ASTNode* elem = (ASTNode*) vars.data[i];
+               const ASTNode* initializer = get_node(NODE_STRUCT_INITIALIZER,elem->rhs);
+               if(!initializer || !initializer->lhs) continue;
+               const char* name = get_node_by_token(IDENTIFIER,elem->lhs)->buffer;
+               if(str_vec_get_index(const_int_arrays,name) != -1) continue;
+               node_vec values = get_nodes_in_list(initializer->lhs);
+               if(values.size == 3)
+               {
+                       push(&const_int_arrays,name);
+                       const char* members[] = {"x","y","z"};
+                       for(size_t j = 0; j < 3; ++j)
+                       {
+                               if(!values.data[j]) continue;
+                               //TP: evaluate a copy since eval_int modifies the tree
+                               ASTNode* value = astnode_dup(values.data[j],NULL);
+                               int err = 0;
+                               const int val = eval_int(value, const_int_values, const_ints, (string_vec)VEC_INITIALIZER, (string_vec)VEC_INITIALIZER, false, &err);
+                               if(err) continue;
+                               push(&const_int_array_elems,sprintf_intern("%s.%s",name,members[j]));
+                               push(&const_int_array_elem_values,intern(itoa(val)));
+                       }
+               }
+               free_node_vec(&values);
+       }
+       free_node_vec(&vars);
+}
+
 
 static void process_global_assignment(ASTNode* node,ASTNode* variable_definition, ASTNode* declaration_list)
 	    {

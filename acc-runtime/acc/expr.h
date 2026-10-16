@@ -48,6 +48,25 @@ replace_const_int_array_accesses(ASTNode* node, const string_vec values, const s
                replace_const_int_array_accesses(node->lhs, values, names, run_values, run_names, failure_fatal);
        if(node->rhs)
                replace_const_int_array_accesses(node->rhs, values, names, run_values, run_names, failure_fatal);
+       //TP: members of const int3s, stored as "name.x" etc.
+       if((node->type & NODE_STRUCT_EXPRESSION) && node->lhs && node->rhs)
+       {
+               if(!(node->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
+               const ASTNode* id = get_node_by_token(IDENTIFIER, node->lhs);
+               const ASTNode* member = get_node_by_token(IDENTIFIER, node->rhs);
+               if(!id || !id->buffer || !member || !member->buffer) return;
+               if(str_vec_get_index(const_int_arrays, id->buffer) == -1) return;
+               const int elem = str_vec_get_index(const_int_array_elems, sprintf_intern("%s.%s", id->buffer, member->buffer));
+               if(elem == -1) return;
+               set_buffers_empty(node);
+               node->lhs = NULL;
+               node->rhs = NULL;
+               astnode_set_buffer(const_int_array_elem_values.data[elem], node);
+               node->type = NODE_UNKNOWN;
+               node->token = NUMBER;
+               return;
+       }
+
        if(!(node->type & NODE_ARRAY_ACCESS) || !node->lhs || !node->rhs) return;
        if(!(node->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
        const ASTNode* id = get_node_by_token(IDENTIFIER, node->lhs);
