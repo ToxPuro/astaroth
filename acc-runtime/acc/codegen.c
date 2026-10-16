@@ -10320,6 +10320,7 @@ remove_dead_declarations(ASTNode* node, const ptr_set* vars_used)
 	}
 	return res;
 }
+static bool remove_dead_writes_in_func(ASTNode* node);
 bool
 remove_dead_writes_base(ASTNode* node)
 {
@@ -10334,6 +10335,15 @@ remove_dead_writes_base(ASTNode* node)
 	}
 	if(!(node->type & NODE_FUNCTION)) return res;
 	if((node->type & NODE_DFUNCTION)) return res;
+	//TP: the functions are independent of each other so iterate each function to a fixed point on its own
+	//    instead of re-processing all functions until none of them changes
+	while(remove_dead_writes_in_func(node)) res = true;
+	return res;
+}
+static bool
+remove_dead_writes_in_func(ASTNode* node)
+{
+	bool res = false;
 	const ASTNode* statements_node = node->rhs->rhs->lhs;
 	if(!statements_node) return res;
 	node_vec statements = get_nodes_in_list(statements_node);
@@ -10365,11 +10375,7 @@ remove_dead_writes_base(ASTNode* node)
 void
 remove_dead_writes(ASTNode* node)
 {
-	bool removed_write = true;
-	while(removed_write)
-	{
-		removed_write = remove_dead_writes_base(node);
-	}
+	remove_dead_writes_base(node);
 }
 void
 gen_ssa_in_basic_blocks(ASTNode* node)
@@ -11327,6 +11333,22 @@ print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
 	print_nested_ints(fp,x,y,z,dims,1);
 }
 
+//TP: declares the 3d array name[x][y][z] = val for all entries without spelling out every entry as an initializer.
+//    The dense initializers (e.g. ~17MB of text for stencils_accessed) made the compilation of the files including stencil_accesses.h
+//    (stencilgen.c in the analysis phase) take more time.
+//    Zero is the default value of a static array so it needs no initializer at all and other values are written by a constructor.
+//    Works both in C and C++.
+static void
+print_uniform_3d_int_array(FILE* fp, const char* name, const char* dims, size_t x, size_t y, size_t z, const int val)
+{
+	fprintf(fp, "static int %s %s __attribute__((unused));\n", name, dims);
+	if(val == 0) return;
+	fprintf(fp,
+		"__attribute__((constructor)) __attribute__((unused)) static void ac_init_%s(void)"
+		"{for(int i = 0; i < %zu; ++i) for(int j = 0; j < %zu; ++j) for(int k = 0; k < %zu; ++k) %s[i][j][k] = %d;}\n",
+		name, x, y, z, name, val);
+}
+
 static const char*
 get_compiler(const bool cxx_compiler)
 {
@@ -11372,23 +11394,14 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
     print_nested_ones(tmp,1,num_kernels,num_fields+num_profiles,2);
     fprintf(tmp, "};\n");
 
-    fprintf(tmp,
-            "static int "
-            "incoming_ray_value_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1] __attribute__((unused)) = {");
-    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_rays+1,3,0);
-    fprintf(tmp, "};\n");
+    print_uniform_3d_int_array(tmp,"incoming_ray_value_accessed","[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]",
+		    num_kernels,num_fields+num_profiles,num_rays+1,0);
 
-    fprintf(tmp,
-            "static int "
-            "outgoing_ray_value_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1] __attribute__((unused)) = {");
-    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_rays+1,3,0);
-    fprintf(tmp, "};\n");
+    print_uniform_3d_int_array(tmp,"outgoing_ray_value_accessed","[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]",
+		    num_kernels,num_fields+num_profiles,num_rays+1,0);
 
-    fprintf(tmp,
-            "static int "
-            "stencils_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] __attribute__((unused)) = {");
-    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_stencils,3,AC_STENCIL_CALL);
-    fprintf(tmp, "};\n");
+    print_uniform_3d_int_array(tmp,"stencils_accessed","[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]",
+		    num_kernels,num_fields+num_profiles,num_stencils,AC_STENCIL_CALL);
 
     fprintf(tmp,
             "static int "

@@ -148,10 +148,22 @@ gen_stencil_definitions(bool gen_analysis)
     raise_error("Must declare at least one Stencil in the DSL code!");
   }
 
+  if (gen_analysis) {
+    //TP: the analysis kernels are host C++ and the stencils are always initially NaNs (see below)
+    //    so fill them at static initialization time instead of spelling out NUM_STENCILS*STENCIL_DEPTH*STENCIL_HEIGHT*STENCIL_WIDTH initializers.
+    //    The dense initializer (multiple MBs after the expansion of NAN) was included in every analysis translation unit and made up most of their compilation time
+    printf(
+        "static __device__ __attribute__((unused)) AcReal "
+        "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH];\n"
+        "[[maybe_unused]] static const bool stencils_are_initialized = [](){"
+        "AcReal* coeffs = &stencils[0][0][0][0];"
+        "for(size_t i = 0; i < sizeof(stencils)/sizeof(AcReal); ++i) coeffs[i] = AcReal(NAN);"
+        "return true;}();\n");
+  }
+  else {
   printf(
-      "%s__device__ __attribute__((unused)) /*const*/ AcReal /*__restrict__*/ "
-      "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\n",
-      gen_analysis ? "static " : "");
+      "__device__ __attribute__((unused)) /*const*/ AcReal /*__restrict__*/ "
+      "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\n");
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     printf("  {\n");
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
@@ -172,6 +184,7 @@ gen_stencil_definitions(bool gen_analysis)
     printf("  },\n");
   }
     printf("};");
+  }
   FILE* stencil_coeffs_file= fopen("coeffs.h", "w");
   fprintf(stencil_coeffs_file,
       "AcReal "
