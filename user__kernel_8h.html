@@ -134,10 +134,8 @@ $(function(){initNavTree('user__kernel_8h.html','',''); });
 <div class="contents">
 <div class="textblock"><code>#include &quot;<a class="el" href="host__datatypes_8h_source.html">host_datatypes.h</a>&quot;</code><br />
 <code>#include &quot;user_defines.h&quot;</code><br />
-<code>#include &quot;stencil_accesses.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="acc__runtime_8h_source.html">acc_runtime.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="implementation_8h_source.html">acc/implementation.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="mem__access__helper__funcs_8h_source.html">acc/mem_access_helper_funcs.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="astaroth__cuda__wrappers_8h_source.html">astaroth_cuda_wrappers.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="device__details_8h_source.html">device_details.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="errchk_8h_source.html">errchk.h</a>&quot;</code><br />
@@ -267,7 +265,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <b>Value:</b><div class="fragment"><div class="line">  ((i) + <a class="code hl_variable" href="#a5d8f31ceb442db9fba625396b61bad42">dims</a>.x * ((j) + (k) * <a class="code hl_variable" href="#a5d8f31ceb442db9fba625396b61bad42">dims</a>.y))</div>
-<div class="ttc" id="auser__kernel_8h_html_a5d8f31ceb442db9fba625396b61bad42"><div class="ttname"><a href="#a5d8f31ceb442db9fba625396b61bad42">dims</a></div><div class="ttdeci">static __device__ const int dims</div><div class="ttdef"><b>Definition</b> user_kernel.h:127</div></div>
+<div class="ttc" id="auser__kernel_8h_html_a5d8f31ceb442db9fba625396b61bad42"><div class="ttname"><a href="#a5d8f31ceb442db9fba625396b61bad42">dims</a></div><div class="ttdeci">static __device__ const int dims</div><div class="ttdef"><b>Definition</b> user_kernel.h:125</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -596,8 +594,8 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">{</div>
 <div class="line">    <span class="keywordflow">return</span> safe_access(arr, <a class="code hl_variable" href="#a5d8f31ceb442db9fba625396b61bad42">dims</a>, <a class="code hl_variable" href="#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a>,real_array_names__device__[<a class="code hl_variable" href="#ad82553547ece231dc67964b8389f3d6f">param</a>])</div>
-<div class="ttc" id="auser__kernel_8h_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">static __device__ const int const int index</div><div class="ttdef"><b>Definition</b> user_kernel.h:127</div></div>
-<div class="ttc" id="auser__kernel_8h_html_ad82553547ece231dc67964b8389f3d6f"><div class="ttname"><a href="#ad82553547ece231dc67964b8389f3d6f">param</a></div><div class="ttdeci">static __device__ const int const int const AcRealArrayParam param</div><div class="ttdef"><b>Definition</b> user_kernel.h:128</div></div>
+<div class="ttc" id="auser__kernel_8h_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">static __device__ const int const int index</div><div class="ttdef"><b>Definition</b> user_kernel.h:125</div></div>
+<div class="ttc" id="auser__kernel_8h_html_ad82553547ece231dc67964b8389f3d6f"><div class="ttname"><a href="#ad82553547ece231dc67964b8389f3d6f">param</a></div><div class="ttdeci">static __device__ const int const int const AcRealArrayParam param</div><div class="ttdef"><b>Definition</b> user_kernel.h:126</div></div>
 </div><!-- fragment -->
 </div>
 </div>
