@@ -27,12 +27,10 @@
 // clang-format off
 #include "host_datatypes.h"
 #include "user_defines.h"
-#include "stencil_accesses.h" // Required by mem_access_helper_funcs.h
 // clang-format on
 
 #include "acc_runtime.h"
 #include "acc/implementation.h"
-#include "acc/mem_access_helper_funcs.h"
 #include "astaroth_cuda_wrappers.h"
 #include "device_details.h"
 #include "errchk.h"
