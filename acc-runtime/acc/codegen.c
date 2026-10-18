@@ -8243,6 +8243,22 @@ inside_conditional_scope(const ASTNode* node)
 		}
 		return false;
 }
+//TP: an elif is reached only if all previous conditions in its chain were false.
+//    If some of them are not constexpr the elif might have not been reached during the analysis even though it can be taken,
+//    so it can be considered known only if all previous conditions are constexpr
+static bool
+previous_conditions_are_constexpr(const ASTNode* node)
+{
+	while(get_node_by_token(ELIF,node->parent->lhs))
+	{
+		//TP: if_statement <- if_root <- elif_statement <- elif's if_statement
+		const ASTNode* prev = node->parent->parent->parent;
+		if(!(prev->type & NODE_IF)) return false;
+		if(!all_identifiers_are_constexpr(prev->lhs)) return false;
+		node = prev;
+	}
+	return true;
+}
 typedef struct
 {
 	bool in_array_access;
@@ -8290,7 +8306,7 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 	if(node->type & NODE_IF && all_identifiers_are_constexpr(node->lhs))
 	{
 		//TP: we only consider conditionals that are not inside other conditionals
-		if(!inside_conditional_scope(node))
+		if(!inside_conditional_scope(node) && previous_conditions_are_constexpr(node))
 		{
 			node->is_constexpr = true;
 			res = true;
@@ -9382,6 +9398,17 @@ transform_field_binary_ops(ASTNode* node)
 	const char* rhs_expr = get_expr_type(node->rhs);
 	const char* op = node->rhs->lhs->buffer;
         if(!op) return;
+	//TP: comparing a field handle to a real is meaningless so the comparison must be of the value of the field.
+	//    Without this e.g. Field > 0.0 compared the handle, which in addition was considered constexpr by the conditional elimination.
+	//    Comparisons against other types, e.g. Field == HEAT_INIT, can be comparisons of the handles so they are left as is
+	if(!strcmps(op,LESS_STR,GREATER_STR,LEQ_STR,GEQ_STR,EQUAL_STR,NEQ_STR))
+	{
+		if(is_value_applicable_type(lhs_expr) && rhs_expr == REAL_STR)
+			node->lhs = create_func_call_expr(VALUE_STR,node->lhs);
+		if(is_value_applicable_type(rhs_expr) && lhs_expr == REAL_STR)
+			node->rhs->rhs = create_func_call_expr(VALUE_STR,node->rhs->rhs);
+		return;
+	}
         if(strcmps(op,PLUS_STR,MINUS_STR,DIV_STR,MULT_STR)) return;
 
 	if(is_value_applicable_type(lhs_expr))
