@@ -29,6 +29,7 @@ extern const char* binary_op_val;
 //Id counter for Ast. 
 //Declared here to make all compilation objects share a common counter.
 int id_counter = 0;
+ast_arena* current_ast_arena = NULL;
 
 const char* INT_STR = NULL;
 const char* TEN_STR = NULL;
@@ -714,6 +715,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 		FILE* fp = fopen(ACC_GEN_PATH"/extra_dfuncs.h","w");
 		gen_extra_funcs(root, fp);
 		fclose(fp);
+		destroy_ast(root);
+		root = NULL;
 		return EXIT_SUCCESS;
 	}
 	if(gen_bc_kernels)
@@ -721,6 +724,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 		FILE* fp = fopen(ACC_GEN_PATH"/boundcond_kernels.h","w");
 		gen_boundcond_kernels(root, fp);
 		fclose(fp);
+		destroy_ast(root);
+		root = NULL;
 		return EXIT_SUCCESS;
 	}
 
@@ -728,6 +733,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
 	ASTNode* new_root = astnode_dup(root,NULL);
+	destroy_ast(root);
+	root = NULL;
 	preprocess(new_root, optimize_input_params);
 
 	reset_all_files();
@@ -770,8 +777,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         assert(fp);
         generate(new_root, fp, gen_mem_accesses,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 
-	astnode_destroy(root);
-	root = NULL;
+	destroy_ast(new_root);
 	
         fclose(fp);
 

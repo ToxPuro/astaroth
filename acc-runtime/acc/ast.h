@@ -142,31 +142,68 @@ node_type_to_str(const NodeType type)
 	return "unknown";
 }
 
+//Ordering is to make the smallest structs
 typedef struct astnode_s {
-  int id;
   struct astnode_s* parent;
   struct astnode_s* lhs;
   struct astnode_s* rhs;
-  NodeType type; // Type of the AST node
   const char* buffer;  // Indentifiers and other strings (empty by default)
-  const char* buffer_token;  // Indentifiers and other strings (empty by default)
-
-
-  int token;     // Type of a terminal (that is not a simple char)
   const char* prefix;  // Strings. Also makes the grammar since we don't have
   const char* infix;   // to divide it into max two-child rules
   const char* postfix; // (which makes it much harder to read)
-  bool is_constexpr; //Whether the node represents information known at compile time
   const char* expr_type; //The type of the expr the node represent
+  int id;
+  int token;     // Type of a terminal (that is not a simple char)
+  NodeType type; // Type of the AST node
+  bool is_constexpr; //Whether the node represents information known at compile time
   bool no_auto;
+  bool in_arena; //Allocated from an ast_arena, freed only together with the arena
 } ASTNode;
+
+//TP: a pass working on a copy of the tree (generate) allocates all of its nodes from an arena and frees them at once at the end of the pass.
+//    This frees also the nodes the transformations detach from the tree without freeing them and avoids the overhead of allocating each node separately
+typedef struct
+{
+	ASTNode** blocks;
+	size_t num_blocks;
+	size_t num_used_in_last_block;
+} ast_arena;
+#define AST_ARENA_BLOCK_SIZE (1 << 16)
+//Declared in ac.y
+extern ast_arena* current_ast_arena;
+
+static inline ASTNode*
+astnode_alloc(void)
+{
+	ast_arena* arena = current_ast_arena;
+	if(!arena) return (ASTNode*)calloc(1,sizeof(ASTNode));
+	if(arena->num_blocks == 0 || arena->num_used_in_last_block == AST_ARENA_BLOCK_SIZE)
+	{
+		arena->blocks = (ASTNode**)realloc(arena->blocks,sizeof(ASTNode*)*(arena->num_blocks+1));
+		arena->blocks[arena->num_blocks++] = (ASTNode*)calloc(AST_ARENA_BLOCK_SIZE,sizeof(ASTNode));
+		arena->num_used_in_last_block = 0;
+	}
+	ASTNode* res = &arena->blocks[arena->num_blocks-1][arena->num_used_in_last_block++];
+	res->in_arena = true;
+	return res;
+}
+static inline void
+ast_arena_free(ast_arena* arena)
+{
+	for(size_t i = 0; i < arena->num_blocks; ++i)
+		free(arena->blocks[i]);
+	free(arena->blocks);
+	arena->blocks = NULL;
+	arena->num_blocks = 0;
+	arena->num_used_in_last_block = 0;
+}
 
 
 static inline ASTNode*
 astnode_dup(const ASTNode* node, ASTNode* parent)
 {
 	if(!node) return NULL;
-	ASTNode* res = (ASTNode*)calloc(1,sizeof(node[0]));
+	ASTNode* res = astnode_alloc();
 	res->id = node->id;
 	res->type = node->type;
 	res->parent = parent;
@@ -201,7 +238,7 @@ make_ids_unique(ASTNode* node)
 static inline ASTNode*
 astnode_create(const NodeType type, ASTNode* lhs, ASTNode* rhs)
 {
-  ASTNode* node = (ASTNode*)calloc(1, sizeof(node[0]));
+  ASTNode* node = astnode_alloc();
 
   node->id              = id_counter++;
   node->type            = type;
@@ -235,7 +272,7 @@ astnode_destroy(ASTNode* node)
   node->prefix  = NULL;
   node->infix   = NULL;
   node->postfix = NULL;
-  free(node);
+  if(!node->in_arena) free(node);
 }
 static inline void
 astnode_free(ASTNode* node)

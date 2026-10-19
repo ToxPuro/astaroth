@@ -39,3 +39,6 @@ void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream);
 void gen_fused_kernels(ASTNode* root);
 
 void gen_kfunc_info(const ASTNode* root);
+
+//Destroys the tree and resets the caches pointing to it
+void destroy_ast(ASTNode* root);

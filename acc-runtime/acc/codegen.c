@@ -17,6 +17,7 @@
 */
 #include "codegen.h"
 
+
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -193,6 +194,73 @@ extern string_vec run_const_int_values;
 
 static node_vec    dfunc_nodes      = VEC_INITIALIZER;
 static string_vec  dfunc_names      = VEC_INITIALIZER;
+
+//TP: caches of information read from the first tree they are called with, the cached values point to the nodes of that tree
+typedef struct
+{
+	struct hashmap_s map;
+	bool populated;
+} tree_cache;
+static tree_cache array_var_dims_cache       = {0};
+static tree_cache var_val_cache              = {0};
+static tree_cache const_array_var_dims_cache = {0};
+static tree_cache function_params_info_cache = {0};
+static bool reset_dfunc_cache = true;
+
+static void
+reset_tree_cache(tree_cache* cache)
+{
+	if(cache->populated) hashmap_destroy(&cache->map);
+	cache->populated = false;
+}
+static const ASTNode*
+get_tree_root(const ASTNode* node)
+{
+	while(node->parent) node = node->parent;
+	return node;
+}
+//TP: the caches pointing to the nodes of a tree have to be reset when the tree is destroyed.
+//    dfunc_nodes is reset only if it points to the destroyed tree since the passes of generate use the dfuncs of the tree given to preprocess
+static void
+reset_tree_caches(const ASTNode* root)
+{
+	if(dfunc_nodes.size && (get_tree_root(dfunc_nodes.data[0]) == root || dfunc_nodes.data[0]->in_arena))
+	{
+		free_node_vec(&dfunc_nodes);
+		free_str_vec(&dfunc_names);
+	}
+	reset_tree_cache(&array_var_dims_cache);
+	reset_tree_cache(&var_val_cache);
+	reset_tree_cache(&const_array_var_dims_cache);
+	reset_tree_cache(&function_params_info_cache);
+	reset_dfunc_cache = true;
+}
+static void
+destroy_tree(ASTNode* root)
+{
+	reset_tree_caches(root);
+	astnode_destroy(root);
+}
+//TP: for passes that work on a copy of the tree: all nodes allocated between begin_arena_pass and end_arena_pass are freed at its end
+typedef struct
+{
+	ast_arena arena;
+	ast_arena* prev;
+} arena_pass;
+static void
+begin_arena_pass(arena_pass* pass)
+{
+	memset(&pass->arena,0,sizeof(pass->arena));
+	pass->prev = current_ast_arena;
+	current_ast_arena = &pass->arena;
+}
+static void
+end_arena_pass(arena_pass* pass, const ASTNode* root)
+{
+	reset_tree_caches(root);
+	current_ast_arena = pass->prev;
+	ast_arena_free(&pass->arena);
+}
 
 static node_vec    kfunc_nodes      = VEC_INITIALIZER;
 static string_vec  kfunc_names      = VEC_INITIALIZER;
@@ -862,17 +930,15 @@ populate_array_var_dims_info(const ASTNode* node, struct hashmap_s* cache)
 node_vec
 get_array_var_dims(const char* var, const ASTNode* root)
 {
-	    static bool first_call = true;
-	    static struct hashmap_s cache;
-	    if(first_call)
+	    if(!array_var_dims_cache.populated)
 	    {
             	const unsigned initial_size = 2000;
-            	hashmap_create(initial_size, &cache);
-	    	first_call = false;
-		populate_array_var_dims_info(root,&cache);
+            	hashmap_create(initial_size, &array_var_dims_cache.map);
+	    	array_var_dims_cache.populated = true;
+		populate_array_var_dims_info(root,&array_var_dims_cache.map);
 	    }
 
-	    node_vec* cached_val = (node_vec*)hashmap_get(&cache,var,strlen(var));
+	    node_vec* cached_val = (node_vec*)hashmap_get(&array_var_dims_cache.map,var,strlen(var));
 	    if(cached_val) return *cached_val;
 	    node_vec dummy  = VEC_INITIALIZER;
 	    return dummy;
@@ -900,16 +966,14 @@ populate_var_val(const ASTNode* node, struct hashmap_s* cache)
 const ASTNode*
 get_var_val(const char* var, const ASTNode* root)
 {
-	static bool first_call = true;
-	static struct hashmap_s cache;
-	if(first_call)
+	if(!var_val_cache.populated)
 	{
             const unsigned initial_size = 2000;
-            hashmap_create(initial_size, &cache);
-	    first_call = false;
-	    populate_var_val(root,&cache);
+            hashmap_create(initial_size, &var_val_cache.map);
+	    var_val_cache.populated = true;
+	    populate_var_val(root,&var_val_cache.map);
 	}
-	return (ASTNode*)hashmap_get(&cache,var,strlen(var));
+	return (ASTNode*)hashmap_get(&var_val_cache.map,var,strlen(var));
 }
 const char*
 get_const_int3_val(const char* name, const ASTNode* root, const char* member_id)
@@ -2190,10 +2254,23 @@ create_primary_expression(const char* identifier)
 {
 	return astnode_create(NODE_PRIMARY_EXPRESSION,create_identifier_node(identifier),NULL);
 }
+//TP: the factors can be arbitrary expressions, e.g. 3*2+1, so each of them has to be in parentheses
 ASTNode*
 build_product_node(const node_vec elems)
 {
-	return build_list_node(elems,MULT_STR);
+	node_vec factors = VEC_INITIALIZER;
+	for(size_t i = 0; i < elems.size; ++i)
+	{
+		ASTNode* factor = astnode_create(NODE_UNKNOWN,astnode_dup(elems.data[i],NULL),NULL);
+		astnode_set_prefix("(",factor);
+		astnode_set_postfix(")",factor);
+		push_node(&factors,factor);
+	}
+	ASTNode* res = build_list_node(factors,MULT_STR);
+	//TP: build_list_node duplicates the nodes
+	for(size_t i = 0; i < factors.size; ++i) astnode_destroy((ASTNode*)factors.data[i]);
+	free_node_vec(&factors);
+	return res;
 }
 
 ASTNode*
@@ -2221,9 +2298,10 @@ get_index_node(const ASTNode* array_access_start, const node_vec var_dims)
 			node_vec dim_nodes = VEC_INITIALIZER;
     			for(size_t k = 0; k < j; ++k)
 				push_node(&dim_nodes,var_dims.data[k]);
-			ASTNode* dims_node = build_list_node(dim_nodes,MULT_STR);
+			ASTNode* dims_node = build_product_node(dim_nodes);
+			free_node_vec(&dim_nodes);
 			prefix_node->lhs = dims_node;
-			dims_node->parent = dims_node;
+			dims_node->parent = prefix_node;
 			astnode_set_postfix(")*",prefix_node);
     		}
 		astnode_set_prefix("(",node->rhs);
@@ -2302,17 +2380,15 @@ get_const_array_var_dims_recursive(const ASTNode* node, struct hashmap_s* cache)
 node_vec
 get_const_array_var_dims(const char* name, const ASTNode* root)
 {
-	static bool first_call = true;
-	static struct hashmap_s cache;
-	if(first_call)
+	if(!const_array_var_dims_cache.populated)
 	{
         	const unsigned initial_size = 2000;
-        	hashmap_create(initial_size, &cache);
-		first_call = false;
-		get_const_array_var_dims_recursive(root,&cache);
+        	hashmap_create(initial_size, &const_array_var_dims_cache.map);
+		const_array_var_dims_cache.populated = true;
+		get_const_array_var_dims_recursive(root,&const_array_var_dims_cache.map);
 	}
 
-	node_vec* cached_val = (node_vec*)hashmap_get(&cache,name,strlen(name));
+	node_vec* cached_val = (node_vec*)hashmap_get(&const_array_var_dims_cache.map,name,strlen(name));
 	if(cached_val) return *cached_val;
 
 	node_vec dummy = VEC_INITIALIZER;
@@ -2878,18 +2954,16 @@ copy_func_params_info(const func_params_info src)
 func_params_info
 get_function_params_info(const ASTNode* node, const char* func_name)
 {
-	static bool first_call = true;
-	static struct hashmap_s cache;
-	if(first_call)
+	if(!function_params_info_cache.populated)
 	{
         	const unsigned initial_size = 2000;
-        	hashmap_create(initial_size, &cache);
-		first_call = false;
+        	hashmap_create(initial_size, &function_params_info_cache.map);
+		function_params_info_cache.populated = true;
 	}
 	const bool duplicate_func = str_vec_contains(duplicate_dfuncs.names,func_name);
 	if(!duplicate_func)
 	{
-  		func_params_info* info = (func_params_info*)hashmap_get(&cache, func_name, strlen(func_name));
+  		func_params_info* info = (func_params_info*)hashmap_get(&function_params_info_cache.map, func_name, strlen(func_name));
 		if(info)
 		{
 			return *info;
@@ -2902,7 +2976,7 @@ get_function_params_info(const ASTNode* node, const char* func_name)
 	{
 		func_params_info* res_ptr = (func_params_info*)malloc(sizeof(res));
 		*res_ptr = res;
-		hashmap_put(&cache, func_name, strlen(func_name),(void*)res_ptr);
+		hashmap_put(&function_params_info_cache.map, func_name, strlen(func_name),(void*)res_ptr);
 	}
 	return res;
 }
@@ -4602,6 +4676,8 @@ gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations,
 		push_node(&optimized_decls,new_node);
 	}
 	ASTNode* declarations = build_list_node(optimized_decls,"");
+	//TP: build_list_node duplicates the nodes
+	for(size_t i = 0; i < optimized_decls.size; ++i) astnode_destroy((ASTNode*)optimized_decls.data[i]);
 	free_node_vec(&optimized_decls);
 	head->rhs = declarations;
 	append_to_tail_node(tail_node,head);
@@ -7158,6 +7234,8 @@ remove_extra_braces_in_arr_initializers(ASTNode* node)
 static void
 gen_user_defines(const ASTNode* root_in, const char* out)
 {
+  arena_pass pass;
+  begin_arena_pass(&pass);
   ASTNode* root = astnode_dup(root_in,NULL);
   remove_extra_braces_in_arr_initializers(root);
   FILE* fp = fopen(out, "w");
@@ -7489,6 +7567,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   fp = fopen("user_config_loader.h","w");
   gen_config_loaders(root,fp);
   fclose(fp);
+  end_arena_pass(&pass,root);
 }
 
 static void
@@ -8772,7 +8851,6 @@ populate_dfunc_cache(const ASTNode* node, struct hashmap_s* cache)
 		hashmap_put(cache,func_name,strlen(func_name),(void*)node);
 	}
 }
-static bool reset_dfunc_cache = true;
 const ASTNode*
 find_dfunc_start(const ASTNode* root, const char* dfunc_name)
 {
@@ -10012,11 +10090,14 @@ expand_allocating_types(ASTNode* root)
 }
 void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream)
 {
+    arena_pass pass;
+    begin_arena_pass(&pass);
     ASTNode* root = astnode_dup(root_in,NULL);
     symboltable_reset();
     traverse(root, 0, NULL);
     make_unique_bc_calls(root);
     gen_dfunc_bc_kernels(root,root,stream);
+    end_arena_pass(&pass,root);
 }
 void
 canonalize_assignments(ASTNode* node)
@@ -10911,6 +10992,11 @@ preprocess(ASTNode* root, const bool optimize_input_params)
 }
 
 void
+destroy_ast(ASTNode* root)
+{
+	destroy_tree(root);
+}
+void
 gen_kfunc_info(const ASTNode* root)
 {
   memset(&kfunc_nodes,0,sizeof(kfunc_nodes));
@@ -10936,6 +11022,8 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	push(&tspecifier_mappings,INT_STR);
 	push(&tspecifier_mappings,REAL_STR);
 	push(&tspecifier_mappings,BOOL_STR);
+	arena_pass pass;
+	begin_arena_pass(&pass);
   	ASTNode* root = astnode_dup(root_in,NULL);
   	process_overrides(root);
   	s_info = read_user_structs(root);
@@ -10963,6 +11051,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	free_str_vec(&duplicate_dfuncs.names);
 	free_int_vec(&duplicate_dfuncs.counts);
   	free_structs_info(&s_info);
+	end_arena_pass(&pass,root);
 
 }
 
@@ -12027,6 +12116,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   set_kernel_prefix(gen_mem_accesses);
   symboltable_reset();
   reset_dfunc_cache = true;
+  //TP: all nodes of the pass are freed at the end of it (see ast_arena)
+  arena_pass pass;
+  begin_arena_pass(&pass);
   ASTNode* root = astnode_dup(root_in,NULL);
   get_field_order(root);
   check_uniquenes(root,NODE_DFUNCTION,"function");
@@ -12162,7 +12254,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   //fuse_kernels(intern("reduce_aa_x"),intern("reduce_aa_y"),root);
   //fuse_kernels(intern("remove_aa_x"),intern("remove_aa_y"),root);
   memset(reduce_infos,0,sizeof(node_vec)*MAX_FUNCS);
-
+  end_arena_pass(&pass,root);
 }
 
 
