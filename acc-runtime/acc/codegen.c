@@ -11344,9 +11344,10 @@ print_uniform_3d_int_array(FILE* fp, const char* name, const char* dims, size_t 
 	fprintf(fp, "static int %s %s __attribute__((unused));\n", name, dims);
 	if(val == 0) return;
 	fprintf(fp,
-		"__attribute__((constructor)) __attribute__((unused)) static void ac_init_%s(void)"
-		"{for(int i = 0; i < %zu; ++i) for(int j = 0; j < %zu; ++j) for(int k = 0; k < %zu; ++k) %s[i][j][k] = %d;}\n",
-		name, x, y, z, name, val);
+		"__attribute__((constructor)) __attribute__((unused)) static void ac_init_%s(void) {\n"
+		"  memset(%s, sizeof(int) * sizeof(%s), %d);\n"
+		"}\n\n",
+		name, name, name, val);
 }
 
 static const char*
