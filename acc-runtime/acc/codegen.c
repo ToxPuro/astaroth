@@ -11389,6 +11389,9 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
     FILE* tmp = fopen("stencil_accesses.h", "w+");
     assert(tmp);
 
+    fprintf(tmp, "#pragma once\n\n");
+    fprintf(tmp, "#include <string.h>\n\n");
+
     fprintf(tmp,
             "static int "
             "previous_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
