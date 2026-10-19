@@ -21,6 +21,7 @@ var annotated_dup =
     [ "AcScratchpadStates", "structAcScratchpadStates.html", "structAcScratchpadStates" ],
     [ "AcShape", "structAcShape.html", "structAcShape" ],
     [ "AcTaskDefinition", "structAcTaskDefinition.html", "structAcTaskDefinition" ],
+    [ "ast_arena", "structast__arena.html", "structast__arena" ],
     [ "ASTNode", "structASTNode.html", "structASTNode" ],
     [ "CodeGenInput", "structCodeGenInput.html", "structCodeGenInput" ],
     [ "CrossProductInputs", "structCrossProductInputs.html", "structCrossProductInputs" ],

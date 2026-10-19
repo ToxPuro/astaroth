@@ -1,8 +1,10 @@
 var ast_8h =
 [
+    [ "ast_arena", "structast__arena.html", "structast__arena" ],
     [ "ASTNode", "structASTNode.html", "structASTNode" ],
     [ "CodeGenInput", "structCodeGenInput.html", "structCodeGenInput" ],
     [ "node_vec", "structnode__vec.html", "structnode__vec" ],
+    [ "AST_ARENA_BLOCK_SIZE", "ast_8h.html#abeb0badab8c324dc05c8eab364fac7a2", null ],
     [ "BUFFER_SIZE", "ast_8h.html#a6b20d41d6252e9871430c242cb1a56e7", null ],
     [ "FATAL_ERROR_MESSAGE", "ast_8h.html#a0af2192ef49e85c6c47f01368dc15e32", null ],
     [ "KERNEL_PREFIX", "ast_8h.html#a4bd1daa7a5b7f0c4aef1c2660310ddb9", null ],
@@ -52,6 +54,7 @@ var ast_8h =
     ] ],
     [ "if", "ast_8h.html#a7b50077bef75e0e1697a39b905253930", null ],
     [ "if", "ast_8h.html#adadbe985a0a930e6d3bf3126bdd24adb", null ],
+    [ "current_ast_arena", "ast_8h.html#a73c475e31cb3f80271e878da6fc45ef1", null ],
     [ "id_counter", "ast_8h.html#a289fa4e5184cc8f29ab4547d7c7909bc", null ],
     [ "new_qualifier", "ast_8h.html#a08187fcca9bba11b127584ec4e70318a", null ],
     [ "old_qualifier", "ast_8h.html#aedfcc3248ad933627f319b985f23ae9f", null ]

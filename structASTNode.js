@@ -1,9 +1,9 @@
 var structASTNode =
 [
     [ "buffer", "structASTNode.html#ac435c4ef39b86ea688fadb6bc2fbc543", null ],
-    [ "buffer_token", "structASTNode.html#a30eb7545e2f88544049e69026c600f18", null ],
     [ "expr_type", "structASTNode.html#afae1b9c3b7bf94d162efb6262c904e0c", null ],
     [ "id", "structASTNode.html#a666ce4df661797bd3eaf476f9c39bb2e", null ],
+    [ "in_arena", "structASTNode.html#a6ee59c3efe3480ef594953ff502b3291", null ],
     [ "infix", "structASTNode.html#aa8f55f7adb1a3c0600e68af5599b6b78", null ],
     [ "is_constexpr", "structASTNode.html#a1698d5aa002bd033335d4c6c3074d925", null ],
     [ "lhs", "structASTNode.html#a182b0fe7dc1423c4a85c85df6e47040f", null ],

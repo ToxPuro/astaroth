@@ -19,5 +19,6 @@ var searchData=
   ['counter_16',['counter',['../string__vec_8h.html#a7828c081e3540e4630d3462a4a4d4786',1,'string_vec.h']]],
   ['counts_17',['counts',['../structVertexBufferArray.html#aacb033ad00c514818e5f986bc9941fc4',1,'VertexBufferArray']]],
   ['cub_5ftmp_18',['cub_tmp',['../structAcReduceBuffer.html#abc58b9c57a916b5a957f52f42f51f4d4',1,'AcReduceBuffer']]],
-  ['cub_5ftmp_5fsize_19',['cub_tmp_size',['../structAcReduceBuffer.html#aecb927b0a24d609b682e67e94cefa888',1,'AcReduceBuffer']]]
+  ['cub_5ftmp_5fsize_19',['cub_tmp_size',['../structAcReduceBuffer.html#aecb927b0a24d609b682e67e94cefa888',1,'AcReduceBuffer']]],
+  ['current_5fast_5farena_20',['current_ast_arena',['../ast_8h.html#a73c475e31cb3f80271e878da6fc45ef1',1,'ast.h']]]
 ];

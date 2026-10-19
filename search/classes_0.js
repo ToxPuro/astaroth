@@ -21,5 +21,6 @@ var searchData=
   ['acscratchpadstates_18',['AcScratchpadStates',['../structAcScratchpadStates.html',1,'']]],
   ['acshape_19',['AcShape',['../structAcShape.html',1,'']]],
   ['actaskdefinition_20',['AcTaskDefinition',['../structAcTaskDefinition.html',1,'']]],
-  ['astnode_21',['ASTNode',['../structASTNode.html',1,'']]]
+  ['ast_5farena_21',['ast_arena',['../structast__arena.html',1,'']]],
+  ['astnode_22',['ASTNode',['../structASTNode.html',1,'']]]
 ];

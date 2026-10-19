@@ -1,5 +1,6 @@
 var codegen_8h =
 [
+    [ "destroy_ast", "codegen_8h.html#a149e7c9b2b51ec5d26efd69f5dd27590", null ],
     [ "gen_boundcond_kernels", "codegen_8h.html#ad1aa4eca82846176f72f2311f611263a", null ],
     [ "gen_extra_funcs", "codegen_8h.html#a4cebfb2b0e651f3a3a4222da54161b51", null ],
     [ "gen_fused_kernels", "codegen_8h.html#aea114774e4098f47fd448a90f4e42605", null ],

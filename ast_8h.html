@@ -158,12 +158,14 @@ $(function(){initNavTree('ast_8h.html','',''); });
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-nested-classes" class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Data Structures</h2></td></tr>
+<tr class="memitem:ast_5Farena" id="r_ast_5Farena"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structast__arena.html">ast_arena</a></td></tr>
 <tr class="memitem:ASTNode" id="r_ASTNode"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structASTNode.html">ASTNode</a></td></tr>
 <tr class="memitem:CodeGenInput" id="r_CodeGenInput"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCodeGenInput.html">CodeGenInput</a></td></tr>
 <tr class="memitem:node_5Fvec" id="r_node_5Fvec"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnode__vec.html">node_vec</a></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-define-members" class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
+<tr class="memitem:abeb0badab8c324dc05c8eab364fac7a2" id="r_abeb0badab8c324dc05c8eab364fac7a2"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abeb0badab8c324dc05c8eab364fac7a2">AST_ARENA_BLOCK_SIZE</a>&#160;&#160;&#160;(1 &lt;&lt; 16)</td></tr>
 <tr class="memitem:a6b20d41d6252e9871430c242cb1a56e7" id="r_a6b20d41d6252e9871430c242cb1a56e7"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6b20d41d6252e9871430c242cb1a56e7">BUFFER_SIZE</a>&#160;&#160;&#160;(4096)</td></tr>
 <tr class="memitem:a0af2192ef49e85c6c47f01368dc15e32" id="r_a0af2192ef49e85c6c47f01368dc15e32"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0af2192ef49e85c6c47f01368dc15e32">FATAL_ERROR_MESSAGE</a>&#160;&#160;&#160;&quot;\nFATAL AC ERROR: &quot;</td></tr>
 <tr class="memitem:a4bd1daa7a5b7f0c4aef1c2660310ddb9" id="r_a4bd1daa7a5b7f0c4aef1c2660310ddb9"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4bd1daa7a5b7f0c4aef1c2660310ddb9">KERNEL_PREFIX</a>&#160;&#160;&#160;&quot;__global__ void \n#<a class="el" href="#a7b50077bef75e0e1697a39b905253930">if</a> MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n&quot;</td></tr>
@@ -233,11 +235,26 @@ Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
+<tr class="memitem:a73c475e31cb3f80271e878da6fc45ef1" id="r_a73c475e31cb3f80271e878da6fc45ef1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structast__arena.html">ast_arena</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a73c475e31cb3f80271e878da6fc45ef1">current_ast_arena</a></td></tr>
 <tr class="memitem:a289fa4e5184cc8f29ab4547d7c7909bc" id="r_a289fa4e5184cc8f29ab4547d7c7909bc"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a289fa4e5184cc8f29ab4547d7c7909bc">id_counter</a></td></tr>
 <tr class="memitem:a08187fcca9bba11b127584ec4e70318a" id="r_a08187fcca9bba11b127584ec4e70318a"><td class="memItemLeft" align="right" valign="top">static const char const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a08187fcca9bba11b127584ec4e70318a">new_qualifier</a></td></tr>
 <tr class="memitem:aedfcc3248ad933627f319b985f23ae9f" id="r_aedfcc3248ad933627f319b985f23ae9f"><td class="memItemLeft" align="right" valign="top">static const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aedfcc3248ad933627f319b985f23ae9f">old_qualifier</a></td></tr>
 </table>
 <a name="doc-define-members" id="doc-define-members"></a><h2 id="header-doc-define-members" class="groupheader">Macro Definition Documentation</h2>
+<a id="abeb0badab8c324dc05c8eab364fac7a2" name="abeb0badab8c324dc05c8eab364fac7a2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abeb0badab8c324dc05c8eab364fac7a2">&#9670;&#160;</a></span>AST_ARENA_BLOCK_SIZE</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define AST_ARENA_BLOCK_SIZE&#160;&#160;&#160;(1 &lt;&lt; 16)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a6b20d41d6252e9871430c242cb1a56e7" name="a6b20d41d6252e9871430c242cb1a56e7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a6b20d41d6252e9871430c242cb1a56e7">&#9670;&#160;</a></span>BUFFER_SIZE</h2>
 
@@ -378,6 +395,28 @@ Variables</h2></td></tr>
 </div>
 </div>
 <a name="doc-var-members" id="doc-var-members"></a><h2 id="header-doc-var-members" class="groupheader">Variable Documentation</h2>
+<a id="a73c475e31cb3f80271e878da6fc45ef1" name="a73c475e31cb3f80271e878da6fc45ef1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a73c475e31cb3f80271e878da6fc45ef1">&#9670;&#160;</a></span>current_ast_arena</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structast__arena.html">ast_arena</a>* current_ast_arena</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel extern">extern</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a289fa4e5184cc8f29ab4547d7c7909bc" name="a289fa4e5184cc8f29ab4547d7c7909bc"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a289fa4e5184cc8f29ab4547d7c7909bc">&#9670;&#160;</a></span>id_counter</h2>
 
@@ -414,8 +453,8 @@ Variables</h2></td></tr>
 <b>Initial value:</b><div class="fragment"><div class="line">{</div>
 <div class="line">    <span class="keywordflow">if</span>(node-&gt;lhs)</div>
 <div class="line">        change_qualifier(node-&gt;lhs,<a class="code hl_variable" href="#aedfcc3248ad933627f319b985f23ae9f">old_qualifier</a>,<a class="code hl_variable" href="#a08187fcca9bba11b127584ec4e70318a">new_qualifier</a>)</div>
-<div class="ttc" id="aast_8h_html_a08187fcca9bba11b127584ec4e70318a"><div class="ttname"><a href="#a08187fcca9bba11b127584ec4e70318a">new_qualifier</a></div><div class="ttdeci">static const char const char * new_qualifier</div><div class="ttdef"><b>Definition</b> ast.h:784</div></div>
-<div class="ttc" id="aast_8h_html_aedfcc3248ad933627f319b985f23ae9f"><div class="ttname"><a href="#aedfcc3248ad933627f319b985f23ae9f">old_qualifier</a></div><div class="ttdeci">static const char * old_qualifier</div><div class="ttdef"><b>Definition</b> ast.h:783</div></div>
+<div class="ttc" id="aast_8h_html_a08187fcca9bba11b127584ec4e70318a"><div class="ttname"><a href="#a08187fcca9bba11b127584ec4e70318a">new_qualifier</a></div><div class="ttdeci">static const char const char * new_qualifier</div><div class="ttdef"><b>Definition</b> ast.h:821</div></div>
+<div class="ttc" id="aast_8h_html_aedfcc3248ad933627f319b985f23ae9f"><div class="ttname"><a href="#aedfcc3248ad933627f319b985f23ae9f">old_qualifier</a></div><div class="ttdeci">static const char * old_qualifier</div><div class="ttdef"><b>Definition</b> ast.h:820</div></div>
 </div><!-- fragment -->
 </div>
 </div>

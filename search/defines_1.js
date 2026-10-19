@@ -30,5 +30,6 @@ var searchData=
   ['acprocmappingstrategy_5flinear_27',['AcProcMappingStrategy_LINEAR',['../astaroth__base_8h.html#aa3b170934977a156f44bd506b8347840',1,'astaroth_base.h']]],
   ['acprocmappingstrategy_5fmorton_28',['AcProcMappingStrategy_MORTON',['../astaroth__base_8h.html#af36055989edf4c2cb9fde7b5f890be1f',1,'astaroth_base.h']]],
   ['acvector_29',['AcVector',['../datatypes_8h.html#a5206ca9d538cb2e5992b03885df18bd0',1,'datatypes.h']]],
-  ['as_5fsize_5ft_30',['as_size_t',['../errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e',1,'errchk.h']]]
+  ['as_5fsize_5ft_30',['as_size_t',['../errchk_8h.html#a94cbb8b694eb6da3257aaace5fe4f55e',1,'errchk.h']]],
+  ['ast_5farena_5fblock_5fsize_31',['AST_ARENA_BLOCK_SIZE',['../ast_8h.html#abeb0badab8c324dc05c8eab364fac7a2',1,'ast.h']]]
 ];

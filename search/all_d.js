@@ -131,5 +131,6 @@ var searchData=
   ['curandstate_128',['curandState',['../hip_8h.html#af20c9c34d6f54254a6c6c30d18d7ff87',1,'hip.h']]],
   ['curandstatemrg32k3a_5ft_129',['curandStateMRG32k3a_t',['../hip_8h.html#a949e34d932ed481054b313a762ad451e',1,'hip.h']]],
   ['curandstatexorwow_5ft_130',['curandStateXORWOW_t',['../hip_8h.html#a574d56297809b764cee61bb99df8e543',1,'hip.h']]],
-  ['curesult_131',['CUresult',['../hip_8h.html#a53a80038372583e840fb441466b56e69',1,'hip.h']]]
+  ['curesult_131',['CUresult',['../hip_8h.html#a53a80038372583e840fb441466b56e69',1,'hip.h']]],
+  ['current_5fast_5farena_132',['current_ast_arena',['../ast_8h.html#a73c475e31cb3f80271e878da6fc45ef1',1,'ast.h']]]
 ];
