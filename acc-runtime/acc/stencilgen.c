@@ -155,10 +155,12 @@ gen_stencil_definitions(bool gen_analysis)
     printf(
         "static __device__ __attribute__((unused)) AcReal "
         "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH];\n"
-        "[[maybe_unused]] static const bool stencils_are_initialized = [](){"
-        "AcReal* coeffs = &stencils[0][0][0][0];"
-        "for(size_t i = 0; i < sizeof(stencils)/sizeof(AcReal); ++i) coeffs[i] = AcReal(NAN);"
-        "return true;}();\n");
+        "[[maybe_unused]] static const bool stencils_are_initialized = [](){\n"
+        "  AcReal* coeffs = &stencils[0][0][0][0];\n"
+        "  for(size_t i = 0; i < sizeof(stencils)/sizeof(AcReal); ++i)\n"
+        "    coeffs[i] = AcReal(NAN);\n"
+        "  return true;\n"
+        "}();\n");
   }
   else {
   printf(
