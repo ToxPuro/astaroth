@@ -66,6 +66,10 @@
 #include "task.h"
 #include "timer_hires.h"
 
+// clang-format off
+#include "stencil_accesses.h"
+// clang-format on
+
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
 #include "perfstubs_api/timer.h"
@@ -670,7 +674,6 @@ static void
 check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> info)
 {
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
-#include "stencil_accesses.h"
 	for(int k = 0; k < NUM_KERNELS; ++k)
 	{
 		for(int j= 0; j< NUM_ALL_FIELDS; ++j)
