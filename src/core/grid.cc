@@ -66,10 +66,6 @@
 #include "task.h"
 #include "timer_hires.h"
 
-// clang-format off
-#include "stencil_accesses.h"
-// clang-format on
-
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
 #include "perfstubs_api/timer.h"
@@ -673,6 +669,7 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 static void
 check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> info)
 {
+#include "stencil_accesses.h"
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
 	for(int k = 0; k < NUM_KERNELS; ++k)
 	{
