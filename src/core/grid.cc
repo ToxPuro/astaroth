@@ -665,11 +665,11 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
     return submesh;
 }
 
+#include "stencil_accesses.h"
 
 static void
 check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> info)
 {
-#include "stencil_accesses.h"
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
 	for(int k = 0; k < NUM_KERNELS; ++k)
 	{
