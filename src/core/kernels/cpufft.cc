@@ -152,7 +152,11 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
 
     acRealToComplex(src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
-    acComplexToPlanar(tmp2,count,real_dst,imag_dst);
+    acKernelVolumeCopyComplexToPlanar(0,tmp2
+		    			,starting_point,subdomain_size,domain_size
+					,real_dst,imag_dst
+		    			,starting_point,subdomain_size,domain_size
+		    );
 
     acDeviceFree(&tmp,0);
     acDeviceFree(&tmp2,0);

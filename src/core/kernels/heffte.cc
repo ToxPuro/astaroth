@@ -5,6 +5,8 @@
 
 #include <cstdlib>
 #include <unordered_map>
+#include <map>
+#include <array>
 
 #include "ac_fft.h"
 #include "ac_helpers.h"
@@ -16,6 +18,7 @@
 #include "math_utils.h"
 
 static MPI_Comm communicator = MPI_COMM_NULL;
+static MPI_Comm xy_plane_communicator = MPI_COMM_NULL;
 [[maybe_unused]] static Volume global_offset = (Volume){0,0,0};
 
 static AcComplex*
@@ -56,9 +59,24 @@ typedef struct
 #else
 #define fft_backend heffte::backend::cufft
 #endif
-static std::unordered_map<size_t,heffte::fft3d<fft_backend>> plans{};
-static std::unordered_map<size_t,heffte::fft3d<fft_backend>> plans_single{};
-static std::unordered_map<size_t,heffte::fft3d_r2c<fft_backend>> plans_r2c{};
+//Plans are cached by the shape of the local subdomain, not only by its element count:
+//different shapes with the same count need different plans
+typedef std::array<int,3> PlanKey;
+static std::map<PlanKey,heffte::fft3d<fft_backend>> plans{};
+static std::map<PlanKey,heffte::fft3d<fft_backend>> plans_single{};
+static std::map<PlanKey,heffte::fft3d_r2c<fft_backend>> plans_r2c{};
+
+static PlanKey
+get_plan_key(const Volume domain_size)
+{
+	return (PlanKey){(int)domain_size.x,(int)domain_size.y,(int)domain_size.z};
+}
+
+static MPI_Comm
+get_communicator(const Volume domain_size)
+{
+	return domain_size.z == 1 ? xy_plane_communicator : communicator;
+}
 
 
 AcResult
@@ -76,7 +94,6 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 		  const bool inverse, const int batch_size)
 {
     static std::unordered_map<size_t,AcComplex*> work_buffers{};
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
     //HeFFTe is surprisingly inclusive in the domain
     const int3 lower = (int3)
     {
@@ -109,7 +126,8 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 	    (int)domain_size.z/2
     };
     const int3 output_upper = output_lower+output_dims-(int3){1,1,1};
-    if(plans_r2c.find(count) == plans_r2c.end())
+    const PlanKey key = get_plan_key(domain_size);
+    if(plans_r2c.find(key) == plans_r2c.end())
     {
 	ERRCHK_ALWAYS(communicator != MPI_COMM_NULL);
         heffte::box3d<> const input_box  = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
@@ -123,9 +141,9 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
         //options.algorithm = heffte::reshape_algorithm::alltoallv;
 	//options.use_gpu_aware = false;
         heffte::fft3d_r2c<fft_backend> fft(stream, input_box, output_box, 2,communicator, options);
-	plans_r2c.emplace(count,std::move(fft));
+	plans_r2c.emplace(key,std::move(fft));
     }
-    const size_t work_buf_size = plans_r2c.at(count).size_workspace()*batch_size;
+    const size_t work_buf_size = plans_r2c.at(key).size_workspace()*batch_size;
     if(work_buffers.find(work_buf_size) == work_buffers.end())
     {
 	work_buffers[work_buf_size] = get_fresh_complex_buffer(work_buf_size);
@@ -133,11 +151,11 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
     AcComplex* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
-    	;//plans_r2c.at(count).backward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
+    	;//plans_r2c.at(key).backward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
     }
     else
     {
-    	plans_r2c.at(count).forward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    	plans_r2c.at(key).forward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
     }
     return AC_SUCCESS;
 }
@@ -149,7 +167,6 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
 		  const bool inverse, const int batch_size)
 {
     static std::unordered_map<size_t,AcComplexFloat*> work_buffers{};
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
     //HeFFTe is surprisingly inclusive in the domain
     const int3 lower = (int3)
     {
@@ -169,14 +186,16 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
 	    lower.y+dims.y-1,
 	    lower.z+dims.z-1
     };
-    if(plans_single.find(count) == plans_single.end())
+    const PlanKey key = get_plan_key(domain_size);
+    if(plans_single.find(key) == plans_single.end())
     {
+	ERRCHK_ALWAYS(get_communicator(domain_size) != MPI_COMM_NULL);
 	heffte::plan_options options = heffte::default_options<fft_backend>();
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<fft_backend> fft(my_box, my_box, communicator, options);
-	plans_single.emplace(count,std::move(fft));
+        heffte::fft3d<fft_backend> fft(my_box, my_box, get_communicator(domain_size), options);
+	plans_single.emplace(key,std::move(fft));
     }
-    const auto& plan = plans.at(count);
+    const auto& plan = plans_single.at(key);
     const size_t work_buf_size = plan.size_workspace()*batch_size;
     if(work_buffers.find(work_buf_size) == work_buffers.end())
     {
@@ -199,7 +218,6 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
 		  const bool inverse, const int batch_size)
 {
     static std::unordered_map<size_t,AcComplex*> work_buffers{};
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
     //HeFFTe is surprisingly inclusive in the domain
     const int3 lower = (int3)
     {
@@ -219,13 +237,15 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
 	    lower.y+dims.y-1,
 	    lower.z+dims.z-1
     };
-    if(plans.find(count) == plans.end())
+    const PlanKey key = get_plan_key(domain_size);
+    if(plans.find(key) == plans.end())
     {
+	ERRCHK_ALWAYS(get_communicator(domain_size) != MPI_COMM_NULL);
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<fft_backend> fft(my_box, my_box, communicator);
-	plans.emplace(count,std::move(fft));
+        heffte::fft3d<fft_backend> fft(my_box, my_box, get_communicator(domain_size));
+	plans.emplace(key,std::move(fft));
     }
-    const auto& plan = plans.at(count);
+    const auto& plan = plans.at(key);
     const size_t work_buf_size = plan.size_workspace()*batch_size;
     if(work_buffers.find(work_buf_size) == work_buffers.end())
     {
@@ -518,6 +538,10 @@ acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
 {
 	communicator = astaroth_comm->handle;
 	global_offset = (Volume){(size_t)global_offset_[0],(size_t)global_offset_[1],(size_t)global_offset_[2]};
+	int rank{};
+	MPI_Comm_rank(communicator,&rank);
+	if(xy_plane_communicator != MPI_COMM_NULL) MPI_Comm_free(&xy_plane_communicator);
+	MPI_Comm_split(communicator,(int)global_offset.z,rank,&xy_plane_communicator);
 	return AC_SUCCESS;
 
 }
@@ -528,5 +552,6 @@ acFFTQuit()
 	plans.clear();
 	plans_single.clear();
 	plans_r2c.clear();
+	if(xy_plane_communicator != MPI_COMM_NULL) MPI_Comm_free(&xy_plane_communicator);
 	return AC_SUCCESS;
 }
