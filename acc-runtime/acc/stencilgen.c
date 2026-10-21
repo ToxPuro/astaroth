@@ -743,19 +743,18 @@ is_x_raytrace_kernel(const int curr_kernel)
 static int
 get_original_index(const int* mappings, const int field)
 {
-	for(int i = 0; i <= NUM_ALL_FIELDS; ++i)
+	for(int i = 0; i < NUM_ALL_FIELDS; ++i)
 		if (mappings[i] == field) return i;
 	return -1;
 }
 bool
 field_ray_accessed(const int curr_kernel,const int field)
 {
-   const int original_field = get_original_index(field_remappings,field);
    for(int ray = 0; ray < NUM_RAYS; ++ray)
    {
      if(
-          incoming_ray_value_accessed[curr_kernel][original_field][ray]
-        || outgoing_ray_value_accessed[curr_kernel][original_field][ray]
+          incoming_ray_value_accessed[curr_kernel][field][ray]
+        || outgoing_ray_value_accessed[curr_kernel][field][ray]
       )
       {
 	return true;
@@ -767,8 +766,7 @@ field_ray_accessed(const int curr_kernel,const int field)
 bool
 field_value_called(const int curr_kernel,const int field)
 {
-   const int original_field = get_original_index(field_remappings,field);
-   return stencils_accessed[curr_kernel][original_field][0];
+   return stencils_accessed[curr_kernel][field][0];
 }
 
 bool
@@ -813,7 +811,7 @@ gen_raytracing_prefix(const int curr_kernel)
     	{
     	   if(field_needs_shmem(curr_kernel,field))
     	   {
-    	        printf("const int f%s_ray_index = dir_index*%d;",field_names[field],field_counter);
+    	        printf("const int f%s_ray_index = dir_index*%d;",field_names[get_original_index(field_remappings,field)],field_counter);
 		field_counter++;
     	   }
     	}
@@ -1594,7 +1592,7 @@ populate_shared_mem_for_z_rays(const int curr_kernel)
         	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
         	{
                   const int original_field = get_original_index(field_remappings,field);
-	          if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+	          if(!field_needs_input_shmem(curr_kernel,field)) continue;
 		  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = shared_mem_for_rays[tid_index + shared_mem_z_stride*(z_block+VAL(AC_z_ray_shared_mem_block_size)) + f%s_ray_index];", field_names[original_field],field_names[original_field]);
         	}
 		printf("}");
@@ -1610,7 +1608,7 @@ populate_shared_mem_for_z_rays(const int curr_kernel)
         		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
         		{
         		  const int original_field = get_original_index(field_remappings,field);
-			  if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
 			  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = ",field_names[original_field]);
         		  printf("(AcReal)((%s)vba.in[%s])"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y, "
@@ -1632,7 +1630,7 @@ populate_shared_mem_for_z_rays(const int curr_kernel)
         		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
         		{
         		  const int original_field = get_original_index(field_remappings,field);
-			  if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
 			  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = ",field_names[original_field]);
         		  printf("(AcReal)((%s)vba.in[%s])"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y, "
@@ -1671,11 +1669,12 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
         	{
 		  if(write_called[curr_kernel][field])
 		  {
+			const int original_field = get_original_index(field_remappings,field);
 			printf("((%s)vba.out[%s])[DEVICE_VTXBUF_IDX(vertexIdx.x %s (x_block-VAL(AC_x_ray_shared_mem_block_size)),y_index,vertexIdx.z)] = shared_mem_for_rays[tid_index + shared_mem_x_stride*(x_block+1) + f%s_ray_index];"
-			,get_ptr_type(field)
-			,field_names[field]
+			,get_ptr_type(original_field)
+			,field_names[original_field]
 			,x_ray ? "+" : "-"
-			,field_names[field]);
+			,field_names[original_field]);
 		  }
 		}
 		printf("}");
