@@ -259,7 +259,9 @@ acPeriodicRay(Field fields[], const size_t num_fields, const int3 direction)
     task_def.num_fields_in  = num_fields;
     task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
-    task_def.halo_sizes = get_max_halo_size(fields,num_fields);
+    //Only the single layer at the downstream end of the ray (input) and the single upstream ghost layer
+    //the revision reads (output) take part: sum_periodic_rays indexes the packed data as one layer per process
+    task_def.halo_sizes = (Volume){1,1,1};
     task_def.ray_direction = direction;
     task_def.sending   = true;
     task_def.receiving = true;
@@ -2325,7 +2327,8 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
 	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
            Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
-      buffers(input_regions[0].dims, get_nprocs(op.ray_direction),0,0,tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
+      //Room for all fields of all processes along the ray (the gathered data), the packed data uses the first nfields*volume entries
+      buffers(input_regions[0].dims, get_nprocs(op.ray_direction)*input_regions[0].memory.fields.size(),0,0,tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
 {
     const auto sub_comms = acGridMPISubComms();
     gather_comm = MPI_COMM_NULL;
@@ -2403,15 +2406,15 @@ PeriodicRayTask::compute()
 {
    //TP: this can be polished but at the moment assume we use the kernel coming from stdlib
 #if AC_RADIATION_RAY_INCLUDED
-   auto packed_data = buffers.get_current_buffer();
-   auto dst         = buffers.get_fresh_buffer();
-   //const size_t nvars = input_regions[0].memory.fields.size();
-   //const size_t buffer_length = (packed_data->length/nprocs)*nvars;
-   const size_t variable_len = (packed_data->real_length/nprocs);
+   //Gathered data (see communicate): field i of process iproc starts at (i*nprocs + iproc)*volume
+   auto gathered_data = buffers.get_current_buffer();
+   auto dst           = buffers.get_fresh_buffer();
+   const size_t nvars = input_regions[0].memory.fields.size();
+   const size_t volume = gathered_data->real_length/(nvars*nprocs);
    vba.on_device.kernel_input_params.sum_periodic_rays.ray_direction = ray_direction;
-   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_src = &packed_data->real_data[0];
+   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_src = &gathered_data->real_data[0];
    vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_dst = &dst->real_data[0];
-   vba.on_device.kernel_input_params.sum_periodic_rays.tau_src = &packed_data->real_data[variable_len];
+   vba.on_device.kernel_input_params.sum_periodic_rays.tau_src = &gathered_data->real_data[volume*nprocs];
    const Volume start{0,0,0};
    const Volume end = input_regions[0].dims;
    acLaunchKernel(sum_periodic_rays,stream,start,end,vba);
@@ -2485,16 +2488,16 @@ PeriodicRayTask::unpack()
 void
 PeriodicRayTask::communicate()
 {
+   //The packed data has field i at i*volume; field i of process iproc is gathered to (i*nprocs + iproc)*volume
    auto packed_data = buffers.get_current_buffer();
    auto dst          = buffers.get_fresh_buffer();
    const size_t nvars = input_regions[0].memory.fields.size();
-   const size_t buffer_length = (packed_data->real_length/nprocs)*nvars;
-   const size_t variable_len = (packed_data->real_length/nprocs);
+   const size_t volume = packed_data->real_length/(nvars*nprocs);
 
    for(size_t i = 0; i < nvars; ++i)
    {
-	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->real_data[0]+i*variable_len,variable_len,AC_REAL_MPI_TYPE,
-				        &dst->real_data[0]+i*buffer_length,variable_len,AC_REAL_MPI_TYPE,
+	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->real_data[0]+i*volume,volume,AC_REAL_MPI_TYPE,
+				        &dst->real_data[0]+i*volume*nprocs,volume,AC_REAL_MPI_TYPE,
 					gather_comm
 					,&dst->requests[i]
 				   ) == MPI_SUCCESS);
