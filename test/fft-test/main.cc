@@ -293,6 +293,8 @@ main(void)
 		   }
 	   }
 	}
+	//The components are distributed among the processes
+	MPI_Allreduce(MPI_IN_PLACE,&number_of_nonzero_components,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
     	threed_correct &= (number_of_nonzero_components == 6);
 	if(number_of_nonzero_components != 6)
 	{
@@ -309,13 +311,15 @@ main(void)
 	acGridSynchronizeStream(STREAM_ALL);
 	const int3 pos = (int3){8,8,8};
 	const AcReal3 k = get_wavevector(pos,model.info);
+	//Use global coordinates so that the input is the same wave on all processes
+	const int3 offset = acGridGetLocalMeshInfo()[AC_multigpu_offset];
     	for(auto x = comp_dims.n0.x; x < comp_dims.n1.x; ++x)
     	{
     	   for(auto y = comp_dims.n0.y; y < comp_dims.n1.y; ++y)
     	   {
     	           for(auto z = comp_dims.n0.z; z < comp_dims.n1.z; ++z)
     	           {
-		      const AcReal3 spatial_pos = (AcReal3){(x-NGHOST)*info[AC_ds].x,(y-NGHOST)*info[AC_ds].y,(z-NGHOST)*info[AC_ds].z};
+		      const AcReal3 spatial_pos = (AcReal3){(x-NGHOST+offset.x)*info[AC_ds].x,(y-NGHOST+offset.y)*info[AC_ds].y,(z-NGHOST+offset.z)*info[AC_ds].z};
 		      model.vertex_buffer[HEAT_INIT][IDX(x,y,z)] = sin(k.x*spatial_pos.x)+sin(k.y*spatial_pos.y);
 		      model.vertex_buffer[HEAT_PLANAR_REAL][IDX(x,y,z)] = 0.0;
 		      model.vertex_buffer[HEAT_PLANAR_IMAG][IDX(x,y,z)] = 0.0;
@@ -351,10 +355,13 @@ main(void)
 		   }
 	   }
 	}
-    	twod_correct &= (number_of_nonzero_components == 4);
-	if(number_of_nonzero_components != 4)
+	//Each slab of processes in z transforms its own local z_layer, so each of them gives four components
+	MPI_Allreduce(MPI_IN_PLACE,&number_of_nonzero_components,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+	const int n_planes = acGridGetLocalMeshInfo()[AC_ngrid].z/acGridGetLocalMeshInfo()[AC_nlocal].z;
+    	twod_correct &= (number_of_nonzero_components == 4*n_planes);
+	if(number_of_nonzero_components != 4*n_planes)
 	{
-		fprintf(stderr,"Expected four non-zero components but got %d\n",number_of_nonzero_components);
+		fprintf(stderr,"Expected %d non-zero components but got %d\n",4*n_planes,number_of_nonzero_components);
 	}
 
     	acHostMeshRandomize(&model);
@@ -424,7 +431,7 @@ main(void)
     fprintf(stderr,"FORWARD AND BACK ... %s\n", forward_and_back_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"3D CORRECT       ... %s\n", threed_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"2D CORRECT       ... %s\n", twod_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
-    bool correct = forward_and_back_correct && poisson_correct && xy_correct;
+    bool correct = forward_and_back_correct && poisson_correct && xy_correct && threed_correct && twod_correct;
     int retval = correct ? AC_SUCCESS : AC_FAILURE;
 
     acGridQuit();
