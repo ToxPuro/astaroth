@@ -161,6 +161,12 @@ cudaError_t
 acStreamQuery(cudaStream_t stream)
 {
     const auto res = cudaStreamQuery(stream);
+#if AC_USE_HIP
+    //TP: unlike CUDA, HIP records hipErrorNotReady as the last error even though it only means the stream is still busy.
+    //Clear it so that it is not reported later as an error of an unrelated kernel launch.
+    //Nothing is lost: the last error was already overwritten by hipErrorNotReady.
+    if (res == cudaErrorNotReady) (void)cudaGetLastError();
+#endif
     return res;
 }
 const char*
