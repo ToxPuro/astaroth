@@ -295,7 +295,7 @@ AC_BEGIN_C_DECLARATIONS
 
   FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const Volume start, const Volume end, VertexBufferArray));
   FUNC_DEFINE(AcResult, acLaunchKernelWithTPB,(AcKernel kernel, const cudaStream_t stream, const Volume start_volume, const Volume end_volume, VertexBufferArray vba, const dim3 tpb));
-  FUNC_DEFINE(AcResult, acLaunchKernelBase,(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream));
+  FUNC_DEFINE(AcResult, acLaunchKernelBase,(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, bool perform_error_check));
 
 
   FUNC_DEFINE(AcResult, acSetReduceOffset,(AcKernel func, const Volume start, const Volume end, VertexBufferArray));

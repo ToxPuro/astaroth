@@ -48,7 +48,7 @@ acRandInitAlt(const uint64_t seed, const size_t count, const size_t rank)
   const size_t tpb = 256;
   const size_t bpg = as_size_t(ceil(1. * count / tpb));
   rand_init<<<bpg, tpb>>>(seed, count, rank);
-  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  ERRCHK_CUDA_KERNEL_ALWAYS();
 
   return AC_SUCCESS;
 }

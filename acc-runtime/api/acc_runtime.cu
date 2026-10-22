@@ -671,6 +671,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
   KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba.on_device);
   ERRCHK_CUDA(acEventRecord(tstop)); // Timing stop
   ERRCHK_CUDA(acEventSynchronize(tstop));
+  ERRCHK_CUDA_KERNEL();
   float milliseconds = 0;
   ERRCHK_CUDA(acEventElapsedTime(&milliseconds, tstart, tstop));
 
