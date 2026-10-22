@@ -186,11 +186,18 @@ if (USE_HIP)
      if(DEFINED ENV{CRAYPE_VERSION})
          # Workaround due to hip/cmake/cray PE issue with GPU RDMA
          # If we're on a Cray machine, link against the GTL library
-         # WARNING: this path may break, works on LUMI in June of 2023
+         # The GTL library has to match the loaded cray-mpich: /opt/cray/pe/lib64 only has the system default version,
+         # which can differ from the cray-mpich of the loaded software stack (e.g. an older LUMI stack)
+         if(DEFINED ENV{CRAY_MPICH_ROOTDIR} AND EXISTS "$ENV{CRAY_MPICH_ROOTDIR}/gtl/lib")
+             set(AC_CRAY_GTL_DIR "$ENV{CRAY_MPICH_ROOTDIR}/gtl/lib")
+         else()
+             # WARNING: this path may break, works on LUMI in June of 2023
+             set(AC_CRAY_GTL_DIR /opt/cray/pe/lib64)
+         endif()
+         message(STATUS "Linking the Cray GTL library from ${AC_CRAY_GTL_DIR}")
          target_link_directories(astaroth_core
              PUBLIC
- 	    /opt/cray/pe/lib64
- 	#/opt/rocm-5.2.3/llvm/lib
+             ${AC_CRAY_GTL_DIR}
          )
          target_link_libraries(astaroth_core
              PUBLIC
