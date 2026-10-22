@@ -254,12 +254,13 @@ typedef class ComputeTask : public Task {
 //    allocated for one task graph are reused by all later task graphs.
 //    Within a single task graph each task still gets its own stream and each message its own buffer.
 struct HaloMessage;
+//TP: the memory of a pooled buffer is never freed or reallocated before taskgraph_resources_release():
+//    with CUDA-aware MPI the neighbors can have the buffer mapped (e.g. through cached IPC handles),
+//    and freeing it while a run is going on could leave them pointing to freed memory.
 typedef struct PooledBuffer {
     char* data        = NULL;
-    char* data_pinned = NULL;
-    size_t bytes        = 0;
-    size_t pinned_bytes = 0;
-    size_t generation   = 0; // incremented each time data or data_pinned is reallocated
+    char* data_pinned = NULL; // allocated with the same size as data, only if the buffer was requested pinned
+    size_t bytes      = 0;
     // The last message that used the buffer: its MPI requests (e.g. unfinished sends) have to complete before the buffer is reused
     HaloMessage* user = NULL;
 } PooledBuffer;
@@ -296,7 +297,6 @@ typedef struct HaloMessage {
     int non_namespaced_tag;
     std::vector<int> counterpart_ranks;
     PooledBuffer* buffer = NULL;
-    size_t buffer_generation = 0;
 
     HaloMessage(size_t size, size_t single_length_, size_t half_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();

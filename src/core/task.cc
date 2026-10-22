@@ -1156,8 +1156,8 @@ release_from_previous_user(PooledBuffer* buffer)
 	buffer->user = NULL;
 }
 
-// Returns the smallest pooled buffer of at least the given size not yet used by the task graph being built.
-// If there is none, the largest unused one is grown, and if all are used a new one is added to the pool.
+// Returns the smallest pooled buffer that fits and is not yet used by the task graph being built.
+// If there is none, a new buffer is added to the pool: existing buffers are never reallocated (see PooledBuffer).
 static PooledBuffer*
 acquire_buffer(const size_t bytes, const bool pinned)
 {
@@ -1166,42 +1166,26 @@ acquire_buffer(const size_t bytes, const bool pinned)
 	auto& taken = pool.building.back().buffer_taken;
 	taken.resize(pool.buffers.size(),false);
 
-	int best    = -1;
-	int largest = -1;
+	int best = -1;
 	for(size_t i = 0; i < pool.buffers.size(); ++i)
 	{
-		if(taken[i]) continue;
-		const size_t size = pool.buffers[i]->bytes;
-		if(size >= bytes && (best == -1 || size < pool.buffers[best]->bytes)) best = i;
-		if(largest == -1 || size > pool.buffers[largest]->bytes) largest = i;
+		const PooledBuffer& candidate = *pool.buffers[i];
+		const bool fits = candidate.bytes >= bytes && (!pinned || candidate.data_pinned != NULL);
+		if(taken[i] || !fits) continue;
+		if(best == -1 || candidate.bytes < pool.buffers[best]->bytes) best = i;
 	}
-	int index = best != -1 ? best : largest;
-	if(index == -1)
+	if(best == -1)
 	{
-		pool.buffers.push_back(std::make_unique<PooledBuffer>());
+		auto buffer = std::make_unique<PooledBuffer>();
+		ERRCHK_CUDA_ALWAYS(acMalloc((void**)&buffer->data, bytes));
+		if(pinned) ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&buffer->data_pinned, bytes));
+		buffer->bytes = bytes;
+		pool.buffers.push_back(std::move(buffer));
 		taken.push_back(false);
-		index = pool.buffers.size()-1;
+		best = pool.buffers.size()-1;
 	}
-	taken[index] = true;
-
-	PooledBuffer* res = pool.buffers[index].get();
-	if(res->bytes < bytes)
-	{
-		release_from_previous_user(res);
-		if(res->data) acFree(res->data);
-		ERRCHK_CUDA_ALWAYS(acMalloc((void**)&res->data, bytes));
-		res->bytes = bytes;
-		++res->generation;
-	}
-	if(pinned && res->pinned_bytes < bytes)
-	{
-		release_from_previous_user(res);
-		if(res->data_pinned) acFreeHost(res->data_pinned);
-		ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&res->data_pinned, bytes));
-		res->pinned_bytes = bytes;
-		++res->generation;
-	}
-	return res;
+	taken[best] = true;
+	return pool.buffers[best].get();
 }
 
 void
@@ -1218,8 +1202,6 @@ taskgraph_resources_release()
 		buffer->data         = NULL;
 		buffer->data_pinned  = NULL;
 		buffer->bytes        = 0;
-		buffer->pinned_bytes = 0;
-		++buffer->generation;
 	}
 	for(auto& stream : pool.streams)
 	{
@@ -1556,10 +1538,22 @@ HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_leng
     real_data   = NULL; real_data_pinned   = NULL;
     single_data = NULL; single_data_pinned = NULL;
     half_data   = NULL; half_data_pinned   = NULL;
-    //TP: the memory comes from the pool shared by all task graphs, the pointers are set in bind()
+    //TP: the memory comes from the pool shared by all task graphs. It is never reallocated so the pointers can be set here
     if(all_bytes > 0)
     {
     	buffer = acquire_buffer(all_bytes, !ac_get_info()[AC_use_cuda_aware_mpi]);
+
+    	all_data        = buffer->data;
+    	all_data_pinned = buffer->data_pinned;
+
+    	real_data        = (AcReal*)all_data;
+    	real_data_pinned = (AcReal*)all_data_pinned;
+
+    	single_data        = (float*)(all_data + real_bytes);
+    	single_data_pinned = all_data_pinned ? (float*)(all_data_pinned + real_bytes) : NULL;
+
+    	half_data        = (__half*)(all_data + real_bytes + single_bytes);
+    	half_data_pinned = all_data_pinned ? (__half*)(all_data_pinned + real_bytes + single_bytes) : NULL;
     }
 
     for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
@@ -1568,31 +1562,13 @@ HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_leng
     }
 }
 
-// Takes the pooled buffer into use: waits for the MPI requests of a message of another task graph
-// that used it before and refreshes the data pointers in case the buffer was reallocated.
+// Takes the pooled buffer into use: waits for the MPI requests of a message of another task graph that used it before
 void
 HaloMessage::bind()
 {
-    if(buffer == NULL) return;
-    if(buffer->user != this)
-    {
-	release_from_previous_user(buffer);
-	buffer->user = this;
-    }
-    if(buffer_generation == buffer->generation) return;
-    buffer_generation = buffer->generation;
-
-    all_data        = buffer->data;
-    all_data_pinned = buffer->data_pinned;
-
-    real_data        = (AcReal*)all_data;
-    real_data_pinned = (AcReal*)all_data_pinned;
-
-    single_data        = (float*)(all_data + real_bytes);
-    single_data_pinned = all_data_pinned ? (float*)(all_data_pinned + real_bytes) : NULL;
-
-    half_data        = (__half*)(all_data + real_bytes + single_bytes);
-    half_data_pinned = all_data_pinned ? (__half*)(all_data_pinned + real_bytes + single_bytes) : NULL;
+    if(buffer == NULL || buffer->user == this) return;
+    release_from_previous_user(buffer);
+    buffer->user = this;
 }
 
 HaloMessage::~HaloMessage()
