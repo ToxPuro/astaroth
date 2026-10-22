@@ -1246,11 +1246,17 @@ main(int argc, char** argv)
 
     atexit(&cleanup);
     char* file = NULL;
-    int num_output_kernel_files = AC_DEFAULT_NUM_OUTPUT_KERNEL_FILES;
+    long num_output_kernel_files = AC_DEFAULT_NUM_OUTPUT_KERNEL_FILES;
     if (argc != 2) {
       num_output_kernel_files = strtol(argv[argc-1], NULL, 10);
-      if (errno != 0 || num_output_kernel_files < 1) {
+      if(errno == ERANGE && (num_output_kernel_files == LONG_MAX || num_output_kernel_files == LONG_MIN))
+      {
+        fprintf(stderr, "Error: Overflow or underflow happened for num_output_kernel_files parameter.\n%s", usage_str);
+        return EXIT_FAILURE;
+      }
+      if (num_output_kernel_files < 1) {
         fprintf(stderr, "Error: The num_output_kernel_files parameter needs to be a non-zero positive integer.\n%s", usage_str);
+        return EXIT_FAILURE;
       }
     }
     ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-2]);
