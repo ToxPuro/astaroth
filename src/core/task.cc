@@ -96,6 +96,42 @@ make_unique(Args&&... args)
 using std::make_unique;
 #endif
 
+//TP: debugging aid for CUDA-aware MPI. With the environment variable AC_DEBUG_MPI set every MPI call given device memory
+//    is logged and, with HIP, checked to lie inside a single device allocation
+static bool
+mpi_debug_enabled()
+{
+	static const bool enabled = getenv("AC_DEBUG_MPI") != NULL;
+	return enabled;
+}
+
+static void
+check_mpi_device_buffer(const char* call, const std::string& task, const void* ptr, const size_t bytes, const int peer, const int tag)
+{
+	if(!mpi_debug_enabled()) return;
+	const int rank = ac_pid();
+	fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: [%p,%p) %zu bytes, peer %d, tag %d\n",
+		rank,call,task.c_str(),ptr,(const void*)((const char*)ptr+bytes),bytes,peer,tag);
+#if AC_USE_HIP && !AC_CPU_BUILD
+	hipDeviceptr_t base{};
+	size_t size{};
+	if(hipMemGetAddressRange(&base,&size,(hipDeviceptr_t)ptr) != hipSuccess)
+	{
+		(void)hipGetLastError();
+		fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: %p is not in any device allocation!\n",rank,call,task.c_str(),ptr);
+		fflush(stderr);
+		abort();
+	}
+	if((const char*)ptr + bytes > (const char*)base + size)
+	{
+		fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: [%p,%p) exceeds its device allocation [%p,%p)!\n",
+			rank,call,task.c_str(),ptr,(const void*)((const char*)ptr+bytes),base,(const void*)((const char*)base+size));
+		fflush(stderr);
+		abort();
+	}
+#endif
+}
+
 
 template <typename T>
 T*
@@ -1180,6 +1216,9 @@ acquire_buffer(const size_t bytes, const bool pinned)
 		ERRCHK_CUDA_ALWAYS(acMalloc((void**)&buffer->data, bytes));
 		if(pinned) ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&buffer->data_pinned, bytes));
 		buffer->bytes = bytes;
+		if(mpi_debug_enabled())
+			fprintf(stderr,"[AC_DEBUG_MPI %d] pooled message buffer %zu: [%p,%p) %zu bytes\n",ac_pid(),pool.buffers.size(),
+				(void*)buffer->data,(void*)(buffer->data+bytes),bytes);
 		pool.buffers.push_back(std::move(buffer));
 		taken.push_back(false);
 		best = pool.buffers.size()-1;
@@ -2029,6 +2068,8 @@ HaloExchangeTask::receiveDevice()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
+	check_mpi_device_buffer("MPI_Irecv",name,msg->all_data + i*msg->all_bytes_per_process,msg->all_bytes_per_process,
+			        msg->counterpart_ranks[i],msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG);
     	ERRCHK_ALWAYS(MPI_Irecv(msg->all_data + i*msg->all_bytes_per_process, msg->all_bytes_per_process, MPI_BYTE, msg->counterpart_ranks[i],
     	          msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
@@ -2045,6 +2086,8 @@ HaloExchangeTask::sendDevice()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
+	check_mpi_device_buffer("MPI_Isend",name,msg->all_data,msg->all_bytes,
+			        msg->counterpart_ranks[i],msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG);
     	ERRCHK_ALWAYS(MPI_Isend(msg->all_data, msg->all_bytes, MPI_BYTE, msg->counterpart_ranks[i],
               msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
@@ -2472,6 +2515,8 @@ PeriodicRayTask::communicate()
 
    for(size_t i = 0; i < nvars; ++i)
    {
+	   check_mpi_device_buffer("MPI_Iallgather (send)",name,&packed_data->real_data[0]+i*volume,volume*sizeof(AcReal),-1,-1);
+	   check_mpi_device_buffer("MPI_Iallgather (recv)",name,&dst->real_data[0]+i*volume*nprocs,volume*nprocs*sizeof(AcReal),-1,-1);
 	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->real_data[0]+i*volume,volume,AC_REAL_MPI_TYPE,
 				        &dst->real_data[0]+i*volume*nprocs,volume,AC_REAL_MPI_TYPE,
 					gather_comm
@@ -2619,6 +2664,7 @@ void
 MPIScanTask::communicate()
 {
    auto msg = reduce_buffers.get_current_buffer();
+   check_mpi_device_buffer("MPI_Iexscan",name,&msg->real_data[0],msg->real_length*sizeof(AcReal),-1,-1);
    ERRCHK_ALWAYS(MPI_Iexscan(MPI_IN_PLACE,&msg->real_data[0],msg->real_length,AC_REAL_MPI_TYPE,MPI_SUM,scan_comm,&msg->requests[0]) == MPI_SUCCESS);
 }
 
@@ -2953,6 +2999,7 @@ ReduceTask::communicate()
 		}
    	        const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 				id == 0 ? n_size  : NGHOST;
+		if(cuda_aware_mpi_for_profiles) check_mpi_device_buffer("MPI_Iallreduce (profile)",name,buffer,data_size*sizeof(AcReal),-1,-1);
    	        MPI_Iallreduce(MPI_IN_PLACE,
    	     		buffer,
    	     		data_size,
