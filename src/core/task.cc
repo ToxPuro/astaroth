@@ -2704,14 +2704,12 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
    for(const auto& prof: input_regions[0].memory.profiles)
    {
 	   reduces_profiles = true;
+	   //TP: with CUDA-aware MPI the device profile buffer is used directly. It is looked up in communicate()
+	   //    since the profile buffers are swapped and a pointer cached here could point to the wrong buffer
 	   if(!cuda_aware_mpi_for_profiles)
 	   {
            	const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
 		ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&profile_comm_buffers[prof],bytes));
-	   }
-	   else
-	   {
-	   	profile_comm_buffers[prof] = acDeviceGetProfileBuffer(device,prof);
 	   }
    }
 
@@ -2971,7 +2969,7 @@ ReduceTask::communicate()
    	                reduces_only_prof == PROFILE_Y ? nn.y :
    	                reduces_only_prof == PROFILE_Z ? nn.z :
    	                0;
-		AcReal* buffer = profile_comm_buffers[prof];
+		AcReal* buffer = cuda_aware_mpi_for_profiles ? acDeviceGetProfileBuffer(device,prof) : profile_comm_buffers[prof];
 		if(on_halos())
 		{
 			if (id == 0) buffer += NGHOST;
