@@ -44,7 +44,7 @@ var acc__runtime_8h =
     [ "acKernelFlushReal", "acc__runtime_8h.html#ac2a5f60c4307342b5a67b6c47103ece2", null ],
     [ "acKernelLaunchGetLastTPB", "acc__runtime_8h.html#a4bfef942621753f6046122510328bbd1", null ],
     [ "acLaunchKernel", "acc__runtime_8h.html#a230997e312db00bfe4bded55cb624d70", null ],
-    [ "acLaunchKernelBase", "acc__runtime_8h.html#a5aca3614c448a7553ae713a0c6bb3561", null ],
+    [ "acLaunchKernelBase", "acc__runtime_8h.html#af3fa28437ed9f01064dfb8abcfec8339", null ],
     [ "acLaunchKernelWithTPB", "acc__runtime_8h.html#ad4b6d48df7eec8afb094c9cfa066ccd0", null ],
     [ "acLoadStencil", "acc__runtime_8h.html#a159280d4a7c5e3674ebfa181761c6fab", null ],
     [ "acPreprocessScratchPad", "acc__runtime_8h.html#a25498c01cb2783f58611e84571ceb83f", null ],

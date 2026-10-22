@@ -225,7 +225,7 @@ Functions</h2></td></tr>
 <tr class="memitem:ac2a5f60c4307342b5a67b6c47103ece2" id="r_ac2a5f60c4307342b5a67b6c47103ece2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac2a5f60c4307342b5a67b6c47103ece2">acKernelFlushReal</a> (const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> <a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>, <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> *arr, const size_t n, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> value)</td></tr>
 <tr class="memitem:a4bfef942621753f6046122510328bbd1" id="r_a4bfef942621753f6046122510328bbd1"><td class="memItemLeft" align="right" valign="top">Volume&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4bfef942621753f6046122510328bbd1">acKernelLaunchGetLastTPB</a> (void)</td></tr>
 <tr class="memitem:a230997e312db00bfe4bded55cb624d70" id="r_a230997e312db00bfe4bded55cb624d70"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a230997e312db00bfe4bded55cb624d70">acLaunchKernel</a> (AcKernel func, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> <a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>, const Volume start, const Volume end, <a class="el" href="structVertexBufferArray.html">VertexBufferArray</a>)</td></tr>
-<tr class="memitem:a5aca3614c448a7553ae713a0c6bb3561" id="r_a5aca3614c448a7553ae713a0c6bb3561"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5aca3614c448a7553ae713a0c6bb3561">acLaunchKernelBase</a> (const AcKernel kernel, const int3 start, const int3 end, <a class="el" href="structVertexBufferArray.html">VertexBufferArray</a> vba, const dim3 bpg, const dim3 tpb, const size_t smem, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> <a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>)</td></tr>
+<tr class="memitem:af3fa28437ed9f01064dfb8abcfec8339" id="r_af3fa28437ed9f01064dfb8abcfec8339"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af3fa28437ed9f01064dfb8abcfec8339">acLaunchKernelBase</a> (const AcKernel kernel, const int3 start, const int3 end, <a class="el" href="structVertexBufferArray.html">VertexBufferArray</a> vba, const dim3 bpg, const dim3 tpb, const size_t smem, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> <a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>, bool perform_error_check)</td></tr>
 <tr class="memitem:ad4b6d48df7eec8afb094c9cfa066ccd0" id="r_ad4b6d48df7eec8afb094c9cfa066ccd0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad4b6d48df7eec8afb094c9cfa066ccd0">acLaunchKernelWithTPB</a> (AcKernel kernel, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> <a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>, const Volume start_volume, const Volume end_volume, <a class="el" href="structVertexBufferArray.html">VertexBufferArray</a> vba, const dim3 tpb)</td></tr>
 <tr class="memitem:a159280d4a7c5e3674ebfa181761c6fab" id="r_a159280d4a7c5e3674ebfa181761c6fab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a159280d4a7c5e3674ebfa181761c6fab">acLoadStencil</a> (const Stencil stencil, const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a> <a class="el" href="astaroth__device_8h.html#abc2c7b08e62a1c0a64824760ed771e7b">stream</a>, const <a class="el" href="acreal_8h.html#a682ddafb17af19aa8f6e413da6625de0">AcReal</a> data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])</td></tr>
 <tr class="memitem:a25498c01cb2783f58611e84571ceb83f" id="r_a25498c01cb2783f58611e84571ceb83f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="host__datatypes_8h.html#a601254ccb5bcc54c209aeea4ac24e43d">AcResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a25498c01cb2783f58611e84571ceb83f">acPreprocessScratchPad</a> (<a class="el" href="structVertexBufferArray.html">VertexBufferArray</a>, const int variable, const AcType type, const <a class="el" href="host__datatypes_8h.html#a64764d6386cd906ee06bcd5e4c000a95">AcReduceOp</a> op)</td></tr>
@@ -810,8 +810,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a5aca3614c448a7553ae713a0c6bb3561" name="a5aca3614c448a7553ae713a0c6bb3561"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5aca3614c448a7553ae713a0c6bb3561">&#9670;&#160;</a></span>acLaunchKernelBase()</h2>
+<a id="af3fa28437ed9f01064dfb8abcfec8339" name="af3fa28437ed9f01064dfb8abcfec8339"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3fa28437ed9f01064dfb8abcfec8339">&#9670;&#160;</a></span>acLaunchKernelBase()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -854,7 +854,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a></td>          <td class="paramname"><span class="paramname"><em>stream</em></span>&#160;)</td>
+          <td class="paramtype">const <a class="el" href="hip_8h.html#a9d6f45a66fe65d53dc925d8d89b88d38">cudaStream_t</a></td>          <td class="paramname"><span class="paramname"><em>stream</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool</td>          <td class="paramname"><span class="paramname"><em>perform_error_check</em></span>&#160;)</td>
         </tr>
       </table>
 </div><div class="memdoc">

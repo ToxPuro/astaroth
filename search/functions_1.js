@@ -324,7 +324,7 @@ var searchData=
   ['ackernelvolumecopyrealtocomplexfloatbatched_321',['acKernelVolumeCopyRealToComplexFloatBatched',['../common__kernels_8h.html#a3e19c65b23e99ad6005f65a04ac591e8',1,'common_kernels.h']]],
   ['aclaunchcooperativekernel_322',['acLaunchCooperativeKernel',['../astaroth__cuda__wrappers_8h.html#afc082306587abc299316210fc4a28731',1,'astaroth_cuda_wrappers.h']]],
   ['aclaunchkernel_323',['acLaunchKernel',['../acc__runtime_8h.html#a230997e312db00bfe4bded55cb624d70',1,'acc_runtime.h']]],
-  ['aclaunchkernelbase_324',['acLaunchKernelBase',['../acc__runtime_8h.html#a5aca3614c448a7553ae713a0c6bb3561',1,'acc_runtime.h']]],
+  ['aclaunchkernelbase_324',['acLaunchKernelBase',['../acc__runtime_8h.html#af3fa28437ed9f01064dfb8abcfec8339',1,'acc_runtime.h']]],
   ['aclaunchkernelwithtpb_325',['acLaunchKernelWithTPB',['../acc__runtime_8h.html#ad4b6d48df7eec8afb094c9cfa066ccd0',1,'acc_runtime.h']]],
   ['aclibloadlibrary_326',['acLibLoadLibrary',['../astaroth__lib_8h.html#af82b3c2a42ccd6f281ab0d03308aba72',1,'astaroth_lib.h']]],
   ['aclibraryversion_327',['acLibraryVersion',['../astaroth__helpers_8h.html#a166a68e7e170c1d1b732b3aac0123d9c',1,'astaroth_helpers.h']]],
