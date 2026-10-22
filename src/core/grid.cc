@@ -3322,7 +3322,7 @@ acGridReduceXY(const Stream stream, const Field field, const Profile profile, co
 				    static_cast<size_t>(grid.submesh.info[AC_mlocal].y),
 				    static_cast<size_t>(grid.submesh.info[AC_mlocal].z)
 			           };
-        MPI_Allreduce(MPI_IN_PLACE, acDeviceGetProfileBuffer(device,profile), prof_size(profile,m),
+        MPI_Allreduce(MPI_IN_PLACE, acDeviceGetProfileBuffer(device,profile), prof_count(profile,m),
                       AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
 
         // 4) Optional: Test

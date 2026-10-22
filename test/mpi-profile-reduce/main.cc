@@ -420,9 +420,10 @@ main(int argc, char* argv[])
     	free(yz_sum);
     	free(zx_sum);
     	free(zy_sum);
-        MPI_Allreduce(MPI_IN_PLACE, &correct,   1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+        int all_correct = correct;
+        MPI_Allreduce(MPI_IN_PLACE, &all_correct, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-    	return !correct;
+    	return !all_correct;
     };
 
     for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)

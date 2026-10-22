@@ -2684,7 +2684,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
 	   //    since the profile buffers are swapped and a pointer cached here could point to the wrong buffer
 	   if(!cuda_aware_mpi_for_profiles)
 	   {
-           	const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+           	const size_t bytes = prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
 		ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&profile_comm_buffers[prof],bytes));
 	   }
    }
@@ -2735,7 +2735,7 @@ ReduceTask::reduce()
 		   auto dst        = acDeviceGetProfileBuffer(device,prof);
 		   if(AC_CPU_BUILD)
 		   {
-           		const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+           		const size_t bytes = prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
 		        memcpy(dst,reduce_buf.src.data,bytes);
 			continue;
 		   }
@@ -2858,7 +2858,7 @@ ReduceTask::transfer_to_host()
 			src += NGHOST+n_size;
 		}
 	}
-   	const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 			       id == 0 ? n_size : NGHOST;
         const size_t bytes = sizeof(AcReal)*as_size_t(data_size);
         ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
@@ -2912,7 +2912,7 @@ ReduceTask::transfer_to_device()
 			src += NGHOST+n_size;
 		}
 	}
-   	const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 			       id == 0 ? n_size : NGHOST;
         const size_t bytes = sizeof(AcReal)*as_size_t(data_size);
         ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
@@ -2951,7 +2951,7 @@ ReduceTask::communicate()
 			if (id == 0) buffer += NGHOST;
 			if (id == 1) buffer += NGHOST+n_size;
 		}
-   	        const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	        const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 				id == 0 ? n_size  : NGHOST;
    	        MPI_Iallreduce(MPI_IN_PLACE,
    	     		buffer,
@@ -2967,10 +2967,10 @@ ReduceTask::communicate()
   for(size_t i = 0; i < reduce_outputs.size(); ++i)
   {
 	  const int var = reduce_outputs[i].variable;
-	  if(real_output_is_global[var]  && reduce_outputs[i].type == AC_REAL_TYPE)   MPI_Iallreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm,&requests[i]);
-	  if(int_output_is_global[var]   && reduce_outputs[i].type == AC_INT_TYPE)    MPI_Iallreduce(MPI_IN_PLACE, &local_res_int[i],1,MPI_INT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
+	  if(reduce_outputs[i].type == AC_REAL_TYPE  && real_output_is_global[var])   MPI_Iallreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm,&requests[i]);
+	  if(reduce_outputs[i].type == AC_INT_TYPE   && int_output_is_global[var])    MPI_Iallreduce(MPI_IN_PLACE, &local_res_int[i],1,MPI_INT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
 #if AC_DOUBLE_PRECISION
-	  if(float_output_is_global[var] && reduce_outputs[i].type == AC_FLOAT_TYPE)  MPI_Iallreduce(MPI_IN_PLACE, &local_res_float[i],1,MPI_FLOAT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
+	  if(reduce_outputs[i].type == AC_FLOAT_TYPE && float_output_is_global[var])  MPI_Iallreduce(MPI_IN_PLACE, &local_res_float[i],1,MPI_FLOAT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
 #endif
     }
 }
@@ -2987,7 +2987,7 @@ ReduceTask::load_outputs()
 		auto val = local_res_real[i];
 		if(reduce_outputs[i].postprocess_op == AC_RMS)
 		{
-			const auto nn = (real_output_is_global[i]) ? get_grid_nn() : get_local_nn();
+			const auto nn = (real_output_is_global[var]) ? get_grid_nn() : get_local_nn();
 			const int N = nn.x*nn.y*nn.z;
 			val = sqrt(val/N);
 		}
@@ -3010,7 +3010,7 @@ ReduceTask::load_outputs()
 		auto val = local_res_float[i];
 		if(reduce_outputs[i].postprocess_op == AC_RMS)
 		{
-			const auto nn = (int_output_is_global[i]) ? get_grid_nn() : get_local_nn();
+			const auto nn = (float_output_is_global[var]) ? get_grid_nn() : get_local_nn();
 			const float N = float(nn.x*nn.y*nn.z);
 			val = sqrt(val/N);
 		}

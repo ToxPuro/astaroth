@@ -316,7 +316,7 @@ acHostMeshCreateProfiles(AcMesh* mesh)
     const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
     for(int p = 0; p < NUM_PROFILES; ++p)
     {
-	    mesh->profile[p] = acCallocHostReal(prof_size(Profile(p),counts));
+	    mesh->profile[p] = acCallocHostReal(prof_count(Profile(p),counts));
             ERRCHK_ALWAYS(mesh->profile[p]);
     }
     return AC_SUCCESS;
