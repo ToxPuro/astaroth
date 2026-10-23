@@ -96,6 +96,42 @@ make_unique(Args&&... args)
 using std::make_unique;
 #endif
 
+//TP: debugging aid for CUDA-aware MPI. With the environment variable AC_DEBUG_MPI set every MPI call given device memory
+//    is logged and, with HIP, checked to lie inside a single device allocation
+static bool
+mpi_debug_enabled()
+{
+	static const bool enabled = getenv("AC_DEBUG_MPI") != NULL;
+	return enabled;
+}
+
+static void
+check_mpi_device_buffer(const char* call, const std::string& task, const void* ptr, const size_t bytes, const int peer, const int tag)
+{
+	if(!mpi_debug_enabled()) return;
+	const int rank = ac_pid();
+	fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: [%p,%p) %zu bytes, peer %d, tag %d\n",
+		rank,call,task.c_str(),ptr,(const void*)((const char*)ptr+bytes),bytes,peer,tag);
+#if AC_USE_HIP && !AC_CPU_BUILD
+	hipDeviceptr_t base{};
+	size_t size{};
+	if(hipMemGetAddressRange(&base,&size,(hipDeviceptr_t)ptr) != hipSuccess)
+	{
+		(void)hipGetLastError();
+		fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: %p is not in any device allocation!\n",rank,call,task.c_str(),ptr);
+		fflush(stderr);
+		abort();
+	}
+	if((const char*)ptr + bytes > (const char*)base + size)
+	{
+		fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: [%p,%p) exceeds its device allocation [%p,%p)!\n",
+			rank,call,task.c_str(),ptr,(const void*)((const char*)ptr+bytes),base,(const void*)((const char*)base+size));
+		fflush(stderr);
+		abort();
+	}
+#endif
+}
+
 
 template <typename T>
 T*
@@ -1080,14 +1116,6 @@ get_min_nn()
 	return acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
 }
 
-//Thickness of the boundary layer handled by a ray update: one point, but none along inactive dimensions (no ghost zone there)
-static Volume
-get_ray_layer_width()
-{
-	const Volume min_nn = get_min_nn();
-	return (Volume){std::min(min_nn.x,(size_t)1),std::min(min_nn.y,(size_t)1),std::min(min_nn.z,(size_t)1)};
-}
-
 static Volume
 get_local_nn()
 {
@@ -1164,8 +1192,8 @@ release_from_previous_user(PooledBuffer* buffer)
 	buffer->user = NULL;
 }
 
-// Returns the smallest pooled buffer of at least the given size not yet used by the task graph being built.
-// If there is none, the largest unused one is grown, and if all are used a new one is added to the pool.
+// Returns the smallest pooled buffer that fits and is not yet used by the task graph being built.
+// If there is none, a new buffer is added to the pool: existing buffers are never reallocated (see PooledBuffer).
 static PooledBuffer*
 acquire_buffer(const size_t bytes, const bool pinned)
 {
@@ -1174,42 +1202,29 @@ acquire_buffer(const size_t bytes, const bool pinned)
 	auto& taken = pool.building.back().buffer_taken;
 	taken.resize(pool.buffers.size(),false);
 
-	int best    = -1;
-	int largest = -1;
+	int best = -1;
 	for(size_t i = 0; i < pool.buffers.size(); ++i)
 	{
-		if(taken[i]) continue;
-		const size_t size = pool.buffers[i]->bytes;
-		if(size >= bytes && (best == -1 || size < pool.buffers[best]->bytes)) best = i;
-		if(largest == -1 || size > pool.buffers[largest]->bytes) largest = i;
+		const PooledBuffer& candidate = *pool.buffers[i];
+		const bool fits = candidate.bytes >= bytes && (!pinned || candidate.data_pinned != NULL);
+		if(taken[i] || !fits) continue;
+		if(best == -1 || candidate.bytes < pool.buffers[best]->bytes) best = i;
 	}
-	int index = best != -1 ? best : largest;
-	if(index == -1)
+	if(best == -1)
 	{
-		pool.buffers.push_back(std::make_unique<PooledBuffer>());
+		auto buffer = std::make_unique<PooledBuffer>();
+		ERRCHK_CUDA_ALWAYS(acMalloc((void**)&buffer->data, bytes));
+		if(pinned) ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&buffer->data_pinned, bytes));
+		buffer->bytes = bytes;
+		if(mpi_debug_enabled())
+			fprintf(stderr,"[AC_DEBUG_MPI %d] pooled message buffer %zu: [%p,%p) %zu bytes\n",ac_pid(),pool.buffers.size(),
+				(void*)buffer->data,(void*)(buffer->data+bytes),bytes);
+		pool.buffers.push_back(std::move(buffer));
 		taken.push_back(false);
-		index = pool.buffers.size()-1;
+		best = pool.buffers.size()-1;
 	}
-	taken[index] = true;
-
-	PooledBuffer* res = pool.buffers[index].get();
-	if(res->bytes < bytes)
-	{
-		release_from_previous_user(res);
-		if(res->data) acFree(res->data);
-		ERRCHK_CUDA_ALWAYS(acMalloc((void**)&res->data, bytes));
-		res->bytes = bytes;
-		++res->generation;
-	}
-	if(pinned && res->pinned_bytes < bytes)
-	{
-		release_from_previous_user(res);
-		if(res->data_pinned) acFreeHost(res->data_pinned);
-		ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&res->data_pinned, bytes));
-		res->pinned_bytes = bytes;
-		++res->generation;
-	}
-	return res;
+	taken[best] = true;
+	return pool.buffers[best].get();
 }
 
 void
@@ -1226,8 +1241,6 @@ taskgraph_resources_release()
 		buffer->data         = NULL;
 		buffer->data_pinned  = NULL;
 		buffer->bytes        = 0;
-		buffer->pinned_bytes = 0;
-		++buffer->generation;
 	}
 	for(auto& stream : pool.streams)
 	{
@@ -1382,7 +1395,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 
     const auto get_input_region = [&](const int3 id)
     {
-	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), get_ray_layer_width(), {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
+	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
     };
 
     const int ndir = abs(ray_direction.x) + abs(ray_direction.y) + abs(ray_direction.z);
@@ -1435,7 +1448,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 	    }
     }
 
-    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), get_ray_layer_width(), {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
+    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
     //TP: avoid computing on corner points twice
     if(boundary_id.x != 0)
     {
@@ -1564,10 +1577,22 @@ HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_leng
     real_data   = NULL; real_data_pinned   = NULL;
     single_data = NULL; single_data_pinned = NULL;
     half_data   = NULL; half_data_pinned   = NULL;
-    //TP: the memory comes from the pool shared by all task graphs, the pointers are set in bind()
+    //TP: the memory comes from the pool shared by all task graphs. It is never reallocated so the pointers can be set here
     if(all_bytes > 0)
     {
     	buffer = acquire_buffer(all_bytes, !ac_get_info()[AC_use_cuda_aware_mpi]);
+
+    	all_data        = buffer->data;
+    	all_data_pinned = buffer->data_pinned;
+
+    	real_data        = (AcReal*)all_data;
+    	real_data_pinned = (AcReal*)all_data_pinned;
+
+    	single_data        = (float*)(all_data + real_bytes);
+    	single_data_pinned = all_data_pinned ? (float*)(all_data_pinned + real_bytes) : NULL;
+
+    	half_data        = (__half*)(all_data + real_bytes + single_bytes);
+    	half_data_pinned = all_data_pinned ? (__half*)(all_data_pinned + real_bytes + single_bytes) : NULL;
     }
 
     for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
@@ -1576,31 +1601,13 @@ HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_leng
     }
 }
 
-// Takes the pooled buffer into use: waits for the MPI requests of a message of another task graph
-// that used it before and refreshes the data pointers in case the buffer was reallocated.
+// Takes the pooled buffer into use: waits for the MPI requests of a message of another task graph that used it before
 void
 HaloMessage::bind()
 {
-    if(buffer == NULL) return;
-    if(buffer->user != this)
-    {
-	release_from_previous_user(buffer);
-	buffer->user = this;
-    }
-    if(buffer_generation == buffer->generation) return;
-    buffer_generation = buffer->generation;
-
-    all_data        = buffer->data;
-    all_data_pinned = buffer->data_pinned;
-
-    real_data        = (AcReal*)all_data;
-    real_data_pinned = (AcReal*)all_data_pinned;
-
-    single_data        = (float*)(all_data + real_bytes);
-    single_data_pinned = all_data_pinned ? (float*)(all_data_pinned + real_bytes) : NULL;
-
-    half_data        = (__half*)(all_data + real_bytes + single_bytes);
-    half_data_pinned = all_data_pinned ? (__half*)(all_data_pinned + real_bytes + single_bytes) : NULL;
+    if(buffer == NULL || buffer->user == this) return;
+    release_from_previous_user(buffer);
+    buffer->user = this;
 }
 
 HaloMessage::~HaloMessage()
@@ -2061,6 +2068,8 @@ HaloExchangeTask::receiveDevice()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
+	check_mpi_device_buffer("MPI_Irecv",name,msg->all_data + i*msg->all_bytes_per_process,msg->all_bytes_per_process,
+			        msg->counterpart_ranks[i],msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG);
     	ERRCHK_ALWAYS(MPI_Irecv(msg->all_data + i*msg->all_bytes_per_process, msg->all_bytes_per_process, MPI_BYTE, msg->counterpart_ranks[i],
     	          msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
@@ -2077,6 +2086,8 @@ HaloExchangeTask::sendDevice()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
+	check_mpi_device_buffer("MPI_Isend",name,msg->all_data,msg->all_bytes,
+			        msg->counterpart_ranks[i],msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG);
     	ERRCHK_ALWAYS(MPI_Isend(msg->all_data, msg->all_bytes, MPI_BYTE, msg->counterpart_ranks[i],
               msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
@@ -2342,19 +2353,29 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
     gather_comm = MPI_COMM_NULL;
     ray_direction = op.ray_direction;
     kernel = op.kernel_enum;
-    //The orientation of the ray is handled in summing the rays (sum_periodic_rays)
-    //so no need to take it into account here.
-    if(std::abs(op.ray_direction.x)  == 1)
+    if(op.ray_direction == (int3){1,0,0})
     {
 	    gather_comm = sub_comms.x;
     }
-    if(std::abs(op.ray_direction.y)  == 1)
+    if(op.ray_direction == (int3){-1,0,0})
+    {
+	    gather_comm = sub_comms.reverse_x;
+    }
+    if(op.ray_direction == (int3){0,1,0})
     {
 	    gather_comm = sub_comms.y;
     }
-    if(std::abs(op.ray_direction.z)  == 1)
+    if(op.ray_direction == (int3){0,-1,0})
+    {
+	    gather_comm = sub_comms.reverse_y;
+    }
+    if(op.ray_direction == (int3){0,0,1})
     {
 	    gather_comm = sub_comms.z;
+    }
+    if(op.ray_direction == (int3){0,0,-1})
+    {
+	    gather_comm = sub_comms.reverse_z;
     }
     // Create stream for packing/unpacking
     (void)grid_info;
@@ -2494,6 +2515,8 @@ PeriodicRayTask::communicate()
 
    for(size_t i = 0; i < nvars; ++i)
    {
+	   check_mpi_device_buffer("MPI_Iallgather (send)",name,&packed_data->real_data[0]+i*volume,volume*sizeof(AcReal),-1,-1);
+	   check_mpi_device_buffer("MPI_Iallgather (recv)",name,&dst->real_data[0]+i*volume*nprocs,volume*nprocs*sizeof(AcReal),-1,-1);
 	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->real_data[0]+i*volume,volume,AC_REAL_MPI_TYPE,
 				        &dst->real_data[0]+i*volume*nprocs,volume,AC_REAL_MPI_TYPE,
 					gather_comm
@@ -2641,6 +2664,7 @@ void
 MPIScanTask::communicate()
 {
    auto msg = reduce_buffers.get_current_buffer();
+   check_mpi_device_buffer("MPI_Iexscan",name,&msg->real_data[0],msg->real_length*sizeof(AcReal),-1,-1);
    ERRCHK_ALWAYS(MPI_Iexscan(MPI_IN_PLACE,&msg->real_data[0],msg->real_length,AC_REAL_MPI_TYPE,MPI_SUM,scan_comm,&msg->requests[0]) == MPI_SUCCESS);
 }
 
@@ -2702,14 +2726,12 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
    for(const auto& prof: input_regions[0].memory.profiles)
    {
 	   reduces_profiles = true;
+	   //TP: with CUDA-aware MPI the device profile buffer is used directly. It is looked up in communicate()
+	   //    since the profile buffers are swapped and a pointer cached here could point to the wrong buffer
 	   if(!cuda_aware_mpi_for_profiles)
 	   {
-           	const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+           	const size_t bytes = prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
 		ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&profile_comm_buffers[prof],bytes));
-	   }
-	   else
-	   {
-	   	profile_comm_buffers[prof] = acDeviceGetProfileBuffer(device,prof);
 	   }
    }
 
@@ -2759,7 +2781,7 @@ ReduceTask::reduce()
 		   auto dst        = acDeviceGetProfileBuffer(device,prof);
 		   if(AC_CPU_BUILD)
 		   {
-           		const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+           		const size_t bytes = prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
 		        memcpy(dst,reduce_buf.src.data,bytes);
 			continue;
 		   }
@@ -2882,7 +2904,7 @@ ReduceTask::transfer_to_host()
 			src += NGHOST+n_size;
 		}
 	}
-   	const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 			       id == 0 ? n_size : NGHOST;
         const size_t bytes = sizeof(AcReal)*as_size_t(data_size);
         ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
@@ -2936,7 +2958,7 @@ ReduceTask::transfer_to_device()
 			src += NGHOST+n_size;
 		}
 	}
-   	const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 			       id == 0 ? n_size : NGHOST;
         const size_t bytes = sizeof(AcReal)*as_size_t(data_size);
         ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
@@ -2969,14 +2991,15 @@ ReduceTask::communicate()
    	                reduces_only_prof == PROFILE_Y ? nn.y :
    	                reduces_only_prof == PROFILE_Z ? nn.z :
    	                0;
-		AcReal* buffer = profile_comm_buffers[prof];
+		AcReal* buffer = cuda_aware_mpi_for_profiles ? acDeviceGetProfileBuffer(device,prof) : profile_comm_buffers[prof];
 		if(on_halos())
 		{
 			if (id == 0) buffer += NGHOST;
 			if (id == 1) buffer += NGHOST+n_size;
 		}
-   	        const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	        const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 				id == 0 ? n_size  : NGHOST;
+		if(cuda_aware_mpi_for_profiles) check_mpi_device_buffer("MPI_Iallreduce (profile)",name,buffer,data_size*sizeof(AcReal),-1,-1);
    	        MPI_Iallreduce(MPI_IN_PLACE,
    	     		buffer,
    	     		data_size,
@@ -2991,10 +3014,10 @@ ReduceTask::communicate()
   for(size_t i = 0; i < reduce_outputs.size(); ++i)
   {
 	  const int var = reduce_outputs[i].variable;
-	  if(real_output_is_global[var]  && reduce_outputs[i].type == AC_REAL_TYPE)   MPI_Iallreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm,&requests[i]);
-	  if(int_output_is_global[var]   && reduce_outputs[i].type == AC_INT_TYPE)    MPI_Iallreduce(MPI_IN_PLACE, &local_res_int[i],1,MPI_INT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
+	  if(reduce_outputs[i].type == AC_REAL_TYPE  && real_output_is_global[var])   MPI_Iallreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm,&requests[i]);
+	  if(reduce_outputs[i].type == AC_INT_TYPE   && int_output_is_global[var])    MPI_Iallreduce(MPI_IN_PLACE, &local_res_int[i],1,MPI_INT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
 #if AC_DOUBLE_PRECISION
-	  if(float_output_is_global[var] && reduce_outputs[i].type == AC_FLOAT_TYPE)  MPI_Iallreduce(MPI_IN_PLACE, &local_res_float[i],1,MPI_FLOAT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
+	  if(reduce_outputs[i].type == AC_FLOAT_TYPE && float_output_is_global[var])  MPI_Iallreduce(MPI_IN_PLACE, &local_res_float[i],1,MPI_FLOAT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
 #endif
     }
 }
@@ -3011,7 +3034,7 @@ ReduceTask::load_outputs()
 		auto val = local_res_real[i];
 		if(reduce_outputs[i].postprocess_op == AC_RMS)
 		{
-			const auto nn = (real_output_is_global[i]) ? get_grid_nn() : get_local_nn();
+			const auto nn = (real_output_is_global[var]) ? get_grid_nn() : get_local_nn();
 			const int N = nn.x*nn.y*nn.z;
 			val = sqrt(val/N);
 		}
@@ -3034,7 +3057,7 @@ ReduceTask::load_outputs()
 		auto val = local_res_float[i];
 		if(reduce_outputs[i].postprocess_op == AC_RMS)
 		{
-			const auto nn = (int_output_is_global[i]) ? get_grid_nn() : get_local_nn();
+			const auto nn = (float_output_is_global[var]) ? get_grid_nn() : get_local_nn();
 			const float N = float(nn.x*nn.y*nn.z);
 			val = sqrt(val/N);
 		}
