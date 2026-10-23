@@ -713,10 +713,6 @@ gen_periodic_bcs(
 
 		//TP: for some reason specifying periodic bc as a single task gives better perf as of 8.1.2025
 		const bool all_periodic = x_periodic && y_periodic && z_periodic;
-		std::vector<facet_class_range> oned_halo_types{};
-		for(size_t i = 0; i < halo_types.size(); ++i) oned_halo_types.push_back((facet_class_range){1,1});
-		std::vector<facet_class_range> twod_halo_types{};
-		for(size_t i = 0; i < halo_types.size(); ++i) twod_halo_types.push_back((facet_class_range){1,min(2,halo_types[i].max)});
 
 		if(all_periodic)
 		{
@@ -729,56 +725,56 @@ gen_periodic_bcs(
 		}
 		else if(x_periodic && y_periodic)
 		{
-				res.push_back(acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,output_fields,start,end,twod_halo_types));
+				res.push_back(acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XY,");
 				log_fields(stream,output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
-				log_halo_types(twod_halo_types,stream);
+				log_halo_types(halo_types,stream);
 				if(!ac_pid()) fprintf(stream,")\n");
 		}
 		else if(x_periodic && z_periodic)
 		{
-				res.push_back(acBoundaryCondition(BOUNDARY_XZ,BOUNDCOND_PERIODIC,output_fields,start,end,twod_halo_types));
+				res.push_back(acBoundaryCondition(BOUNDARY_XZ,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XZ,");
 				log_fields(stream,output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
-				log_halo_types(twod_halo_types,stream);
+				log_halo_types(halo_types,stream);
 				if(!ac_pid()) fprintf(stream,")\n");
 		}
 		else if(y_periodic && z_periodic)
 		{
-				res.push_back(acBoundaryCondition(BOUNDARY_YZ,BOUNDCOND_PERIODIC,output_fields,start,end,twod_halo_types));
+				res.push_back(acBoundaryCondition(BOUNDARY_YZ,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_YZ,");
 				log_fields(stream,output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
-				log_halo_types(twod_halo_types,stream);
+				log_halo_types(halo_types,stream);
 				if(!ac_pid()) fprintf(stream,")\n");
 		}
 		else if(x_periodic)
 		{
-			res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end,oned_halo_types));
+			res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
 			log_fields(stream,output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
-			log_halo_types(oned_halo_types,stream);
+			log_halo_types(halo_types,stream);
 			if(!ac_pid()) fprintf(stream,")\n");
 		}
 		else if(y_periodic)
 		{
-			res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end,oned_halo_types));
+			res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
 			log_fields(stream,output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
-			log_halo_types(oned_halo_types,stream);
+			log_halo_types(halo_types,stream);
 			if(!ac_pid()) fprintf(stream,")\n");
 		}
 		else if(z_periodic)
 		{
-			res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end,oned_halo_types));
+			res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
 			log_fields(stream,output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
-			log_halo_types(oned_halo_types,stream);
+			log_halo_types(halo_types,stream);
 			if(!ac_pid()) fprintf(stream,")\n");
 		}
 		return res;
