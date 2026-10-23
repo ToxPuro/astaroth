@@ -4874,3 +4874,115 @@ der2y2z(Field f)
 //	return res;
 //}
 //
+
+// Staggered (shifted) 4th-order first derivatives of the product of two fields:
+//   d/dx (a*b) at x - dx/2 = (9/8 * ((ab)(x) - (ab)(x-dx)) - 1/24 * ((ab)(x+dx) - (ab)(x-2dx))) / dx
+// The stencils are unitless, the spacing is applied by the derx_shifted etc. functions.
+#define AC_SHIFTED_DER1_1 (9.0/8.0)
+#define AC_SHIFTED_DER1_2 (-1.0/24.0)
+#if defined(STENCIL_ORDER) && (STENCIL_ORDER == 0 || STENCIL_ORDER == 2)
+derx_shifted_stencil(Field a, Field b)
+{
+	suppress_unused_warning(a)
+	suppress_unused_warning(b)
+	fatal_error_message(true,"derx_shifted requires STENCIL_ORDER >= 4!\n");
+	return 0.0
+}
+dery_shifted_stencil(Field a, Field b)
+{
+	suppress_unused_warning(a)
+	suppress_unused_warning(b)
+	fatal_error_message(true,"dery_shifted requires STENCIL_ORDER >= 4!\n");
+	return 0.0
+}
+derz_shifted_stencil(Field a, Field b)
+{
+	suppress_unused_warning(a)
+	suppress_unused_warning(b)
+	fatal_error_message(true,"derz_shifted requires STENCIL_ORDER >= 4!\n");
+	return 0.0
+}
+#else
+PairSum Stencil derx_shifted_stencil {
+	[0][0][-2] = -AC_SHIFTED_DER1_2,
+	[0][0][-1] = -AC_SHIFTED_DER1_1,
+	[0][0][ 0] =  AC_SHIFTED_DER1_1,
+	[0][0][ 1] =  AC_SHIFTED_DER1_2
+}
+PairSum Stencil dery_shifted_stencil {
+	[0][-2][0] = -AC_SHIFTED_DER1_2,
+	[0][-1][0] = -AC_SHIFTED_DER1_1,
+	[0][ 0][0] =  AC_SHIFTED_DER1_1,
+	[0][ 1][0] =  AC_SHIFTED_DER1_2
+}
+PairSum Stencil derz_shifted_stencil {
+	[-2][0][0] = -AC_SHIFTED_DER1_2,
+	[-1][0][0] = -AC_SHIFTED_DER1_1,
+	[ 0][0][0] =  AC_SHIFTED_DER1_1,
+	[ 1][0][0] =  AC_SHIFTED_DER1_2
+}
+#endif
+
+/**
+ * Calculates d(a*b)/dx at x - dx/2 (4th-order staggered derivative).
+ * Not supported on nonequidistant grids since the grid spacing would be needed at the shifted point.
+ */
+derx_shifted(Field a, Field b)
+{
+	if (AC_dimension_inactive.x)
+	{
+		suppress_unused_warning(a)
+		suppress_unused_warning(b)
+		return 0.0
+	}
+	fatal_error_message(AC_nonequidistant_grid.x,"derx_shifted is not supported on nonequidistant grids!\n");
+	return derx_shifted_stencil(a,b)*AC_inv_ds.x
+}
+
+/**
+ * Calculates d(a*b)/dy at y - dy/2 (4th-order staggered derivative).
+ * The coordinate factors do not depend on y so they are the same at the shifted point.
+ * Not supported on nonequidistant grids since the grid spacing would be needed at the shifted point.
+ */
+dery_shifted(Field a, Field b)
+{
+	if (AC_dimension_inactive.y)
+	{
+		suppress_unused_warning(a)
+		suppress_unused_warning(b)
+		return 0.0
+	}
+	fatal_error_message(AC_nonequidistant_grid.y,"dery_shifted is not supported on nonequidistant grids!\n");
+	coordinate_factor = 1.0
+	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R
+	}
+	if (AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_CYL_R
+	}
+	return dery_shifted_stencil(a,b)*coordinate_factor*AC_inv_ds.y
+}
+
+/**
+ * Calculates d(a*b)/dz at z - dz/2 (4th-order staggered derivative).
+ * The coordinate factors do not depend on z so they are the same at the shifted point.
+ * Not supported on nonequidistant grids since the grid spacing would be needed at the shifted point.
+ */
+derz_shifted(Field a, Field b)
+{
+	if (AC_dimension_inactive.z)
+	{
+		suppress_unused_warning(a)
+		suppress_unused_warning(b)
+		return 0.0
+	}
+	fatal_error_message(AC_nonequidistant_grid.z,"derz_shifted is not supported on nonequidistant grids!\n");
+	coordinate_factor = 1.0
+	if (AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
+	}
+	return derz_shifted_stencil(a,b)*coordinate_factor*AC_inv_ds.z
+}

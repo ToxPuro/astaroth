@@ -753,3 +753,50 @@ Stencil der6z_upwd {
 
 #endif
 #endif
+
+// Staggered (shifted) 4th-order first derivatives of the product of two fields:
+//   derx_shifted(a,b) = d/dx (a*b) at x - dx/2 = (9/8 * ((ab)(x) - (ab)(x-dx)) - 1/24 * ((ab)(x+dx) - (ab)(x-2dx))) / dx
+#define AC_SHIFTED_DER1_1 (9.0/8.0)
+#define AC_SHIFTED_DER1_2 (-1.0/24.0)
+#if defined(STENCIL_ORDER) && (STENCIL_ORDER == 0 || STENCIL_ORDER == 2)
+derx_shifted(Field a, Field b)
+{
+	suppress_unused_warning(a)
+	suppress_unused_warning(b)
+	fatal_error_message(true,"derx_shifted requires STENCIL_ORDER >= 4!\n");
+	return 0.0
+}
+dery_shifted(Field a, Field b)
+{
+	suppress_unused_warning(a)
+	suppress_unused_warning(b)
+	fatal_error_message(true,"dery_shifted requires STENCIL_ORDER >= 4!\n");
+	return 0.0
+}
+derz_shifted(Field a, Field b)
+{
+	suppress_unused_warning(a)
+	suppress_unused_warning(b)
+	fatal_error_message(true,"derz_shifted requires STENCIL_ORDER >= 4!\n");
+	return 0.0
+}
+#else
+PairSum Stencil derx_shifted {
+	[0][0][-2] = -AC_inv_ds.x*AC_SHIFTED_DER1_2,
+	[0][0][-1] = -AC_inv_ds.x*AC_SHIFTED_DER1_1,
+	[0][0][ 0] =  AC_inv_ds.x*AC_SHIFTED_DER1_1,
+	[0][0][ 1] =  AC_inv_ds.x*AC_SHIFTED_DER1_2
+}
+PairSum Stencil dery_shifted {
+	[0][-2][0] = -AC_inv_ds.y*AC_SHIFTED_DER1_2,
+	[0][-1][0] = -AC_inv_ds.y*AC_SHIFTED_DER1_1,
+	[0][ 0][0] =  AC_inv_ds.y*AC_SHIFTED_DER1_1,
+	[0][ 1][0] =  AC_inv_ds.y*AC_SHIFTED_DER1_2
+}
+PairSum Stencil derz_shifted {
+	[-2][0][0] = -AC_inv_ds.z*AC_SHIFTED_DER1_2,
+	[-1][0][0] = -AC_inv_ds.z*AC_SHIFTED_DER1_1,
+	[ 0][0][0] =  AC_inv_ds.z*AC_SHIFTED_DER1_1,
+	[ 1][0][0] =  AC_inv_ds.z*AC_SHIFTED_DER1_2
+}
+#endif

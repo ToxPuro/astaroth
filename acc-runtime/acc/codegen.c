@@ -7058,6 +7058,27 @@ gen_field_info(FILE* fp)
 	FILE* fp_enums = fopen("builtin_enums.h","w");
   	fprintf(fp_enums,"#pragma once\n");
   	gen_enums(fp_enums,STENCIL_STR,"stencil_","NUM_STENCILS","Stencil");
+  	// PairSum stencils get also an index among the pair stencils (used e.g. by KernelAnalysisInfo)
+  	{
+  		fprintf(fp_enums, "typedef enum{");
+  		for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  			if(symbol_table[i].tspecifier == STENCIL_STR && str_vec_contains(symbol_table[i].tqualifiers,intern("pair_sum")))
+  				fprintf(fp_enums, "pair_stencil_%s,",symbol_table[i].identifier);
+  		fprintf(fp_enums, "NUM_PAIR_STENCILS} PairStencil;\n");
+
+  		int n_pair_stencils = 0;
+  		fprintf(fp_enums, "static const int stencil_to_pair_stencil[NUM_STENCILS+1] __attribute__((unused)) = {");
+  		for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  			if(symbol_table[i].tspecifier == STENCIL_STR)
+  				fprintf(fp_enums, "%d,",str_vec_contains(symbol_table[i].tqualifiers,intern("pair_sum")) ? n_pair_stencils++ : -1);
+  		fprintf(fp_enums, "-1};\n");
+
+  		fprintf(fp_enums, "static const int pair_stencil_to_stencil[NUM_PAIR_STENCILS+1] __attribute__((unused)) = {");
+  		for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  			if(symbol_table[i].tspecifier == STENCIL_STR && str_vec_contains(symbol_table[i].tqualifiers,intern("pair_sum")))
+  				fprintf(fp_enums, "stencil_%s,",symbol_table[i].identifier);
+  		fprintf(fp_enums, "-1};\n");
+  	}
   	gen_enums(fp_enums,RAYTRACE_STR,"ray_","NUM_RAYS","AcRay");
   	gen_enums(fp_enums,KERNEL_STR,"","NUM_KERNELS","AcKernel");
   	gen_enums_variadic(fp_enums,prof_types,"","NUM_PROFILES","Profile");
@@ -11113,7 +11134,7 @@ stencilgen(ASTNode* root)
 			fprintf(stderr,"Stencils are supported only with a single type qualifier\n");
 			exit(EXIT_FAILURE);
 		}
-		if(symbol.tqualifiers.data[0] == intern("exp_sum"))
+		if(symbol.tqualifiers.data[0] == intern("exp_sum") || symbol.tqualifiers.data[0] == intern("pair_sum"))
 		{
         		fprintf(stencilgen, "\"sum\",");
 		}
@@ -11125,6 +11146,17 @@ stencilgen(ASTNode* root)
 	      else
         	fprintf(stencilgen, "\"sum\",");
       }
+    }
+    fprintf(stencilgen, "};");
+  }
+
+  { // Pair stencils: operate on two fields, sum_i w_i * a(p_i) * b(p_i)
+    fprintf(stencilgen, "static const bool "
+                        "stencil_is_pair[NUM_STENCILS] = {");
+    for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+      const Symbol symbol = symbol_table[i];
+      if(symbol.tspecifier == STENCIL_STR)
+        fprintf(stencilgen, "%s,", str_vec_contains(symbol.tqualifiers,intern("pair_sum")) ? "true" : "false");
     }
     fprintf(stencilgen, "};");
   }
@@ -11160,6 +11192,15 @@ gen_analysis_stencils(FILE* stream)
   string_vec stencil_names = get_names(STENCIL_STR);
   for (size_t i = 0; i < stencil_names.size; ++i)
   {
+    const Symbol* sym = get_symbol(NODE_FUNCTION_ID, stencil_names.data[i], STENCIL_STR);
+    if(sym && str_vec_contains(sym->tqualifiers,intern("pair_sum")))
+    {
+      // For the analysis a pair stencil looks like the stencil was called on both fields (see mark_pair_stencil_call)
+      fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s(const Field& field_a, const Field& field_b)"
+             "{mark_pair_stencil_call(stencil_%s,field_a,field_b);return AcReal(1.0);};\n",
+             stencil_names.data[i], stencil_names.data[i]);
+      continue;
+    }
     fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s(const Field& field_in)"
            "{stencils_accessed[field_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
            stencil_names.data[i], stencil_names.data[i]);
@@ -11461,7 +11502,7 @@ print_uniform_3d_int_array(FILE* fp, const char* name, const char* dims, size_t 
 	if(val == 0) return;
 	fprintf(fp,
 		"__attribute__((constructor)) __attribute__((unused)) static void ac_init_%s(void) {\n"
-		"  memset(%s, sizeof(int) * sizeof(%s), %d);\n"
+		"  for(size_t i = 0; i < sizeof(%s)/sizeof(int); ++i) ((int*)%s)[i] = %d;\n"
 		"}\n\n",
 		name, name, name, val);
 }
@@ -11522,6 +11563,10 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
 
     print_uniform_3d_int_array(tmp,"stencils_accessed","[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]",
 		    num_kernels,num_fields+num_profiles,num_stencils,AC_STENCIL_CALL);
+
+    // No info about which fields the PairSum stencils are called on (OPTIMIZE_MEM_ACCESSES is required for them)
+    fprintf(tmp,"static const int pair_stencil_calls[][4] __attribute__((unused)) = {{-1,-1,-1,-1}};\n");
+    fprintf(tmp,"static const int num_pair_stencil_calls __attribute__((unused)) = 0;\n");
 
     fprintf(tmp,
             "static int "

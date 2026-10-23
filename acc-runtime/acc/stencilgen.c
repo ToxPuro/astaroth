@@ -2343,11 +2343,88 @@ stencil_valid_for_profile(const int stencil, const AcProfileType type)
 	return false;
 }
 
+void printf_stencil_point(const int stencil, const int depth, const int height, const int width);
+
+static bool
+kernel_calls_pair_stencils(const int curr_kernel)
+{
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+    if (stencil_is_pair[stencil] && stencils_called[curr_kernel][stencil]) return true;
+  return false;
+}
+
+/*
+  Pair stencils operate on two fields a,b: sum_i w_i * a(p_i) * b(p_i)
+  The pairs are precomputed in gen_kernel_body in the same way as ordinary stencils (see printf_pair_stencil_point)
+  and the pair stencil functions return the precomputed values.
+  Since the products commute (a,b) and (b,a) are the same pair and are stored once with field_a <= field_b.
+*/
+typedef struct {
+  int stencil;
+  int field_a; // Indices of stencils_accessed, i.e. need get_original_index for the names
+  int field_b;
+} PairStencilCall;
+
+typedef struct {
+  PairStencilCall* data;
+  size_t size;
+} PairStencilCalls;
+
+static void
+push_pair_stencil_call(PairStencilCalls* calls, const PairStencilCall call)
+{
+  calls->data = (PairStencilCall*)realloc(calls->data, (calls->size + 1) * sizeof(PairStencilCall));
+  calls->data[calls->size++] = call;
+}
+
+// The pairs the analysis saw curr_kernel call the pair stencils on
+static PairStencilCalls
+get_pair_stencil_calls(const int curr_kernel)
+{
+  PairStencilCalls res = {NULL, 0};
+  for (int i = 0; i < num_pair_stencil_calls; ++i) {
+    if (pair_stencil_calls[i][0] != curr_kernel) continue;
+    const int stencil = pair_stencil_calls[i][1];
+    if (!stencil_is_pair[stencil] || !stencils_called[curr_kernel][stencil]) continue;
+    push_pair_stencil_call(&res, (PairStencilCall){stencil, pair_stencil_calls[i][2], pair_stencil_calls[i][3]});
+  }
+  return res;
+}
+
+static void
+gen_pair_stencil_functions(const int curr_kernel)
+{
+  const PairStencilCalls calls = get_pair_stencil_calls(curr_kernel);
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    if (!stencil_is_pair[stencil] || !stencils_called[curr_kernel][stencil]) continue;
+    printf("const auto %s __attribute__((unused)) = [&](const Field& field_a, const Field& field_b) -> AcReal {",
+           stencil_names[stencil]);
+    for (size_t i = 0; i < calls.size; ++i) {
+      if (calls.data[i].stencil != stencil) continue;
+      const int field_a = get_original_index(field_remappings,calls.data[i].field_a);
+      const int field_b = get_original_index(field_remappings,calls.data[i].field_b);
+      if (field_a == field_b)
+        printf("if (field_a == %s && field_b == %s) return f%s_f%s_s%s;",
+               field_names[field_a], field_names[field_b],
+               field_names[field_a], field_names[field_b], stencil_names[stencil]);
+      else
+        printf("if ((field_a == %s && field_b == %s) || (field_a == %s && field_b == %s)) return f%s_f%s_s%s;",
+               field_names[field_a], field_names[field_b], field_names[field_b], field_names[field_a],
+               field_names[field_a], field_names[field_b], stencil_names[stencil]);
+    }
+    printf("(void) field_a; (void) field_b; return (AcReal)NAN;");
+    printf("};");
+  }
+  free(calls.data);
+}
+
 static void
 gen_stencil_functions(const int curr_kernel)
 {
+  gen_pair_stencil_functions(curr_kernel);
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     if(!stencils_called[curr_kernel][stencil]) continue;
+    if(stencil_is_pair[stencil]) continue;
     bool gen_stencil = false;
     for (int field = 0; field < NUM_ALL_FIELDS; ++field) gen_stencil |= (stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL);
     if(!gen_stencil)
@@ -2374,6 +2451,7 @@ gen_stencil_functions(const int curr_kernel)
   {
   	for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     	  if(!stencils_called[curr_kernel][stencil]) continue;
+    	  if(stencil_is_pair[stencil]) continue;
   	  bool gen_stencil = false;
   	  for (int profile = 0; profile < NUM_PROFILES; ++profile) gen_stencil |= (stencils_accessed[curr_kernel][profile + NUM_ALL_FIELDS][stencil] & AC_STENCIL_CALL);
   	  if(!gen_stencil)
@@ -2558,11 +2636,40 @@ printf_stencil_base_pointers(const int curr_kernel)
    }
 }
 
+// Accumulates one stencil point of the pair stencils: f<A>_f<B>_s<stencil> = sum_i w_i * A(p_i) * B(p_i)
+static void
+printf_pair_stencil_point(const int curr_kernel, const PairStencilCalls calls, const int depth, const int height, const int width, int* pair_initialized)
+{
+  for (size_t i = 0; i < calls.size; ++i) {
+    const int stencil = calls.data[i].stencil;
+    if (!stencils[stencil][depth][height][width]) continue;
+    const int field_a = get_original_index(field_remappings,calls.data[i].field_a);
+    const int field_b = get_original_index(field_remappings,calls.data[i].field_b);
+    if (!pair_initialized[i])
+      printf("auto f%s_f%s_s%s = ", field_names[field_a], field_names[field_b], stencil_names[stencil]);
+    else
+      printf("f%s_f%s_s%s = %s(f%s_f%s_s%s, ", field_names[field_a], field_names[field_b], stencil_names[stencil],
+             stencil_binary_ops[stencil], field_names[field_a], field_names[field_b], stencil_names[stencil]);
+    printf_stencil_point(stencil,depth,height,width);
+    printf("%s(", stencil_unary_ops[stencil]);
+    printf_stencil_read(curr_kernel,field_a,width,height,depth);
+    printf("*");
+    printf_stencil_read(curr_kernel,field_b,width,height,depth);
+    printf(")%s;", pair_initialized[i] ? ")" : "");
+    pair_initialized[i] = 1;
+  }
+}
+
 void
 gen_kernel_body(const int curr_kernel)
 {
   const bool gen_mem_accesses = false;
   if (IMPLEMENTATION != IMPLICIT_CACHING) {
+    if (kernel_calls_pair_stencils(curr_kernel)) {
+      fprintf(stderr, "Fatal error: PairSum stencils not supported with other "
+                      "than IMPLEMENTATION=IMPLICIT_CACHING\n");
+      exit(EXIT_FAILURE);
+    }
     if (NUM_PROFILES > 0) {
       fprintf(stderr, "Fatal error: NUM_PROFILES > 0 not supported with other "
                       "than IMPLEMENTATION=IMPLICIT_CACHING\n");
@@ -2633,6 +2740,8 @@ gen_kernel_body(const int curr_kernel)
     }
 
       printf_stencil_base_pointers(curr_kernel);
+      const PairStencilCalls pair_calls = get_pair_stencil_calls(curr_kernel);
+      int* pair_initialized = (int*)calloc(pair_calls.size+1,sizeof(int));
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
@@ -2645,6 +2754,9 @@ gen_kernel_body(const int curr_kernel)
 
                   // Skip if the stencil is not used
                   if (!(stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL))
+                    continue;
+                  // Pair stencils are computed in gen_stencil_functions
+                  if (stencil_is_pair[stencil])
                     continue;
 		  const int original_field = get_original_index(field_remappings,field);
                   if (stencils[stencil][depth][height][width]) {
@@ -2670,9 +2782,12 @@ gen_kernel_body(const int curr_kernel)
                 }
               }
             }
+            printf_pair_stencil_point(curr_kernel,pair_calls,depth,height,width,pair_initialized);
           }
         }
       }
+      free(pair_initialized);
+      free(pair_calls.data);
       if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
       {
       	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
@@ -2792,6 +2907,9 @@ gen_kernel_body(const int curr_kernel)
 
                 // Skip if the stencil is invalid for profiles
                 if (!stencil_valid_for_profile(stencil,prof_types[profile]))
+                  continue;
+                // Pair stencils are not supported for profiles
+                if (stencil_is_pair[stencil])
                   continue;
 
 		const char* vertex_idx = prof_types[profile] == PROFILE_X ? "vertexIdx.x" :

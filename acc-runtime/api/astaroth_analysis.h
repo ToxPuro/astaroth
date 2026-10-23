@@ -8,6 +8,8 @@ typedef struct
       int read_fields[NUM_ALL_FIELDS];
       int field_has_stencil_op[NUM_ALL_FIELDS];
       int stencils_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];
+      // [pair_stencil][field_a][field_b]: PairSum stencil called on the pair, the products commute so only field_a <= field_b is set
+      bool pair_stencils_accessed[NUM_PAIR_STENCILS+1][NUM_ALL_FIELDS][NUM_ALL_FIELDS];
       int written_fields[NUM_ALL_FIELDS];
       int read_profiles[NUM_PROFILES+1];
       int reduced_profiles[NUM_PROFILES+1];
@@ -35,6 +37,7 @@ operator==(const KernelAnalysisInfo& a, const KernelAnalysisInfo& b)
        if(memcmp(a.read_fields,b.read_fields,sizeof(int)*NUM_FIELDS)) return false;
        if(memcmp(a.field_has_stencil_op,b.field_has_stencil_op,sizeof(int)*NUM_FIELDS)) return false;
        if(memcmp(a.written_fields,b.written_fields,sizeof(int)*NUM_FIELDS)) return false;
+       if(memcmp(a.pair_stencils_accessed,b.pair_stencils_accessed,sizeof(a.pair_stencils_accessed))) return false;
        if(memcmp(a.read_profiles,b.read_profiles,sizeof(int)*NUM_PROFILES)) return false;
        if(memcmp(a.reduced_profiles,b.reduced_profiles,sizeof(int)*NUM_PROFILES)) return false;
        if(memcmp(a.written_profiles,b.written_profiles,sizeof(int)*NUM_PROFILES)) return false;

@@ -81,6 +81,7 @@ const char* binary_op_val = NULL;
 "Sum"                   { return SUM; }
 "Max"                   { return MAX; }
 "ExpSum"                   { return EXP_SUM; }
+"PairSum"                  { return PAIR_SUM; }
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
 "dims"          { return DIMS; }
