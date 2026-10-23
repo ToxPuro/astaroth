@@ -2586,8 +2586,11 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, grid.device, swap_offset,shear_periodic);
 		    if(task->active)
 		    {
-
-		    	if(id.x != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].x)
+			//On outer boundaries the non-periodic boundary condition takes presedence.
+			//On inner boundaries the corners and cubicles still have perform the periodic exchange even if some of the directions are not periodic
+			//The wrapping index calculations treats this correctly.
+			const AcBoundary region_boundary = Region::boundary(grid.decomposition, ac_pid(), tag, ac_proc_mapping_strategy());
+		    	if(id.x != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].x && (region_boundary & BOUNDARY_X))
 		    	{
 				if(id.y == 0 && id.z == 0)
 				{
@@ -2595,7 +2598,7 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
 				}
 				continue;
 		    	}
-		    	if(id.y != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].y)
+		    	if(id.y != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].y && (region_boundary & BOUNDARY_Y))
 		    	{
 				if(id.x == 0 && id.z == 0)
 				{
@@ -2603,7 +2606,7 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
 				}
 				continue;
 		    	}
-		    	if(id.z != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].z)
+		    	if(id.z != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].z && (region_boundary & BOUNDARY_Z))
 		    	{
 				if(id.x == 0 && id.y == 0)
 				{
@@ -3322,7 +3325,7 @@ acGridReduceXY(const Stream stream, const Field field, const Profile profile, co
 				    static_cast<size_t>(grid.submesh.info[AC_mlocal].y),
 				    static_cast<size_t>(grid.submesh.info[AC_mlocal].z)
 			           };
-        MPI_Allreduce(MPI_IN_PLACE, acDeviceGetProfileBuffer(device,profile), prof_count(profile,m),
+        MPI_Allreduce(MPI_IN_PLACE, acDeviceGetProfileBuffer(device,profile), prof_size(profile,m),
                       AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
 
         // 4) Optional: Test
