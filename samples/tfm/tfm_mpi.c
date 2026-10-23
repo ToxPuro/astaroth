@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2024, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -52,7 +52,7 @@ main(void)
     MPI_Comm_rank(acGridMPIComm(), &pid);
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
 
     // CPU alloc
     AcMeshInfo info;

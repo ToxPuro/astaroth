@@ -48,9 +48,31 @@ set(DSL_EXT_SOURCES $ENV{DSL_EXT_SOURCES})
 if (NOT DEFINED DSL_MODULE_DIR)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd_modular) # Default
 else()
-    get_filename_component(resolved_module_dir "${DSL_MODULE_DIR}" REALPATH
-                           BASE_DIR ${CMAKE_BINARY_DIR})
-    set(DSL_MODULE_DIR ${resolved_module_dir})
+    get_filename_component(
+        module_dir_source
+        "${DSL_MODULE_DIR}"
+        REALPATH
+        BASE_DIR ${CMAKE_SOURCE_DIR}
+    )
+    get_filename_component(
+        module_dir_binary
+        "${DSL_MODULE_DIR}"
+        REALPATH
+        BASE_DIR ${CMAKE_BINARY_DIR}
+    )
+
+    foreach(module_dir IN ITEMS ${module_dir_binary} ${module_dir_source})
+        if (EXISTS "${module_dir}")
+            set(dsl_module_dir ${module_dir})
+            break()
+        endif()
+    endforeach()
+
+    if (NOT DEFINED dsl_module_dir OR NOT EXISTS "${dsl_module_dir}")
+        message(ERROR "The value of DSL_MODULE_DIR ${DSL_MODULE_DIR} does not lead to a valid directory")
+    endif()
+
+    set(DSL_MODULE_DIR "${dsl_module_dir}")
 endif()
 
 set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
@@ -66,7 +88,18 @@ endif()
 file(GLOB_RECURSE DSL_MODULE_SOURCES CONFIGURE_DEPENDS ${DSL_MODULE_DIR}/*.ac)
 
 ## Generate acc-runtime-headers
-set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
+if (DEFINED ENV{DSL_MODULE_FILE})
+    set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
+endif()
+if (DEFINED DSL_MODULE_FILE)
+    file(
+        REAL_PATH
+        "${DSL_MODULE_FILE}"
+        DSL_MODULE_FILE
+        EXPAND_TILDE
+        BASE_DIRECTORY ${DSL_MODULE_DIR}
+    )
+endif()
 
 if (NOT DEFINED DSL_MODULE_FILE)
   set(DSL_SOURCES ${DSL_MODULE_SOURCES}
@@ -76,9 +109,8 @@ if (NOT DEFINED DSL_MODULE_FILE)
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
                   "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp")
 else()
-  set(DSL_SOURCES ${DSL_MODULE_SOURCES}
+  set(DSL_SOURCES ${DSL_MODULE_FILE}
                   ${DSL_BUILTIN_SOURCES}
-                  ${DSL_MODULE_DIR}/${DSL_MODULE_FILE}
                   ${DSL_STDLIB_SOURCES}
                   ${DSL_EXT_SOURCES}
                   "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
@@ -86,7 +118,7 @@ else()
 endif()
   
 if (NOT RUNTIME_COMPILATION)
-	set(DSL_HEADERS "user_kernels.h"
+	set(DSL_HEADERS "user_kernel_declarations.h"
 	                "user_defines.h"
 	                "user_declarations.h"
 	                "stencil_accesses.h"
@@ -97,36 +129,85 @@ if (NOT RUNTIME_COMPILATION)
 			)
 else()
 	set(DSL_HEADERS 
-			"user_kernels.h"
+			"user_kernel_declarations.h"
 	                "user_defines.h"
 	                "user_declarations.h"
 			)
 endif()
 
+set(ACC_MAX_KERNEL_SOURCE_FILES 32)
+set(ACC_GENERATED_KERNELS_SOURCES
+    ${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/stencils.cu
+)
+
+
+if (DEFINED ENV{SLURM_CPUS_PER_TASK})
+    set(ACC_NUM_KERNEL_SOURCE_FILES "$ENV{SLURM_CPUS_PER_TASK}")
+else()
+    cmake_host_system_information(
+        RESULT ACC_NUM_KERNEL_SOURCE_FILES
+	QUERY NUMBER_OF_PHYSICAL_CORES
+    )
+endif()
+
+if (${ACC_NUM_KERNEL_SOURCE_FILES} GREATER ${ACC_MAX_KERNEL_SOURCE_FILES})
+    set(ACC_NUM_KERNEL_SOURCE_FILES ${ACC_MAX_KERNEL_SOURCE_FILES})
+endif()
+
+foreach(num RANGE 1 ${ACC_NUM_KERNEL_SOURCE_FILES})
+    math(EXPR num "${num} - 1")
+    set(
+        ACC_GENERATED_KERNELS_SOURCES
+        ${ACC_GENERATED_KERNELS_SOURCES}
+        "${CMAKE_CURRENT_BINARY_DIR}/ac_kernels/kernel_${num}.cu"
+    )
+endforeach()
+
+set(ACC_GENERATED_SOURCES
+    "memcpy_from_gmem_arrays.cu"
+    "memcpy_to_gmem_arrays.cu"
+    "reduce_helpers.cu"
+    "${ACC_GENERATED_KERNELS_SOURCES}"
+)
+
+set(ACC_GENERATED_ANALYSIS_KERNELS "${CMAKE_CURRENT_BINARY_DIR}/user_analysis_kernels.cpp")
+
+if (USE_HIP)
+	set_source_files_properties(${ACC_GENERATED_SOURCES} random.cu PROPERTIES LANGUAGE HIP)
+endif()
+
+if (CPU_BUILD)
+	set_source_files_properties(${ACC_GENERATED_SOURCES} random.cu PROPERTIES LANGUAGE CXX)
+endif()
+
 if (NOT DEFINED DSL_MODULE_FILE)
-	set(ACC_COMPILER_ARGS 
-		"${DSL_MODULE_DIR}/*.ac" 
-		"${ELIMINATE_CONDITIONALS_VAL}" 
-		"${READ_OVERRIDES_VAL}"  
-		"${RUNTIME_COMPILATION_VAL}" 
+	set(ACC_COMPILER_ARGS
+		"${DSL_MODULE_DIR}/*.ac"
+		"${DSL_MODULE_DIR}"
+		"${ELIMINATE_CONDITIONALS_VAL}"
+		"${READ_OVERRIDES_VAL}"
+		"${RUNTIME_COMPILATION_VAL}"
 		"${AC_BINARY_PATH}/overrides.h"
+		"${ACC_NUM_KERNEL_SOURCE_FILES}"
 	)
 else()
-	set(ACC_COMPILER_ARGS 
-		"${DSL_MODULE_DIR}/*.ac" 
-		"${DSL_MODULE_FILE}"  
-		"${ELIMINATE_CONDITIONALS_VAL}" 
-		"${READ_OVERRIDES_VAL}"  
-		"${RUNTIME_COMPILATION_VAL}" 
+	set(ACC_COMPILER_ARGS
+		"${DSL_MODULE_FILE}"
+		"${DSL_MODULE_DIR}"
+		"${ELIMINATE_CONDITIONALS_VAL}"
+		"${READ_OVERRIDES_VAL}"
+		"${RUNTIME_COMPILATION_VAL}"
 		"${AC_BINARY_PATH}/overrides.h"
+		"${ACC_NUM_KERNEL_SOURCE_FILES}"
 	)
 endif()
   add_custom_command (
       COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
       COMMAND  "${ACC_COMPILER}" ${ACC_COMPILER_ARGS}
       DEPENDS ${DSL_SOURCES} acc
-      OUTPUT ${DSL_HEADERS}
+      OUTPUT ${DSL_HEADERS} ${ACC_GENERATED_SOURCES}
   )
+
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 install(
     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/
@@ -146,8 +227,21 @@ target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMEN
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
 if(NOT RUNTIME_COMPILATION)
-	add_library(acc-runtime-driver OBJECT arrays.cc vba.cc common_kernels.cc static_analysis.cc)
-	set_property(TARGET acc-runtime-driver PROPERTY POSITION_INDEPENDENT_CODE ON)
+	add_library(acc-runtime-driver OBJECT
+		    arrays.cc
+		    vba.cc
+		    common_kernels.cc
+		    static_analysis.cc
+		    random.cu
+		    ${ACC_GENERATED_SOURCES}
+	)
+	set_target_properties(
+		acc-runtime-driver
+		PROPERTIES
+			POSITION_INDEPENDENT_CODE ON
+	)
+	target_needs_separable_compilation(acc-runtime-driver)
+	target_needs_device_side_linking(acc-runtime-driver)
 	target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers astaroth_helpers)
 	target_include_directories(acc-runtime-driver 
 		PUBLIC
@@ -169,8 +263,11 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
-    add_library(acc-runtime STATIC acc_runtime.cu)
+    add_library(acc-runtime OBJECT acc_runtime.cu)
     set_property(TARGET acc-runtime PROPERTY POSITION_INDEPENDENT_CODE ON)
+    target_needs_separable_compilation(acc-runtime)
+    target_needs_device_side_linking(acc-runtime)
+
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(acc-runtime astaroth_helpers acc-runtime-headers acc-runtime-driver)

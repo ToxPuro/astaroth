@@ -20,11 +20,11 @@
 #include <mpi.h>
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "astaroth.h"
 #include "astaroth_grid.h"
 #include "decomposition/decomposition.h"  //getPid and friends
 #include "kernels/kernels.h"              //AcRealPacked, VertexBufferArray
@@ -249,6 +249,28 @@ typedef class ComputeTask : public Task {
 	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries);
 } ComputeTask;
 
+// Resources shared by all task graphs
+//TP: task graphs are never executed concurrently, so the CUDA streams and message buffers
+//    allocated for one task graph are reused by all later task graphs.
+//    Within a single task graph each task still gets its own stream and each message its own buffer.
+struct HaloMessage;
+//TP: the memory of a pooled buffer is never freed or reallocated before taskgraph_resources_release():
+//    with CUDA-aware MPI the neighbors can have the buffer mapped (e.g. through cached IPC handles),
+//    and freeing it while a run is going on could leave them pointing to freed memory.
+typedef struct PooledBuffer {
+    char* data        = NULL;
+    char* data_pinned = NULL; // allocated with the same size as data, only if the buffer was requested pinned
+    size_t bytes      = 0;
+    // The last message that used the buffer: its MPI requests (e.g. unfinished sends) have to complete before the buffer is reused
+    HaloMessage* user = NULL;
+} PooledBuffer;
+
+// Call around the construction of the tasks of a task graph
+void taskgraph_resources_begin_graph();
+void taskgraph_resources_end_graph();
+// Frees all pooled streams and buffers
+void taskgraph_resources_release();
+
 // Communication
 enum class HaloMessageType { Send, Receive};
 typedef struct HaloMessage {
@@ -274,9 +296,11 @@ typedef struct HaloMessage {
     int tag;
     int non_namespaced_tag;
     std::vector<int> counterpart_ranks;
+    PooledBuffer* buffer = NULL;
 
     HaloMessage(size_t size, size_t single_length_, size_t half_length_, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();
+    void bind();
     void pin(const Device device, const cudaStream_t stream);
     void unpin(const Device device, const cudaStream_t stream);
 } HaloMessage;
@@ -449,6 +473,20 @@ struct TraceFile {
     void trace(const Task* task, const std::string old_state, const std::string new_state) const;
 };
 
+// Which halo regions of which fields are in sync (exchanged and boundary conditions applied).
+// Carried between task graphs generated from DSL compute steps, see compute_steps.cc
+typedef struct AcHaloSyncState {
+    std::array<std::array<bool, NUM_FIELDS>, 27> in_sync{};
+    int bc_graph = -1; // The AcDSLTaskGraph of the boundary conditions applied to the halos in sync
+    bool operator==(const AcHaloSyncState& other) const
+    {
+        return in_sync == other.in_sync && bc_graph == other.bc_graph;
+    }
+} AcHaloSyncState;
+
+// The halo sync state left by the previously executed task graph, empty if fields were written since
+AcHaloSyncState acGridGetHaloSyncState();
+
 struct AcTaskGraph {
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
@@ -458,6 +496,14 @@ struct AcTaskGraph {
     AcBoundary periodic_boundaries;
 
     TraceFile trace_file;
+
+    // Set for task graphs generated from DSL compute steps. Other task graphs reset the halo sync state
+    bool tracks_halo_sync = false;
+    AcHaloSyncState halo_sync_assumed{};                // Halos the graph assumes to be in sync when it starts
+    AcHaloSyncState halo_sync_provided{};               // Halos the graph leaves in sync
+    std::array<bool, NUM_FIELDS> halo_sync_invalidated{}; // Fields whose halos the graph can leave out of sync
+    // The same graph without assumptions, executed instead if halo_sync_assumed does not hold
+    std::function<AcTaskGraph*()> get_cold_variant{};
 };
 
 AcBoundary boundary_from_normal(int3 normal);

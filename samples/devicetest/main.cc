@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -35,7 +35,7 @@ main(int argc, char* argv[])
     const int pid = 0;
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
 
     // CPU alloc
     AcMeshInfo info;
@@ -114,7 +114,7 @@ main(int argc, char* argv[])
             WARNCHK_ALWAYS(retval);
         }
 
-        srand(123567);
+        acSrand(123567);
         acHostMeshRandomize(&model);
         // acHostMeshSet((AcReal)1.0, &model);
         acHostMeshApplyPeriodicBounds(&model);

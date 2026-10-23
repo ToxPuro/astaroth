@@ -86,12 +86,12 @@ acProfilerStop();
 AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
-static cudaError_t
+inline cudaError_t
 acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind)
 {
 	return acMemcpy((void*)dst,(const void*)src,bytes,kind);
 }
-static cudaError_t
+inline cudaError_t
 acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream)
 {
 	return acMemcpyAsync((void*)dst,(const void*)src,bytes,kind,stream);

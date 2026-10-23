@@ -1,0 +1,12 @@
+#include "../prerequisites.h"
+
+Kernel twopass_solve_intermediate(PC_SUB_STEP_NUMBER step_num, real dt) {
+  write( RHO, rk3_intermediate(previous(RHO),  dlnrho_dt(step_num), step_num, dt) )
+  write( ND, rk3_intermediate(previous(ND),  dndmd_dt(step_num), step_num, dt) )
+  write( CONST, rk3_intermediate(previous(CONST),  duud_dt(step_num), step_num, dt) )
+}
+fixed_boundary Kernel twopass_solve_final(int step_num){
+  write( RHO, rk3_final(previous(RHO), value(RHO), step_num) )
+  write( ND, rk3_final(previous(ND), value(ND), step_num) )
+  write( CONST, rk3_final(previous(CONST), value(CONST), step_num) )
+}

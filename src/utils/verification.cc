@@ -29,17 +29,11 @@
 #include "astaroth_utils.h"
 #include "errchk.h"
 #include "host_datatypes.h"
+#include "math_utils.h"
 
 // clang-format off
 #include "user_defines.h"
 // clang-format on
-
-// Defines for colored output
-static inline bool
-is_valid(const AcReal a)
-{
-    return !isnan(a) && !isinf(a);
-}
 
 Error
 acGetError(const AcReal model, const AcReal candidate)

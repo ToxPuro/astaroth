@@ -277,6 +277,8 @@ acReindexCross(const cudaStream_t stream, //
 
   KERNEL_LAUNCH(reindex_cross,bpg, tpb, 0, stream)(arrays, in_offset, in_shape,
                                          out_offset, out_shape, block_shape);
+  ERRCHK_CUDA_KERNEL();
+
   return AC_SUCCESS;
 }
 #else

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -30,9 +30,7 @@
 #include <dlfcn.h>
 #endif
 
-#if AC_MPI_ENABLED
-#include <mpi.h>
-#endif
+#include "ac_mpi.h"
 
 #ifdef __cplusplus
 #include <functional>
@@ -80,11 +78,10 @@ typedef enum {
 	STREAM_30,
 	STREAM_31,
 	STREAM_ALL,
+	STREAM_DEFAULT = STREAM_0,
 } Stream;
 
-const Stream STREAM_DEFAULT = STREAM_0;
 #define NUM_STREAMS (32)
-
 
 // For plate buffers.
 enum AcPlateDirection {AC_H2D, AC_D2H};    // pack/unpack direction

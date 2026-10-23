@@ -1,0 +1,70 @@
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+
+Field A
+Field B
+Field LDAP2MU
+Field EX
+auxiliary Field OUT_AB
+auxiliary Field OUT_BA
+auxiliary Field OUT_AA
+auxiliary Field OUT_PLAIN
+auxiliary Field OUT_X
+auxiliary Field OUT_Y
+auxiliary Field OUT_Z
+
+// the same points and coefficients as plain_stencil (see main.cc).
+//    Reaches the whole halo (NGHOST = 3) in every direction so that missing halo exchanges are observable
+PairSum Stencil pair_stencil
+{
+	[0][0][0]  =  2.0,
+	[0][0][-3] = -0.5,
+	[0][0][1]  =  1.5,
+	[0][-2][0] =  0.25,
+	[0][3][0]  = -1.25,
+	[-1][0][0] =  0.75,
+	[3][0][0]  = -2.5,
+	[1][-1][2] =  0.125
+}
+
+Stencil plain_stencil
+{
+	[0][0][0]  =  2.0,
+	[0][0][-3] = -0.5,
+	[0][0][1]  =  1.5,
+	[0][-2][0] =  0.25,
+	[0][3][0]  = -1.25,
+	[-1][0][0] =  0.75,
+	[3][0][0]  = -2.5,
+	[1][-1][2] =  0.125
+}
+
+// B is read only by the pair stencil so its halo exchange depends on
+//    the pair stencil call being visible to the analysis for both fields.
+//    pair_stencil(B,A) is the same pair as pair_stencil(A,B) for stencilgen
+Kernel pair_kernel()
+{
+	write(OUT_AB, pair_stencil(A,B))
+	write(OUT_BA, pair_stencil(B,A))
+	write(OUT_AA, pair_stencil(A,A))
+	write(OUT_PLAIN, plain_stencil(A))
+}
+
+// The staggered derivatives of the product of two fields of general_derivs.h
+Kernel shifted_derivative_kernel()
+{
+	write(OUT_X, derx_shifted(LDAP2MU,EX))
+	write(OUT_Y, dery_shifted(LDAP2MU,EX))
+	write(OUT_Z, derz_shifted(LDAP2MU,EX))
+}
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps pair_step(bcs)
+{
+	pair_kernel()
+	shifted_derivative_kernel()
+}

@@ -128,23 +128,15 @@ get_field_precision(const int field)
 	return "AcReal";
 }
 const char*
-get_field_input_name(const int field)
+get_ptr_type(const int field)
 {
-	if(vtxbuf_precision[field] == AC_SINGLE_PRECISION) return "single_in";
-	if(vtxbuf_precision[field] == AC_HALF_PRECISION) return "half_in";
-	return "in";
-}
-
-const char*
-get_field_output_name(const int field)
-{
-	if(vtxbuf_precision[field] == AC_SINGLE_PRECISION) return "single_out";
-	if(vtxbuf_precision[field] == AC_HALF_PRECISION) return "half_out";
-	return "out";
+	if(vtxbuf_precision[field] == AC_SINGLE_PRECISION) return "float*";
+	if(vtxbuf_precision[field] == AC_HALF_PRECISION) return "__half*";
+	return "AcReal*";
 }
 
 void
-gen_stencil_definitions(void)
+gen_stencil_definitions(bool gen_analysis)
 {
   if (!NUM_ALL_FIELDS)
   {
@@ -156,28 +148,45 @@ gen_stencil_definitions(void)
     raise_error("Must declare at least one Stencil in the DSL code!");
   }
 
+  if (gen_analysis) {
+    //TP: the analysis kernels are host C++ and the stencils are always initially NaNs (see below)
+    //    so fill them at static initialization time instead of spelling out NUM_STENCILS*STENCIL_DEPTH*STENCIL_HEIGHT*STENCIL_WIDTH initializers.
+    //    The dense initializer (multiple MBs after the expansion of NAN) was included in every analysis translation unit and made up most of their compilation time
     printf(
-        "static __device__ __attribute__((unused)) /*const*/ AcReal /*__restrict__*/ "
-        "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
-    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-      printf("{");
-      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-        printf("{");
-        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-          printf("{");
-          for (int width = 0; width < STENCIL_WIDTH; ++width) {
-            //const char* coeff = stencils[stencil][depth][height][width];
-	    //printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff : "AcReal(NAN)");
-	    //TP: always have initially nans in the stencils to ensure stencils are always loaded at runtime
-	    printf("AcReal(NAN),");
-          }
-          printf("},");
+        "static __device__ __attribute__((unused)) AcReal "
+        "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH];\n"
+        "[[maybe_unused]] static const bool stencils_are_initialized = [](){\n"
+        "  AcReal* coeffs = &stencils[0][0][0][0];\n"
+        "  for(size_t i = 0; i < sizeof(stencils)/sizeof(AcReal); ++i)\n"
+        "    coeffs[i] = AcReal(NAN);\n"
+        "  return true;\n"
+        "}();\n");
+  }
+  else {
+  printf(
+      "__device__ __attribute__((unused)) /*const*/ AcReal /*__restrict__*/ "
+      "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\n");
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    printf("  {\n");
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      printf("    {\n");
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+        printf("      { ");
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          // const char* coeff = stencils[stencil][depth][height][width];
+          // printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff :
+          // "AcReal(NAN)"); TP: always have initially nans in the stencils to
+          // ensure stencils are always loaded at runtime
+          printf("AcReal(NAN), ");
         }
-        printf("},");
+        printf("},\n");
       }
-      printf("},");
+      printf("    },\n");
     }
+    printf("  },\n");
+  }
     printf("};");
+  }
   FILE* stencil_coeffs_file= fopen("coeffs.h", "w");
   fprintf(stencil_coeffs_file,
       "AcReal "
@@ -734,19 +743,18 @@ is_x_raytrace_kernel(const int curr_kernel)
 static int
 get_original_index(const int* mappings, const int field)
 {
-	for(int i = 0; i <= NUM_ALL_FIELDS; ++i)
+	for(int i = 0; i < NUM_ALL_FIELDS; ++i)
 		if (mappings[i] == field) return i;
 	return -1;
 }
 bool
 field_ray_accessed(const int curr_kernel,const int field)
 {
-   const int original_field = get_original_index(field_remappings,field);
    for(int ray = 0; ray < NUM_RAYS; ++ray)
    {
      if(
-          incoming_ray_value_accessed[curr_kernel][original_field][ray]
-        || outgoing_ray_value_accessed[curr_kernel][original_field][ray]
+          incoming_ray_value_accessed[curr_kernel][field][ray]
+        || outgoing_ray_value_accessed[curr_kernel][field][ray]
       )
       {
 	return true;
@@ -758,8 +766,7 @@ field_ray_accessed(const int curr_kernel,const int field)
 bool
 field_value_called(const int curr_kernel,const int field)
 {
-   const int original_field = get_original_index(field_remappings,field);
-   return stencils_accessed[curr_kernel][original_field][0];
+   return stencils_accessed[curr_kernel][field][0];
 }
 
 bool
@@ -804,7 +811,7 @@ gen_raytracing_prefix(const int curr_kernel)
     	{
     	   if(field_needs_shmem(curr_kernel,field))
     	   {
-    	        printf("const int f%s_ray_index = dir_index*%d;",field_names[field],field_counter);
+    	        printf("const int f%s_ray_index = dir_index*%d;",field_names[get_original_index(field_remappings,field)],field_counter);
 		field_counter++;
     	   }
     	}
@@ -1281,11 +1288,11 @@ gen_kernel_write_funcs(const int curr_kernel)
     		if(!stencils_accessed[curr_kernel][field_remappings[field]][0]) continue;
 		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		{
-    			printf("case %s: { return (AcReal)AC_READ_ONLY_LOAD(vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}"
-					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field]);
+    			printf("case %s: { return (AcReal)AC_READ_ONLY_LOAD(((%s)vba.in[handle])[DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}"
+					,field_names[field],get_ptr_type(field),vtxbuf_dims_str[field]);
 		}
     	}
-    	printf("default: {return AC_READ_ONLY_LOAD(vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))]);}");
+    	printf("default: {return AC_READ_ONLY_LOAD(((AcReal*)vba.in[handle])[DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))]);}");
     }
     else
     {
@@ -1294,11 +1301,11 @@ gen_kernel_write_funcs(const int curr_kernel)
     		if(!stencils_accessed[curr_kernel][field_remappings[field]][0]) continue;
     		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		{
-    			printf("case %s: { return (AcReal)vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}"
-					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field]);
+    			printf("case %s: { return (AcReal)((%s)vba.in[handle])[DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}"
+					,field_names[field],get_ptr_type(field),vtxbuf_dims_str[field]);
 		}
     	}
-    	printf("default: {return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))];}");
+    	printf("default: {return ((AcReal*)vba.in[handle])[DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))];}");
     }
     printf("}");
     printf("};");
@@ -1451,8 +1458,8 @@ gen_kernel_write_funcs(const int curr_kernel)
 				{
 					printf("shared_mem_for_rays[(threadIdx.x) + blockDim.x*(threadIdx.y) + f%s_ray_index + shared_mem_z_stride + shared_mem_z_offset] = value;",field_names[field]);
 				}
-				printf("vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s))] = (%s)value;"
-						,get_field_output_name(field)
+				printf("((%s)vba.out[handle])[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s))] = (%s)value;"
+						,get_ptr_type(field)
 						,vtxbuf_dims_str[field]
 						,get_field_precision(field)
 						);
@@ -1462,7 +1469,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 	}
 	if(!is_x_raytrace_kernel(curr_kernel))
 	{
-    		printf("default: {vba.out[handle][idx] = value;}");
+    		printf("default: {((AcReal*)vba.out[handle])[idx] = value;}");
 	}
 	else
 	{
@@ -1481,15 +1488,15 @@ gen_kernel_write_funcs(const int curr_kernel)
 		 || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		  )
 		{
-			printf("case %s: { vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = (%s)value; break;}"
+			printf("case %s: { ((%s)vba.out[handle])[DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = (%s)value; break;}"
 					,field_names[field]
-					,get_field_output_name(field)
+					,get_ptr_type(field)
 					,vtxbuf_dims_str[field]
 					,get_field_precision(field)
 				);
 		}
 	}
-    	printf("default: {vba.out[handle][DEVICE_VTXBUF_IDX(x,y,z)] = value;}");
+    	printf("default: {((AcReal*)vba.out[handle])[DEVICE_VTXBUF_IDX(x,y,z)] = value;}");
 	printf("}");
     	printf("};");
 
@@ -1499,11 +1506,11 @@ gen_kernel_write_funcs(const int curr_kernel)
 	{
 		if(vtxbuf_has_variable_dims[field] || vtxbuf_precision[field] != AC_REAL_PRECISION)
 		{
-			printf("case %s: { vba.%s[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = (%s)value; break;}"
-					,field_names[field],get_field_input_name(field),vtxbuf_dims_str[field],get_field_precision(field));
+			printf("case %s: { ((%s)vba.in[handle])[DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = (%s)value; break;}"
+					,field_names[field],get_ptr_type(field),vtxbuf_dims_str[field],get_field_precision(field));
 		}
 	}
-    	printf("default: {vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))] = value;}");
+    	printf("default: {((AcReal*)vba.in[handle])[DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))] = value;}");
 	printf("}");
     	printf("};");
 
@@ -1585,7 +1592,7 @@ populate_shared_mem_for_z_rays(const int curr_kernel)
         	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
         	{
                   const int original_field = get_original_index(field_remappings,field);
-	          if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+	          if(!field_needs_input_shmem(curr_kernel,field)) continue;
 		  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = shared_mem_for_rays[tid_index + shared_mem_z_stride*(z_block+VAL(AC_z_ray_shared_mem_block_size)) + f%s_ray_index];", field_names[original_field],field_names[original_field]);
         	}
 		printf("}");
@@ -1601,13 +1608,13 @@ populate_shared_mem_for_z_rays(const int curr_kernel)
         		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
         		{
         		  const int original_field = get_original_index(field_remappings,field);
-			  if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
 			  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = ",field_names[original_field]);
-        		  printf("(AcReal)vba.%s[%s]"
+        		  printf("(AcReal)((%s)vba.in[%s])"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y, "
         		         "vertexIdx.z%s (z_block-1), "
 			         "VAL(%s))]",
-				 get_field_input_name(original_field),
+				 get_ptr_type(original_field),
         		         field_names[original_field],
 			         forward_ray ? "+" : "-",
         		         vtxbuf_dims_str[original_field]
@@ -1623,12 +1630,12 @@ populate_shared_mem_for_z_rays(const int curr_kernel)
         		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
         		{
         		  const int original_field = get_original_index(field_remappings,field);
-			  if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
 			  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = ",field_names[original_field]);
-        		  printf("(AcReal)vba.%s[%s]"
+        		  printf("(AcReal)((%s)vba.in[%s])"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y, "
         		         "vertexIdx.z %s (z_block - 1),VAL(%s))]",
-				 get_field_input_name(original_field),
+				 get_ptr_type(original_field),
         		         field_names[original_field],
 			         forward_ray ? "+" : "-",
         		         vtxbuf_dims_str[original_field]
@@ -1662,11 +1669,12 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
         	{
 		  if(write_called[curr_kernel][field])
 		  {
-			printf("vba.%s[%s][DEVICE_VTXBUF_IDX(vertexIdx.x %s (x_block-VAL(AC_x_ray_shared_mem_block_size)),y_index,vertexIdx.z)] = shared_mem_for_rays[tid_index + shared_mem_x_stride*(x_block+1) + f%s_ray_index];"
-			,get_field_output_name(field)
-			,field_names[field]
+			const int original_field = get_original_index(field_remappings,field);
+			printf("((%s)vba.out[%s])[DEVICE_VTXBUF_IDX(vertexIdx.x %s (x_block-VAL(AC_x_ray_shared_mem_block_size)),y_index,vertexIdx.z)] = shared_mem_for_rays[tid_index + shared_mem_x_stride*(x_block+1) + f%s_ray_index];"
+			,get_ptr_type(original_field)
+			,field_names[original_field]
 			,x_ray ? "+" : "-"
-			,field_names[field]);
+			,field_names[original_field]);
 		  }
 		}
 		printf("}");
@@ -1700,10 +1708,10 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
 			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
         		  const int original_field = get_original_index(field_remappings,field);
 			  printf("shared_mem_for_rays[tid_index + shared_mem_x_stride*x_block + f%s_ray_index] = ",field_names[original_field]);
-        		  printf("(AcReal)vba.%s[%s]"
+        		  printf("(AcReal)((%s)vba.in[%s])"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x %s (x_block-1),vertexIdx.y, "
         		         "vertexIdx.z,VAL(%s))]",
-				 get_field_input_name(original_field),
+				 get_ptr_type(original_field),
         		         field_names[original_field],
 			         x_ray ? "+" : "-",
         		         vtxbuf_dims_str[original_field]
@@ -1723,10 +1731,10 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
 			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
         		  const int original_field = get_original_index(field_remappings,field);
 			  printf("shared_mem_for_rays[tid_index + shared_mem_x_stride*x_block + f%s_ray_index] = ",field_names[original_field]);
-        		  printf("(AcReal)vba.%s[%s]"
+        		  printf("(AcReal)((%s)vba.in[%s])"
         		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x %s (x_block-1),y_index, "
         		         "vertexIdx.z,VAL(%s))]",
-				 get_field_input_name(original_field),
+				 get_ptr_type(original_field),
         		         field_names[original_field],
 			         x_ray ? "+" : "-",
         		         vtxbuf_dims_str[original_field]
@@ -2102,7 +2110,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
     if(previous_accessed[cur_kernel][original_field])
     {
       const int field = get_original_index(field_remappings,original_field);
-      printf("const auto f%s_prev = (AcReal)vba.%s[%s][idx];", field_names[field], get_field_output_name(field), field_names[field]);
+      printf("const auto f%s_prev = (AcReal)((%s)vba.out[%s])[idx];", field_names[field], get_ptr_type(field), field_names[field]);
     }
   }
 
@@ -2335,11 +2343,88 @@ stencil_valid_for_profile(const int stencil, const AcProfileType type)
 	return false;
 }
 
+void printf_stencil_point(const int stencil, const int depth, const int height, const int width);
+
+static bool
+kernel_calls_pair_stencils(const int curr_kernel)
+{
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+    if (stencil_is_pair[stencil] && stencils_called[curr_kernel][stencil]) return true;
+  return false;
+}
+
+/*
+  Pair stencils operate on two fields a,b: sum_i w_i * a(p_i) * b(p_i)
+  The pairs are precomputed in gen_kernel_body in the same way as ordinary stencils (see printf_pair_stencil_point)
+  and the pair stencil functions return the precomputed values.
+  Since the products commute (a,b) and (b,a) are the same pair and are stored once with field_a <= field_b.
+*/
+typedef struct {
+  int stencil;
+  int field_a; // Indices of stencils_accessed, i.e. need get_original_index for the names
+  int field_b;
+} PairStencilCall;
+
+typedef struct {
+  PairStencilCall* data;
+  size_t size;
+} PairStencilCalls;
+
+static void
+push_pair_stencil_call(PairStencilCalls* calls, const PairStencilCall call)
+{
+  calls->data = (PairStencilCall*)realloc(calls->data, (calls->size + 1) * sizeof(PairStencilCall));
+  calls->data[calls->size++] = call;
+}
+
+// The pairs the analysis saw curr_kernel call the pair stencils on
+static PairStencilCalls
+get_pair_stencil_calls(const int curr_kernel)
+{
+  PairStencilCalls res = {NULL, 0};
+  for (int i = 0; i < num_pair_stencil_calls; ++i) {
+    if (pair_stencil_calls[i][0] != curr_kernel) continue;
+    const int stencil = pair_stencil_calls[i][1];
+    if (!stencil_is_pair[stencil] || !stencils_called[curr_kernel][stencil]) continue;
+    push_pair_stencil_call(&res, (PairStencilCall){stencil, pair_stencil_calls[i][2], pair_stencil_calls[i][3]});
+  }
+  return res;
+}
+
+static void
+gen_pair_stencil_functions(const int curr_kernel)
+{
+  const PairStencilCalls calls = get_pair_stencil_calls(curr_kernel);
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    if (!stencil_is_pair[stencil] || !stencils_called[curr_kernel][stencil]) continue;
+    printf("const auto %s __attribute__((unused)) = [&](const Field& field_a, const Field& field_b) -> AcReal {",
+           stencil_names[stencil]);
+    for (size_t i = 0; i < calls.size; ++i) {
+      if (calls.data[i].stencil != stencil) continue;
+      const int field_a = get_original_index(field_remappings,calls.data[i].field_a);
+      const int field_b = get_original_index(field_remappings,calls.data[i].field_b);
+      if (field_a == field_b)
+        printf("if (field_a == %s && field_b == %s) return f%s_f%s_s%s;",
+               field_names[field_a], field_names[field_b],
+               field_names[field_a], field_names[field_b], stencil_names[stencil]);
+      else
+        printf("if ((field_a == %s && field_b == %s) || (field_a == %s && field_b == %s)) return f%s_f%s_s%s;",
+               field_names[field_a], field_names[field_b], field_names[field_b], field_names[field_a],
+               field_names[field_a], field_names[field_b], stencil_names[stencil]);
+    }
+    printf("(void) field_a; (void) field_b; return (AcReal)NAN;");
+    printf("};");
+  }
+  free(calls.data);
+}
+
 static void
 gen_stencil_functions(const int curr_kernel)
 {
+  gen_pair_stencil_functions(curr_kernel);
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     if(!stencils_called[curr_kernel][stencil]) continue;
+    if(stencil_is_pair[stencil]) continue;
     bool gen_stencil = false;
     for (int field = 0; field < NUM_ALL_FIELDS; ++field) gen_stencil |= (stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL);
     if(!gen_stencil)
@@ -2366,6 +2451,7 @@ gen_stencil_functions(const int curr_kernel)
   {
   	for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     	  if(!stencils_called[curr_kernel][stencil]) continue;
+    	  if(stencil_is_pair[stencil]) continue;
   	  bool gen_stencil = false;
   	  for (int profile = 0; profile < NUM_PROFILES; ++profile) gen_stencil |= (stencils_accessed[curr_kernel][profile + NUM_ALL_FIELDS][stencil] & AC_STENCIL_CALL);
   	  if(!gen_stencil)
@@ -2513,11 +2599,11 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
    
    else
    {
+	// Offset relative to the per-field base pointer (see printf_stencil_base_pointers).
+	// Only the offset depends on the stencil point, so with compile-time dims it folds into an immediate
    	printf("(AcReal)AC_READ_ONLY_LOAD(");
-   	printf("vba.%s[%s]"
-   	       "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-   	       "vertexIdx.z+(%d),VAL(%s))])",
-	       get_field_input_name(original_field),
+   	printf("f%s_base_ptr"
+   	       "[DEVICE_VARIABLE_VTXBUF_IDX((%d),(%d),(%d),VAL(%s))])",
    	       field_names[original_field], -STENCIL_ORDER / 2 + width,
    	       -STENCIL_ORDER / 2 + height,
    	       -STENCIL_ORDER / 2 + depth,
@@ -2525,12 +2611,65 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
    	       );
    }
 }
+static bool
+stencil_reads_use_base_pointer(const int curr_kernel)
+{
+   if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD) return false;
+   if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS && !AC_CPU_BUILD) return false;
+   return true;
+}
+void
+printf_stencil_base_pointers(const int curr_kernel)
+{
+   if(!stencil_reads_use_base_pointer(curr_kernel)) return;
+   for (int field = 0; field < NUM_ALL_FIELDS; ++field) {
+	bool accessed = false;
+	for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+		accessed |= (stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL) != 0;
+	if(!accessed) continue;
+	const int original_field = get_original_index(field_remappings,field);
+	printf("const %s const f%s_base_ptr = ((const %s)vba.in[%s])"
+	       " + DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s));",
+	       get_ptr_type(original_field), field_names[original_field],
+	       get_ptr_type(original_field), field_names[original_field],
+	       vtxbuf_dims_str[original_field]);
+   }
+}
+
+// Accumulates one stencil point of the pair stencils: f<A>_f<B>_s<stencil> = sum_i w_i * A(p_i) * B(p_i)
+static void
+printf_pair_stencil_point(const int curr_kernel, const PairStencilCalls calls, const int depth, const int height, const int width, int* pair_initialized)
+{
+  for (size_t i = 0; i < calls.size; ++i) {
+    const int stencil = calls.data[i].stencil;
+    if (!stencils[stencil][depth][height][width]) continue;
+    const int field_a = get_original_index(field_remappings,calls.data[i].field_a);
+    const int field_b = get_original_index(field_remappings,calls.data[i].field_b);
+    if (!pair_initialized[i])
+      printf("auto f%s_f%s_s%s = ", field_names[field_a], field_names[field_b], stencil_names[stencil]);
+    else
+      printf("f%s_f%s_s%s = %s(f%s_f%s_s%s, ", field_names[field_a], field_names[field_b], stencil_names[stencil],
+             stencil_binary_ops[stencil], field_names[field_a], field_names[field_b], stencil_names[stencil]);
+    printf_stencil_point(stencil,depth,height,width);
+    printf("%s(", stencil_unary_ops[stencil]);
+    printf_stencil_read(curr_kernel,field_a,width,height,depth);
+    printf("*");
+    printf_stencil_read(curr_kernel,field_b,width,height,depth);
+    printf(")%s;", pair_initialized[i] ? ")" : "");
+    pair_initialized[i] = 1;
+  }
+}
 
 void
 gen_kernel_body(const int curr_kernel)
 {
   const bool gen_mem_accesses = false;
   if (IMPLEMENTATION != IMPLICIT_CACHING) {
+    if (kernel_calls_pair_stencils(curr_kernel)) {
+      fprintf(stderr, "Fatal error: PairSum stencils not supported with other "
+                      "than IMPLEMENTATION=IMPLICIT_CACHING\n");
+      exit(EXIT_FAILURE);
+    }
     if (NUM_PROFILES > 0) {
       fprintf(stderr, "Fatal error: NUM_PROFILES > 0 not supported with other "
                       "than IMPLEMENTATION=IMPLICIT_CACHING\n");
@@ -2600,7 +2739,9 @@ gen_kernel_body(const int curr_kernel)
                   "NUM_ALL_FIELDS in stencilgen.c\n");
     }
 
-
+      printf_stencil_base_pointers(curr_kernel);
+      const PairStencilCalls pair_calls = get_pair_stencil_calls(curr_kernel);
+      int* pair_initialized = (int*)calloc(pair_calls.size+1,sizeof(int));
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
@@ -2613,6 +2754,9 @@ gen_kernel_body(const int curr_kernel)
 
                   // Skip if the stencil is not used
                   if (!(stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL))
+                    continue;
+                  // Pair stencils are computed in gen_stencil_functions
+                  if (stencil_is_pair[stencil])
                     continue;
 		  const int original_field = get_original_index(field_remappings,field);
                   if (stencils[stencil][depth][height][width]) {
@@ -2638,9 +2782,12 @@ gen_kernel_body(const int curr_kernel)
                 }
               }
             }
+            printf_pair_stencil_point(curr_kernel,pair_calls,depth,height,width,pair_initialized);
           }
         }
       }
+      free(pair_initialized);
+      free(pair_calls.data);
       if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
       {
       	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
@@ -2690,10 +2837,10 @@ gen_kernel_body(const int curr_kernel)
       	  	   printf("const auto f%s_incoming_r%s = ", field_names[original_field], ray_names[ray]);
       	  	   printf("(");
       	  	   printf("(");
-      	  	   printf("(AcReal)vba.%s[%s]"
+      	  	   printf("(AcReal)((%s)vba.in[%s])"
       	  	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x-(%d),vertexIdx.y-(%d), "
       	  	          "vertexIdx.z-(%d),VAL(%s))])",
-			  get_field_input_name(original_field),
+			  get_ptr_type(original_field),
       	  	          field_names[original_field],
       	  		  ray_directions[ray].x,
       	  		  ray_directions[ray].y,
@@ -2708,10 +2855,10 @@ gen_kernel_body(const int curr_kernel)
       	  	   printf("const auto f%s_outgoing_r%s = ", field_names[original_field], ray_names[ray]);
       	  	   printf("(");
       	  	   printf("(");
-      	  	   printf("(AcReal)vba.%s[%s]"
+      	  	   printf("(AcReal)((%s)vba.in[%s])"
       	  	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
       	  	          "vertexIdx.z+(%d),VAL(%s))])",
-			  get_field_input_name(original_field),
+			  get_ptr_type(original_field),
       	  	          field_names[original_field],
       	  		  ray_directions[ray].x,
       	  		  ray_directions[ray].y,
@@ -2760,6 +2907,9 @@ gen_kernel_body(const int curr_kernel)
 
                 // Skip if the stencil is invalid for profiles
                 if (!stencil_valid_for_profile(stencil,prof_types[profile]))
+                  continue;
+                // Pair stencils are not supported for profiles
+                if (stencil_is_pair[stencil])
                   continue;
 
 		const char* vertex_idx = prof_types[profile] == PROFILE_X ? "vertexIdx.x" :
@@ -2922,8 +3072,11 @@ main(int argc, char** argv)
   (void)vtxbuf_names; // Unused
 
   // Generate stencil definitions
-  if (argc == 2 && !strcmp(argv[1], "-definitions")) {
-    gen_stencil_definitions();
+  if (argc == 2 && !strcmp(argv[1], "-definitions-analysis")) {
+    gen_stencil_definitions(true);
+  }
+  else if (argc == 2 && !strcmp(argv[1], "-definitions-kernels")) {
+    gen_stencil_definitions(false);
   }
   // Generate memory accesses for the DSL kernels
   else if (argc == 2 && !strcmp(argv[1], "-mem-accesses")) {

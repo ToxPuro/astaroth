@@ -230,7 +230,6 @@ Communication optimizations: [CUDA-aware MPI](https://www.sciencedirect.com/scie
 
 [GPU kernels optimizations for stencil computations](https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/cpe.70129).
 
-
 ## FAQ
 
 Can I use the code even if I don't make my changes public?
@@ -255,6 +254,6 @@ How do I contribute?
 
 Reporting issues and seeking help
 
-> This section is to be expanded, but for reporting issues and for seeking help you can make issues on the [github mirror](https://github.com/ToxPuro/astaroth) of `Astaroth`. Optionally you can always contact one of the main developers: touko.puro@aalto.fi. 
+> This section is to be expanded, but for reporting issues and for seeking help you can make issues on the [github mirror](https://github.com/ToxPuro/astaroth) of `Astaroth`. Optionally, you can always contact one of the main developers: touko.puro@aalto.fi. 
 For issues and bug reports, please describe them in enough detail for them to be reproducible, and best if you have clear description on how to invoke the problem. Sharing the commands of how did you build and run the program are very much appreciated. For seeking help on syntax, APIs, etc. please first check does the documentation already answer your problem.
 

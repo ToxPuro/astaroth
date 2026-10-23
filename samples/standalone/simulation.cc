@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2022, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -501,7 +501,7 @@ run_simulation(const char* config_path)
     AcReal bin_crit_t       = bin_save_t;
 
     /* initialize random seed: */
-    srand(312256655);
+    acSrand(312256655);
 
 #if LSHOCK
 #endif

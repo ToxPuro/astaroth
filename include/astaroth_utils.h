@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -27,6 +27,11 @@
 #include <stdarg.h>
 
 #include "astaroth.h"
+
+#ifdef __ASTAROTH_UTILS_MAIN_STORAGE__
+#define __FUNC_DEFINE_MAIN_STORAGE__
+#endif
+
 #include "func_define.h"
 
 AC_BEGIN_C_DECLARATIONS
@@ -102,63 +107,7 @@ FUNC_DEFINE(AcResult, acHostInitProfileToSineWave, (const AcReal spacing, const 
 /** Initialize a profile to a constant value */
 FUNC_DEFINE(AcResult, acHostInitProfileToValue, (const long double value, const size_t profile_count, AcReal* profile));
 
-#include "astaroth_lib.h"
-#if AC_RUNTIME_COMPILATION
-static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMeshInfo info)
-{
-	char original_runtime_astaroth_utils_path[40000];
-#ifdef __APPLE__
-	sprintf(original_runtime_astaroth_utils_path,"%s/runtime_build/src/utils/libastaroth_utils.dylib",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
-#else
-	sprintf(original_runtime_astaroth_utils_path,"%s/runtime_build/src/utils/libastaroth_utils.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
-#endif
-
-	static int counter = 0;
-	const char* runtime_astaroth_utils_path = acLibraryVersion(original_runtime_astaroth_utils_path,counter,info.comm);
-	++counter;
- 	void* handle = dlopen(runtime_astaroth_utils_path,RTLD_NOW | RTLD_LOCAL);
-	if(!handle)
-	{
-    		fprintf(stderr,"%s","Fatal error was not able to load Astaroth utils\n"); 
-		exit(EXIT_FAILURE);
-	}
-	utilsLibHandle=handle;
-	LOAD_DSYM(acHostVertexBufferSet,stream);
-	LOAD_DSYM(acHostMeshSet,stream);
-	LOAD_DSYM(acHostMeshApplyPeriodicBounds,stream);
-	LOAD_DSYM(acHostMeshApplyConstantBounds,stream);
-	LOAD_DSYM(acHostMeshClear,stream);
-	LOAD_DSYM(acHostReduceScal,stream);
-	LOAD_DSYM(acHostReduceVec,stream);
-	LOAD_DSYM(acHostReduceVecScal,stream);
-	LOAD_DSYM(acEvalError,stream);
-	LOAD_DSYM(acEvalErrorWithMaximumError,stream);
-	LOAD_DSYM(acVerifyMesh,stream);
-	LOAD_DSYM(acVerifyMeshWithMaximumError,stream);
-	LOAD_DSYM(acMeshDiffWriteSliceZ,stream);
-	LOAD_DSYM(acMeshDiffWrite,stream);
-	LOAD_DSYM(acHostMeshWriteToFile,stream);
-	LOAD_DSYM(acHostMeshReadFromFile,stream);
-	LOAD_DSYM(acGetError,stream);
-	LOAD_DSYM(acHostIntegrateStep,stream);
-	LOAD_DSYM(acHostWriteProfileToFile,stream);
-	LOAD_DSYM(acHostInitProfileToCosineWave,stream);
-	LOAD_DSYM(acHostInitProfileToSineWave,stream);
-	LOAD_DSYM(acHostInitProfileToValue,stream);
-
-//#ifdef __cplusplus
-//	return AcLibHandle(handle);
-//#else
-//	return handle;
-//#endif
-	return handle;
-}
-#else
-static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMeshInfo info)
-{
-	return (AcLibHandle)0;
-}
-#endif
+AcResult acLoadUtils(const AcMeshInfo info);
 
 AcResult UNUSED
 acLoadConfig(const char* config_path, AcMeshInfo* config);
@@ -173,5 +122,3 @@ AC_END_C_DECLARATIONS
 #define AC_CYN   "\x1B[36m"
 #define AC_WHT   "\x1B[37m"
 #define AC_COL_RESET "\x1B[0m"
-
-

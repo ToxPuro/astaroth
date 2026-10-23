@@ -44,6 +44,8 @@
  * The nitty gritty of the MPI communication and the Task interface is defined in task.h/task.cc
  */
 
+#include "astaroth_grid.h"
+
 #include <mpi.h>
 
 #include <algorithm>
@@ -57,7 +59,6 @@
 #include "astaroth.h"
 #include "astaroth_analysis_helpers.h"
 #include "astaroth_cuda_wrappers.h"
-#include "astaroth_grid.h"
 #include "decomposition/decomposition.h"  //getPid3D, morton3D
 #include "errchk.h"
 #include "internal_device_funcs.h"
@@ -400,7 +401,7 @@ check_that_decomp_valid(const AcMeshInfo info)
     const bool nz_valid = nn.z % decomp.z == 0;
     if (!nx_valid || !ny_valid || !nz_valid) {
         WARNING("Mesh dimensions must be divisible by the decomposition\n");
-        fprintf(stderr, "Decomposition: (%lu, %lu, %lu)\n", decomp.x, decomp.y, decomp.z);
+        fprintf(stderr, "Decomposition: (%zu, %zu, %zu)\n", decomp.x, decomp.y, decomp.z);
         fprintf(stderr, "Mesh dimensions: (%ld, %ld, %ld)\n", nn.x, nn.y, nn.z);
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
     }
@@ -492,7 +493,7 @@ log_grid_debug_info(const AcMeshInfo info)
 
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, ac_pid(), ac_nprocs(), pid3d.x,
            pid3d.y, pid3d.z);
-    printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
+    printf("Decomposition: %zu, %zu, %zu\n", decomp.x, decomp.y, decomp.z);
     printf("Mesh size: %ld, %ld, %ld\n", nn.x,nn.y,nn.z);
     fflush(stdout);
     MPI_Barrier(astaroth_comm);
@@ -664,12 +665,61 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
     return submesh;
 }
 
+#include "stencil_accesses.h"
+
+// The precomputed PairSum stencils (pair_stencil_calls of stencil_accesses.h) have to cover the pairs called at runtime
+static void
+check_pair_stencil_calls_match(const int kernel, const KernelAnalysisInfo& info)
+{
+	// The products commute so the order of the fields does not matter
+	auto comp_time = [&](const int stencil, const int field_a, const int field_b)
+	{
+		// in case some fields are dead and Fields are re-ordered because of that
+		const int a_old = field_remappings[field_a];
+		const int b_old = field_remappings[field_b];
+		for(int i = 0; i < num_pair_stencil_calls; ++i)
+		{
+			if(pair_stencil_calls[i][0] != kernel || pair_stencil_calls[i][1] != stencil) continue;
+			if((pair_stencil_calls[i][2] == a_old && pair_stencil_calls[i][3] == b_old) ||
+			   (pair_stencil_calls[i][2] == b_old && pair_stencil_calls[i][3] == a_old)) return true;
+		}
+		return false;
+	};
+	auto run_time = [&](const int stencil, const int field_a, const int field_b)
+	{
+		const int pair_stencil = stencil_to_pair_stencil[stencil];
+		return info.pair_stencils_accessed[pair_stencil][field_a][field_b] || info.pair_stencils_accessed[pair_stencil][field_b][field_a];
+	};
+	for(int pair_stencil = 0; pair_stencil < NUM_PAIR_STENCILS; ++pair_stencil)
+	{
+		const int stencil = pair_stencil_to_stencil[pair_stencil];
+		for(int field_a = 0; field_a < NUM_ALL_FIELDS; ++field_a)
+		{
+			for(int field_b = field_a; field_b < NUM_ALL_FIELDS; ++field_b)
+			{
+				const bool used      = run_time(stencil,field_a,field_b);
+				const bool generated = comp_time(stencil,field_a,field_b);
+				if(used && !generated)
+					fatal("In Kernel %s Stencil %s used for the pair (%s,%s) at runtime but not generated!\n"
+					      "Most likely that stencil is executed in a control-flow path that was not taken.\n"
+					      "Consider either runtime-compilation or rewriting the kernel to avoid the conditional stencil call\n"
+					      ,kernel_names[kernel], stencil_names[stencil], field_names[field_a], field_names[field_b]
+					      );
+				if(!used && generated)
+					acLogFromRootProc(ac_pid(), "PERF WARNING: In Kernel %s Stencil %s generated for the pair (%s,%s) but not accessed at runtime!\n"
+							            "Most likely because the stencil call is performed inside conditional control-flow.\n"
+								    "Consider refactoring the code and/or using runtime-compilation to skip the unnecessary Stencil computation\n"
+					     ,kernel_names[kernel], stencil_names[stencil], field_names[field_a], field_names[field_b]
+					      );
+			}
+		}
+	}
+}
 
 static void
 check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> info)
 {
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
-#include "stencil_accesses.h"
 	for(int k = 0; k < NUM_KERNELS; ++k)
 	{
 		for(int j= 0; j< NUM_ALL_FIELDS; ++j)
@@ -710,6 +760,7 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 				}
 			}
 		}
+		check_pair_stencil_calls_match(k,info[k]);
 		for(size_t j= 0; j< info[k].n_reduce_outputs; ++j)
 		{
 			const int var = info[k].reduce_outputs[j].variable;
@@ -1027,11 +1078,20 @@ acGridInitBase(const AcMesh user_mesh)
     return AC_SUCCESS;
 }
 
+// The halo sync state left by the last executed task graph.
+// Valid only as long as the fields are not written outside of task graphs.
+static struct
+{
+	AcHaloSyncState state{};
+	size_t field_write_count = 0;
+} halo_sync{};
+
 AcResult
 acGridQuit(void)
 {
     ERRCHK_ALWAYS(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
+    halo_sync.state = AcHaloSyncState{};
 
     acGridClearTaskGraphCache();
     // Random number generator
@@ -1040,6 +1100,7 @@ acGridQuit(void)
     grid.default_tasks = nullptr;
     grid.halo_exchange_tasks    = nullptr;
     grid.periodic_bc_tasks = nullptr;
+    taskgraph_resources_release();
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
@@ -2575,8 +2636,11 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, grid.device, swap_offset,shear_periodic);
 		    if(task->active)
 		    {
-
-		    	if(id.x != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].x)
+			//On outer boundaries the non-periodic boundary condition takes presedence.
+			//On inner boundaries the corners and cubicles still have perform the periodic exchange even if some of the directions are not periodic
+			//The wrapping index calculations treats this correctly.
+			const AcBoundary region_boundary = Region::boundary(grid.decomposition, ac_pid(), tag, ac_proc_mapping_strategy());
+		    	if(id.x != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].x && (region_boundary & BOUNDARY_X))
 		    	{
 				if(id.y == 0 && id.z == 0)
 				{
@@ -2584,7 +2648,7 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
 				}
 				continue;
 		    	}
-		    	if(id.y != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].y)
+		    	if(id.y != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].y && (region_boundary & BOUNDARY_Y))
 		    	{
 				if(id.x == 0 && id.z == 0)
 				{
@@ -2592,7 +2656,7 @@ task_definitions_to_tasks(AcTaskGraph* graph, const std::vector<AcTaskDefinition
 				}
 				continue;
 		    	}
-		    	if(id.z != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].z)
+		    	if(id.z != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].z && (region_boundary & BOUNDARY_Z))
 		    	{
 				if(id.x == 0 && id.y == 0)
 				{
@@ -2865,8 +2929,11 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
     check_ops(ops);
 
     //Construct tasks out of the task definitions
-    AcTaskGraph* graph = get_new_taskgraph(ops.size());  
+    //The streams and buffers of the tasks come from a pool shared by all task graphs
+    AcTaskGraph* graph = get_new_taskgraph(ops.size());
+    taskgraph_resources_begin_graph();
     const std::vector<size_t> op_indices = task_definitions_to_tasks(graph,ops,globally_imposed_bcs);
+    taskgraph_resources_end_graph();
 
     // In order to reduce redundant dependencies, we keep track of which tasks are connected
     calculate_dependencies(graph,ops,op_indices);
@@ -3033,10 +3100,66 @@ set_device_to_grid_device()
 	acSetDevice(acDeviceGetId(grid.device));
 }
 
+AcHaloSyncState
+acGridGetHaloSyncState()
+{
+	if(!grid.initialized || acDeviceGetFieldWriteCount(grid.device) != halo_sync.field_write_count) return AcHaloSyncState{};
+	return halo_sync.state;
+}
+
+static void
+set_halo_sync_state(const AcHaloSyncState state)
+{
+	halo_sync.state             = state;
+	halo_sync.field_write_count = acDeviceGetFieldWriteCount(grid.device);
+}
+
+static bool
+halo_sync_assumptions_hold(const AcTaskGraph* graph, const AcHaloSyncState current, const size_t n_iterations)
+{
+	const auto& assumed = graph->halo_sync_assumed;
+	for(size_t region = 0; region < 27; ++region)
+	{
+		for(size_t field = 0; field < NUM_FIELDS; ++field)
+		{
+			if(!assumed.in_sync[region][field]) continue;
+			if(current.bc_graph != assumed.bc_graph || !current.in_sync[region][field]) return false;
+			//TP: from the second iteration on the graph itself is the previous one
+			if(n_iterations > 1 && graph->halo_sync_invalidated[field]) return false;
+		}
+	}
+	return true;
+}
+
+static AcHaloSyncState
+halo_sync_state_after(const AcTaskGraph* graph, const AcHaloSyncState before)
+{
+	if(!graph->tracks_halo_sync) return AcHaloSyncState{};
+	const auto& provided = graph->halo_sync_provided;
+	const bool same_bcs  = before.bc_graph == provided.bc_graph;
+	AcHaloSyncState res{};
+	res.bc_graph = provided.bc_graph;
+	for(size_t region = 0; region < 27; ++region)
+	{
+		for(size_t field = 0; field < NUM_FIELDS; ++field)
+		{
+			res.in_sync[region][field] = provided.in_sync[region][field] ||
+						     (same_bcs && before.in_sync[region][field] && !graph->halo_sync_invalidated[field]);
+		}
+	}
+	return res;
+}
+
 
 AcResult
 acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool include_inactive)
 {
+    const AcHaloSyncState halo_sync_before = acGridGetHaloSyncState();
+    if(graph->tracks_halo_sync && !halo_sync_assumptions_hold(graph,halo_sync_before,n_iterations))
+    {
+	ERRCHK_ALWAYS(graph->get_cold_variant);
+	return acGridExecuteTaskGraphBase(graph->get_cold_variant(),n_iterations,include_inactive);
+    }
     preprocess_reduce_buffers(graph);
     ERRCHK(grid.initialized);
     // acGridSynchronizeStream(stream);
@@ -3075,6 +3198,7 @@ acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool i
             }
         }
     }
+    set_halo_sync_state(halo_sync_state_after(graph,halo_sync_before));
     return AC_SUCCESS;
 }
 
@@ -3773,7 +3897,11 @@ measure_file_size(const char* filepath)
 {
     
     FILE* fp_in                   = fopen(filepath, "r");
-    ERRCHK_ALWAYS(fp_in);
+    if(fp_in == NULL)
+    {
+      fprintf(stderr,"Did not found filepath: %s\n",filepath);
+      ERRCHK_ALWAYS(fp_in);
+    }
     fseek(fp_in, 0L, SEEK_END);
     const long measured_size = ftell(fp_in);
     fclose(fp_in);
@@ -3818,13 +3946,13 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         AcReal* host_buffer = grid.submesh.vertex_buffer[i];
 
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in      = vba.on_device.in[i];
+        const AcReal* in      = (const AcReal*)vba.on_device.in[i];
         const Volume in_offset  = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 	
 
 	//TP: this can be done since everything is blocking until the memcpy to host has been finished
-        AcReal* out = vba.on_device.out[non_auxiliary_vtxbuf];
+        AcReal* out = (AcReal*)vba.on_device.out[non_auxiliary_vtxbuf];
 	const Volume out_offset = {0, 0, 0,};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         ERRCHK(acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -3973,11 +4101,11 @@ acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const A
         const int3 slice_offset = (int3){0, 0, local_z};
 
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in     = vba.on_device.in[field];
+        const AcReal* in     = (const AcReal*)vba.on_device.in[field];
 
 	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo()) + slice_offset;
 	const int3 in_volume = to_int3(acGetLocalMM(acGridGetLocalMeshInfo()));
-        AcReal* out           = vba.on_device.out[field];
+        AcReal* out           = (AcReal*)vba.on_device.out[field];
         const Volume out_offset = {0, 0, 0};
         const Volume out_volume = slice_volume;
 
@@ -4160,11 +4288,11 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
         const int3 slice_offset = (int3){0, 0, local_z};
 
 	auto vba = acDeviceGetVBA(device);
-	const AcReal* in = vba.on_device.in[field];
+	const AcReal* in = (const AcReal*)vba.on_device.in[field];
 	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo()) + slice_offset;
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
-        AcReal* out           = vba.on_device.out[field];
+        AcReal* out           = (AcReal*)vba.on_device.out[field];
         const Volume out_offset = {0, 0, 0};
         const Volume out_volume = slice_volume;
 
@@ -4438,10 +4566,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in      = vba.on_device.in[vtxbuf];
+        const AcReal* in      = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
-        AcReal* out           = vba.on_device.out[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume out_offset = (Volume){0, 0, 0};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -4559,11 +4687,11 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 		fatal("%s", "Can not read snapshot if all Fields are auxiliary!\n");
 	}
 	//TP: it is safe to borrow other fields output since this function is blocking
-        AcReal* in           = vba.on_device.out[non_auxiliary_vtxbuf];
+        AcReal* in           = (AcReal*)vba.on_device.out[non_auxiliary_vtxbuf];
         const Volume in_offset = {0, 0, 0};
         const Volume in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
 
-        AcReal* out           = vba.on_device.in[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.in[vtxbuf];
 
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
@@ -4622,10 +4750,10 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in      = vba.on_device.in[vtxbuf];
+        const AcReal* in      = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
-        AcReal* out           = vba.on_device.out[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume out_offset = (Volume){0, 0, 0};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -4668,11 +4796,11 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
-        AcReal* in           = vba.on_device.out[vtxbuf];
+        AcReal* in           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume in_offset = (Volume){0, 0, 0};
 	const Volume in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
 
-        AcReal* out           = vba.on_device.in[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
@@ -4729,10 +4857,10 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
-        const AcReal* in      = vba.on_device.in[vtxbuf];
+        const AcReal* in      = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
-        AcReal* out           = vba.on_device.out[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume out_offset = {0, 0, 0};
         const Volume out_volume = nn_sub;
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -4803,11 +4931,11 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
-        AcReal* in           = vba.on_device.out[vtxbuf];
+        AcReal* in           = (AcReal*)vba.on_device.out[vtxbuf];
         const Volume in_offset = {0, 0, 0};
         const Volume in_volume = nn_sub;
 
-        AcReal* out           = vba.on_device.in[vtxbuf];
+        AcReal* out           = (AcReal*)vba.on_device.in[vtxbuf];
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
@@ -4913,11 +5041,11 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 
         // Load from host memory to device memory
 	auto vba = acDeviceGetVBA(device);
-        AcReal* in           = vba.on_device.out[field];
+        AcReal* in           = (AcReal*)vba.on_device.out[field];
         const Volume in_offset = {0, 0, 0};
         const Volume in_volume = subdomain_nn;
 
-        AcReal* out           = vba.on_device.in[field];
+        AcReal* out           = (AcReal*)vba.on_device.in[field];
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(field));
@@ -4959,6 +5087,8 @@ acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph)
 VertexBufferArray
 acGridGetVBA(void)
 {
+    //TP: the caller can write to the fields through the VBA
+    acDeviceNotifyFieldsWritten(grid.device);
     return acDeviceGetVBA(grid.device);
 }
 /*

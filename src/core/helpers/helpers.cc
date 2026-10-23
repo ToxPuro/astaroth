@@ -14,10 +14,13 @@
 #include "acreal.h"
 #include "astaroth_cuda_wrappers.h"
 #include "astaroth_device_headers.h"
+#include "config_helpers.h"
 #include "errchk.h"
 #include "host_datatypes.h"
 
+#ifndef __APPLE__
 static int original_excepts{};
+#endif
 
 void
 ac_unset_floating_point_exceptions()
@@ -220,37 +223,6 @@ acShapeCount(const AcShape shape)
 	return shape.x*shape.y*shape.z*shape.w;
 }
 
-AcReal
-get_reduce_state_flush_var_real(const AcReduceOp state)
-{
-	return 
-		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (AcReal)0.0 :
-		(state == AC_REDUCE_OP_MIN) ? AC_REAL_MAX :
-		(state == AC_REDUCE_OP_MAX) ? -AC_REAL_MAX :
-		(AcReal)0.0;
-}
-
-int
-get_reduce_state_flush_var_int(const AcReduceOp state)
-{
-	return 
-		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? 0 :
-		(state == AC_REDUCE_OP_MIN) ? INT_MAX:
-		(state == AC_REDUCE_OP_MAX) ? -INT_MAX:
-		0;
-}
-
-#if AC_DOUBLE_PRECISION
-float
-get_reduce_state_flush_var_float(const AcReduceOp state)
-{
-	return 
-		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (float)0.0 :
-		(state == AC_REDUCE_OP_MIN) ? FLT_MAX :
-		(state == AC_REDUCE_OP_MAX) ? -FLT_MAX :
-		(float)0.0;
-}
-#endif
 
 void
 acQueryIntparams(void)
@@ -286,4 +258,166 @@ acQueryKernels(void)
 {
     for (int i = 0; i < NUM_KERNELS; ++i)
         printf("%s (%d)\n", kernel_names[i], i);
+}
+
+void
+acStoreConfig(const AcMeshInfo info, const char* filename)
+{
+        ac_unset_floating_point_exceptions();
+	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
+	AcScalarTypes::run<load_scalars>(info, fp, "", false);
+	AcArrayTypes::run<load_arrays>(info,fp, "", false);
+
+	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
+	AcArrayCompTypes::run<load_comp_arrays>(info,    fp, "", false);
+	if(filename != NULL) fclose(fp);
+        ac_restore_floating_point_exceptions();
+}
+
+void
+acStoreRunConsts(const AcMeshInfo info, const char* filename)
+{
+	FILE* fp = fopen(filename,"w");
+	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp,"override const", true);
+	AcArrayCompTypes::run<load_comp_arrays>(info, fp,"override const", true);
+	fclose(fp);
+}
+
+static
+AcReal*
+acCallocHostReal(const size_t n_cells)
+{
+    AcReal* res;
+    const size_t bytes = sizeof(AcReal)*n_cells;
+    ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&res, bytes));
+    ERRCHK_ALWAYS(res);
+    memset(res,0,bytes);
+    return res;
+}
+
+AcReal*
+acHostCreateVertexBufferVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const size_t n_cells = acVertexBufferSize(info,vtxbuf);
+    return acCallocHostReal(n_cells);
+}
+
+AcReal*
+acHostCreateVertexBuffer(const AcMeshInfo info)
+{
+    const size_t n_cells = acVertexBufferSize(info);
+    return acCallocHostReal(n_cells);
+}
+
+AcResult
+acHostMeshCreateProfiles(AcMesh* mesh)
+{
+    const auto mm = acGetLocalMM(mesh->info);
+    const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
+    for(int p = 0; p < NUM_PROFILES; ++p)
+    {
+	    mesh->profile[p] = acCallocHostReal(prof_count(Profile(p),counts));
+            ERRCHK_ALWAYS(mesh->profile[p]);
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+{
+    mesh->info = info;
+    acHostUpdateParams(&mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) 
+	mesh->vertex_buffer[w] = acHostCreateVertexBuffer(mesh->info,VertexBufferHandle(w));
+    return acHostMeshCreateProfiles(mesh);
+}
+
+AcResult
+acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
+{
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        if(src.vertex_buffer[w] == NULL) continue;
+	if(dst.vertex_buffer[w] == NULL) continue;
+	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info,VertexBufferHandle(w)));
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostMeshCopy(const AcMesh src, AcMesh* dst)
+{
+    ERRCHK_ALWAYS(acHostMeshCreate(src.info,dst) == AC_SUCCESS);
+    ERRCHK_ALWAYS(acHostMeshCopyVertexBuffers(src,*dst) == AC_SUCCESS);
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+{
+    mesh->info = info;
+    const size_t n_cells = acGridVertexBufferSize(mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        mesh->vertex_buffer[w] = acCallocHostReal(n_cells);
+        ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
+    }
+
+    return AC_SUCCESS;
+}
+
+AcReal
+get_reduce_state_flush_var_real(const AcReduceOp state)
+{
+	return 
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (AcReal)0.0 :
+		(state == AC_REDUCE_OP_MIN) ? AC_REAL_MAX :
+		(state == AC_REDUCE_OP_MAX) ? -AC_REAL_MAX :
+		(AcReal)0.0;
+}
+
+int
+get_reduce_state_flush_var_int(const AcReduceOp state)
+{
+	return 
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? 0 :
+		(state == AC_REDUCE_OP_MIN) ? INT_MAX:
+		(state == AC_REDUCE_OP_MAX) ? -INT_MAX:
+		0;
+}
+
+#if AC_DOUBLE_PRECISION
+float
+get_reduce_state_flush_var_float(const AcReduceOp state)
+{
+	return 
+		(state == AC_REDUCE_OP_NO_REDUCE || state == AC_REDUCE_OP_SUM) ? (float)0.0 :
+		(state == AC_REDUCE_OP_MIN) ? FLT_MAX :
+		(state == AC_REDUCE_OP_MAX) ? -FLT_MAX :
+		(float)0.0;
+}
+#endif
+
+#include <random>
+static std::mt19937 rng{};
+
+AcResult
+acSrand(size_t seed)
+{
+	rng.seed(seed);
+	return AC_SUCCESS;
+}
+
+AcReal
+acRand()
+{
+	//rng returns an int from [0,2^32-1] so dividing by 2^32 gives a real in [0,1)
+	return static_cast<AcReal>(rng()) / AcReal(4294967296.0);
+}
+
+int
+acRandInt(const int min, const int max)
+{
+    const uint32_t r = rng();
+    const uint32_t range =
+        static_cast<uint32_t>(max - min) + 1;
+    return min + static_cast<int>(r % range);
 }

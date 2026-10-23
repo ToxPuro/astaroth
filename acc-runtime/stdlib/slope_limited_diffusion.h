@@ -687,7 +687,7 @@ get_x_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  left_interface_diff = interface_values.left - interface_values.left_left
 
 	  int tmp = (((left_interface_diff)*left_diff) > 0.0)
-	  left_slope_ratio = tmp*(left_interface_diff)/left_diff
+	  left_slope_ratio = tmp ? (left_interface_diff)/left_diff : 0.0
 	  tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
 	  left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
 	  
@@ -700,7 +700,7 @@ get_x_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  right_interface_diff = interface_values.right_right - interface_values.right
 
 	  tmp = (((right_interface_diff)*right_diff) > 0.0)
-	  right_slope_ratio = tmp*(right_interface_diff)/right_diff
+	  right_slope_ratio = tmp ? (right_interface_diff)/right_diff : 0.0
 	  tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
 	  right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
 
@@ -723,7 +723,7 @@ get_y_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  left_interface_diff = interface_values.left - interface_values.left_left
 
 	  int tmp = (((left_interface_diff)*left_diff) > 0.0)
-	  left_slope_ratio = tmp*(left_interface_diff)/left_diff
+	  left_slope_ratio = tmp ? (left_interface_diff)/left_diff : 0.0
 	  tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
 	  left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
 
@@ -735,7 +735,7 @@ get_y_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  right_interface_diff = interface_values.right_right - interface_values.right
 
 	  tmp = (((right_interface_diff)*right_diff) > 0.0)
-	  right_slope_ratio = tmp*(right_interface_diff)/right_diff
+	  right_slope_ratio = tmp ? (right_interface_diff)/right_diff : 0.0
 	  tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
 	  right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
 
@@ -758,7 +758,7 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  left_interface_diff = interface_values.left - interface_values.left_left
 
 	  int tmp = (((left_interface_diff)*left_diff) > 0.0)
-	  left_slope_ratio = tmp*(left_interface_diff)/left_diff
+	  left_slope_ratio = tmp ? (left_interface_diff)/left_diff : 0.0
 	  tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
 	  left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
 
@@ -770,7 +770,7 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  right_interface_diff = interface_values.right_right - interface_values.right
 
 	  tmp = (((right_interface_diff)*right_diff) > 0.0)
-	  right_slope_ratio = tmp*(right_interface_diff)/right_diff
+	  right_slope_ratio = tmp ? (right_interface_diff)/right_diff : 0.0
 	  tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
 	  right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
 

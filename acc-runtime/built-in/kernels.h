@@ -30,8 +30,8 @@ boundary_condition utility Kernel BOUNDCOND_PERIODIC_DEVICE(Field f)
 
     //Wrap by using mod operator (a+b)%b --> mod(a,b)
     i_src = (i_src + AC_nlocal.x) % AC_nlocal.x;
-    j_src = (j_src + AC_nlocal.x) % AC_nlocal.y;
-    k_src = (k_src + AC_nlocal.x) % AC_nlocal.z;
+    j_src = (j_src + AC_nlocal.y) % AC_nlocal.y;
+    k_src = (k_src + AC_nlocal.z) % AC_nlocal.z;
 
     // Map to mx, my, mz coordinates
     i_src += AC_nmin.x;

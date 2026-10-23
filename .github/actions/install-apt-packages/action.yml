@@ -31,7 +31,7 @@ runs:
         path: |
           /var/cache/apt/
           /var/lib/apt/lists
-        key: ${{ runner.os }}-apt-cache
+        key: apt-cache-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}
 
     - name: Get checksum of APT cache (before install)
       id: apt-checksum-before

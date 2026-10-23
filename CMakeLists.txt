@@ -28,10 +28,15 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+# Global CMake modules
+include(CheckLinkerFlag)
+include(FetchContent)
+
 ## Options
 option(2D                          "Compile Astaroth for 2D simulation" OFF)
 option(BUILD_ACM                   "Whether to build to the Astaroth Communication Module (ACM)." OFF)
 option(BUILD_ADVECTION_EXAMPLE     "Builds hello world example" OFF)
+option(BUILD_INTEGRATOR            "Whether to build integrator" OFF)
 option(BUILD_MHD_SAMPLES           "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(BUILD_MLLIB_SAMPLES         "Builds samples that use cuDNN or MIOpen" OFF)
 option(BUILD_SAMPLES               "Builds projects in samples subdirectory." ON)
@@ -40,7 +45,6 @@ option(BUILD_STANDALONE            "Build the standalone_mpi executable to run s
 option(BUILD_TESTS                 "Builds tests in test subdirectory. Make sure to set DSL_MODULE_DIR and
 DSL_MODULE_FILE accordingly and build only a specific test taget." OFF)
 option(BUILD_UTILS                 "Builds the utility library" ON)
-option(BUILD_INTEGRATOR            "Whether to build integrator" OFF)
 option(CPU_BUILD                   "To build CPU-only build" OFF)
 option(DEBUG_SYNC                  "Whether to sync after all tasks in default ops" OFF)
 option(DOUBLE_PRECISION            "Generates double precision code." ON)
@@ -53,7 +57,7 @@ option(PACKED_DATA_TRANSFERS       "Enables kernel for packed data transfers" OF
 option(PROFILING_ENABLED           "Whether to enable profiling and link to the vendor profiling libraries" ON)
 option(RUNTIME_COMPILATION         "Compile version of Astaroth compiled at runtime" OFF)
 option(SINGLEPASS_INTEGRATION      "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" OFF)
-option(SUPPORT_MAJOR_ARCHITECTURES "Compile for all major CUDA architectures supported by the used CUDA SDK" ON)
+option(SUPPORT_MAJOR_ARCHITECTURES "Compile for all major CUDA architectures supported by the used CUDA SDK" OFF)
 option(SUPPRESS_COMPILER_WARNINGS  "Suppress default compiler warnings of Astaroth" OFF)
 option(USE_DISTRIBUTED_IO          "Use distributed IO (one file per process) instead of collective" ON)
 option(USE_HIP                     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
@@ -63,6 +67,43 @@ option(USE_VENDORED_PERFSTUBS      "Use the vendored perfstubs in 3rd_party/perf
 option(VERBOSE                     "Enables various status and warning messages" OFF)
 
 ## Project-wide compilation flags
+# To allow compiling device HIP code across multiple translation units (TUs) we
+# need to use all of the following flags.
+# -fgpu-rdc is the main flag that enables compiling GPU code as relocatable
+# device code.
+# --offload-new-driver controls what offload driver inside of LLVM is used.
+# Through testing I found that only this new one (available at least since
+# LLVM 15) is capable of properly linking device symbols. HIP officially
+# switched to this offload driver in LLVM 23 and has been dropped since.
+# Therefore we need to keep this option at least until that release. Here are
+# LLVM versions in important ROCm releases:
+# 10.0.0 -> 24.0.0
+# 7.14.0 -> 23.0.0
+# 7.2.0  -> 22.0.0
+# 7.0.0  -> 20.0.0
+# 6.0.0  -> 17.0.0
+# 5.3.0  -> 15.0.0
+# In other words, we need the flag for ROCm <7.14 and need to stop using it
+# since version 10.0.0. The condition is handled after finding the HIP
+# dependency using find_package().
+macro(target_needs_separable_compilation target)
+    target_compile_options(${target} PUBLIC $<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
+    set_target_properties(
+        ${target}
+        PROPERTIES
+            CUDA_SEPARABLE_COMPILATION ON
+    )
+endmacro()
+
+macro(target_needs_device_side_linking target)
+    target_link_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:HIP>:-fgpu-rdc>)
+    set_target_properties(
+        ${target}
+        PROPERTIES
+            CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    )
+endmacro()
+
 # -Werror TODO read
 if(NOT SUPPRESS_COMPILER_WARNINGS)
     set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
@@ -70,6 +111,7 @@ if(NOT SUPPRESS_COMPILER_WARNINGS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 endif()
 
+set(MINIMUM_HIP_VERSION "5.3")
 
 set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
 add_definitions(-DAC_BASE_PATH="${AC_BASE_PATH}")
@@ -152,21 +194,54 @@ if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
 
     message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
 elseif (NOT CPU_BUILD AND (USE_HIP OR HIP_FOUND))
+    if (${HIP_VERSION} VERSION_LESS "${MINIMUM_HIP_VERSION}")
+        message(ERROR "Minimum required version of HIP is ${MINIMUM_HIP_VERSION}.")
+    endif()
+
     set(USE_HIP ON)
     message(STATUS "HIP found")
     enable_language(HIP)
-    add_compile_options(-DDEVICE_ENABLED)
-    add_compile_options(-DHIP_ENABLED)
+
+    if (${HIP_VERSION} VERSION_LESS "10.0.0" AND
+        NOT (${HIP_VERSION} VERSION_GREATER "6.2.99" AND ${HIP_VERSION} VERSION_LESS "6.4")
+    )
+        add_compile_options($<$<COMPILE_LANGUAGE:HIP>:--offload-new-driver>)
+    endif()
+
+    add_compile_options(
+        -DDEVICE_ENABLED
+        -DHIP_ENABLED
+    )
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
     ##TP: do not set GPU architectures to speedup debug compilations
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     else()
-	if(DEFINED GPU_ARCH)
-          set(CMAKE_HIP_ARCHITECTURES "${GPU_ARCH}")
-	else()
-    	  set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+	if(NOT DEFINED GPU_ARCH)
+	  # Detect the GPUs of the build machine, fall back to gfx90a;gfx908 if none found (e.g. on a login node).
+	  # GPU_ARCH is inherited by acc-runtime and acc-comm.
+	  find_program(ROCM_AGENT_ENUMERATOR NAMES rocm_agent_enumerator amdgpu-arch
+	               HINTS ${ROCM_PATH}/bin $ENV{ROCM_PATH}/bin /opt/rocm/bin)
+	  if(ROCM_AGENT_ENUMERATOR)
+	    execute_process(COMMAND ${ROCM_AGENT_ENUMERATOR} OUTPUT_VARIABLE DETECTED_GPU_ARCHS
+	                    RESULT_VARIABLE DETECT_GPU_ARCHS_RESULT ERROR_QUIET)
+	    if(DETECT_GPU_ARCHS_RESULT EQUAL 0)
+	      string(REGEX MATCHALL "gfx[0-9a-f]+" DETECTED_GPU_ARCHS "${DETECTED_GPU_ARCHS}")
+	      list(REMOVE_ITEM DETECTED_GPU_ARCHS gfx000) # gfx000 is the CPU agent
+	      list(REMOVE_DUPLICATES DETECTED_GPU_ARCHS)
+	    else()
+	      set(DETECTED_GPU_ARCHS "")
+	    endif()
+	  endif()
+	  if(DETECTED_GPU_ARCHS)
+	    set(GPU_ARCH "${DETECTED_GPU_ARCHS}")
+	    message(STATUS "Detected HIP architectures: ${GPU_ARCH}")
+	  else()
+	    set(GPU_ARCH "gfx90a;gfx908")
+	    message(STATUS "Could not detect HIP architectures, using default: ${GPU_ARCH}")
+	  endif()
 	endif()
+	set(CMAKE_HIP_ARCHITECTURES "${GPU_ARCH}")
     endif()
     message(STATUS "Enabled HIP architectures (Astaroth): " ${CMAKE_HIP_ARCHITECTURES})
     set(HIP_BUILD ON)
@@ -180,8 +255,6 @@ if(CPU_BUILD)
 else()
     add_definitions(-DAC_CPU_BUILD=0)
 endif()
-
-include(FetchContent)
 
 ## Global flags
 if (USE_HIP)
@@ -252,11 +325,6 @@ add_definitions(-DAC_DEFAULT_CONFIG="${AC_DEFAULT_CONFIG}")
 # 3rd party
 if (INCLUDE_3RD_PARTIES)
     add_subdirectory(3rdparty/inih)
-endif()
-
-if(BUILD_INTEGRATOR)
-   set(DSL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/integrator/DSL")
-   add_subdirectory(integrator)
 endif()
 
 # Astaroth modules

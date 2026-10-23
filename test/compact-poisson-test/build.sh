@@ -1,3 +1,3 @@
 #!/bin/bash
 #
-cmake -B build -S $AC_HOME -DMPI_ENABLED=ON -DFFT_ENABLED=OFF -DAC_STENCIL_ORDER=6 -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_TESTS=ON -DRUNTIME_COMPILATION=ON -DDSL_MODULE_DIR=../DSL && cmake --build build -t compact-poisson-test -j
+cmake -B build -S $AC_HOME -DMPI_ENABLED=ON -DFFT_ENABLED=OFF -DAC_STENCIL_ORDER=6 -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_TESTS=ON -DRUNTIME_COMPILATION=ON -DDSL_MODULE_DIR=test/compact-poisson-test/DSL && cmake --build build -t compact-poisson-test -j

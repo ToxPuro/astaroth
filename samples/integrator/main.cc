@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -46,11 +46,6 @@ acAbort(void)
 {
     if (!finalized)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
-}
-double
-drand()
-{
-	return (double)(rand()) / (double)(rand());
 }
 
 void
@@ -324,10 +319,10 @@ integrate_main(AcMeshInfo info, AcReal* dst)
     info.comm->handle = MPI_COMM_WORLD;
 
     #if AC_RUNTIME_COMPILATION
-    const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
     acCompile(build_str,info);
-    acLoadLibrary(stdout,info);
-    acLoadUtils(stdout,info);
+    acLoadLibrary(info);
+    acLoadUtils(info);
     #endif
 
     // GPU alloc & compute
@@ -512,7 +507,7 @@ void integrate(
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
     AcMeshInfo info = acInitInfo();
     populate_config(config, info);
 
@@ -548,7 +543,7 @@ main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(321654987);
 
 
     // CPU alloc

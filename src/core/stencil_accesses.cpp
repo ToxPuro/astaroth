@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <initializer_list>
 #include <vector>
+#include <array>
 
 #include "acc_runtime.h"
 #include "acreal.h"
@@ -31,6 +32,17 @@
 #endif
 #define longlong long long
 
+//TP: acc compiles the analysis in parallel (AC_STENCIL_ACCESSES_SPLIT) by compiling the analysis kernels in separate translation units,
+//    which all include the part of this file that precedes the kernels.
+//    The state and functions defined in that part are made inline so that all translation units share a single definition of them.
+#if AC_STENCIL_ACCESSES_SPLIT
+#define AC_ANALYSIS_SHARED        inline
+#define AC_ANALYSIS_SHARED_STATIC inline
+#else
+#define AC_ANALYSIS_SHARED
+#define AC_ANALYSIS_SHARED_STATIC static
+#endif
+
 template <typename T>
 struct safe_array
 {
@@ -42,29 +54,29 @@ struct safe_array
 	}
 };
 
-safe_array<AcReal> AC_INTERNAL_run_const_AcReal_array_here{};
-safe_array<AcReal> AC_INTERNAL_run_const_array_here{};
-safe_array<bool>   AC_INTERNAL_run_const_bool_array_here{};
-safe_array<int>    AC_INTERNAL_run_const_int_array_here{};
-safe_array<float>  AC_INTERNAL_run_const_float_array_here{};
-safe_array<AcComplex>    AC_INTERNAL_run_const_AcComplex_array_here{};
-safe_array<AcComplexFloat>    AC_INTERNAL_run_const_AcComplexFloat_array_here{};
-static bool rand_uniform_called = false;
+AC_ANALYSIS_SHARED safe_array<AcReal> AC_INTERNAL_run_const_AcReal_array_here{};
+AC_ANALYSIS_SHARED safe_array<AcReal> AC_INTERNAL_run_const_array_here{};
+AC_ANALYSIS_SHARED safe_array<bool>   AC_INTERNAL_run_const_bool_array_here{};
+AC_ANALYSIS_SHARED safe_array<int>    AC_INTERNAL_run_const_int_array_here{};
+AC_ANALYSIS_SHARED safe_array<float>  AC_INTERNAL_run_const_float_array_here{};
+AC_ANALYSIS_SHARED safe_array<AcComplex>    AC_INTERNAL_run_const_AcComplex_array_here{};
+AC_ANALYSIS_SHARED safe_array<AcComplexFloat>    AC_INTERNAL_run_const_AcComplexFloat_array_here{};
+AC_ANALYSIS_SHARED_STATIC bool rand_uniform_called = false;
 
-safe_array<AcReal>
+AC_ANALYSIS_SHARED safe_array<AcReal>
 RCONST(AcRealCompArrayParam)
 {
        return AC_INTERNAL_run_const_AcReal_array_here;
 }
 
-safe_array<bool>
+AC_ANALYSIS_SHARED safe_array<bool>
 RCONST(AcBoolCompArrayParam)
 {
        return AC_INTERNAL_run_const_bool_array_here;
 }
 
 
-void
+AC_ANALYSIS_SHARED void
 print(const char* , ...)
 {
 }
@@ -112,7 +124,7 @@ IDX(const int i)
   return 0;
 }
 
-int
+AC_ANALYSIS_SHARED int
 IDX(const int i, const int j, const int k)
 {
   (void)i; // Unused
@@ -137,20 +149,20 @@ LOCAL_COMPDOMAIN_IDX(const int3 coord)
   return 0;
 }
 #if AC_USE_HIP
-uint64_t
+AC_ANALYSIS_SHARED uint64_t
 __ballot(bool)
 {
 	return ~0;
 }
 
-int
+AC_ANALYSIS_SHARED int
 __ffsll(unsigned long long)
 {
 	return 1;
 }
 
 #else
-uint64_t
+AC_ANALYSIS_SHARED uint64_t
 __ballot_sync(unsigned long, bool)
 {
 	return ~0;
@@ -167,7 +179,7 @@ __shfl_sync(unsigned long, T val, int)
 {
 	return val;
 }
-int
+AC_ANALYSIS_SHARED int
 __ffs(unsigned long)
 {
 	return 1;
@@ -176,26 +188,26 @@ __ffs(unsigned long)
 #endif
 #define idx  ((int)IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z))
 
-static int stencils_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]{{}};
-static int previous_accessed[NUM_ALL_FIELDS+NUM_PROFILES]{};
-static int incoming_ray_value_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
-static int outgoing_ray_value_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
-static int written_fields[NUM_ALL_FIELDS]{};
-static int written_complex_fields[NUM_COMPLEX_FIELDS+1]{};
-static int read_complex_fields[NUM_COMPLEX_FIELDS+1]{};
-static int read_fields[NUM_ALL_FIELDS]{};
-static int field_has_stencil_op[NUM_ALL_FIELDS]{};
-static int field_has_ray_op[NUM_ALL_FIELDS]{};
-static int read_profiles[NUM_PROFILES+1]{};
-static int reduced_profiles[NUM_PROFILES+1]{};
-static int written_profiles[NUM_PROFILES+1]{};
-static int reduced_reals[NUM_REAL_OUTPUTS+1]{};
-static int reduced_ints[NUM_INT_OUTPUTS+1]{};
+AC_ANALYSIS_SHARED_STATIC int stencils_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]{{}};
+AC_ANALYSIS_SHARED_STATIC int previous_accessed[NUM_ALL_FIELDS+NUM_PROFILES]{};
+AC_ANALYSIS_SHARED_STATIC int incoming_ray_value_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
+AC_ANALYSIS_SHARED_STATIC int outgoing_ray_value_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
+AC_ANALYSIS_SHARED_STATIC int written_fields[NUM_ALL_FIELDS]{};
+AC_ANALYSIS_SHARED_STATIC int written_complex_fields[NUM_COMPLEX_FIELDS+1]{};
+AC_ANALYSIS_SHARED_STATIC int read_complex_fields[NUM_COMPLEX_FIELDS+1]{};
+AC_ANALYSIS_SHARED_STATIC int read_fields[NUM_ALL_FIELDS]{};
+AC_ANALYSIS_SHARED_STATIC int field_has_stencil_op[NUM_ALL_FIELDS]{};
+AC_ANALYSIS_SHARED_STATIC int field_has_ray_op[NUM_ALL_FIELDS]{};
+AC_ANALYSIS_SHARED_STATIC int read_profiles[NUM_PROFILES+1]{};
+AC_ANALYSIS_SHARED_STATIC int reduced_profiles[NUM_PROFILES+1]{};
+AC_ANALYSIS_SHARED_STATIC int written_profiles[NUM_PROFILES+1]{};
+AC_ANALYSIS_SHARED_STATIC int reduced_reals[NUM_REAL_OUTPUTS+1]{};
+AC_ANALYSIS_SHARED_STATIC int reduced_ints[NUM_INT_OUTPUTS+1]{};
 #if AC_DOUBLE_PRECISION
-static int reduced_floats[NUM_FLOAT_OUTPUTS+1]{};
+AC_ANALYSIS_SHARED_STATIC int reduced_floats[NUM_FLOAT_OUTPUTS+1]{};
 #endif
 
-AcKernel current_kernel{};
+AC_ANALYSIS_SHARED AcKernel current_kernel{};
 #define reduce_sum_real_x  reduce_prof
 #define reduce_sum_real_y  reduce_prof
 #define reduce_sum_real_z  reduce_prof
@@ -206,23 +218,23 @@ AcKernel current_kernel{};
 #define reduce_sum_real_zx reduce_prof
 #define reduce_sum_real_zy reduce_prof
 
-std::vector<KernelReduceOutput> reduce_inputs{};
-std::vector<KernelReduceOutput> reduce_outputs{};
+AC_ANALYSIS_SHARED std::vector<KernelReduceOutput> reduce_inputs{};
+AC_ANALYSIS_SHARED std::vector<KernelReduceOutput> reduce_outputs{};
 
-bool
+AC_ANALYSIS_SHARED bool
 ac_is_global(const AcRealOutputParam& param)
 {
 	return real_output_is_global[param];
 }
 
-AcReal
+AC_ANALYSIS_SHARED AcReal
 output_value(const AcRealOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 	return (AcReal)1.0;
 }
 
-int
+AC_ANALYSIS_SHARED int
 output_value(const AcIntOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
@@ -230,7 +242,7 @@ output_value(const AcIntOutputParam& param)
 }
 
 #if AC_DOUBLE_PRECISION
-float
+AC_ANALYSIS_SHARED float
 output_value(const AcFloatOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_FLOAT_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
@@ -238,7 +250,7 @@ output_value(const AcFloatOutputParam& param)
 }
 #endif
 
-void
+AC_ANALYSIS_SHARED void
 postprocess_reduce_result(const AcRealOutputParam dst, const AcReductionPostProcessingOp op)
 {
 	bool found = false;
@@ -260,7 +272,7 @@ postprocess_reduce_result(const AcRealOutputParam dst, const AcReductionPostProc
 }
 
 #if AC_DOUBLE_PRECISION
-void
+AC_ANALYSIS_SHARED void
 postprocess_reduce_result(const AcFloatOutputParam dst, const AcReductionPostProcessingOp op)
 {
 	bool found = false;
@@ -282,7 +294,7 @@ postprocess_reduce_result(const AcFloatOutputParam dst, const AcReductionPostPro
 }
 #endif
 
-void
+AC_ANALYSIS_SHARED void
 reduce_sum_real(const AcReal, const AcRealOutputParam dst)
 {
 	if constexpr (NUM_REAL_OUTPUTS == 0) 
@@ -305,7 +317,7 @@ reduce_sum_real(const AcReal, const AcRealOutputParam dst)
 	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
-void
+AC_ANALYSIS_SHARED void
 reduce_max_real(const AcReal, const AcRealOutputParam dst)
 {
 	if constexpr (NUM_REAL_OUTPUTS == 0) 
@@ -328,7 +340,7 @@ reduce_max_real(const AcReal, const AcRealOutputParam dst)
 	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,AC_REDUCE_OP_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
-void
+AC_ANALYSIS_SHARED void
 reduce_min_real(const AcReal, const AcRealOutputParam dst)
 {
 	if constexpr (NUM_REAL_OUTPUTS == 0) 
@@ -351,7 +363,7 @@ reduce_min_real(const AcReal, const AcRealOutputParam dst)
 	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,AC_REDUCE_OP_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
-void
+AC_ANALYSIS_SHARED void
 reduce_sum_int(const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
@@ -374,7 +386,7 @@ reduce_sum_int(const int, const AcIntOutputParam dst)
 	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
-void
+AC_ANALYSIS_SHARED void
 reduce_max_int(const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
@@ -397,7 +409,7 @@ reduce_max_int(const int, const AcIntOutputParam dst)
 	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,AC_REDUCE_OP_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
-void
+AC_ANALYSIS_SHARED void
 reduce_min_int(const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
@@ -421,7 +433,7 @@ reduce_min_int(const int, const AcIntOutputParam dst)
 }
 
 #if AC_DOUBLE_PRECISION
-void
+AC_ANALYSIS_SHARED void
 reduce_sum_float(const float, const AcFloatOutputParam dst)
 {
 	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
@@ -444,7 +456,7 @@ reduce_sum_float(const float, const AcFloatOutputParam dst)
 	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,AC_REDUCE_OP_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
-void
+AC_ANALYSIS_SHARED void
 reduce_max_float(const float, const AcFloatOutputParam dst)
 {
 	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
@@ -467,7 +479,7 @@ reduce_max_float(const float, const AcFloatOutputParam dst)
 	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,AC_REDUCE_OP_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
-void
+AC_ANALYSIS_SHARED void
 reduce_min_float(const float, const AcFloatOutputParam dst)
 {
 	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
@@ -492,7 +504,7 @@ reduce_min_float(const float, const AcFloatOutputParam dst)
 #endif
 
 
-void
+AC_ANALYSIS_SHARED void
 reduce_prof(const AcReal, const Profile dst)
 {
 	if constexpr (NUM_PROFILES == 0) 
@@ -517,7 +529,7 @@ reduce_prof(const AcReal, const Profile dst)
 #define value_profile_yz value_profile
 #define value_profile_zx value_profile
 #define value_profile_zy value_profile
-AcReal
+AC_ANALYSIS_SHARED AcReal
 value_profile(const Profile& prof)
 {
 	if constexpr (NUM_PROFILES != 0)
@@ -625,27 +637,29 @@ get_d_mesh_info()
 #endif
 }
 
-static AcMeshInfo  d_mesh_info = get_d_mesh_info();
+AC_ANALYSIS_SHARED_STATIC AcMeshInfo  d_mesh_info = get_d_mesh_info();
 
+#if !AC_STENCIL_ACCESSES_KERNELS_ONLY
 AcResult
 acAnalysisLoadMeshInfo(const AcMeshInfo info) 
 {d_mesh_info = info ; return AC_SUCCESS;}
+#endif
 
 #include "dconst_decl.h"
 #include "rconst_decl.h"
 
 #include "arrays_accessed_decl.h"
-#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static DATATYPE ARR_NAME##return_var{}; \
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) AC_ANALYSIS_SHARED_STATIC DATATYPE ARR_NAME##return_var{}; \
 							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
 								                          DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
 							    }; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 
-#define DECLARE_DCONST_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static DATATYPE ARR_NAME##return_var{}; \
+#define DECLARE_DCONST_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) AC_ANALYSIS_SHARED_STATIC DATATYPE ARR_NAME##return_var{}; \
 							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_d_##DEFINE_NAME##_arrays_##ARR_NAME {};
 
-#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) static DATATYPE ARR_NAME##return_var{}; \
+#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) AC_ANALYSIS_SHARED_STATIC DATATYPE ARR_NAME##return_var{}; \
 							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
 								                          DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
 							    }; \
@@ -653,7 +667,7 @@ acAnalysisLoadMeshInfo(const AcMeshInfo info)
 #include "cpu_dconst_arrays_decl.h"
 #include "cpu_gmem_arrays_decl.h"
 
-AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
+AC_ANALYSIS_SHARED AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE  = (1 << 1);
@@ -662,17 +676,40 @@ AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_READ      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_READ  = (1 << 1);
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
+
+// which pairs of fields PairSum stencils are called on, used by stencilgen to precompute the pair stencils
+struct AcPairStencilCall
+{
+	int stencil;
+	int field_a;
+	int field_b;
+};
+AC_ANALYSIS_SHARED std::vector<AcPairStencilCall> pair_stencil_calls{};
+
+AC_ANALYSIS_SHARED void
+mark_pair_stencil_call(const int stencil, const Field& field_a, const Field& field_b)
+{
+	// for the rest of the analysis a pair stencil looks like the stencil was called on both fields
+	stencils_accessed[field_a][stencil] |= (1 | AC_STENCIL_CALL);
+	stencils_accessed[field_b][stencil] |= (1 | AC_STENCIL_CALL);
+	// the products commute so (a,b) and (b,a) are the same pair
+	const int a = std::min((int)field_a,(int)field_b);
+	const int b = std::max((int)field_a,(int)field_b);
+	for(const auto& call : pair_stencil_calls)
+		if(call.stencil == stencil && call.field_a == a && call.field_b == b) return;
+	pair_stencil_calls.push_back({stencil,a,b});
+}
 #include "analysis_stencils.h"
 
 
-int3
+AC_ANALYSIS_SHARED int3
 VAL(const AcInt3CompParam&)
 {
 	return (int3){0,0,0};
 }
 bool
 index_at_boundary(const int x, const int y, const int z);
-void
+AC_ANALYSIS_SHARED void
 mark_as_written(const Field& field, const int x, const int y, const int z)
 {
 	const int field_index = (int)field;
@@ -682,7 +719,7 @@ mark_as_written(const Field& field, const int x, const int y, const int z)
 			index_at_boundary(x,y,z) ? AC_IN_BOUNDS_WRITE : AC_OUT_OF_BOUNDS_WRITE;
 }
 
-void
+AC_ANALYSIS_SHARED void
 mark_as_written(const ComplexField& field, const int x, const int y, const int z)
 {
 	(void)field;
@@ -690,7 +727,7 @@ mark_as_written(const ComplexField& field, const int x, const int y, const int z
 	(void)y;
 	(void)z;
 }
-void
+AC_ANALYSIS_SHARED void
 mark_as_written(const Field3& field, const int x, const int y, const int z)
 {
 	mark_as_written(field.x,x,y,z);
@@ -698,7 +735,7 @@ mark_as_written(const Field3& field, const int x, const int y, const int z)
 	mark_as_written(field.z,x,y,z);
 }
 
-void
+AC_ANALYSIS_SHARED void
 ac_dummy_write(const Field& field, const int x, const int y, const int z)
 {
 	mark_as_written(field, x,y,z);
@@ -706,7 +743,7 @@ ac_dummy_write(const Field& field, const int x, const int y, const int z)
 }
 
 
-void
+AC_ANALYSIS_SHARED void
 AC_INTERNAL_write_vtxbuf(const Field& field, const int x, const int y, const int z, const AcReal&)
 {
 	const int field_index = (int)field;
@@ -716,13 +753,13 @@ AC_INTERNAL_write_vtxbuf(const Field& field, const int x, const int y, const int
 	written_fields[field] |= AC_WRITE_TO_INPUT;
 }
 
-void
+AC_ANALYSIS_SHARED void
 AC_INTERNAL_write_vtxbuf_at_current_point(const Field& field, const AcReal& val)
 {
 	AC_INTERNAL_write_vtxbuf(field,0,0,0,val);
 }
 
-void
+AC_ANALYSIS_SHARED void
 AC_INTERNAL_write_vtxbuf3(const Field3& field, const int x, const int y, const int z, const AcReal3& val)
 {
 	AC_INTERNAL_write_vtxbuf(field.x,x,y,z,val.x);
@@ -730,7 +767,7 @@ AC_INTERNAL_write_vtxbuf3(const Field3& field, const int x, const int y, const i
 	AC_INTERNAL_write_vtxbuf(field.z,x,y,z,val.z);
 }
 
-void
+AC_ANALYSIS_SHARED void
 AC_INTERNAL_write_vtxbuf4(const Field4& field, const int x, const int y, const int z, const AcReal4& val)
 {
 	AC_INTERNAL_write_vtxbuf(field.x,x,y,z,val.x);
@@ -757,7 +794,7 @@ ac_field_has_default_dims(const Field& field)
 {
 	return vtxbuf_dims[field] == AC_mlocal;
 }
-void
+AC_ANALYSIS_SHARED void
 write_base(const Field& field, const AcReal&)
 {
 	const int field_index = (int)field;
@@ -766,19 +803,19 @@ write_base(const Field& field, const AcReal&)
 	written_fields[field] |= AC_IN_BOUNDS_WRITE;
 }
 
-void
+AC_ANALYSIS_SHARED void
 write_complex_base (const ComplexField& field, const AcComplex&)
 {
 	written_complex_fields[field] |= AC_IN_BOUNDS_WRITE;
 }
-AcComplex
+AC_ANALYSIS_SHARED AcComplex
 value_complex(const ComplexField& field)
 {
 	read_complex_fields[field] |= 1;
 	return (AcComplex){0.0,0.0};
 }
 
-void
+AC_ANALYSIS_SHARED void
 write_at_point (const Field& field, const AcReal&, const int x, const int y, const int z)
 {
 	mark_as_written(field,x,y,z);
@@ -805,25 +842,25 @@ safe_access(T arr, const int, const int index, const T2)
 #define write_profile_yz write_profile
 #define write_profile_zx write_profile
 #define write_profile_zy write_profile
-AcReal
+AC_ANALYSIS_SHARED AcReal
 write_profile(const Profile& prof, const AcReal&)
 {
 	if constexpr (NUM_PROFILES != 0)
 		written_profiles[prof] = 1;
 	return 0.0;
 }
-void
+AC_ANALYSIS_SHARED void
 write_to_index (const Field& field, const int&, const AcReal&)
 {
 	written_fields[field] |= AC_OUT_OF_BOUNDS_WRITE;
 }
-AcReal
+AC_ANALYSIS_SHARED AcReal
 previous_base(const Field& field)
 {
 	previous_accessed[field] = 1;
 	return AcReal(1.0);
 }
-AcReal
+AC_ANALYSIS_SHARED AcReal
 AC_INTERNAL_read_vtxbuf(const Field& field, const int x, const int y, const int z)
 {
 	const int field_index = (int)field;
@@ -834,7 +871,7 @@ AC_INTERNAL_read_vtxbuf(const Field& field, const int x, const int y, const int 
 	return AcReal(1.0);
 }
 
-AcReal3
+AC_ANALYSIS_SHARED AcReal3
 AC_INTERNAL_read_vtxbuf3(const Field3& field, const int x, const int y, const int z)
 {
 	return (AcReal3)
@@ -845,18 +882,18 @@ AC_INTERNAL_read_vtxbuf3(const Field3& field, const int x, const int y, const in
 	};
 }
 
-AcComplex
+AC_ANALYSIS_SHARED AcComplex
 AC_INTERNAL_read_vtxbuf_complex(const ComplexField&, const int, const int, const int)
 {
 	return (AcComplex){0.,0.};
 }
 
-void
+AC_ANALYSIS_SHARED void
 AC_INTERNAL_write_vtxbuf_complex(const ComplexField&, const int, const int, const int, const AcComplex)
 {
 }
 
-AcReal4
+AC_ANALYSIS_SHARED AcReal4
 AC_INTERNAL_read_vtxbuf4(const Field4& field, const int x, const int y, const int z)
 {
 	return (AcReal4)
@@ -867,21 +904,21 @@ AC_INTERNAL_read_vtxbuf4(const Field4& field, const int x, const int y, const in
 		AC_INTERNAL_read_vtxbuf(field.w,x,y,z),
 	};
 }
-AcReal
+AC_ANALYSIS_SHARED AcReal
 AC_INTERNAL_read_profile(const Profile& profile, const int)
 {
 	if constexpr(NUM_PROFILES > 0)
 		read_profiles[profile] |= 1;
 	return AcReal(1.0);
 }
-AcReal
+AC_ANALYSIS_SHARED AcReal
 AC_INTERNAL_read_profile(const Profile& profile, const int, const int)
 {
 	if constexpr(NUM_PROFILES > 0)
 		read_profiles[profile] |= 1;
 	return AcReal(1.0);
 }
-AcReal3
+AC_ANALYSIS_SHARED AcReal3
 AC_INTERNAL_read_profile(const VecZProfile& profile, const int)
 {
 	if constexpr(NUM_PROFILES > 0)
@@ -894,7 +931,7 @@ AC_INTERNAL_read_profile(const VecZProfile& profile, const int)
 }
 #define suppress_unused_warning(X) (void)X
 
-static std::vector<int> executed_nodes{};
+AC_ANALYSIS_SHARED_STATIC std::vector<int> executed_nodes{};
 #define constexpr
 #define size(arr) (int)(sizeof(arr)/sizeof(arr[0]))
 
@@ -909,8 +946,8 @@ matmul_arr(T1, T2)
 			(AcReal)0.0
 	};
 }
-static bool check_for_errors = false;
-void
+AC_ANALYSIS_SHARED_STATIC bool check_for_errors = false;
+AC_ANALYSIS_SHARED void
 error_message(const bool error, const char* message)
 {
 	if(error && check_for_errors)
@@ -919,7 +956,7 @@ error_message(const bool error, const char* message)
 	}
 }
 
-void
+AC_ANALYSIS_SHARED void
 fatal_error_message(const bool error, const char* message)
 {
 	if(error && check_for_errors)
@@ -929,7 +966,12 @@ fatal_error_message(const bool error, const char* message)
 	}
 }
 
-#include "user_analysis_kernels.h"
+#if AC_STENCIL_ACCESSES_KERNELS_ONLY
+//TP: acc appends a part of the analysis kernels after this point, the rest of this file is compiled only in the main translation unit
+#else
+#if !AC_STENCIL_ACCESSES_SPLIT
+#include "user_analysis_kernels.cpp"
+#endif
 #undef  constexpr
 #undef size
 
@@ -953,10 +995,10 @@ vbaCreate(const size_t count)
   VertexBufferArray vba{};
   memset(&vba, 0, sizeof(vba));
 
-  const size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
+  const size_t bytes = sizeof(AcReal) * count;
   for (size_t i = 0; i < NUM_FIELDS; ++i) {
-    vba.on_device.in[i]  = (AcReal*)malloc(bytes);
-    vba.on_device.out[i] = (AcReal*)malloc(bytes);
+    vba.on_device.in[i]  = malloc(bytes);
+    vba.on_device.out[i] = malloc(bytes);
   }
   for (int i = 0; i < NUM_PROFILES; ++i) {
     vba.on_device.profiles.in[i]  = (AcReal*)malloc(bytes);
@@ -990,6 +1032,7 @@ void
 reset_info_arrays()
 {
     memset(stencils_accessed, 0,sizeof(stencils_accessed));
+    pair_stencil_calls.clear();
     memset(read_fields,0, sizeof(read_fields));
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
     memset(field_has_ray_op,0, sizeof(field_has_ray_op));
@@ -1171,6 +1214,8 @@ acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel)
     		for (int j = 0; j < NUM_PROFILES; ++j)
     		  for (size_t i = 0; i < NUM_STENCILS; ++i)
 		    res.stencils_accessed[j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
+		for(const auto& call : pair_stencil_calls)
+			res.pair_stencils_accessed[stencil_to_pair_stencil[call.stencil]][call.field_a][call.field_b] = true;
 		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
 		{
 			res.read_fields[i]    = read_fields[i];
@@ -1224,6 +1269,21 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
 	}
 	return AC_SUCCESS;
 }
+//TP: leaves out the trailing zeros of the row since they are zero-initialized anyways.
+//    Almost all entries of the arrays written to stencil_accesses.h are zero, so this keeps the header small
+//    (e.g. 17MB -> few hundred kB), which speeds up the compilation of the files including it considerably.
+//    Works both in C and C++ and the values stay as compile-time initializers.
+static void
+print_trimmed_row(FILE* fp, const int* row, const size_t n)
+{
+  size_t len = n;
+  while (len > 0 && row[len-1] == 0) --len;
+  fprintf(fp,"{");
+  for (size_t i = 0; i < len; ++i)
+    fprintf(fp, "%d,", row[i]);
+  fprintf(fp,"},");
+}
+
 template <const size_t N>
 void
 print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N])
@@ -1231,12 +1291,8 @@ print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N])
   fprintf(fp,
           "static int %s[NUM_KERNELS][%ld] "
           "__attribute__((unused)) =  {",name,N);
-  for (size_t k = 0; k < NUM_KERNELS; ++k) {
-    fprintf(fp,"{");
-    for (size_t j = 0; j < N; ++j)
-        fprintf(fp, "%d,", arr[k][j]);
-    fprintf(fp,"},");
-  }
+  for (size_t k = 0; k < NUM_KERNELS; ++k)
+    print_trimmed_row(fp,arr[k],N);
   fprintf(fp, "};\n");
 }
 
@@ -1250,15 +1306,7 @@ print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N][M])
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     fprintf(fp,"{");
     for (size_t j = 0; j < N; ++j)
-    {
-
-        fprintf(fp,"{");
-	for(size_t i = 0; i < M; ++ i)
-	{
-        	fprintf(fp, "%d,", arr[k][j][i]);
-	}
-    	fprintf(fp,"},");
-    }
+      print_trimmed_row(fp,arr[k][j],M);
     fprintf(fp,"},");
   }
   fprintf(fp, "};\n");
@@ -1314,6 +1362,7 @@ main(int argc, char* argv[])
   static int  output_reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1]{};
 #endif
   static int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
+  std::vector<std::array<int,4>> output_pair_stencil_calls{};
 
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
@@ -1362,15 +1411,10 @@ main(int argc, char* argv[])
 
     fprintf(fp,"{");
     for (size_t j = 0; j < NUM_ALL_FIELDS+NUM_PROFILES; ++j)
-    { 
-      fprintf(fp,"{");
-      for (size_t i = 0; i < NUM_STENCILS; ++i)
-      {
-        fprintf(fp,"%d,",stencils_accessed[j][i]);
-      }
-      fprintf(fp,"},");
-    }
+      print_trimmed_row(fp,stencils_accessed[j],NUM_STENCILS);
     fprintf(fp,"},");
+    for (const auto& call : pair_stencil_calls)
+      output_pair_stencil_calls.push_back({(int)k,call.stencil,call.field_a,call.field_b});
 
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
     fwrite(field_has_stencil_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_stencil_op);
@@ -1388,6 +1432,13 @@ main(int argc, char* argv[])
 
 
   fprintf(fp, "};\n");
+
+  // {kernel, stencil, field_a, field_b} with field_a <= field_b, terminated by a sentinel to avoid an empty array
+  fprintf(fp,"static const int pair_stencil_calls[][4] __attribute__((unused)) = {");
+  for (const auto& call : output_pair_stencil_calls)
+    fprintf(fp,"{%d,%d,%d,%d},",call[0],call[1],call[2],call[3]);
+  fprintf(fp,"{-1,-1,-1,-1}};\n");
+  fprintf(fp,"static const int num_pair_stencil_calls __attribute__((unused)) = %zu;\n",output_pair_stencil_calls.size());
 
   fclose(fp_written_fields);
   fclose(fp_fields_read);
@@ -1419,3 +1470,4 @@ main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 #endif
+#endif // AC_STENCIL_ACCESSES_KERNELS_ONLY

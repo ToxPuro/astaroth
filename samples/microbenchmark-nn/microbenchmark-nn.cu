@@ -76,7 +76,7 @@ verify(const size_t domain_length, const size_t radius, const size_t stride)
     arrayRandomize(&host_input);
     arrayRandomize(&host_output);
     for (size_t i = 0; i < domain_length; ++i)
-        host_input.data[i] = (real)rand() / (real)RAND_MAX;
+        host_input.data[i] = acRand();
 
     // Model
     model_kernel(domain_length, radius, stride, host_input, host_output);
@@ -295,7 +295,7 @@ main(int argc, char* argv[])
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 
     // Random
-    srand(seed);
+    acSrand(seed);
 
     // Benchmark pipeline
     // KernelConfig c = autotune(array_length, domain_length, pad, radius, stride);

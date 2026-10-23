@@ -17,7 +17,10 @@
 */
 #include "codegen.h"
 
+
 #include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
 #include <hash.h>
 #include <hashtable.h>
 #include <limits.h>
@@ -26,12 +29,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <spawn.h>
+#include <sys/wait.h>
 
 #include "ast.h" // Needs to come before tab.h to have the definition of ASTNode.
 
 #include "create_node.h"
 #include "expr.h"
+#include "source_manager.h"
 #include "tab.h"
 #include "warp_reduce.h"
 
@@ -163,13 +171,6 @@ type_output(const char* type)
 }
 
 void
-gen_dlsym(FILE* fp, const char* func_name)
-{
-	fprintf(fp,"LOAD_DSYM(%s,stream)\n",func_name);
-}
-
-
-void
 get_executed_nodes(const int round);
 
 static int monomorphization_index = 0;
@@ -193,6 +194,73 @@ extern string_vec run_const_int_values;
 
 static node_vec    dfunc_nodes      = VEC_INITIALIZER;
 static string_vec  dfunc_names      = VEC_INITIALIZER;
+
+//TP: caches of information read from the first tree they are called with, the cached values point to the nodes of that tree
+typedef struct
+{
+	struct hashmap_s map;
+	bool populated;
+} tree_cache;
+static tree_cache array_var_dims_cache       = {0};
+static tree_cache var_val_cache              = {0};
+static tree_cache const_array_var_dims_cache = {0};
+static tree_cache function_params_info_cache = {0};
+static bool reset_dfunc_cache = true;
+
+static void
+reset_tree_cache(tree_cache* cache)
+{
+	if(cache->populated) hashmap_destroy(&cache->map);
+	cache->populated = false;
+}
+static const ASTNode*
+get_tree_root(const ASTNode* node)
+{
+	while(node->parent) node = node->parent;
+	return node;
+}
+//TP: the caches pointing to the nodes of a tree have to be reset when the tree is destroyed.
+//    dfunc_nodes is reset only if it points to the destroyed tree since the passes of generate use the dfuncs of the tree given to preprocess
+static void
+reset_tree_caches(const ASTNode* root)
+{
+	if(dfunc_nodes.size && (get_tree_root(dfunc_nodes.data[0]) == root || dfunc_nodes.data[0]->in_arena))
+	{
+		free_node_vec(&dfunc_nodes);
+		free_str_vec(&dfunc_names);
+	}
+	reset_tree_cache(&array_var_dims_cache);
+	reset_tree_cache(&var_val_cache);
+	reset_tree_cache(&const_array_var_dims_cache);
+	reset_tree_cache(&function_params_info_cache);
+	reset_dfunc_cache = true;
+}
+static void
+destroy_tree(ASTNode* root)
+{
+	reset_tree_caches(root);
+	astnode_destroy(root);
+}
+//TP: for passes that work on a copy of the tree: all nodes allocated between begin_arena_pass and end_arena_pass are freed at its end
+typedef struct
+{
+	ast_arena arena;
+	ast_arena* prev;
+} arena_pass;
+static void
+begin_arena_pass(arena_pass* pass)
+{
+	memset(&pass->arena,0,sizeof(pass->arena));
+	pass->prev = current_ast_arena;
+	current_ast_arena = &pass->arena;
+}
+static void
+end_arena_pass(arena_pass* pass, const ASTNode* root)
+{
+	reset_tree_caches(root);
+	current_ast_arena = pass->prev;
+	ast_arena_free(&pass->arena);
+}
 
 static node_vec    kfunc_nodes      = VEC_INITIALIZER;
 static string_vec  kfunc_names      = VEC_INITIALIZER;
@@ -266,6 +334,11 @@ is_called(const ASTNode* node)
 #define STENCILGEN_EXEC "stencilgen.out"
 #define STENCILACC_SRC AC_BASE_PATH "/src/core/stencil_accesses.cpp"
 #define STENCILACC_EXEC "acc_stencil_accesses.o"
+//TP: the helper programs above are only used for the analysis during the DSL compilation and their compilation dominates the time taken
+//    by acc.
+//    Hence always compile them with the fastest compilation options, independent of the defaults of the used compiler (wrapper):
+//    e.g. -O1 makes the compilation of stencilgen.c take ~20min instead of ~7s
+#define ACC_HELPER_COMPILE_FLAGS "-O0 -g0 -pipe"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
 #define INCL_DIR ACC_DIR "/../../include"
 //
@@ -857,17 +930,15 @@ populate_array_var_dims_info(const ASTNode* node, struct hashmap_s* cache)
 node_vec
 get_array_var_dims(const char* var, const ASTNode* root)
 {
-	    static bool first_call = true;
-	    static struct hashmap_s cache;
-	    if(first_call)
+	    if(!array_var_dims_cache.populated)
 	    {
             	const unsigned initial_size = 2000;
-            	hashmap_create(initial_size, &cache);
-	    	first_call = false;
-		populate_array_var_dims_info(root,&cache);
+            	hashmap_create(initial_size, &array_var_dims_cache.map);
+	    	array_var_dims_cache.populated = true;
+		populate_array_var_dims_info(root,&array_var_dims_cache.map);
 	    }
 
-	    node_vec* cached_val = (node_vec*)hashmap_get(&cache,var,strlen(var));
+	    node_vec* cached_val = (node_vec*)hashmap_get(&array_var_dims_cache.map,var,strlen(var));
 	    if(cached_val) return *cached_val;
 	    node_vec dummy  = VEC_INITIALIZER;
 	    return dummy;
@@ -895,16 +966,14 @@ populate_var_val(const ASTNode* node, struct hashmap_s* cache)
 const ASTNode*
 get_var_val(const char* var, const ASTNode* root)
 {
-	static bool first_call = true;
-	static struct hashmap_s cache;
-	if(first_call)
+	if(!var_val_cache.populated)
 	{
             const unsigned initial_size = 2000;
-            hashmap_create(initial_size, &cache);
-	    first_call = false;
-	    populate_var_val(root,&cache);
+            hashmap_create(initial_size, &var_val_cache.map);
+	    var_val_cache.populated = true;
+	    populate_var_val(root,&var_val_cache.map);
 	}
-	return (ASTNode*)hashmap_get(&cache,var,strlen(var));
+	return (ASTNode*)hashmap_get(&var_val_cache.map,var,strlen(var));
 }
 const char*
 get_const_int3_val(const char* name, const ASTNode* root, const char* member_id)
@@ -1242,121 +1311,177 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   fprintf(fp, "\n};");
 }
 
-
 void
 gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 {
-	const char* take_address = AC_CPU_BUILD ? "&" : "";
-	const char* define_name = convert_to_define_name(datatype_scalar);
-	const char* enum_name = convert_to_enum_name(datatype_scalar);
+  const char* take_address = AC_CPU_BUILD ? "&" : "";
+  const char* define_name  = convert_to_define_name(datatype_scalar);
+  const char* enum_name    = convert_to_enum_name(datatype_scalar);
 
-	char tmp[4098];
-	sprintf(tmp,"%s*",datatype_scalar);
-	const char* datatype = intern(tmp);
+  char tmp[4098];
+  sprintf(tmp, "%s*", datatype_scalar);
+  const char* datatype = intern(tmp);
 
+  AccSource* memcpy_to_gmem_arrays = acc_sources_manager_get_source(
+      acc_sources_manager_singleton(), "memcpy_to_gmem_arrays", ACC_SRC_CPP | ACC_SRC_DEVICE);
+  acc_source_add_include(memcpy_to_gmem_arrays, false, false, "acc_runtime.h", NULL);
+  acc_source_add_include(memcpy_to_gmem_arrays, false, false, "func_define.h", NULL);
+  acc_source_add_include(memcpy_to_gmem_arrays, true, false, "astaroth_cuda_wrappers.h", NULL);
+  acc_source_add_include(memcpy_to_gmem_arrays, true, false, "extern_arrays_decl.h", NULL);
 
-	FILE* fp = fopen("memcpy_to_gmem_arrays.h","a");
-	fprintf_filename("memcpy_to_gmem_arrays_header.h","void acMemcpyToGmemArray(const %sArrayParam param,%s* &ptr);\n"
-        , enum_name,datatype_scalar);
-	fprintf(fp,"void acMemcpyToGmemArray(const %sArrayParam param,%s* &ptr)\n"
-        "{\n", enum_name,datatype_scalar);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR))
-	  {
-		  if (!str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  {
-			if(str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR))
-			{
-				fprintf(fp,"if (param == %s) \n{//%s is dead\n return;}\n",symbol_table[i].identifier,symbol_table[i].identifier);
-			}
-			else
-		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(%sAC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice)); return;} \n",symbol_table[i].identifier,take_address,define_name,symbol_table[i].identifier);
-	  	  }
-	  }
-	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from acMemcpyToGmemArray\\n\");\n");
-	fprintf(fp,"\n(void)param;(void)ptr;}\n");
+  AccSourceFunction* func = acc_source_get_function(memcpy_to_gmem_arrays, 0,
+                                                    "acMemcpyToGmemArray");
+  acc_source_function_set_qualifiers(func, "void");
+  acc_source_function_set_params(func, "(const %sArrayParam param, %s* &ptr)",
+                                 enum_name, datatype_scalar);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        symbol_table[i].tspecifier == datatype &&
+        str_vec_contains(symbol_table[i].tqualifiers, GLOBAL_MEM_STR)) {
+      if (!str_vec_contains(symbol_table[i].tqualifiers, CONST_DIMS_STR)) {
+        if (str_vec_contains(symbol_table[i].tqualifiers, DEAD_STR)) {
+          acc_source_function_add_impl(
+              func, "if (param == %s) { /* %s is dead */ return; }\n",
+              symbol_table[i].identifier, symbol_table[i].identifier);
+        }
+        else {
+          acc_source_function_add_impl(
+              func,
+              // clang-format off
+              "if (param == %s) {\n"
+              "  ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(%sAC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice));\n"
+              "  return;\n"
+              "}\n",
+              symbol_table[i].identifier,
+              take_address, define_name, symbol_table[i].identifier);
+              // clang-format on
+        }
+      }
+    }
+  }
+  acc_source_function_add_impl(func,
+    "fprintf(stderr,\"FATAL AC ERROR from acMemcpyToGmemArray\\n\");\n"
+    "(void)param; (void)ptr;\n");
 
+  func = acc_source_get_function(memcpy_to_gmem_arrays, 0, "acMemcpyToConstDimsGmemArray");
+  acc_source_function_set_qualifiers(func, "void");
+  acc_source_function_set_params(func, "(const %sArrayParam param, %s* &ptr)",
+                                 enum_name, datatype_scalar);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        symbol_table[i].tspecifier == datatype &&
+        str_vec_contains(symbol_table[i].tqualifiers, GLOBAL_MEM_STR)) {
+      if (str_vec_contains(symbol_table[i].tqualifiers, CONST_DIMS_STR)) {
+        if (str_vec_contains(symbol_table[i].tqualifiers, DEAD_STR)) {
+          acc_source_function_add_impl(
+              func, "if (param == %s) { /* %s is dead */ return; }\n",
+              symbol_table[i].identifier, symbol_table[i].identifier);
+        }
+        else {
+          acc_source_function_add_impl(
+              func,
+              // clang-format off
+              "if (param == %s) {\n"
+              "  ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(AC_INTERNAL_gmem_%s_arrays_%s, ptr, sizeof(ptr[0]) * get_const_dims_array_length(param), 0, cudaMemcpyHostToDevice));\n"
+              "  return;\n"
+              "}\n",
+              symbol_table[i].identifier,
+              define_name, symbol_table[i].identifier);
+              // clang-format on
+        }
+      }
+    }
+  acc_source_function_add_impl(func,
+    "fprintf(stderr,\"FATAL AC ERROR from acMemcpyToConstDimsGmemArray\\n\");\n"
+    "(void)param; (void)ptr;\n");
 
+  AccSource* memcpy_from_gmem_arrays = acc_sources_manager_get_source(
+      acc_sources_manager_singleton(), "memcpy_from_gmem_arrays", ACC_SRC_CPP | ACC_SRC_DEVICE);
+  acc_source_add_include(memcpy_from_gmem_arrays, false, false, "acc_runtime.h", NULL);
+  acc_source_add_include(memcpy_from_gmem_arrays, false, false, "func_define.h", NULL);
+  acc_source_add_include(memcpy_from_gmem_arrays, true, false, "astaroth_cuda_wrappers.h", NULL);
+  acc_source_add_include(memcpy_from_gmem_arrays, true, false, "extern_arrays_decl.h", NULL);
 
+  func = acc_source_get_function(memcpy_from_gmem_arrays, 0, "acMemcpyFromGmemArray");
+  acc_source_function_set_qualifiers(func, "void");
+  acc_source_function_set_params(func, "(const %sArrayParam param, %s* &ptr)",
+                                 enum_name, datatype_scalar);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        symbol_table[i].tspecifier == datatype &&
+        str_vec_contains(symbol_table[i].tqualifiers, GLOBAL_MEM_STR)) {
+      if (str_vec_contains(symbol_table[i].tqualifiers, DEAD_STR)) {
+        acc_source_function_add_impl(
+            func,
+            // clang-format off
+            "if (param == %s) {\n"
+            "  fprintf(stderr, \"Can not read since %s is dead!\\n\");\n"
+            "  exit(EXIT_FAILURE);\n"
+            "}\n",
+            symbol_table[i].identifier,
+            symbol_table[i].identifier);
+            // clang-format on
+      }
+      else if (str_vec_contains(symbol_table[i].tqualifiers, CONST_DIMS_STR)) {
+        acc_source_function_add_impl(
+            func,
+            // clang-format off
+            "if (param == %s) {\n"
+            "  ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(ptr, AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr[0]) * get_const_dims_array_length(param), 0, cudaMemcpyDeviceToHost));\n"
+            "  return;\n"
+            "}\n",
+            symbol_table[i].identifier,
+            define_name, symbol_table[i].identifier);
+            // clang-format on
+      }
+      else {
+        acc_source_function_add_impl(
+            func,
+            // clang-format off
+            "if (param == %s) {\n"
+            "  ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(&ptr, %sAC_INTERNAL_gmem_%s_arrays_%s, sizeof(ptr), 0, cudaMemcpyDeviceToHost));\n"
+            "  return;\n"
+            "}\n",
+            symbol_table[i].identifier,
+            take_address, define_name, symbol_table[i].identifier);
+            // clang-format on
+      }
+    }
+  }
+  acc_source_function_add_impl(func,
+    "fprintf(stderr,\"FATAL AC ERROR from memcpy_from_gmem_array\\n\");\n"
+    "(void)param; (void)ptr;");
 
-	fprintf_filename("memcpy_to_gmem_arrays_header.h","void acMemcpyToConstDimsGmemArray(const %sArrayParam param,%s* &ptr);\n"
-	, enum_name,datatype_scalar);
-	fprintf(fp,"void acMemcpyToConstDimsGmemArray(const %sArrayParam param,const %s* ptr)\n"
-	"{\n", enum_name,datatype_scalar);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR))
-	  {
-		  if (str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  {
-			if(str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR))
-			{
-				fprintf(fp,"if (param == %s) \n{//%s is dead\n return;}\n",symbol_table[i].identifier,symbol_table[i].identifier);
-			}
-			else
-			{
-		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(AC_INTERNAL_gmem_%s_arrays_%s,ptr,sizeof(ptr[0])*get_const_dims_array_length(param),0,cudaMemcpyHostToDevice)); return;}\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
-			}
-		  }
-	  }
-	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from acMemcpyToConstDimsGmemArray\\n\");\n");
-	fprintf(fp,"\n(void)param;(void)ptr;}\n");
-
-
-	fclose(fp);
-
-
-	fp = fopen("memcpy_from_gmem_arrays.h","a");
-	
-	fprintf_filename("memcpy_from_gmem_arrays_header.h","void acMemcpyFromGmemArray(const %sArrayParam param,%s* &ptr);\n"
-		   , enum_name,datatype_scalar);
-	fprintf(fp,"void acMemcpyFromGmemArray(const %sArrayParam param, %s* &ptr)\n"
-		  "{\n", enum_name,datatype_scalar);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR))
-	  {
-		  if(str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR))
-		  {
-		  	fprintf(fp,"if (param == %s) {fprintf(stderr,\"Can not read since %s is dead!\\n\"); exit(EXIT_FAILURE);}\n",symbol_table[i].identifier,symbol_table[i].identifier);
-		  }
-		  else if (str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(ptr,AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr[0])*get_const_dims_array_length(param),0,cudaMemcpyDeviceToHost)); return;}\n"
-					
-		,symbol_table[i].identifier,define_name,symbol_table[i].identifier);
-		  else
-		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(&ptr,%sAC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr),0,cudaMemcpyDeviceToHost)); return;}\n",symbol_table[i].identifier,take_address,define_name,symbol_table[i].identifier);
-	  }
-	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from memcpy_from_gmem_array\\n\");\n");
-	fprintf(fp,"\n(void)param;(void)ptr;}\n");
-	fclose(fp);
-
-	fp = fopen("gmem_arrays_decl.h","a");
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	{
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR) && !str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR))
-	  {
-		  if (str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  {
-                  	char array_length_str[100000];
-                  	get_array_var_length(symbol_table[i].identifier,root,array_length_str);
-			if(!strcmp(array_length_str,"0"))
-				sprintf(array_length_str,"1");
-			fprintf(fp,"DECLARE_CONST_DIMS_GMEM_ARRAY(%s,%s,%s,%s);\n",datatype_scalar, define_name, symbol_table[i].identifier,array_length_str);
-		  }
-		  else
-			fprintf(fp,"DECLARE_GMEM_ARRAY(%s,%s,%s);\n",datatype_scalar, define_name, symbol_table[i].identifier);
-	  }
-	}
-	fclose(fp);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        symbol_table[i].tspecifier == datatype &&
+        str_vec_contains(symbol_table[i].tqualifiers, GLOBAL_MEM_STR) &&
+        !str_vec_contains(symbol_table[i].tqualifiers, DEAD_STR)) {
+      if (str_vec_contains(symbol_table[i].tqualifiers, CONST_DIMS_STR)) {
+        char array_length_str[BUFFER_SIZE];
+        get_array_var_length(symbol_table[i].identifier, root,
+                             array_length_str);
+        if (!strcmp(array_length_str, "0"))
+          sprintf(array_length_str, "1");
+        fprintf_filename("gmem_arrays_decl.h",
+                         "DECLARE_CONST_DIMS_GMEM_ARRAY(%s, %s, %s, %s);\n",
+                         datatype_scalar, define_name,
+                         symbol_table[i].identifier, array_length_str);
+      }
+      else {
+        fprintf_filename("gmem_arrays_decl.h",
+                         "DECLARE_GMEM_ARRAY(%s, %s, %s);\n", datatype_scalar,
+                         define_name, symbol_table[i].identifier);
+      }
+    }
+  }
 }
 
 void
 gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 {
-
+	AccSourcesManager* sources_manager = acc_sources_manager_singleton();
+	AccSourceFunction* func = NULL;
 	const char* define_name = convert_to_define_name(datatype_scalar);
 	const char* uppr_name =       strupr(define_name);
 	const char* upper_case_name = to_upper_case(define_name);
@@ -1391,10 +1516,10 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
 
 
-	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {return %s_params[param];}\n",enum_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",enum_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {return %s_params[param];}\n",enum_name,define_name);
-	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {return %s_arrays[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) return dummy; return %s_params[param];}\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) return dummy; return %s_arrays[param];}\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {static bool dummy=false; if constexpr (NUM_%s_PARAMS == 0) return dummy; return %s_params[param];}\n",enum_name,uppr_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {static bool dummy=false; if constexpr (NUM_%s_ARRAYS == 0) return dummy; return %s_arrays[param];}\n",enum_name,uppr_name,define_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompParam ) const {return false;}\n",enum_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompArrayParam ) const {return false;}\n",enum_name);
 	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
@@ -1466,7 +1591,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
         	fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 		fprintf_filename("device_load_uniform_decl.h","DEVICE_LOAD_ARRAY_DECL(%sArrayParam, %s)\n",enum_name,upper_case_name);
 		fprintf_filename("device_load_uniform_overloads.h","OVERLOAD_DEVICE_LOAD_ARRAY(%sArrayParam, %s)\n",enum_name,upper_case_name);
-		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray,stream)\n",upper_case_name);
+		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray);\n",upper_case_name);
 
 
 		fprintf_filename("device_store_uniform.h","GEN_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
@@ -1527,17 +1652,17 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		char* func_name;
 		fp = fopen("device_set_input_loads.h","a");
 		my_asprintf(&func_name,"acDeviceSet%sInput",upper_case_name);
-		gen_dlsym(fp,func_name);
+		acc_gen_dlsym(fp,func_name);
 		fclose(fp);
 
 		fp = fopen("device_get_input_loads.h","a");
 		my_asprintf(&func_name,"acDeviceGet%sInput",upper_case_name);
-		gen_dlsym(fp,func_name);
+		acc_gen_dlsym(fp,func_name);
 		fclose(fp);
 
 		fp = fopen("device_get_output_loads.h","a");
 		my_asprintf(&func_name,"acDeviceGet%sOutput",upper_case_name);
-		gen_dlsym(fp,func_name);
+		acc_gen_dlsym(fp,func_name);
 		fclose(fp);
 
 		free(func_name);
@@ -1588,103 +1713,166 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				 ,upper_case_name,define_name,uppr_name
 				);
 
-		if(datatype_scalar != REAL_STR)
-		{
-		fprintf_filename("reduce_helpers.h",
-				"__device__  __constant__ %s* d_symbol_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
-				"static %s* d_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
-				"static size_t d_reduce_scratchpads_size_%s[NUM_%s_OUTPUTS+1];\n"
-				"__device__ __constant__ %s d_reduce_%s_res_symbol[NUM_%s_OUTPUTS+1];\n"
-				,datatype_scalar,define_name,uppr_name,datatype_scalar,define_name,uppr_name,define_name,uppr_name
-				,datatype_scalar,define_name,uppr_name
-				);
-		}
-		else
-		{
-		fprintf_filename("reduce_helpers.h",
-				"__device__ __constant__ AcReal* d_symbol_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];\n"
-				"__device__ __constant__ AcReal d_reduce_%s_res_symbol[NUM_%s_SCRATCHPADS];\n"
-				"static AcReal* d_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];\n"
-				"static size_t d_reduce_scratchpads_size_%s[NUM_%s_SCRATCHPADS];\n"
-				,define_name,uppr_name,define_name,uppr_name,define_name,uppr_name,define_name,uppr_name
-				);
-		}
-		fprintf_filename("reduce_helpers.h",
-				"%s** \n"
-				"ac_allocate_scratchpad_%s(const size_t i, const size_t bytes, const AcReduceOp state)\n"
-				"{\n"
-				"ERRCHK_CUDA_ALWAYS(acMalloc((void**)&d_reduce_scratchpads_%s[i],bytes));\n"
-				"ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
-				"d_reduce_scratchpads_size_%s[i] = bytes;\n"
-				"acKernelFlush(0,d_reduce_scratchpads_%s[i], bytes/sizeof(%s),get_reduce_state_flush_var_%s(state));\n"
-				"return &d_reduce_scratchpads_%s[i];\n"
-				"}\n\n"
-				,datatype_scalar
-				,define_name,define_name,define_name,define_name,datatype_scalar,datatype_scalar,define_name,define_name,datatype_scalar,define_name
-				,define_name
-				);
-		fprintf_filename("reduce_helpers.h",
-				"const size_t* \n"
-				"ac_get_scratchpad_size_%s(const size_t i)\n"
-				"{\n"
-				"return &d_reduce_scratchpads_size_%s[i];\n"
-				"}\n\n"
-				,define_name,define_name
-				);
-		fprintf_filename(
-				"reduce_helpers.h",
-				"void\n"
-				"ac_free_scratchpad_%s(const size_t i)\n"
-				"{\n"
-				"d_reduce_scratchpads_%s[i] = NULL;\n"
-				"ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
-				"d_reduce_scratchpads_size_%s[i] = 0;\n"
-				"}\n"
-				,define_name,define_name,define_name,define_name,datatype_scalar,datatype_scalar,define_name
-				);
-		fprintf_filename(
-				"reduce_helpers.h",
-				"void\n"
-				"ac_resize_scratchpad_%s(const size_t i, const size_t new_bytes, const AcReduceOp state)\n"
-				"{\n"
-				"if(d_reduce_scratchpads_size_%s[i] >= new_bytes) return;\n"
-				"ac_free_scratchpad_%s(i);\n"
-				"ac_allocate_scratchpad_%s(i,new_bytes,state);\n"
-				"}\n\n"
-				,define_name,define_name,define_name,define_name
-				);
+                AccSource* reduce_helpers = acc_sources_manager_get_source(
+                    sources_manager, "reduce_helpers", ACC_SRC_DEVICE);
+                acc_source_add_include(reduce_helpers, false, false, "ac_reduce_helpers.h", NULL);
+                acc_source_add_include(reduce_helpers, false, false, "acc_runtime.h", NULL);
+                acc_source_add_include(reduce_helpers, false, false, "datatypes.h", NULL);
+                acc_source_add_include(reduce_helpers, false, false, "func_define.h", NULL);
+                acc_source_add_include(reduce_helpers, true, false, "user_defines.h", NULL);
+                acc_source_add_include(reduce_helpers, true, false, "stencil_accesses.h", NULL);
 
-		fprintf_filename(
-				"reduce_helpers.h",
-				"void\n"
-				"ac_resize_%ss_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)\n"
-				"{\n"
-				"bool var_reduced = false;\n"
-				"for(int i = 0; i < NUM_%s_OUTPUTS; ++i) var_reduced |= reduced_%ss[kernel][i];\n"
-				"if(var_reduced)\n"
-				"{\n"
-				"	const size_t size = n_elems*sizeof(%s);\n"
-				"	for(int i = 0; i < NUM_%s_OUTPUTS; ++i)\n"
-				"	{\n"
-				"		if(!reduced_%ss[kernel][i]) continue;\n"
-				"		ac_resize_scratchpad_%s(i, size, vba.scratchpad_states->%ss[i]);\n"
-				"	}\n"
-				"}\n"
-				"}\n\n"
-				,define_name,uppr_name,define_name,datatype_scalar,uppr_name,define_name,define_name,define_name,define_name
-				);
+                if (datatype_scalar != REAL_STR) {
+                  // clang-format off
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC,
+                      "%s* d_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];",
+                      datatype_scalar, define_name, uppr_name);
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC,
+                      "size_t d_reduce_scratchpads_size_%s[NUM_%s_OUTPUTS+1];",
+                      define_name, uppr_name);
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC | ACC_SRC_DECL_DEVICE | ACC_SRC_DECL_CONSTANT,
+                      "%s d_reduce_%s_res_symbol[NUM_%s_OUTPUTS+1];",
+                      datatype_scalar, define_name, uppr_name);
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC | ACC_SRC_DECL_DEVICE | ACC_SRC_DECL_CONSTANT,
+                      "%s* d_symbol_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];",
+                      datatype_scalar, define_name, uppr_name);
+                  // clang-format on
+                }
+                else {
+                  // clang-format off
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC,
+                      "AcReal* d_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];",
+                      define_name, uppr_name);
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC,
+                      "size_t d_reduce_scratchpads_size_%s[NUM_%s_SCRATCHPADS];",
+                      define_name, uppr_name);
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC | ACC_SRC_DECL_DEVICE | ACC_SRC_DECL_CONSTANT,
+                      "AcReal d_reduce_%s_res_symbol[NUM_%s_SCRATCHPADS];",
+                      define_name, uppr_name);
+                  acc_source_add_declaration(
+                      reduce_helpers, ACC_SRC_DECL_PUBLIC | ACC_SRC_DECL_DEVICE | ACC_SRC_DECL_CONSTANT,
+                      "AcReal* d_symbol_reduce_scratchpads_%s[NUM_%s_SCRATCHPADS];",
+                      define_name, uppr_name);
+                  // clang-format on
+                }
 
-	}
+                func = acc_source_get_function(
+                    reduce_helpers, 0, "ac_allocate_scratchpad_%s", define_name);
+                acc_source_function_set_qualifiers(func, "%s**",
+                                                   datatype_scalar);
+                acc_source_function_set_params(
+                    func,
+                    "(const size_t i, const size_t bytes, const AcReduceOp "
+                    "state)");
+                acc_source_function_add_impl(
+                    func,
+                    // clang-format off
+                    "ERRCHK_CUDA_ALWAYS(acMalloc((void**)&d_reduce_scratchpads_%s[i],bytes));\n"
+                    "ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*), sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
+                    "d_reduce_scratchpads_size_%s[i] = bytes;\n"
+                    "acKernelFlush(0,d_reduce_scratchpads_%s[i], bytes/sizeof(%s),get_reduce_state_flush_var_%s(state));\n"
+                    "return &d_reduce_scratchpads_%s[i];\n",
+                    // clang-format on
+                    define_name, define_name, define_name, datatype_scalar,
+                    datatype_scalar, define_name, define_name, datatype_scalar,
+                    define_name, define_name);
+
+                func = acc_source_get_function(reduce_helpers, 0,
+                                               "ac_get_scratchpad_size_%s",
+                                               define_name);
+                acc_source_function_set_qualifiers(func, "const size_t*");
+                acc_source_function_set_params(func, "(const size_t i)");
+                acc_source_function_add_impl(
+                    func, "return &d_reduce_scratchpads_size_%s[i];",
+                    define_name);
+
+                func = acc_source_get_function(reduce_helpers, 0,
+                                               "ac_free_scratchpad_%s",
+                                               define_name);
+                acc_source_function_set_qualifiers(func, "void");
+                acc_source_function_set_params(func, "(const size_t i)");
+                acc_source_function_add_impl(
+                    func,
+                    // clang-format off
+                    "d_reduce_scratchpads_%s[i] = NULL;\n"
+                    "ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*), sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
+                    "d_reduce_scratchpads_size_%s[i] = 0;\n",
+                    // clang-format on
+                    define_name, define_name, define_name, datatype_scalar,
+                    datatype_scalar, define_name);
+
+                func = acc_source_get_function(reduce_helpers, 0,
+                                               "ac_resize_scratchpad_%s",
+                                               define_name);
+                acc_source_function_set_qualifiers(func, "void");
+                acc_source_function_set_params(
+                    func,
+                    "(const size_t i, const size_t new_bytes, const AcReduceOp "
+                    "state)");
+                acc_source_function_add_impl(
+                    func,
+                    "if(d_reduce_scratchpads_size_%s[i] >= new_bytes) return;\n"
+                    "ac_free_scratchpad_%s(i);\n"
+                    "ac_allocate_scratchpad_%s(i,new_bytes,state);\n",
+                    define_name, define_name, define_name);
+
+                func = acc_source_get_function(reduce_helpers, 0,
+                                               "ac_resize_%ss_to_fit",
+                                               define_name);
+                acc_source_function_set_qualifiers(func, "void");
+                acc_source_function_set_params(
+                    func,
+                    "(const size_t n_elems, VertexBufferArray vba, const "
+                    "AcKernel kernel)");
+                acc_source_function_add_impl(
+                    func,
+                    // clang-format off
+                    "bool var_reduced = false;\n"
+                    "for(int i = 0; i < NUM_%s_OUTPUTS; ++i) var_reduced |= reduced_%ss[kernel][i];\n"
+                    "if(var_reduced)\n"
+                    "{\n"
+                    "	const size_t size = n_elems*sizeof(%s);\n"
+                    "	for(int i = 0; i < NUM_%s_OUTPUTS; ++i)\n"
+                    "	{\n"
+                    "		if(!reduced_%ss[kernel][i]) continue;\n"
+                    "		ac_resize_scratchpad_%s(i, size, vba.scratchpad_states->%ss[i]);\n"
+                    "	}\n"
+                    "}\n",
+                    uppr_name, define_name,
+                    datatype_scalar,
+                    uppr_name,
+                    define_name,
+                    define_name,
+                    define_name, define_name);
+                    // clang-format on
+        }
 
 	fprintf_filename("dconst_decl.h","static UNUSED DEVICE_INLINE %s DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 
-	//TP: TODO: compare the performance of having this one level of indirection vs. simply loading the value to dconst and using it from there
-	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || (datatype_scalar == FLOAT_STR && AC_DOUBLE_PRECISION))
-	{
-		fprintf_filename("output_value_decl.h","%s static UNUSED DEVICE_INLINE  output_value(const %sOutputParam& param){return d_reduce_%s_res_symbol[(int)param];}\n"
-			,datatype_scalar, enum_name, define_name);
-	}
+        // TP: TODO: compare the performance of having this one level of
+        // indirection vs. simply loading the value to dconst and using it from
+        // there
+        if (datatype_scalar == REAL_STR || datatype_scalar == INT_STR ||
+            (datatype_scalar == FLOAT_STR && AC_DOUBLE_PRECISION)) {
+          AccSource* output_value_decl = acc_sources_manager_get_source(
+              sources_manager, "output_value_decl", ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+
+          func = acc_source_get_function(output_value_decl, 0, "output_value");
+          acc_source_function_set_qualifiers(
+              func, "static %s UNUSED DEVICE_INLINE", datatype_scalar);
+          acc_source_function_set_params(func, "(const %sOutputParam& param)",
+                                         enum_name);
+          acc_source_function_add_impl(
+              func, "return d_reduce_%s_res_symbol[(int)param];", define_name);
+        }
 
 	fprintf_filename("dconst_decl.h","%s static UNUSED DEVICE_INLINE VAL(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
@@ -1701,42 +1889,64 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	//fprintf_filename("get_address.h","size_t  get_address(const %sOutputParam& param){ return (size_t)&d_output.%s_outputs[(int)param];}\n"
 	//		,enum_name, define_name);
 
-	fprintf_filename("load_dconst_arrays.h","static cudaError_t\n"
-		   "load_array(const %s* values, const size_t bytes, const %sArrayParam arr)\n"
-		    "{\n",
-		     datatype_scalar, enum_name);
+        AccSource* load_dconst_arrays = acc_sources_manager_get_source(
+            sources_manager, "load_dconst_arrays",
+            ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+	acc_source_add_include(load_dconst_arrays, false, false, "astaroth_cuda_wrappers.h", NULL);
 
-		     
+        func = acc_source_get_function(load_dconst_arrays, 0, "load_array");
+        acc_source_function_set_qualifiers(func, "static cudaError_t");
+        acc_source_function_set_params(
+            func,
+            "(const %s* values, const size_t bytes, const %sArrayParam arr)",
+            datatype_scalar, enum_name);
 
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	{
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
-		  fprintf_filename("load_dconst_arrays.h","if (arr == %s)\n return acMemcpyToSymbol(AC_INTERNAL_d_%s_arrays_%s,values,bytes,0,cudaMemcpyHostToDevice);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
-  	}
-	fprintf_filename("load_dconst_arrays.h","(void)values;(void)bytes;(void)arr;\nreturn cudaSuccess;\n}\n");
+        for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+          if (symbol_table[i].type & NODE_VARIABLE_ID &&
+              symbol_table[i].tspecifier == datatype &&
+              str_vec_contains(symbol_table[i].tqualifiers, DCONST_STR)) {
+            acc_source_function_add_impl(
+                func,
+                "if (arr == %s)\n"
+                "  return acMemcpyToSymbol(AC_INTERNAL_d_%s_arrays_%s, values, bytes, 0, cudaMemcpyHostToDevice);\n",
+                symbol_table[i].identifier,
+                define_name, symbol_table[i].identifier);
+          }
+        }
+        acc_source_function_add_impl(
+            func,
+            "(void)values; (void)bytes; (void)arr;\n"
+            "return cudaSuccess;");
 
+        AccSource* store_dconst_arrays = acc_sources_manager_get_source(
+            sources_manager, "store_dconst_arrays",
+            ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+	acc_source_add_include(store_dconst_arrays, false, false, "astaroth_cuda_wrappers.h", NULL);
 
-	fprintf_filename("store_dconst_arrays.h","static cudaError_t\n"
-		  "store_array(%s* values, const size_t bytes, const %sArrayParam arr)\n"
-		    "{\n",
-	datatype_scalar, enum_name);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	{
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
-	  {
-		  fprintf_filename("store_dconst_arrays.h","if (arr == %s)\n return acMemcpyFromSymbol(values,AC_INTERNAL_d_%s_arrays_%s,bytes,0,cudaMemcpyDeviceToHost);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
-	  }
-  	}
-	fprintf_filename("store_dconst_arrays.h","(void)values;(void)bytes;(void)arr;\nreturn cudaSuccess;\n}\n");
+        func = acc_source_get_function(store_dconst_arrays, 0, "store_array");
+        acc_source_function_set_qualifiers(func, "static cudaError_t");
+        acc_source_function_set_params(
+            func,
+            "(%s* values, const size_t bytes, const %sArrayParam arr)",
+            datatype_scalar, enum_name);
+        for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+          if (symbol_table[i].type & NODE_VARIABLE_ID &&
+              symbol_table[i].tspecifier == datatype &&
+              str_vec_contains(symbol_table[i].tqualifiers, DCONST_STR)) {
+            acc_source_function_add_impl(
+                func,
+                "if (arr == %s)\n"
+                "  return acMemcpyFromSymbol(values, AC_INTERNAL_d_%s_arrays_%s, bytes, "
+                "0, cudaMemcpyDeviceToHost);\n",
+                symbol_table[i].identifier, define_name,
+                symbol_table[i].identifier);
+          }
+        }
+        acc_source_function_add_impl(func,
+                                     "(void)values; (void)bytes; (void)arr;\n"
+                                     "return cudaSuccess;");
 
-
-
-
-
-
-	fprintf_filename("load_and_store_uniform_overloads.h",
+        fprintf_filename("load_and_store_uniform_overloads.h",
 	        "static AcResult __attribute ((unused)) "
 		"acLoadUniform(const cudaStream_t stream, const %sParam param, const %s value) { return acLoad%sUniform(stream,param,value);}\n"
 	        "static AcResult __attribute ((unused)) "
@@ -1796,7 +2006,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
         }
 
 
-	fprintf_filename("arrays_accessed_decl.h","int %s_arrays_accessed[NUM_%s_ARRAYS]{};\n",define_name,uppr_name);
+	fprintf_filename("arrays_accessed_decl.h","AC_ANALYSIS_SHARED int %s_arrays_accessed[NUM_%s_ARRAYS]{};\n",define_name,uppr_name);
 	
 	fprintf_filename("arrays_output_accesses.h",
 			"{\nFILE* fp_arr_accesses = fopen(\"%s_arr_accesses\", \"wb\");"
@@ -2044,10 +2254,23 @@ create_primary_expression(const char* identifier)
 {
 	return astnode_create(NODE_PRIMARY_EXPRESSION,create_identifier_node(identifier),NULL);
 }
+//TP: the factors can be arbitrary expressions, e.g. 3*2+1, so each of them has to be in parentheses
 ASTNode*
 build_product_node(const node_vec elems)
 {
-	return build_list_node(elems,MULT_STR);
+	node_vec factors = VEC_INITIALIZER;
+	for(size_t i = 0; i < elems.size; ++i)
+	{
+		ASTNode* factor = astnode_create(NODE_UNKNOWN,astnode_dup(elems.data[i],NULL),NULL);
+		astnode_set_prefix("(",factor);
+		astnode_set_postfix(")",factor);
+		push_node(&factors,factor);
+	}
+	ASTNode* res = build_list_node(factors,MULT_STR);
+	//TP: build_list_node duplicates the nodes
+	for(size_t i = 0; i < factors.size; ++i) astnode_destroy((ASTNode*)factors.data[i]);
+	free_node_vec(&factors);
+	return res;
 }
 
 ASTNode*
@@ -2075,9 +2298,10 @@ get_index_node(const ASTNode* array_access_start, const node_vec var_dims)
 			node_vec dim_nodes = VEC_INITIALIZER;
     			for(size_t k = 0; k < j; ++k)
 				push_node(&dim_nodes,var_dims.data[k]);
-			ASTNode* dims_node = build_list_node(dim_nodes,MULT_STR);
+			ASTNode* dims_node = build_product_node(dim_nodes);
+			free_node_vec(&dim_nodes);
 			prefix_node->lhs = dims_node;
-			dims_node->parent = dims_node;
+			dims_node->parent = prefix_node;
 			astnode_set_postfix(")*",prefix_node);
     		}
 		astnode_set_prefix("(",node->rhs);
@@ -2156,17 +2380,15 @@ get_const_array_var_dims_recursive(const ASTNode* node, struct hashmap_s* cache)
 node_vec
 get_const_array_var_dims(const char* name, const ASTNode* root)
 {
-	static bool first_call = true;
-	static struct hashmap_s cache;
-	if(first_call)
+	if(!const_array_var_dims_cache.populated)
 	{
         	const unsigned initial_size = 2000;
-        	hashmap_create(initial_size, &cache);
-		first_call = false;
-		get_const_array_var_dims_recursive(root,&cache);
+        	hashmap_create(initial_size, &const_array_var_dims_cache.map);
+		const_array_var_dims_cache.populated = true;
+		get_const_array_var_dims_recursive(root,&const_array_var_dims_cache.map);
 	}
 
-	node_vec* cached_val = (node_vec*)hashmap_get(&cache,name,strlen(name));
+	node_vec* cached_val = (node_vec*)hashmap_get(&const_array_var_dims_cache.map,name,strlen(name));
 	if(cached_val) return *cached_val;
 
 	node_vec dummy = VEC_INITIALIZER;
@@ -2732,18 +2954,16 @@ copy_func_params_info(const func_params_info src)
 func_params_info
 get_function_params_info(const ASTNode* node, const char* func_name)
 {
-	static bool first_call = true;
-	static struct hashmap_s cache;
-	if(first_call)
+	if(!function_params_info_cache.populated)
 	{
         	const unsigned initial_size = 2000;
-        	hashmap_create(initial_size, &cache);
-		first_call = false;
+        	hashmap_create(initial_size, &function_params_info_cache.map);
+		function_params_info_cache.populated = true;
 	}
 	const bool duplicate_func = str_vec_contains(duplicate_dfuncs.names,func_name);
 	if(!duplicate_func)
 	{
-  		func_params_info* info = (func_params_info*)hashmap_get(&cache, func_name, strlen(func_name));
+  		func_params_info* info = (func_params_info*)hashmap_get(&function_params_info_cache.map, func_name, strlen(func_name));
 		if(info)
 		{
 			return *info;
@@ -2756,7 +2976,7 @@ get_function_params_info(const ASTNode* node, const char* func_name)
 	{
 		func_params_info* res_ptr = (func_params_info*)malloc(sizeof(res));
 		*res_ptr = res;
-		hashmap_put(&cache, func_name, strlen(func_name),(void*)res_ptr);
+		hashmap_put(&function_params_info_cache.map, func_name, strlen(func_name),(void*)res_ptr);
 	}
 	return res;
 }
@@ -3485,8 +3705,9 @@ void
 check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 {
 	TRAVERSE_PREAMBLE_PARAMS(check_for_undeclared_functions,root);
-	if(get_node(NODE_MEMBER_ID,node)) return;
+	//TP: check the node type first since get_node searches the whole subtree, which done for every node would be quadratic
 	if(!(node->type & NODE_FUNCTION_CALL)) return;
+	if(get_node(NODE_MEMBER_ID,node)) return;
 
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	if(strstr(func_name,"__AC_INTERNAL_NUMBERING")) return;
@@ -4283,7 +4504,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 		{
 			if(!written_fields[i + num_fields*kernel_index]) continue;
 	  		const char* name = get_symbol_by_index(NODE_VARIABLE_ID,i,FIELD_STR)->identifier;
-			astnode_sprintf_postfix(compound_statement,"vba.out[%s][idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
+			astnode_sprintf_postfix(compound_statement,"((AcReal*)vba.out[%s])[idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
 		}
 	}
 	if(func_calls_reduce(fn_name) && BUFFERED_REDUCTIONS && !has_block_loops(kernel_index))
@@ -4455,6 +4676,8 @@ gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations,
 		push_node(&optimized_decls,new_node);
 	}
 	ASTNode* declarations = build_list_node(optimized_decls,"");
+	//TP: build_list_node duplicates the nodes
+	for(size_t i = 0; i < optimized_decls.size; ++i) astnode_destroy((ASTNode*)optimized_decls.data[i]);
 	free_node_vec(&optimized_decls);
 	head->rhs = declarations;
 	append_to_tail_node(tail_node,head);
@@ -4789,38 +5012,38 @@ string_vec
 get_array_elem_size(const char* arr_type_in)
 {
 	string_vec res = VEC_INITIALIZER;
-	char* arr_type = strdup(arr_type_in);
-	if(n_occurances(arr_type,'<') == 1)
+	if(n_occurances(arr_type_in,'<') != 1)
 	{
-		int start = 0;
-		while(arr_type[++start] != '<');
-		int end = start;
-		++start;
-		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
-		arr_type[end] = '\0';
-		++end;
-
-		start = end;
-		while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
-		const bool two_dimensional = arr_type[end] == ',';
-		arr_type[end] = '\0';
-		char* tmp = malloc(sizeof(char)*1000);
-		strcpy(tmp, &arr_type[start]);
-		push(&res,intern(tmp));
-
-		if(two_dimensional)
-		{
-			++end;
-			start = end;
-			while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
-			arr_type[end] = '\0';
-			strcpy(tmp, &arr_type[start]);
-			push(&res,intern(tmp));
-		}
-		
+		push(&res,intern(arr_type_in));
 		return res;
 	}
-	push(&res,intern(arr_type));
+	//TP: AcArray<elem,d0,d1,...,dN>: skip the element type, collect every dimension
+	const char* p = strchr(arr_type_in,'<') + 1;
+	int depth = 0;
+	while(*p && !(depth == 0 && (*p == ',' || *p == '>')))
+	{
+		if(*p == '(') ++depth;
+		else if(*p == ')') --depth;
+		++p;
+	}
+	while(*p == ',')
+	{
+		++p;
+		while(*p == ' ') ++p;
+		const char* start = p;
+		depth = 0;
+		while(*p && !(depth == 0 && (*p == ',' || *p == '>')))
+		{
+			if(*p == '(') ++depth;
+			else if(*p == ')') --depth;
+			++p;
+		}
+		const char* end = p;
+		while(end > start && end[-1] == ' ') --end;
+		char* tmp = strndup(start, end-start);
+		push(&res,intern(tmp));
+		free(tmp);
+	}
 	return res;
 }
 
@@ -4869,18 +5092,22 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		  {
 		  	fprintf(stream, "%s ", get_array_elem_type(tspecifier_out));
 		  	string_vec sizes = get_array_elem_size(tspecifier_out);
-			//TP: even though it is not intended rest of the dims come from traversing
-			//TP: works for now but a bit hacky
-			res = sprintf_intern("[%s]",sizes.data[0]);
-			/**
-			if(sizes.size == 1)
-			   res = sprintf_intern("[%s]",sizes.data[0]);
-			res = sprintf_intern("[%s]",sizes.data[0]);
-			else if(sizes.size == 2)
-				res = sprintf_intern("[%s]",sizes.data[0]);
-			else
-				fatal("Add missing dimensionality initialization!\n");
-			**/
+			//TP: all dims are emitted here; the declarator's array accesses are stripped
+			//    in transform_arrays_to_std_arrays_in_func
+			//TP: pad zero-length dims to 1: zero-sized arrays are not valid C++
+			//    (template deduction on T(&)[N1][N2] fails) and some CUDA compilers reject them
+			res = "";
+			for(size_t i = 0; i < sizes.size; ++i)
+			{
+				if(!strcmp(sizes.data[i],"0"))
+				{
+				  res = sprintf_intern("%s[1]",res);
+				}	
+				else
+				{
+				  res = sprintf_intern("%s[%s]",res,sizes.data[i]);
+				}
+			}
 			free_str_vec(&sizes);
 		  }
 	  }
@@ -4954,7 +5181,9 @@ void
 refresh_current_hashmap()
 {
     hashmap_destroy(&symbol_table_hashmap[current_nest]);
-    const unsigned initial_size = 2000;
+    //TP: this is called for every scope that is entered and most scopes have only few symbols,
+    //    so start small since allocating and zeroing a large hashmap each time is costly. The hashmap grows if needed
+    const unsigned initial_size = 32;
     hashmap_create(initial_size, &symbol_table_hashmap[current_nest]);
 }
 const char* 
@@ -5519,18 +5748,21 @@ get_nodes(const ASTNode* node, node_vec* nodes, string_vec* names, const NodeTyp
 	push_node(nodes,node);
 	push(names,get_node_by_token(IDENTIFIER,node)->buffer);
 }
+static inline bool
+primary_expression_or_func_call_has_type(const ASTNode* node)
+{
+	if(node->type != NODE_PRIMARY_EXPRESSION && !(node->type & NODE_FUNCTION_CALL))
+		return true;
+	return node->expr_type != NULL;
+}
 bool
 all_primary_expressions_and_func_calls_have_type(const ASTNode* node)
 {
-	bool res = true;
-	if(node->lhs)
-		res &= all_primary_expressions_and_func_calls_have_type(node->lhs);
-	if(node->rhs)
-		res &= all_primary_expressions_and_func_calls_have_type(node->rhs);
-	if(node->type != NODE_PRIMARY_EXPRESSION && !(node->type & NODE_FUNCTION_CALL))
-		return res;
-	res &= node->expr_type != NULL;
-	return res;
+	//TP: stops at the first node without a type
+	if(!primary_expression_or_func_call_has_type(node)) return false;
+	if(node->lhs && !all_primary_expressions_and_func_calls_have_type(node->lhs)) return false;
+	if(node->rhs && !all_primary_expressions_and_func_calls_have_type(node->rhs)) return false;
+	return true;
 }
 
 
@@ -5890,16 +6122,18 @@ turn_assignment_to_comma(ASTNode* node)
 	astnode_set_buffer(",",assignment->rhs->lhs);
 }
 
-void
-gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims)
+//TP: inside_global tells whether some ancestor of node is NODE_GLOBAL, passed down to avoid walking up to the root for each identifier
+static void
+gen_multidimensional_field_accesses_base(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims, const bool inside_global)
 {
+	const bool children_inside_global = inside_global || (node->type & NODE_GLOBAL);
 	if(!(node->type & NODE_STRUCT_EXPRESSION) && node->lhs)
 	{
-		gen_multidimensional_field_accesses_recursive(node->lhs,gen_mem_accesses,field_dims);
+		gen_multidimensional_field_accesses_base(node->lhs,gen_mem_accesses,field_dims,children_inside_global);
 	}
 	if(node->rhs)
 	{
-		gen_multidimensional_field_accesses_recursive(node->rhs,gen_mem_accesses,field_dims);
+		gen_multidimensional_field_accesses_base(node->rhs,gen_mem_accesses,field_dims,children_inside_global);
 	}
 	
 	if(node->token != IDENTIFIER)
@@ -5909,7 +6143,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	if(!node->parent)
 		return;
 	//discard global const declarations
-	if(get_parent_node(NODE_GLOBAL,node))
+	if(inside_global)
 		return;
 	const char* type = get_expr_type(node->parent);
 	if(!type || strcmps(type,COMPLEX_FIELD_STR,FIELD_STR,FIELD3_STR,FIELD4_STR,"VertexBufferHandle"))
@@ -5984,6 +6218,11 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 		astnode_set_postfix(",",lhs);
 	}
 	lhs->parent = array_access;
+}
+void
+gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims)
+{
+	gen_multidimensional_field_accesses_base(node,gen_mem_accesses,field_dims,get_parent_node(NODE_GLOBAL,node) != NULL);
 }
 
 void
@@ -6165,19 +6404,25 @@ gen_const_variables(const ASTNode* node, FILE* fp, FILE* fp_bi,FILE* fp_non_scal
 int_vec
 dfuncs_in_topological_order(void)
 {
-	int_vec res = VEC_INITIALIZER;
-	for(size_t i = 0; i< calling_info.names.size; ++i)
+	//TP: the topological indexes are a permutation of 0..n-1, so invert it instead of searching for each index
+	const size_t n = calling_info.names.size;
+	int* func_at_index = (int*)malloc(sizeof(int)*n);
+	for(size_t i = 0; i < n; ++i) func_at_index[i] = -1;
+	for(size_t j = 0; j < n; ++j)
 	{
-		for(size_t j = 0; j < calling_info.names.size; ++j)
-		{
-			const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,calling_info.names.data[j],NULL,NULL);
-			if(!is_dfunc) continue;
-			if(calling_info.topological_index[j] == (int)i) 
-			{
-				push_int(&res, get_symbol_index(NODE_DFUNCTION_ID,calling_info.names.data[j],0));
-			}
-		}
+		const int index = calling_info.topological_index[j];
+		if(index >= 0 && index < (int)n) func_at_index[index] = j;
 	}
+	int_vec res = VEC_INITIALIZER;
+	for(size_t i = 0; i < n; ++i)
+	{
+		const int j = func_at_index[i];
+		if(j == -1) continue;
+		const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,calling_info.names.data[j],NULL,NULL);
+		if(!is_dfunc) continue;
+		push_int(&res, get_symbol_index(NODE_DFUNCTION_ID,calling_info.names.data[j],0));
+	}
+	free(func_at_index);
 	return res;
 }
 static void
@@ -6278,20 +6523,148 @@ write_calling_info_for_stencilgen(const string_vec* stencils_called)
     fprintf(fp,"};\n");
     fclose(fp);
 }
+static char* mem_accesses_sdefinitions = NULL;
+//TP: info about the dfuncs that does not depend on the kernel, computed once per gen_kernels instead of once per kernel
+typedef struct
+{
+	int*  dfunc_index; //dfunc indexes in topological order, inline dfuncs excluded
+	int*  call_index;  //corresponding indexes in calling_info
+	size_t n;
+	bool* called;      //scratch: called[call_index] is true if called by the current kernel
+} gen_kernels_dfunc_info;
+
+static gen_kernels_dfunc_info
+get_gen_kernels_dfunc_info(void)
+{
+	gen_kernels_dfunc_info res = {.n = 0};
+	//TP: get_symbol_by_index is linear in the number of symbols so collect all dfunc symbols in one pass
+	const Symbol** dfunc_symbols = (const Symbol**)calloc(num_symbols[0]+1,sizeof(Symbol*));
+	size_t num_dfunc_symbols = 0;
+	for (size_t i = 0; i < num_symbols[0]; ++i)
+		if (symbol_table[i].type & NODE_DFUNCTION_ID) dfunc_symbols[num_dfunc_symbols++] = &symbol_table[i];
+
+	int_vec topological_order = dfuncs_in_topological_order();
+	const size_t n = topological_order.size < num_dfuncs ? topological_order.size : num_dfuncs;
+	res.dfunc_index = (int*)malloc(sizeof(int)*(n+1));
+	res.call_index  = (int*)malloc(sizeof(int)*(n+1));
+	for(size_t index = 0; index < n; ++index)
+	{
+		const int i = topological_order.data[index];
+		const Symbol* dfunc_symbol = (i >= 0 && (size_t)i < num_dfunc_symbols) ? dfunc_symbols[i] : NULL;
+		if(!dfunc_symbol) continue;
+		if(str_vec_contains(dfunc_symbol->tqualifiers,INLINE_STR)) continue;
+		res.dfunc_index[res.n] = i;
+		res.call_index[res.n]  = str_vec_get_index(calling_info.names,dfunc_symbol->identifier);
+		++res.n;
+	}
+	free_int_vec(&topological_order);
+	free(dfunc_symbols);
+	res.called = (bool*)calloc(calling_info.names.size+1,sizeof(bool));
+	return res;
+}
+
+static void
+free_gen_kernels_dfunc_info(gen_kernels_dfunc_info* info)
+{
+	free(info->dfunc_index);
+	free(info->call_index);
+	free(info->called);
+}
+
+static void
+append_to_prefix(char* prefix, size_t* len, const size_t capacity, const char* str)
+{
+	const size_t str_len = strlen(str);
+	if(*len + str_len + 1 > capacity) fatal("Kernel prefix does not fit into %zu bytes\n",capacity);
+	memcpy(prefix + *len, str, str_len+1);
+	*len += str_len;
+}
+
+#define STENCILGEN_KERNEL_OUTPUT_FMT "stencilgen_kernel_%d.out"
+static int
+count_kernel_functions(const ASTNode* node)
+{
+	int res = (node->type & NODE_KFUNCTION) ? 1 : 0;
+	if(node->lhs) res += count_kernel_functions(node->lhs);
+	if(node->rhs) res += count_kernel_functions(node->rhs);
+	return res;
+}
+
+static int
+get_num_available_cpus(void)
+{
+	const long n = sysconf(_SC_NPROCESSORS_ONLN);
+	return n > 0 ? (int)n : 1;
+}
+
+extern char** environ;
+//TP: the stencil generator invocations for different kernels are independent of each other,
+//    and of anything acc does in between, so run them all in parallel up front instead of one at a time.
+//    The output of each is written to STENCILGEN_KERNEL_OUTPUT_FMT and read back by gen_kernels_recursive.
+//    posix_spawn instead of fork since copying the page tables of the large acc process for each kernel is costly
+static void
+gen_kernel_stencils_in_parallel(const int n_kernels)
+{
+	const int max_running = get_num_available_cpus();
+	int running = 0;
+	fflush(stdout);
+	fflush(stderr);
+	for(int kernel = 0; kernel < n_kernels; ++kernel)
+	{
+		if(running >= max_running)
+		{
+			if(wait(NULL) > 0) --running;
+		}
+		char output[256];
+		char kernel_str[64];
+		sprintf(output, STENCILGEN_KERNEL_OUTPUT_FMT, kernel);
+		sprintf(kernel_str, "%d", kernel);
+		char* const argv[] = {(char*)STENCILGEN_EXEC, (char*)"-kernel", kernel_str, NULL};
+		posix_spawn_file_actions_t file_actions;
+		posix_spawn_file_actions_init(&file_actions);
+		posix_spawn_file_actions_addopen(&file_actions, STDOUT_FILENO, output, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		pid_t pid;
+		const int err = posix_spawn(&pid, "./" STENCILGEN_EXEC, &file_actions, NULL, argv, environ);
+		posix_spawn_file_actions_destroy(&file_actions);
+		if(err) fatal("Was not able to launch ./" STENCILGEN_EXEC " -kernel %d: %s\n", kernel, strerror(err));
+		++running;
+	}
+	while(running > 0 && wait(NULL) > 0) --running;
+}
+
+static char*
+read_kernel_stencils(const int kernel, const size_t max_size)
+{
+	char filename[256];
+	sprintf(filename, STENCILGEN_KERNEL_OUTPUT_FMT, kernel);
+	FILE* fp = fopen(filename, "r");
+	if(!fp) fatal("Was not able to open %s\n", filename);
+	char* res = malloc(max_size);
+	assert(res);
+	const size_t read_len = fread(res, 1, max_size - 1, fp);
+	res[read_len] = '\0';
+	if (!feof(fp)) fatal("Output of ./" STENCILGEN_EXEC " -kernel %d does not fit into %zu bytes\n", kernel, max_size);
+	fclose(fp);
+	remove(filename);
+	return res;
+}
+
 static void
 gen_kernels_recursive(const ASTNode* node, char** dfunctions,
-            const bool gen_mem_accesses, int* curr_kernel)
+            const bool gen_mem_accesses, int* curr_kernel, gen_kernels_dfunc_info* dfunc_info)
 {
   assert(node);
 
   if (node->lhs)
-    gen_kernels_recursive(node->lhs, dfunctions, gen_mem_accesses,curr_kernel);
+    gen_kernels_recursive(node->lhs, dfunctions, gen_mem_accesses,curr_kernel,dfunc_info);
   if (node->type & NODE_KFUNCTION) {
 
     const size_t len = 64 * 1024 * 1024;
     char* prefix     = malloc(len);
     assert(prefix);
     prefix[0] = '\0';
+    //TP: keep track of the length since repeated strcat calls are quadratic in the length of the prefix
+    size_t prefix_len = 0;
 
     const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
     const int_vec called_dfuncs = calling_info.called_funcs[str_vec_get_index(calling_info.names,name)];
@@ -6300,55 +6673,51 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
     assert(node->rhs->rhs);
     ASTNode* compound_statement = node->rhs->rhs;
 
-    strcat(prefix, compound_statement->prefix);
+    append_to_prefix(prefix, &prefix_len, len, compound_statement->prefix ? compound_statement->prefix : "");
 
     // Generate stencil FMADs
-    char* cmdoptions = malloc(sizeof(char)*4096);
-    cmdoptions[0] = '\0';
-    if (gen_mem_accesses) {
-      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
-    }
-    else {
-      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", *curr_kernel);
+    //TP: the output of -mem-accesses does not depend on the kernel so it is generated only once per gen_kernels
+    const size_t sdefinitions_size = 10 * 1024 * 1024;
+    if (!gen_mem_accesses) {
+      //TP: generated in parallel by gen_kernel_stencils_in_parallel
+      char* sdefinitions = read_kernel_stencils(*curr_kernel, sdefinitions_size);
       ++(*curr_kernel);
+      append_to_prefix(prefix, &prefix_len, len, sdefinitions);
+      free(sdefinitions);
     }
-    FILE* proc = popen(cmdoptions, "r");
-    assert(proc);
+    else if (!mem_accesses_sdefinitions) {
+      const char* cmdoptions = "./" STENCILGEN_EXEC " -mem-accesses";
+      FILE* proc = popen(cmdoptions, "r");
+      assert(proc);
 
-    char* sdefinitions = malloc(10 * 1024 * 1024);
-    assert(sdefinitions);
-    sdefinitions[0] = '\0';
-    char* buf = malloc(sizeof(char)*4096);
-    while (fgets(buf, sizeof(buf), proc))
-      strcat(sdefinitions, buf);
+      char* sdefinitions = malloc(sdefinitions_size);
+      assert(sdefinitions);
+      const size_t read_len = fread(sdefinitions, 1, sdefinitions_size - 1, proc);
+      sdefinitions[read_len] = '\0';
+      if (!feof(proc)) fatal("Output of %s does not fit into %zu bytes\n", cmdoptions, sdefinitions_size);
 
-    pclose(proc);
-
-    strcat(prefix, sdefinitions);
-    free(sdefinitions);
-    int_vec topological_order = dfuncs_in_topological_order();
-    for(size_t index = 0; index < num_dfuncs; ++index)
+      pclose(proc);
+      mem_accesses_sdefinitions = sdefinitions;
+    }
+    if (gen_mem_accesses) append_to_prefix(prefix, &prefix_len, len, mem_accesses_sdefinitions);
+    for(size_t j = 0; j < called_dfuncs.size; ++j)
+	    if(called_dfuncs.data[j] >= 0 && (size_t)called_dfuncs.data[j] < calling_info.names.size) dfunc_info->called[called_dfuncs.data[j]] = true;
+    for(size_t index = 0; index < dfunc_info->n; ++index)
     {
-            const int i = topological_order.data[index];
-            const Symbol* dfunc_symbol = get_symbol_by_index(NODE_DFUNCTION_ID,i,0);
-            if(!dfunc_symbol) continue;
-            if(str_vec_contains(dfunc_symbol->tqualifiers,INLINE_STR)) continue;
-            const int call_index = str_vec_get_index(calling_info.names,dfunc_symbol->identifier);
-            if(int_vec_contains(called_dfuncs,call_index))
-            {
-                    strcat(prefix,dfunctions[i]);
-            }
+            const int call_index = dfunc_info->call_index[index];
+            if(call_index >= 0 && dfunc_info->called[call_index])
+                    append_to_prefix(prefix, &prefix_len, len, dfunctions[dfunc_info->dfunc_index[index]]);
     }
-    free_int_vec(&topological_order);
+    for(size_t j = 0; j < called_dfuncs.size; ++j)
+	    if(called_dfuncs.data[j] >= 0 && (size_t)called_dfuncs.data[j] < calling_info.names.size) dfunc_info->called[called_dfuncs.data[j]] = false;
 
     astnode_set_prefix(prefix, compound_statement);
     free(prefix);
-    free(cmdoptions);
   }
 
 
   if (node->rhs)
-    gen_kernels_recursive(node->rhs, dfunctions, gen_mem_accesses,curr_kernel);
+    gen_kernels_recursive(node->rhs, dfunctions, gen_mem_accesses,curr_kernel,dfunc_info);
 }
 
 static void
@@ -6357,7 +6726,12 @@ gen_kernels(const ASTNode* node, char** dfunctions,
 {
   	traverse(node, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
 	int curr_kernel = 0;
-	gen_kernels_recursive(node,dfunctions,gen_mem_accesses,&curr_kernel);
+	if(!gen_mem_accesses) gen_kernel_stencils_in_parallel(count_kernel_functions(node));
+	gen_kernels_dfunc_info dfunc_info = get_gen_kernels_dfunc_info();
+	gen_kernels_recursive(node,dfunctions,gen_mem_accesses,&curr_kernel,&dfunc_info);
+	free_gen_kernels_dfunc_info(&dfunc_info);
+	free(mem_accesses_sdefinitions);
+	mem_accesses_sdefinitions = NULL;
   	symboltable_reset();
 }
 
@@ -6684,6 +7058,27 @@ gen_field_info(FILE* fp)
 	FILE* fp_enums = fopen("builtin_enums.h","w");
   	fprintf(fp_enums,"#pragma once\n");
   	gen_enums(fp_enums,STENCIL_STR,"stencil_","NUM_STENCILS","Stencil");
+  	// PairSum stencils get also an index among the pair stencils (used e.g. by KernelAnalysisInfo)
+  	{
+  		fprintf(fp_enums, "typedef enum{");
+  		for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  			if(symbol_table[i].tspecifier == STENCIL_STR && str_vec_contains(symbol_table[i].tqualifiers,intern("pair_sum")))
+  				fprintf(fp_enums, "pair_stencil_%s,",symbol_table[i].identifier);
+  		fprintf(fp_enums, "NUM_PAIR_STENCILS} PairStencil;\n");
+
+  		int n_pair_stencils = 0;
+  		fprintf(fp_enums, "static const int stencil_to_pair_stencil[NUM_STENCILS+1] __attribute__((unused)) = {");
+  		for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  			if(symbol_table[i].tspecifier == STENCIL_STR)
+  				fprintf(fp_enums, "%d,",str_vec_contains(symbol_table[i].tqualifiers,intern("pair_sum")) ? n_pair_stencils++ : -1);
+  		fprintf(fp_enums, "-1};\n");
+
+  		fprintf(fp_enums, "static const int pair_stencil_to_stencil[NUM_PAIR_STENCILS+1] __attribute__((unused)) = {");
+  		for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  			if(symbol_table[i].tspecifier == STENCIL_STR && str_vec_contains(symbol_table[i].tqualifiers,intern("pair_sum")))
+  				fprintf(fp_enums, "stencil_%s,",symbol_table[i].identifier);
+  		fprintf(fp_enums, "-1};\n");
+  	}
   	gen_enums(fp_enums,RAYTRACE_STR,"ray_","NUM_RAYS","AcRay");
   	gen_enums(fp_enums,KERNEL_STR,"","NUM_KERNELS","AcKernel");
   	gen_enums_variadic(fp_enums,prof_types,"","NUM_PROFILES","Profile");
@@ -6831,7 +7226,7 @@ gen_field_info(FILE* fp)
   {
 	char* func_name;
 	my_asprintf(&func_name,"acGet%s",field_names.data[i]);
-	gen_dlsym(fp,func_name);
+	acc_gen_dlsym(fp,func_name);
 	free(func_name);
   }
 }
@@ -6860,6 +7255,8 @@ remove_extra_braces_in_arr_initializers(ASTNode* node)
 static void
 gen_user_defines(const ASTNode* root_in, const char* out)
 {
+  arena_pass pass;
+  begin_arena_pass(&pass);
   ASTNode* root = astnode_dup(root_in,NULL);
   remove_extra_braces_in_arr_initializers(root);
   FILE* fp = fopen(out, "w");
@@ -6998,7 +7395,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   for (size_t i = 0; i < s_info.user_structs.size; ++i)
   {
-	  fprintf_filename("to_str_funcs.h","std::string to_str(const %s value)\n"
+	  fprintf_filename("to_str_funcs.h","static std::string to_str(const %s value)\n"
 		       "{\n"
 		       "std::string res = \"{\";"
 		       "std::string tmp;\n"
@@ -7018,7 +7415,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 	  );
 	  const char* dsl_type = to_dsl_type(s_info.user_structs.data[i]);
 	  const char* res = dsl_type ? dsl_type : s_info.user_structs.data[i];
-	  fprintf_filename("to_str_funcs.h","template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], res);
+	  fprintf_filename("to_str_funcs.h","template <>\n inline std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], res);
   }
 
 
@@ -7088,7 +7485,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   free_str_vec(&datatypes);
   free_structs_info(&s_info);
 
-  fprintf(fp,"const int3 ray_directions[] = {");
+  fprintf(fp,"static const int3 ray_directions[] = {");
   string_vec ray_directions = get_ray_directions(root_in);
   for(size_t ray = 0; ray < ray_directions.size; ++ray)
 	  fprintf(fp,"{%s},",ray_directions.data[ray]);
@@ -7191,37 +7588,64 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   fp = fopen("user_config_loader.h","w");
   gen_config_loaders(root,fp);
   fclose(fp);
+  end_arena_pass(&pass,root);
 }
 
-
 static void
-gen_user_kernels(const char* out, const bool analysis_kernels)
+gen_user_kernels(const bool analysis_kernels)
 {
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
-  const char* default_param_list = "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
+  const char* default_param_list = "(const int3 start, const int3 end, DeviceVertexBufferArray vba)";
   const char* kernel_name_prefix = analysis_kernels
                                        ? KERNEL_NAME_PREFIX_ANALYSIS
                                        : KERNEL_NAME_PREFIX_DEFAULT;
+  const char* kernels_filename   = analysis_kernels
+                                       ? "user_analysis_kernel_declarations"
+                                       : "user_kernel_declarations";
 
-  FILE* fp_dec = fopen(out, "a");
+  AccSource* user_kernel_declarations = acc_sources_manager_get_source(
+      acc_sources_manager_singleton(), kernels_filename,
+      ACC_SRC_CPP | ACC_SRC_HEADER_ONLY);
+
   for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
-    if (symbol_table[i].tspecifier == KERNEL_STR) {
-      fprintf(fp_dec, "static void __global__ %s_%s %s);\n", kernel_name_prefix,
-              symbol_table[i].identifier, default_param_list);
-    }
+    if (symbol_table[i].tspecifier != KERNEL_STR)
+      continue;
+
+    AccSourceFunction* func = acc_source_get_function(
+        user_kernel_declarations, 0, "%s_%s", kernel_name_prefix,
+        symbol_table[i].identifier);
+    acc_source_function_set_qualifiers(func, "void __global__");
+    acc_source_function_set_params(func, default_param_list);
   }
 
-  fprintf(fp_dec, "static const Kernel kernels[] = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].tspecifier == KERNEL_STR)
-    {
-      fprintf(fp_dec, "%s_%s,", kernel_name_prefix, symbol_table[i].identifier);
-    }
-  fprintf(fp_dec, "};");
+  // Using asprintf which allocates a new string on every call is a little too
+  // costly. At the same time it seems to be the better option than to use
+  // a fixed sized buffer on the stack. It would be faster but could potentially
+  // overflow and the code was generally more difficult to read.
+  char *kernels_arr_impl = NULL;
+  my_asprintf(&kernels_arr_impl, "static const Kernel kernels[] = {\n");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (symbol_table[i].tspecifier != KERNEL_STR)
+      continue;
 
-  fclose(fp_dec);
+    char *impl_prev = kernels_arr_impl;
+    my_asprintf(&kernels_arr_impl, "%s  %s_%s,\n", impl_prev, kernel_name_prefix, symbol_table[i].identifier);
+    free(impl_prev);
+  }
 
+  char *impl_prev = kernels_arr_impl;
+  my_asprintf(&kernels_arr_impl, "%s};", impl_prev);
+  free(impl_prev);
+
+  acc_source_add_declaration(user_kernel_declarations,
+                             ACC_SRC_DECL_UNMANAGED | ACC_SRC_DECL_PUBLIC |
+                                 ACC_SRC_DECL_EPILOGUE,
+                             kernels_arr_impl);
+
+  acc_source_flush(user_kernel_declarations);
+
+  free(kernels_arr_impl);
   // Astaroth 2.0 backwards compatibility END
 }
 
@@ -7642,9 +8066,20 @@ transform_arrays_to_std_arrays_in_func(ASTNode* node)
 	  astnode_sprintf(tspec->lhs,"%s>",tspec->lhs->buffer);
 	}
         free_node_vec(&dims);
-        node->rhs->lhs->infix = NULL;
-        node->rhs->lhs->postfix= NULL;
-        node->rhs->lhs->rhs = NULL;
+        //TP: strip every dimension from the declarator, not only the outermost one.
+        //    All sizes are now emitted by output_specifier from the AcArray type.
+        ASTNode* acc = node->rhs->lhs;
+        acc->infix   = NULL;
+        acc->postfix = NULL;
+        acc->rhs     = NULL;
+        acc = acc->lhs;
+        while(acc && (acc->type & NODE_ARRAY_ACCESS))
+        {
+                acc->infix   = NULL;
+                acc->postfix = NULL;
+                acc->rhs     = NULL;
+                acc = acc->lhs;
+        }
         //remove unneeded braces if assignment
         if(node->parent->type & NODE_ASSIGNMENT && node->parent->rhs)
                 node->parent->rhs->prefix = NULL;
@@ -7908,6 +8343,22 @@ inside_conditional_scope(const ASTNode* node)
 		}
 		return false;
 }
+//TP: an elif is reached only if all previous conditions in its chain were false.
+//    If some of them are not constexpr the elif might have not been reached during the analysis even though it can be taken,
+//    so it can be considered known only if all previous conditions are constexpr
+static bool
+previous_conditions_are_constexpr(const ASTNode* node)
+{
+	while(get_node_by_token(ELIF,node->parent->lhs))
+	{
+		//TP: if_statement <- if_root <- elif_statement <- elif's if_statement
+		const ASTNode* prev = node->parent->parent->parent;
+		if(!(prev->type & NODE_IF)) return false;
+		if(!all_identifiers_are_constexpr(prev->lhs)) return false;
+		node = prev;
+	}
+	return true;
+}
 typedef struct
 {
 	bool in_array_access;
@@ -7955,7 +8406,7 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 	if(node->type & NODE_IF && all_identifiers_are_constexpr(node->lhs))
 	{
 		//TP: we only consider conditionals that are not inside other conditionals
-		if(!inside_conditional_scope(node))
+		if(!inside_conditional_scope(node) && previous_conditions_are_constexpr(node))
 		{
 			node->is_constexpr = true;
 			res = true;
@@ -8026,43 +8477,51 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 	}
 	return res;
 }
-bool
-gen_constexpr_info_base(ASTNode* node, const bool gen_mem_accesses)
+static void
+get_constexpr_info_funcs(ASTNode* node, node_vec* dst)
 {
-	bool res = false;
-	if(node->type & NODE_GLOBAL)
-		return res;
+	if(node->type & NODE_GLOBAL) return;
 	if(node->type & NODE_FUNCTION)
 	{
-		struct hashmap_s assignments;
-  		const unsigned initial_size = 2000;
-  		hashmap_create(initial_size, &assignments);
-		count_num_of_assignments(node,&assignments);
-		string_vec tmp = VEC_INITIALIZER;
-		res |= gen_constexpr_in_func(node,gen_mem_accesses,&assignments,(gen_constexpr_params){false,NULL},&tmp);
-  		hashmap_destroy(&assignments);
-		set_identifiers_constexpr(node,tmp);
-		free_str_vec(&tmp);
+		push_node(dst,node);
+		return;
 	}
-	else
-	{
-		if(node->lhs)
-			res |= gen_constexpr_info_base(node->lhs,gen_mem_accesses);
-		if(node->rhs)
-			res |= gen_constexpr_info_base(node->rhs,gen_mem_accesses);
-	}
-	return res;
+	if(node->lhs) get_constexpr_info_funcs(node->lhs,dst);
+	if(node->rhs) get_constexpr_info_funcs(node->rhs,dst);
 }
 
 void
 gen_constexpr_info(ASTNode* root, const bool gen_mem_accesses)
 {
+	//TP: same as calling gen_constexpr_info_base until nothing changes but the functions and their assignment counts
+	//    are collected only once, since the iterations only change the constexpr info and not the assignments
+	node_vec funcs = VEC_INITIALIZER;
+	get_constexpr_info_funcs(root,&funcs);
+	struct hashmap_s* assignments = (struct hashmap_s*)malloc(sizeof(struct hashmap_s)*(funcs.size+1));
+	for(size_t i = 0; i < funcs.size; ++i)
+	{
+  		const unsigned initial_size = 2000;
+  		hashmap_create(initial_size, &assignments[i]);
+		count_num_of_assignments(funcs.data[i],&assignments[i]);
+	}
 	bool has_changed = true;
 	while(has_changed) 
 	{
-		has_changed = gen_constexpr_info_base(root,gen_mem_accesses);
+		has_changed = false;
+		for(size_t i = 0; i < funcs.size; ++i)
+		{
+			ASTNode* func = (ASTNode*)funcs.data[i];
+			string_vec tmp = VEC_INITIALIZER;
+			has_changed |= gen_constexpr_in_func(func,gen_mem_accesses,&assignments[i],(gen_constexpr_params){false,NULL},&tmp);
+			//TP: nothing to do if no new constexpr variables, skips walking the whole function
+			if(tmp.size) set_identifiers_constexpr(func,tmp);
+			free_str_vec(&tmp);
+		}
 	}
-
+	for(size_t i = 0; i < funcs.size; ++i)
+  		hashmap_destroy(&assignments[i]);
+	free(assignments);
+	free_node_vec(&funcs);
 }
 
 bool
@@ -8083,17 +8542,30 @@ gen_declared_type_info(ASTNode* node)
 	res |=  node -> expr_type != NULL;
 	return res;
 }
-bool
-gen_local_type_info(ASTNode* node)
+//TP: all_typed returns whether all primary expressions and function calls in the subtree had a type at the end of processing it.
+//    Types are not removed during the pass so a subtree that was fully typed stays fully typed,
+//    which avoids rechecking the whole subtree for every expression node (quadratic in the depth of the tree).
+//    If the subtree was not fully typed it is rechecked since processing the rest of the tree can give types to it.
+static bool
+gen_local_type_info_base(ASTNode* node, bool* all_typed)
 {
 	bool res = false;
 	if(node->type & NODE_GLOBAL)
+	{
+		*all_typed = all_primary_expressions_and_func_calls_have_type(node);
 		return res;
+	}
+	bool lhs_typed = true;
+	bool rhs_typed = true;
 	if(node->lhs)
-		res |= gen_local_type_info(node->lhs);
+		res |= gen_local_type_info_base(node->lhs,&lhs_typed);
 	if(node->rhs)
-		res |= gen_local_type_info(node->rhs);
-	if(node->expr_type) return res;
+		res |= gen_local_type_info_base(node->rhs,&rhs_typed);
+	if(node->expr_type)
+	{
+		*all_typed = lhs_typed && rhs_typed;
+		return res;
+	}
 	if(is_return_node(node))
 	{
 		const char* expr_type = get_expr_type(node->rhs);
@@ -8114,14 +8586,23 @@ gen_local_type_info(ASTNode* node)
 	}
 	if(node->type & (NODE_PRIMARY_EXPRESSION | NODE_FUNCTION_CALL) ||
 		(node->type & NODE_DECLARATION && get_node(NODE_TSPEC,node)) ||
-		(node->type & NODE_EXPRESSION && all_primary_expressions_and_func_calls_have_type(node)) ||
+		(node->type & NODE_EXPRESSION && primary_expression_or_func_call_has_type(node)
+		 && (lhs_typed || all_primary_expressions_and_func_calls_have_type(node->lhs))
+		 && (rhs_typed || all_primary_expressions_and_func_calls_have_type(node->rhs))) ||
 		(node->type & NODE_ASSIGNMENT && node->rhs && get_parent_node(NODE_FUNCTION,node) &&  !get_node(NODE_MEMBER_ID,node->lhs))
 		|| (node->token == IN_RANGE)
 		|| (node->token == CAST)
 	)
 		get_expr_type(node);
 	res |=  node -> expr_type != NULL;
+	*all_typed = lhs_typed && rhs_typed && primary_expression_or_func_call_has_type(node);
 	return res;
+}
+bool
+gen_local_type_info(ASTNode* node)
+{
+	bool all_typed;
+	return gen_local_type_info_base(node,&all_typed);
 }
 bool
 flow_type_info_in_func(ASTNode* node, struct hashmap_s* types, const struct hashmap_s* func_return_types, const char* in_func_name, const char** ptr_table, int* index)
@@ -8391,7 +8872,6 @@ populate_dfunc_cache(const ASTNode* node, struct hashmap_s* cache)
 		hashmap_put(cache,func_name,strlen(func_name),(void*)node);
 	}
 }
-static bool reset_dfunc_cache = true;
 const ASTNode*
 find_dfunc_start(const ASTNode* root, const char* dfunc_name)
 {
@@ -9017,6 +9497,17 @@ transform_field_binary_ops(ASTNode* node)
 	const char* rhs_expr = get_expr_type(node->rhs);
 	const char* op = node->rhs->lhs->buffer;
         if(!op) return;
+	//TP: comparing a field handle to a real is meaningless so the comparison must be of the value of the field.
+	//    Without this e.g. Field > 0.0 compared the handle, which in addition was considered constexpr by the conditional elimination.
+	//    Comparisons against other types, e.g. Field == HEAT_INIT, can be comparisons of the handles so they are left as is
+	if(!strcmps(op,LESS_STR,GREATER_STR,LEQ_STR,GEQ_STR,EQUAL_STR,NEQ_STR))
+	{
+		if(is_value_applicable_type(lhs_expr) && rhs_expr == REAL_STR)
+			node->lhs = create_func_call_expr(VALUE_STR,node->lhs);
+		if(is_value_applicable_type(rhs_expr) && lhs_expr == REAL_STR)
+			node->rhs->rhs = create_func_call_expr(VALUE_STR,node->rhs->rhs);
+		return;
+	}
         if(strcmps(op,PLUS_STR,MINUS_STR,DIV_STR,MULT_STR)) return;
 
 	if(is_value_applicable_type(lhs_expr))
@@ -9620,11 +10111,14 @@ expand_allocating_types(ASTNode* root)
 }
 void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream)
 {
+    arena_pass pass;
+    begin_arena_pass(&pass);
     ASTNode* root = astnode_dup(root_in,NULL);
     symboltable_reset();
     traverse(root, 0, NULL);
     make_unique_bc_calls(root);
     gen_dfunc_bc_kernels(root,root,stream);
+    end_arena_pass(&pass,root);
 }
 void
 canonalize_assignments(ASTNode* node)
@@ -9843,8 +10337,60 @@ get_used_vars(const ASTNode* node, string_vec* dst)
         get_used_vars_base(node,dst,false,NULL);
 }
 
+//TP: set of (interned) string pointers, used instead of linear str_vec_contains searches in hot loops
+typedef struct
+{
+	const char** slots;
+	size_t capacity; //power of two
+	size_t size;
+} ptr_set;
+
+static inline size_t
+ptr_set_slot(const ptr_set* set, const char* ptr)
+{
+	return (size_t)(((uintptr_t)ptr >> 3) * 11400714819323198485ull) & (set->capacity-1);
+}
+
+static bool
+ptr_set_contains(const ptr_set* set, const char* ptr)
+{
+	if(!set->capacity) return false;
+	for(size_t i = ptr_set_slot(set,ptr);; i = (i+1) & (set->capacity-1))
+	{
+		if(set->slots[i] == ptr) return true;
+		if(!set->slots[i]) return false;
+	}
+}
+
+static void
+ptr_set_add(ptr_set* set, const char* ptr)
+{
+	if(!ptr || ptr_set_contains(set,ptr)) return;
+	if(2*(set->size+1) > set->capacity)
+	{
+		ptr_set old = *set;
+		set->capacity = old.capacity ? 2*old.capacity : 64;
+		set->slots = (const char**)calloc(set->capacity,sizeof(char*));
+		set->size = 0;
+		for(size_t i = 0; i < old.capacity; ++i)
+			if(old.slots[i]) ptr_set_add(set,old.slots[i]);
+		free(old.slots);
+	}
+	size_t i = ptr_set_slot(set,ptr);
+	while(set->slots[i]) i = (i+1) & (set->capacity-1);
+	set->slots[i] = ptr;
+	++set->size;
+}
+
+static void
+ptr_set_free(ptr_set* set)
+{
+	free(set->slots);
+	*set = (ptr_set){NULL,0,0};
+}
+
 bool
-remove_dead_assignments(ASTNode* node, const string_vec vars_used)
+remove_dead_assignments(ASTNode* node, const ptr_set* vars_used)
 {
 	bool res = false;
 	if(node->lhs)
@@ -9868,7 +10414,7 @@ remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 	//if(strstr(expr_type,"*")) return;
 	if(strstr(var,"AC_INTERNAL_gmem_")) return res;
 	if(calls_non_pure_returning_func(node->rhs)) return res;
-	if(!str_vec_contains(vars_used,var))
+	if(!ptr_set_contains(vars_used,var))
 	{
 		node->lhs = NULL;
 		node->rhs = NULL;
@@ -9879,7 +10425,7 @@ remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 	return res;
 }
 bool
-remove_dead_declarations(ASTNode* node, const string_vec vars_used)
+remove_dead_declarations(ASTNode* node, const ptr_set* vars_used)
 {
 	bool res = false;
 	if(node->lhs)
@@ -9893,7 +10439,7 @@ remove_dead_declarations(ASTNode* node, const string_vec vars_used)
 	if(!(node->type & NODE_DECLARATION)) return res;
 	if(node->parent->token != VARIABLE_DECLARATION) return res;
 	const char* var = get_node_by_token(IDENTIFIER,node)->buffer;
-	if(!str_vec_contains(vars_used,var))
+	if(!ptr_set_contains(vars_used,var))
 	{
 		node->lhs = NULL;
 		node->rhs = NULL;
@@ -9903,6 +10449,7 @@ remove_dead_declarations(ASTNode* node, const string_vec vars_used)
 	}
 	return res;
 }
+static bool remove_dead_writes_in_func(ASTNode* node);
 bool
 remove_dead_writes_base(ASTNode* node)
 {
@@ -9917,6 +10464,15 @@ remove_dead_writes_base(ASTNode* node)
 	}
 	if(!(node->type & NODE_FUNCTION)) return res;
 	if((node->type & NODE_DFUNCTION)) return res;
+	//TP: the functions are independent of each other so iterate each function to a fixed point on its own
+	//    instead of re-processing all functions until none of them changes
+	while(remove_dead_writes_in_func(node)) res = true;
+	return res;
+}
+static bool
+remove_dead_writes_in_func(ASTNode* node)
+{
+	bool res = false;
 	const ASTNode* statements_node = node->rhs->rhs->lhs;
 	if(!statements_node) return res;
 	node_vec statements = get_nodes_in_list(statements_node);
@@ -9929,12 +10485,17 @@ remove_dead_writes_base(ASTNode* node)
           add_all_variables(node->rhs->lhs,&vars_used);
         }
 
+	ptr_set vars_used_set = {NULL,0,0};
+	size_t num_added = 0;
 	for(int i = (int)statements.size-1; i >= 0; --i)
 	{
 		get_used_vars(statements.data[i],&vars_used);
-		res |= remove_dead_assignments((ASTNode*)statements.data[i],vars_used);
+		for(; num_added < vars_used.size; ++num_added) ptr_set_add(&vars_used_set,vars_used.data[num_added]);
+		res |= remove_dead_assignments((ASTNode*)statements.data[i],&vars_used_set);
 	}
-	res |= remove_dead_declarations(node,vars_used);
+	for(; num_added < vars_used.size; ++num_added) ptr_set_add(&vars_used_set,vars_used.data[num_added]);
+	res |= remove_dead_declarations(node,&vars_used_set);
+	ptr_set_free(&vars_used_set);
 	free_str_vec(&vars_used);
 	free_node_vec(&statements);
 	return res;
@@ -9943,11 +10504,7 @@ remove_dead_writes_base(ASTNode* node)
 void
 remove_dead_writes(ASTNode* node)
 {
-	bool removed_write = true;
-	while(removed_write)
-	{
-		removed_write = remove_dead_writes_base(node);
-	}
+	remove_dead_writes_base(node);
 }
 void
 gen_ssa_in_basic_blocks(ASTNode* node)
@@ -10165,7 +10722,7 @@ bool can_fuse_kernels(const node_vec kernels)
 	bool updated_profiles[num_profiles];
 	memset(updated_fields,false,num_fields*sizeof(bool));
 	memset(updated_profiles,false,num_profiles*sizeof(bool));
-	memset(stencil_used,false,num_profiles*sizeof(bool));
+	memset(stencil_used,false,num_fields*sizeof(bool));
 
 	for(size_t i = 0; i < kernels.size; ++i)
 	{
@@ -10353,7 +10910,7 @@ add_casts(ASTNode* node)
 			const char* expr = get_expr_type(node);
 			if(strstr(expr,"AcArray"))
 			{
-				astnode_sprintf_prefix(node,"(%s) %s",expr,node->prefix);
+				astnode_sprintf_prefix(node,"%s %s",expr,node->prefix);
 			}
 		}
 	}
@@ -10456,6 +11013,11 @@ preprocess(ASTNode* root, const bool optimize_input_params)
 }
 
 void
+destroy_ast(ASTNode* root)
+{
+	destroy_tree(root);
+}
+void
 gen_kfunc_info(const ASTNode* root)
 {
   memset(&kfunc_nodes,0,sizeof(kfunc_nodes));
@@ -10481,6 +11043,8 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	push(&tspecifier_mappings,INT_STR);
 	push(&tspecifier_mappings,REAL_STR);
 	push(&tspecifier_mappings,BOOL_STR);
+	arena_pass pass;
+	begin_arena_pass(&pass);
   	ASTNode* root = astnode_dup(root_in,NULL);
   	process_overrides(root);
   	s_info = read_user_structs(root);
@@ -10508,6 +11072,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	free_str_vec(&duplicate_dfuncs.names);
 	free_int_vec(&duplicate_dfuncs.counts);
   	free_structs_info(&s_info);
+	end_arena_pass(&pass,root);
 
 }
 
@@ -10569,7 +11134,7 @@ stencilgen(ASTNode* root)
 			fprintf(stderr,"Stencils are supported only with a single type qualifier\n");
 			exit(EXIT_FAILURE);
 		}
-		if(symbol.tqualifiers.data[0] == intern("exp_sum"))
+		if(symbol.tqualifiers.data[0] == intern("exp_sum") || symbol.tqualifiers.data[0] == intern("pair_sum"))
 		{
         		fprintf(stencilgen, "\"sum\",");
 		}
@@ -10581,6 +11146,17 @@ stencilgen(ASTNode* root)
 	      else
         	fprintf(stencilgen, "\"sum\",");
       }
+    }
+    fprintf(stencilgen, "};");
+  }
+
+  { // Pair stencils: operate on two fields, sum_i w_i * a(p_i) * b(p_i)
+    fprintf(stencilgen, "static const bool "
+                        "stencil_is_pair[NUM_STENCILS] = {");
+    for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+      const Symbol symbol = symbol_table[i];
+      if(symbol.tspecifier == STENCIL_STR)
+        fprintf(stencilgen, "%s,", str_vec_contains(symbol.tqualifiers,intern("pair_sum")) ? "true" : "false");
     }
     fprintf(stencilgen, "};");
   }
@@ -10616,10 +11192,19 @@ gen_analysis_stencils(FILE* stream)
   string_vec stencil_names = get_names(STENCIL_STR);
   for (size_t i = 0; i < stencil_names.size; ++i)
   {
-    fprintf(stream,"AcReal %s(const Field& field_in)"
+    const Symbol* sym = get_symbol(NODE_FUNCTION_ID, stencil_names.data[i], STENCIL_STR);
+    if(sym && str_vec_contains(sym->tqualifiers,intern("pair_sum")))
+    {
+      // For the analysis a pair stencil looks like the stencil was called on both fields (see mark_pair_stencil_call)
+      fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s(const Field& field_a, const Field& field_b)"
+             "{mark_pair_stencil_call(stencil_%s,field_a,field_b);return AcReal(1.0);};\n",
+             stencil_names.data[i], stencil_names.data[i]);
+      continue;
+    }
+    fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s(const Field& field_in)"
            "{stencils_accessed[field_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
            stencil_names.data[i], stencil_names.data[i]);
-    fprintf(stream,"AcReal %s_profile(const Profile& profile_in)"
+    fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s_profile(const Profile& profile_in)"
            "{stencils_accessed[NUM_ALL_FIELDS+profile_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
            stencil_names.data[i], stencil_names.data[i]);
   }
@@ -10628,10 +11213,10 @@ gen_analysis_stencils(FILE* stream)
   string_vec ray_names = get_names(RAYTRACE_STR);
   for (size_t i = 0; i < ray_names.size; ++i)
   {
-    fprintf(stream,"AcReal incoming_%s(const Field& field_in)"
+    fprintf(stream,"AC_ANALYSIS_SHARED AcReal incoming_%s(const Field& field_in)"
            "{incoming_ray_value_accessed[field_in][ray_%s] |= 1;return AcReal(1.0);};\n",
            ray_names.data[i], ray_names.data[i]);
-    fprintf(stream,"AcReal outgoing_%s(const Field& field_in)"
+    fprintf(stream,"AC_ANALYSIS_SHARED AcReal outgoing_%s(const Field& field_in)"
            "{outgoing_ray_value_accessed[field_in][ray_%s] |= 1;return AcReal(1.0);};\n",
            ray_names.data[i], ray_names.data[i]);
   }
@@ -10668,8 +11253,8 @@ gen_output_files(ASTNode* root)
   gen_user_defines(root, "user_defines.h");
   gen_kernel_structs(root);
   stencilgen(root);
-  gen_user_kernels("user_kernel_declarations.h",false);
-  gen_user_kernels("user_analysis_kernel_declarations.h",true);
+  gen_user_kernels(false);
+  gen_user_kernels(true);
   FILE *fp = fopen("user_typedefs.h","a");
   fprintf(fp,"typedef enum{\n");
   string_vec datatypes = get_all_datatypes();
@@ -10905,6 +11490,23 @@ print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
 	print_nested_ints(fp,x,y,z,dims,1);
 }
 
+//TP: declares the 3d array name[x][y][z] = val for all entries without spelling out every entry as an initializer.
+//    The dense initializers (e.g. ~17MB of text for stencils_accessed) made the compilation of the files including stencil_accesses.h
+//    (stencilgen.c in the analysis phase) take more time.
+//    Zero is the default value of a static array so it needs no initializer at all and other values are written by a constructor.
+//    Works both in C and C++.
+static void
+print_uniform_3d_int_array(FILE* fp, const char* name, const char* dims, size_t x, size_t y, size_t z, const int val)
+{
+	fprintf(fp, "static int %s %s __attribute__((unused));\n", name, dims);
+	if(val == 0) return;
+	fprintf(fp,
+		"__attribute__((constructor)) __attribute__((unused)) static void ac_init_%s(void) {\n"
+		"  for(size_t i = 0; i < sizeof(%s)/sizeof(int); ++i) ((int*)%s)[i] = %d;\n"
+		"}\n\n",
+		name, name, name, val);
+}
+
 static const char*
 get_compiler(const bool cxx_compiler)
 {
@@ -10944,29 +11546,27 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
     FILE* tmp = fopen("stencil_accesses.h", "w+");
     assert(tmp);
 
+    fprintf(tmp, "#pragma once\n\n");
+    fprintf(tmp, "#include <string.h>\n\n");
+
     fprintf(tmp,
             "static int "
             "previous_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
     print_nested_ones(tmp,1,num_kernels,num_fields+num_profiles,2);
     fprintf(tmp, "};\n");
 
-    fprintf(tmp,
-            "static int "
-            "incoming_ray_value_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1] __attribute__((unused)) = {");
-    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_rays+1,3,0);
-    fprintf(tmp, "};\n");
+    print_uniform_3d_int_array(tmp,"incoming_ray_value_accessed","[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]",
+		    num_kernels,num_fields+num_profiles,num_rays+1,0);
 
-    fprintf(tmp,
-            "static int "
-            "outgoing_ray_value_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1] __attribute__((unused)) = {");
-    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_rays+1,3,0);
-    fprintf(tmp, "};\n");
+    print_uniform_3d_int_array(tmp,"outgoing_ray_value_accessed","[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]",
+		    num_kernels,num_fields+num_profiles,num_rays+1,0);
 
-    fprintf(tmp,
-            "static int "
-            "stencils_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] __attribute__((unused)) = {");
-    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_stencils,3,AC_STENCIL_CALL);
-    fprintf(tmp, "};\n");
+    print_uniform_3d_int_array(tmp,"stencils_accessed","[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]",
+		    num_kernels,num_fields+num_profiles,num_stencils,AC_STENCIL_CALL);
+
+    // No info about which fields the PairSum stencils are called on (OPTIMIZE_MEM_ACCESSES is required for them)
+    fprintf(tmp,"static const int pair_stencil_calls[][4] __attribute__((unused)) = {{-1,-1,-1,-1}};\n");
+    fprintf(tmp,"static const int num_pair_stencil_calls __attribute__((unused)) = 0;\n");
 
     fprintf(tmp,
             "static int "
@@ -11049,7 +11649,7 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
   char build_cmd[4096];
   const int block_size = gen_mem_accesses ? 1 : 4;
   snprintf(build_cmd, 4096,
-           "%s -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
+           "%s " ACC_HELPER_COMPILE_FLAGS " -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-Wfloat-conversion -Wshadow -I. -I %s %s -lm "
@@ -11080,12 +11680,25 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
   }
 
   // Generate stencil definitions
-  FILE* proc = popen("./" STENCILGEN_EXEC " -definitions", "r");
+  char stencilgen_cmd[BUFSIZ] = {0};
+  snprintf(stencilgen_cmd, BUFSIZ, "./%s %s", STENCILGEN_EXEC, gen_mem_accesses ? "-definitions-analysis": "-definitions-kernels");
+  FILE* proc = popen(stencilgen_cmd, "r");
   assert(proc);
 
+  opendir("ac_kernels");
+  if (errno == ENOENT) {
+    mkdir("ac_kernels", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+  }
+  FILE *tmp = gen_mem_accesses ? NULL : fopen("./ac_kernels/stencils.cu", "w");
+if (!gen_mem_accesses) {
+		assert(tmp != NULL);
+	fprintf(tmp, "#include \"user_kernel.h\"\n\n");
+	}
   char buf[4096] = {0};
   while (fgets(buf, sizeof(buf), proc))
-    fprintf(stream, "%s", buf);
+    fprintf(gen_mem_accesses ? stream : tmp, "%s", buf);
+  if (!gen_mem_accesses)
+    fclose(tmp);
 
   pclose(proc);
 }
@@ -11548,6 +12161,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   set_kernel_prefix(gen_mem_accesses);
   symboltable_reset();
   reset_dfunc_cache = true;
+  //TP: all nodes of the pass are freed at the end of it (see ast_arena)
+  arena_pass pass;
+  begin_arena_pass(&pass);
   ASTNode* root = astnode_dup(root_in,NULL);
   get_field_order(root);
   check_uniquenes(root,NODE_DFUNCTION,"function");
@@ -11584,9 +12200,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_profile_reads(root,gen_mem_accesses);
 
   generate_error_messages();
-
-  // Generate user_kernels.h
-  fprintf(stream, "#pragma once\n");
 
   generate_fields_info(root);
   symboltable_reset();
@@ -11686,16 +12299,188 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   //fuse_kernels(intern("reduce_aa_x"),intern("reduce_aa_y"),root);
   //fuse_kernels(intern("remove_aa_x"),intern("remove_aa_y"),root);
   memset(reduce_infos,0,sizeof(node_vec)*MAX_FUNCS);
-
+  end_arena_pass(&pass,root);
 }
 
+
+//TP: the kernels include the non-scalar constants once per kernel, which is needed for the actual kernels.
+//The analysis kernels are compiled only for the CPU so there the includes can be done once at the top,
+//which makes compiling the analysis much faster since the headers are not parsed once per kernel
+static void
+write_analysis_kernels(const char* src, const char* dst)
+{
+  const char* hoisted_includes[] = {
+	  "#include \"kernel_user_non_scalar_constants.h\"",
+	  "#include \"kernel_user_builtin_non_scalar_constants.h\"",
+  };
+  const size_t num_hoisted_includes = sizeof(hoisted_includes)/sizeof(hoisted_includes[0]);
+  FILE* in  = fopen(src,"r");
+  FILE* out = fopen(dst,"w");
+  if(!in || !out) fatal("Could not open %s or %s\n",src,dst);
+  for(size_t i = 0; i < num_hoisted_includes; ++i) fprintf(out,"%s\n",hoisted_includes[i]);
+  char* line = NULL;
+  size_t line_capacity = 0;
+  ssize_t line_len;
+  while((line_len = getline(&line,&line_capacity,in)) != -1)
+  {
+	  const char* start = line;
+	  while(*start == ' ' || *start == '\t') ++start;
+	  size_t len = line_len - (start-line);
+	  while(len > 0 && isspace((unsigned char)start[len-1])) --len;
+	  bool is_hoisted = false;
+	  for(size_t i = 0; i < num_hoisted_includes; ++i)
+		  is_hoisted |= (len == strlen(hoisted_includes[i]) && !strncmp(start,hoisted_includes[i],len));
+	  if(!is_hoisted) fputs(line,out);
+  }
+  free(line);
+  fclose(in);
+  fclose(out);
+}
+
+#define STENCILACC_SPLIT_DIR "ac_analysis_kernels"
+int acc_num_analysis_source_files = 1;
+
+typedef struct
+{
+  size_t start;
+  size_t len;
+  int    file;
+} analysis_kernel_span;
+
+static int
+compare_analysis_kernel_spans_by_len(const void* a, const void* b)
+{
+  const analysis_kernel_span* lhs = *(const analysis_kernel_span* const*)a;
+  const analysis_kernel_span* rhs = *(const analysis_kernel_span* const*)b;
+  if(lhs->len != rhs->len) return lhs->len < rhs->len ? 1 : -1;
+  return lhs->start < rhs->start ? -1 : 1;
+}
+
+//TP: like split_user_kernels does for the CUDA kernels, splits the analysis kernels in src to at most max_files translation units in STENCILACC_SPLIT_DIR.
+//    Each translation unit includes the part of STENCILACC_SRC preceding the analysis kernels followed by the common prefix of src (the hoisted includes and stencils)
+//    and its subset of the kernels.
+//    The analysis kernels can differ a lot in size so they are distributed greedily, largest first, to the translation unit with the least code to balance the compilation times.
+//    Returns the number of translation units written
+static int
+split_analysis_kernels(const char* src, const int max_files)
+{
+  FILE* in = fopen(src,"r");
+  if(!in) fatal("Could not open %s\n",src);
+  fseek(in,0,SEEK_END);
+  const long src_len = ftell(in);
+  rewind(in);
+  char* text = malloc(src_len+1);
+  assert(text);
+  if(fread(text,1,src_len,in) != (size_t)src_len) fatal("Could not read %s\n",src);
+  text[src_len] = '\0';
+  fclose(in);
+
+  const char* kernel_start_str = "__global__ void";
+  const char* first_kernel = strstr(text,kernel_start_str);
+  if(!first_kernel || max_files < 2)
+  {
+    free(text);
+    return 0;
+  }
+  const size_t prefix_len = first_kernel - text;
+
+  size_t num_kernels = 0;
+  for(const char* kernel = first_kernel; kernel; kernel = strstr(kernel+1,kernel_start_str)) ++num_kernels;
+  analysis_kernel_span*  spans = malloc(sizeof(analysis_kernel_span)*num_kernels);
+  analysis_kernel_span** sorted_spans = malloc(sizeof(analysis_kernel_span*)*num_kernels);
+  assert(spans && sorted_spans);
+  {
+    size_t i = 0;
+    for(const char* kernel = first_kernel; kernel; ++i)
+    {
+      const char* next = strstr(kernel+1,kernel_start_str);
+      spans[i].start  = kernel - text;
+      spans[i].len    = (next ? next : text + src_len) - kernel;
+      sorted_spans[i] = &spans[i];
+      kernel = next;
+    }
+  }
+
+  const int num_files = (size_t)max_files < num_kernels ? max_files : (int)num_kernels;
+  qsort(sorted_spans,num_kernels,sizeof(analysis_kernel_span*),compare_analysis_kernel_spans_by_len);
+  size_t* file_sizes = calloc(num_files,sizeof(size_t));
+  assert(file_sizes);
+  for(size_t i = 0; i < num_kernels; ++i)
+  {
+    int smallest = 0;
+    for(int file = 1; file < num_files; ++file)
+      if(file_sizes[file] < file_sizes[smallest]) smallest = file;
+    sorted_spans[i]->file = smallest;
+    file_sizes[smallest] += sorted_spans[i]->len;
+  }
+
+  if(mkdir(STENCILACC_SPLIT_DIR, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0 && errno != EEXIST)
+    fatal("Could not create directory " STENCILACC_SPLIT_DIR ": %s\n",strerror(errno));
+  for(int file = 0; file < num_files; ++file)
+  {
+    char filename[4096];
+    sprintf(filename, STENCILACC_SPLIT_DIR "/analysis_kernels_%d.cpp",file);
+    FILE* out = fopen(filename,"w");
+    if(!out) fatal("Could not open %s\n",filename);
+    fprintf(out,"#define AC_STENCIL_ACCESSES_KERNELS_ONLY 1\n");
+    fprintf(out,"#include \"%s\"\n",STENCILACC_SRC);
+    fwrite(text,1,prefix_len,out);
+    for(size_t i = 0; i < num_kernels; ++i)
+    {
+      if(spans[i].file != file) continue;
+      fwrite(text + spans[i].start,1,spans[i].len,out);
+      fprintf(out,"\n");
+    }
+    fclose(out);
+  }
+
+  free(file_sizes);
+  free(sorted_spans);
+  free(spans);
+  free(text);
+  return num_files;
+}
+
+//TP: posix_spawn instead of fork since copying the page tables of the large acc process is costly
+static void
+run_helper_compile_commands_in_parallel(char** cmds, const int num_cmds)
+{
+  pid_t* pids = malloc(sizeof(pid_t)*num_cmds);
+  assert(pids);
+  fflush(stdout);
+  fflush(stderr);
+  for(int i = 0; i < num_cmds; ++i)
+  {
+    char* const argv[] = {(char*)"sh", (char*)"-c", cmds[i], NULL};
+    const int err = posix_spawn(&pids[i], "/bin/sh", NULL, NULL, argv, environ);
+    if(err) fatal("Was not able to launch %s: %s\n", cmds[i], strerror(err));
+  }
+  bool success = true;
+  for(int i = 0; i < num_cmds; ++i)
+  {
+    int status;
+    if(waitpid(pids[i],&status,0) < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+    {
+      fprintf(stderr, "Failed compile command: %s\n", cmds[i]);
+      success = false;
+    }
+  }
+  free(pids);
+  if(!success)
+  {
+    fprintf(stderr, "Catastrophic error: could not compile the stencil access generator.\n");
+    exit(EXIT_FAILURE);
+  }
+}
 
 void
 compile_helper(const bool log)
 {
-  format_source("user_kernels.h.raw","user_kernels.h");
-  copy_file("user_kernels.h","user_kernels_backup.h");
-  copy_file("user_kernels.h","user_analysis_kernels.h");
+  format_source("user_kernels.cu.raw","user_kernels.cu");
+  copy_file("user_kernels.cu","user_kernels_backup.cu");
+  write_analysis_kernels("user_kernels.cu","user_analysis_kernels.cpp");
+  acc_sources_manager_flush(acc_sources_manager_singleton());
+
   if(log)
   {
   	printf("Compiling %s...\n", STENCILACC_SRC);
@@ -11707,33 +12492,67 @@ compile_helper(const bool log)
   	printf("--- ACC_RUNTIME_API_DIR: `%s`\n", ACC_RUNTIME_API_DIR);
   	printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
   }
-  char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "%s -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 " 
-	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
+  char flags[4096];
+  sprintf(flags, "%s " ACC_HELPER_COMPILE_FLAGS " -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d -DXBLOCK_SIZE=1 -DYBLOCK_SIZE=1 -DZBLOCK_SIZE=1 -std=c++1z"
   ,get_compiler(true),api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );
 
-  /*
-  const char* cmd = "gcc -Wshadow -I. "
-#if AC_USE_HIP
-                    "-DAC_USE_HIP=1 "
-#endif
-                    "-I " GPU_API_INCLUDES " "    //
-                    "-I " ACC_RUNTIME_API_DIR " " //
-      STENCILACC_SRC " -lm "
-                    "-o " STENCILACC_EXEC;
-  */
-  if(log)
-  	printf("Compile command: %s\n", cmd);
+  //TP: compiling the analysis kernels dominates the compilation time so compile them in parallel in separate translation units
+  const int num_kernel_files = split_analysis_kernels("user_analysis_kernels.cpp",acc_num_analysis_source_files);
+  if(num_kernel_files > 0)
   {
-	const int retval = system(cmd);
-  	if (retval != 0) {
-  	  fprintf(stderr, "Catastrophic error: could not compile the stencil access "
-  	                  "generator.\n");
-  	  fprintf(stderr, "Compiler error code: %d\n",retval);
-  	  exit(EXIT_FAILURE);
-  	}
+    const int num_cmds = num_kernel_files+1;
+    char** cmds = malloc(sizeof(char*)*num_cmds);
+    assert(cmds);
+    char link_cmd[4096*8];
+    int link_len = sprintf(link_cmd, "%s " ACC_HELPER_COMPILE_FLAGS, get_compiler(true));
+    for(int i = 0; i < num_cmds; ++i)
+    {
+      char src[4096];
+      char obj[4096];
+      if(i == 0)
+      {
+        sprintf(src, "%s", STENCILACC_SRC);
+        sprintf(obj, STENCILACC_SPLIT_DIR "/stencil_accesses.o");
+      }
+      else
+      {
+        sprintf(src, STENCILACC_SPLIT_DIR "/analysis_kernels_%d.cpp", i-1);
+        sprintf(obj, STENCILACC_SPLIT_DIR "/analysis_kernels_%d.o", i-1);
+      }
+      cmds[i] = malloc(strlen(flags) + strlen(src) + strlen(obj) + 128);
+      assert(cmds[i]);
+      sprintf(cmds[i], "%s -DAC_STENCIL_ACCESSES_SPLIT=1 -c %s -o %s", flags, src, obj);
+      link_len += sprintf(link_cmd + link_len, " %s", obj);
+      if(log) printf("Compile command: %s\n", cmds[i]);
+    }
+    sprintf(link_cmd + link_len, " -lm -o " STENCILACC_EXEC);
+    run_helper_compile_commands_in_parallel(cmds, num_cmds);
+    for(int i = 0; i < num_cmds; ++i) free(cmds[i]);
+    free(cmds);
+
+    if(log) printf("Link command: %s\n", link_cmd);
+    const int retval = system(link_cmd);
+    if (retval != 0) {
+      fprintf(stderr, "Catastrophic error: could not link the stencil access generator.\n");
+      fprintf(stderr, "Linker error code: %d\n",retval);
+      exit(EXIT_FAILURE);
+    }
+  }
+  else
+  {
+    char cmd[4096*2];
+    sprintf(cmd, "%s " STENCILACC_SRC " -lm -o " STENCILACC_EXEC, flags);
+    if(log)
+    	printf("Compile command: %s\n", cmd);
+    const int retval = system(cmd);
+    if (retval != 0) {
+      fprintf(stderr, "Catastrophic error: could not compile the stencil access "
+                      "generator.\n");
+      fprintf(stderr, "Compiler error code: %d\n",retval);
+      exit(EXIT_FAILURE);
+    }
   }
   if(log)
   	printf("%s compilation done\n", STENCILACC_SRC);
@@ -11758,8 +12577,8 @@ get_executed_nodes(const int round)
 {
 	compile_helper(false);
 	char dst[4096];
-	sprintf(dst,"user_kernels_round_%d.h",round);
-  	format_source("user_kernels.h",dst);
+	sprintf(dst,"user_kernels_round_%d.cu",round);
+  	format_source("user_kernels.cu",dst);
   	FILE* proc = popen("./" STENCILACC_EXEC " -C", "r");
   	assert(proc);
 	check_status(pclose(proc));

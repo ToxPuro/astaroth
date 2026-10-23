@@ -20,11 +20,11 @@ CMAKE_FLAGS="-DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --old_tiara)
-            CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_SAMPLES=OFF -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=OFF -DDSL_MODULE_DIR=../../../acc-runtime/samples/mhd_modular/ -DCMAKE_CXX_COMPILER=/software/opt/gcc/9.1.0/bin/gcc -DCMAKE_C_COMPILER=/software/opt/gcc/9.1.0/bin/gcc"
+            CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_SAMPLES=OFF -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=OFF -DCMAKE_CXX_COMPILER=/software/opt/gcc/9.1.0/bin/gcc -DCMAKE_C_COMPILER=/software/opt/gcc/9.1.0/bin/gcc"
             ;;
         --fedora44)
             echo "Setting up for Fedora 44"
-            CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_SAMPLES=OFF -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=OFF -DDSL_MODULE_DIR=../../../acc-runtime/samples/mhd_modular/"
+            CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_SAMPLES=OFF -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=OFF"
             CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_CXX_COMPILER=$HOME/gcc15/bin/g++ -DCMAKE_C_COMPILER=$HOME/gcc15/bin/gcc -DCMAKE_CUDA_HOST_COMPILER=$HOME/gcc15/bin/g++"
             CMAKE_FLAGS="$CMAKE_FLAGS -DMPI_C_COMPILER=$HOME/openmpi/v5/bin/mpicc"
             CMAKE_FLAGS="$CMAKE_FLAGS -DMPI_CXX_COMPILER=$HOME/openmpi/v5/bin/mpicxx"

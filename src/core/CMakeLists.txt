@@ -1,5 +1,5 @@
 ## Astaroth Core
-add_library(astaroth_core_obj)
+add_library(astaroth_core_obj OBJECT)
 set_target_properties(
     astaroth_core_obj
     PROPERTIES
@@ -34,7 +34,13 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1
 )
 
-target_sources(astaroth_core_obj PRIVATE ac_push.cc)
+target_sources(
+    astaroth_core_obj
+    PRIVATE
+    ac_push.cc
+    core.cc
+    core.c
+)
 
 if(NOT RUNTIME_COMPILATION)
     target_sources(
@@ -116,18 +122,55 @@ if(NOT RUNTIME_COMPILATION)
     # endif()
 endif()
 
-add_library(astaroth_core
-    $<TARGET_OBJECTS:acc_runtime_compiler>
-    $<TARGET_OBJECTS:ac_decomposition>
-    $<TARGET_OBJECTS:ac_update_params>
-    $<TARGET_OBJECTS:ac_cuda_wrappers>
-    $<TARGET_OBJECTS:astaroth_helpers>
-    $<TARGET_OBJECTS:acc_runtime_compiler>
-    $<TARGET_OBJECTS:astaroth_core_obj>
-)
+if(RUNTIME_COMPILATION)
+    add_library(astaroth_core
+        $<TARGET_OBJECTS:acc_runtime_compiler>
+        $<TARGET_OBJECTS:ac_decomposition>
+        $<TARGET_OBJECTS:ac_update_params>
+        $<TARGET_OBJECTS:ac_cuda_wrappers>
+        $<TARGET_OBJECTS:astaroth_helpers>
+        $<TARGET_OBJECTS:astaroth_core_obj>
+        $<TARGET_OBJECTS:astaroth_kernels>
+    )
+else()
+    add_library(astaroth_core
+        $<TARGET_OBJECTS:acc_runtime_compiler>
+        $<TARGET_OBJECTS:ac_decomposition>
+        $<TARGET_OBJECTS:ac_update_params>
+        $<TARGET_OBJECTS:ac_cuda_wrappers>
+        $<TARGET_OBJECTS:astaroth_helpers>
+        $<TARGET_OBJECTS:astaroth_core_obj>
+        $<TARGET_OBJECTS:astaroth_kernels>
+        $<TARGET_OBJECTS:acc-runtime-driver>
+    )
 
-set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(astaroth_core PUBLIC acc-runtime-headers )
+    check_linker_flag(C "LINKER:-Bsymbolic" C_HAVE_B_SYMBOLIC)
+    check_linker_flag(CXX "LINKER:-Bsymbolic" CXX_HAVE_B_SYMBOLIC)
+    if (C_HAVE_B_SYMBOLIC AND CXX_HAVE_B_SYMBOLIC)
+        target_link_options(astaroth_core PRIVATE "LINKER:-Bsymbolic")
+    endif()
+endif()
+
+set_target_properties(
+    astaroth_core
+    PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+)
+target_needs_device_side_linking(astaroth_core)
+target_link_libraries(
+    astaroth_core
+    PUBLIC
+        acc-runtime-headers
+        dl
+)
+if(NOT RUNTIME_COMPILATION)
+    target_link_libraries(
+        astaroth_core
+        PUBLIC
+        $<BUILD_LOCAL_INTERFACE:astaroth_kernels>
+    )
+endif()
+ac_link_mpi(astaroth_core)
 target_include_directories(astaroth_core
     PUBLIC
         $<BUILD_INTERFACE:${AC_BASE_PATH}/include>
@@ -138,20 +181,23 @@ target_include_directories(astaroth_core
         $<INSTALL_INTERFACE:astaroth/acc-runtime/api>
 )
 
-target_link_libraries(astaroth_core PUBLIC static_kernels)
-set_property(TARGET astaroth_core PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl)
-
 if (USE_HIP)
     # May need to link to hip::host at some point
      if(DEFINED ENV{CRAYPE_VERSION})
          # Workaround due to hip/cmake/cray PE issue with GPU RDMA
          # If we're on a Cray machine, link against the GTL library
-         # WARNING: this path may break, works on LUMI in June of 2023
+         # The GTL library has to match the loaded cray-mpich: /opt/cray/pe/lib64 only has the system default version,
+         # which can differ from the cray-mpich of the loaded software stack (e.g. an older LUMI stack)
+         if(DEFINED ENV{CRAY_MPICH_ROOTDIR} AND EXISTS "$ENV{CRAY_MPICH_ROOTDIR}/gtl/lib")
+             set(AC_CRAY_GTL_DIR "$ENV{CRAY_MPICH_ROOTDIR}/gtl/lib")
+         else()
+             # WARNING: this path may break, works on LUMI in June of 2023
+             set(AC_CRAY_GTL_DIR /opt/cray/pe/lib64)
+         endif()
+         message(STATUS "Linking the Cray GTL library from ${AC_CRAY_GTL_DIR}")
          target_link_directories(astaroth_core
              PUBLIC
- 	    /opt/cray/pe/lib64
- 	#/opt/rocm-5.2.3/llvm/lib
+             ${AC_CRAY_GTL_DIR}
          )
          target_link_libraries(astaroth_core
              PUBLIC

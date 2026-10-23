@@ -1,20 +1,12 @@
 #pragma once
 
+#include "acc_runtime.h"
 #include "acreal.h"
 #include "astaroth_device_headers.h"
+#include "astaroth_helpers.h"
 #include "func_define.h"
 #include "host_datatypes.h"
-
-typedef struct device_s* Device;
-  typedef struct AcBuffer{
-      AcReal* data;
-      size_t count;
-      bool on_device;
-      AcShape shape;
-#ifdef __cplusplus
-      const AcReal& operator[](const int index) {return data[index];}
-#endif
-  } AcBuffer;
+#include "ac_reduce_helpers.h"
 
 AC_BEGIN_C_DECLARATIONS
 
@@ -23,8 +15,6 @@ ac_unset_floating_point_exceptions();
 
 void
 ac_restore_floating_point_exceptions();
-
-const char* acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm);
 
 size_t
 acShapeCount(const AcShape shape);
@@ -38,21 +28,9 @@ acGetCurrentDevice();
 bool
 acSupportsCooperativeLaunches();
 
-AcReal
-get_reduce_state_flush_var_real(const AcReduceOp state);
-
-int
-get_reduce_state_flush_var_int(const AcReduceOp state);
-
-#if AC_DOUBLE_PRECISION
-float
-get_reduce_state_flush_var_float(const AcReduceOp state);
-#endif
-
 size_t acGetSizeFromDim(const int dim, const Volume dims);
 
 Volume acGetVolumeFromShape(const AcShape shape);
-int acMemUsage();
 
 size_t
 acGetAmountOfDeviceMemoryFree();
@@ -63,21 +41,9 @@ acDeviceResize(void** dst,const size_t old_bytes,const size_t new_bytes);
 Volume
 get_bpg(Volume dims, const Volume tpb);
 
-AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
-AcBuffer acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order);
-AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cudaStream_t stream);
-
 AcShape  acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims);
 AcShape  acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
 AcMeshOrder acGetMeshOrderForProfile(const AcProfileType type);
-
-AcBuffer
-acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaStream_t stream);
-
-void acBufferDestroy(AcBuffer* buffer);
-
-AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
-AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
 
 // Returns the number of elements contained within shape
 size_t acShapeSize(const AcShape shape);

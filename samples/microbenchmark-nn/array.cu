@@ -40,7 +40,7 @@ arrayDestroy(Array* a)
 real
 randd(void)
 {
-    return (real)rand() / RAND_MAX;
+	return acRand();
 }
 
 void

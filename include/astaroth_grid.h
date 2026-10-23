@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ac_mpi.h"
 #include "astaroth_device.h"
 #include "astaroth_helpers.h"
 #include "func_define.h"
@@ -11,6 +12,20 @@
 #if AC_MPI_ENABLED
 
 AC_BEGIN_C_DECLARATIONS
+
+/** Calls MPI_Barrier on the Astaroth communicator */
+FUNC_DEFINE(void, ac_MPI_Barrier,());
+
+/** Returns the rank of the Astaroth communicator */
+FUNC_DEFINE(int, ac_MPI_Comm_rank,());
+
+/** Returns the size of the Astaroth communicator */
+FUNC_DEFINE(int, ac_MPI_Comm_size,());
+
+/**
+Destroys the communicator and calls MPI_Finalize
+*/
+FUNC_DEFINE(void, ac_MPI_Finalize,());
 
 /**
 Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color =
@@ -35,23 +50,10 @@ Returns AC_FAILURE otherwise.
  */
 FUNC_DEFINE(AcResult, ac_MPI_Init_thread,(int thread_level));
 
-/**
-Destroys the communicator and calls MPI_Finalize
-*/
-FUNC_DEFINE(void, ac_MPI_Finalize,());
-
-/** Returns the rank of the Astaroth communicator */
-FUNC_DEFINE(int, ac_MPI_Comm_rank,());
-
 /** If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD */
 FUNC_DEFINE(MPI_Comm, acGridMPIComm,());
 
 FUNC_DEFINE(AcSubCommunicators,acGridMPISubComms,());
-/** Returns the size of the Astaroth communicator */
-FUNC_DEFINE(int, ac_MPI_Comm_size,());
-
-/** Calls MPI_Barrier on the Astaroth communicator */
-FUNC_DEFINE(void, ac_MPI_Barrier,());
 
 /**
 Initializes all available devices.
@@ -315,8 +317,11 @@ typedef struct AcTaskDefinition {
  * operations.*/
 typedef struct AcTaskGraph AcTaskGraph;
 
-OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out));
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,
+                       (const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
+                        Field fields_out[], const size_t num_fields_out, Profile profiles_in[],
+                        const size_t num_profiles_in, Profile profiles_out[],
+                        const size_t num_profiles_out));
 
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
 FUNC_DEFINE(AcTaskDefinition, acHaloExchangeBoundary,(Field fields[], const size_t num_fields, const AcBoundary boundary));
@@ -387,17 +392,15 @@ static UNUSED bool (*acGridInitialized)() = ac_function_always_false;
 FUNC_DEFINE(bool, acGridInitialized, ());
 #endif
 
-AC_END_C_DECLARATIONS
-
 #if __cplusplus
-
-static UNUSED AcResult
-acGridInit(const AcMesh mesh)
-{
-	return acGridInitBase(mesh);
-}
-
 using KernelParamsLoader = std::function<void(ParamLoadingInfo step_info)>;
+
+FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
+            (const AcBoundary boundary, const AcKernel kernel, const Field fields_in[],
+             const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out,
+             const Volume start, const Volume end, const facet_class_range halo_types[],
+             const int3 id, const KernelParamsLoader));
+
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,
                        (const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
                         Field fields_out[], const size_t num_fields_out, Profile profiles_in[],
@@ -412,16 +415,46 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
                        (const AcBoundary boundary, const AcKernel kernel, const Field fields_in[],
                         const size_t num_fields_in, const Field fields_out[],
                         const size_t num_fields_out, const KernelParamsLoader));
-FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
-            (const AcBoundary boundary, const AcKernel kernel, const Field fields_in[],
-             const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out,
-             const Volume start, const Volume end, const facet_class_range halo_types[],
-             const int3 id, const KernelParamsLoader));
 
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,
                        (const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
                         Field fields_in[], const size_t num_fields_in, Field fields_out[],
                         const size_t num_fields_out, KernelParamsLoader loader));
+#else
+FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
+            (const AcBoundary boundary, AcKernel kernel, Field fields_in[],
+             const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
+             const Volume start, const Volume end, const facet_class_range halo_types[],
+             const int3 id, void (*load_func)(ParamLoadingInfo step_info)));
+
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,
+                       (const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
+                        Field fields_out[], const size_t num_fields_out, Profile profiles_in[],
+                        const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out,
+                        const Volume start, const Volume dims, const int onion_level,
+                        void (*load_func)(ParamLoadingInfo step_info)));
+
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
+                       (const AcBoundary boundary, AcKernel kernel, Field fields_in[],
+                        const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
+                        void (*load_func)(ParamLoadingInfo step_info)));
+
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,
+                       (const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
+                        Field fields_in[], const size_t num_fields_in, Field fields_out[],
+                        const size_t num_fields_out,
+                        void (*load_func)(ParamLoadingInfo step_info)));
+#endif
+
+AC_END_C_DECLARATIONS
+
+#if __cplusplus
+
+static UNUSED AcResult
+acGridInit(const AcMesh mesh)
+{
+	return acGridInitBase(mesh);
+}
 
 static UNUSED AcTaskGraph*
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
@@ -954,32 +987,6 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 }
 #endif
 
-#else
-
-FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,
-            (const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-             Field fields_out[], const size_t num_fields_out, Profile profiles_in[],
-             const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out,
-             const Volume start, const Volume dims, const int onion_level,
-             void (*load_func)(ParamLoadingInfo step_info)));
-
-OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
-                       (const AcBoundary boundary, AcKernel kernel, Field fields_in[],
-                        const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
-                        void (*load_func)(ParamLoadingInfo step_info)));
-
-FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
-            (const AcBoundary boundary, AcKernel kernel, Field fields_in[],
-             const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
-             const Volume start, const Volume end, const facet_class_range halo_types[],
-             const int3 id, void (*load_func)(ParamLoadingInfo step_info)));
-
-OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,
-                       (const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
-                        Field fields_in[], const size_t num_fields_in, Field fields_out[],
-                        const size_t num_fields_out,
-                        void (*load_func)(ParamLoadingInfo step_info)));
-
-#endif
+#endif /* __cplusplus */
 
 #endif // AC_MPI_ENABLED

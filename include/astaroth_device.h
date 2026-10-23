@@ -1,5 +1,6 @@
 #pragma once
 
+#include "astaroth_base.h"
 #include "func_define.h"
 
 /*

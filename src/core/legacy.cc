@@ -74,12 +74,6 @@ acGetFieldHandle(const char* field, size_t* handle)
     return AC_FAILURE;
 }
 
-const char*
-acGetFieldName(const Field field)
-{
-	return field_names[field];
-}
-
 Node
 acGetNode(void)
 {
@@ -93,12 +87,6 @@ acGetNumDevicesPerNode(void)
     int num_devices;
     ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&num_devices));
     return num_devices;
-}
-
-size_t
-acGetNumFields(void)
-{
-    return NUM_VTXBUF_HANDLES;
 }
 
 AcResult

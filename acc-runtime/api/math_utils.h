@@ -47,6 +47,8 @@
 #endif
 #endif
 
+#ifdef __cplusplus
+
 static HOST_DEVICE_INLINE int3
 operator/(const int3& a, const int& b)
 {
@@ -322,11 +324,6 @@ mod(const int a, const int b)
   return ((a%b) + b) % b;
 }
 
-static inline AcReal
-randr()
-{
-  return AcReal(rand()) / AcReal(RAND_MAX);
-}
 
 static inline bool
 is_power_of_two(const unsigned val)
@@ -1164,3 +1161,5 @@ operator==(const AcMeshDims& a, const AcMeshDims& b)
 
 static HOST_DEVICE_INLINE int
 AC_abs(const int& x) {return abs(x);}
+
+#endif /* __cplusplus */

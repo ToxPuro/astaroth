@@ -33,18 +33,16 @@
 #include "acc/implementation.h"
 #include "acc/mem_access_helper_funcs.h"
 #include "acc/string_vec.h"
-#include "acc_runtime.h"
+#include "ac_helpers.h"
 #include "astaroth_cuda_wrappers.h"
 #include "device_details.h"
 #include "errchk.h"
 #include "kernels.h"
 #include "math_utils.h"
-#include "random.cuh"
 #include "static_analysis.h"
 
 // clang-format off
 #include "kernel_reduce_info.h"
-#include "user_defines_runtime_lib.h"
 // clang-format on
 
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
@@ -69,6 +67,8 @@ static int3 max_tpb_for_reduce_kernels{100, 100, 100};
 static int3 set_tpb{0, 0, 0};
 
 #define USE_COMPRESSIBLE_MEMORY (0)
+
+extern __device__ AcReal __attribute__((unused)) stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH];
 
 // TP: unfortunately cannot use color output since it might not be supported in
 // each env
@@ -148,6 +148,162 @@ acGetKernelReduceScratchPadMinSize()
 	return res;
 }
 
+
+const bool SHARED_MEM_Z_RAYS = false;
+size_t
+get_smem(const AcKernel kernel, const Volume tpb, const size_t stencil_order,
+         const size_t bytes_per_elem)
+{
+  if (is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).x)
+  {
+	//TP: we pad the y dimension by one to avoid bank conflicts
+	return bytes_per_elem*(tpb.y+1)*tpb.z*(x_ray_shared_mem_block_size+2)*num_fields_ray_accessed_read_and_written(kernel);
+  }
+  if (is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).z && SHARED_MEM_Z_RAYS)
+  {
+	return bytes_per_elem*(tpb.x+2)*(tpb.y+2)*(z_ray_shared_mem_block_size+2)*num_fields_ray_accessed_read_and_written(kernel);
+  }
+  switch (IMPLEMENTATION) {
+  case IMPLICIT_CACHING: {
+    return 0;
+  }
+  case EXPLICIT_CACHING: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
+           bytes_per_elem;
+  }
+  case EXPLICIT_CACHING_3D_BLOCKING: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           (tpb.z + stencil_order) * bytes_per_elem;
+  }
+  case EXPLICIT_CACHING_4D_BLOCKING: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
+           (NUM_FIELDS)*bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txw: {
+    return 2 * (tpb.x + stencil_order) * NUM_FIELDS * bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txy: {
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txyblocked: {
+    const size_t block_size = 7;
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) * block_size *
+           bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txyz: {
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           (tpb.z + stencil_order) * bytes_per_elem;
+  }
+  case EXPLICIT_ROLLING_PINGPONG: {
+    // tpbxy slices with halos
+    // tpbz depth + 1 rolling cache slab
+    return EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE * (tpb.x + stencil_order) *
+           (tpb.y + stencil_order) * (tpb.z + 1) * bytes_per_elem;
+  }
+  default: {
+    ERROR("Invalid IMPLEMENTATION in get_smem");
+    return (size_t)-1;
+  }
+  }
+}
+
+/*
+// Device info (TODO GENERIC)
+// Use the maximum available reg count per thread
+#define REGISTERS_PER_THREAD (255)
+#define MAX_REGISTERS_PER_BLOCK (65536)
+#if AC_DOUBLE_PRECISION
+#define MAX_THREADS_PER_BLOCK                                                  \
+  (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD / 2)
+#else
+#define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD)
+#endif
+*/
+
+__device__ __constant__ AcMeshInfoScalars d_mesh_info;
+//TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
+#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
+#define DECLARE_DCONST_ARRAY(DATATYPE,DEFINE_NAME,ARR_NAME,LEN) __device__ __constant__ DATATYPE AC_INTERNAL_d_##DEFINE_NAME##_arrays_##ARR_NAME[LEN];
+#include "dconst_arrays_decl.h"
+#include "gmem_arrays_decl.h"
+
+typedef struct {
+  AcKernel kernel;
+  int3 dims;
+  dim3 tpb;
+} TBConfig;
+
+static std::vector<TBConfig> tbconfigs;
+
+static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
+
+
+#include "reduce_helpers_decls.h"
+
+void
+ac_resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
+{
+	ac_resize_reals_to_fit(n_elems,vba,kernel);
+	ac_resize_ints_to_fit(n_elems,vba,kernel);
+#if AC_DOUBLE_PRECISION
+	ac_resize_floats_to_fit(n_elems,vba,kernel);
+#endif
+}
+
+size_t
+acGetRealScratchpadSize(const size_t i)
+{
+	return d_reduce_scratchpads_size_real[i];
+}
+
+//The macros above generate d arrays like these:
+
+// Astaroth 2.0 backwards compatibility START
+#define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
+
+#include "dconst_decl.h"
+#include "output_value_decl.h"
+#include "get_address.h"
+#include "load_dconst_arrays.h"
+#include "store_dconst_arrays.h"
+
+#define PROFILE_X_Y_OR_Z_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).x)
+
+#define PROFILE_Y_X_OR_Z_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).y)
+
+#define PROFILE_Z_X_OR_Y_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).z)
+
+#define DEVICE_VTXBUF_IDX(i, j, k)                                             \
+  ((i) + (j)*VAL(AC_mlocal).x + (k)*VAL(AC_mlocal_products).xy)
+
+#define DEVICE_VARIABLE_VTXBUF_IDX(i, j, k,dims)                                             \
+  ((i) + dims.x*((j) + (k)*dims.y))
+
+#define LOCAL_COMPDOMAIN_IDX(coord) \
+	((coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy)
+
+#define print(...) {if (!DCONST(AC_autotuning_at_work)) printf(__VA_ARGS__);} //TODO is this a good idea?
+// passes an array into a device function and then calls len (need to modify
+// the compiler to always pass arrays to functions as references before
+// re-enabling)
+
+#define suppress_unused_warning(X) (void)X
+#define longlong long long
+#define size(arr) (int)(sizeof(arr) / sizeof(arr[0])) // Leads to bugs if the user
+#define error_message(error,message) 
+#define fatal_error_message(error,message) 
+#define ac_dummy_write(field,x,y,z) 
+
+#include "device_fields_info.h"
+#include "device_output_info.h"
+
+#undef size
+#undef longlong
 static Volume
 get_bpg(Volume dims, const AcKernel kernel, const int3 block_factors, const Volume tpb)
 {
@@ -292,216 +448,6 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   }
   }
 }
-
-const bool SHARED_MEM_Z_RAYS = false;
-size_t
-get_smem(const AcKernel kernel, const Volume tpb, const size_t stencil_order,
-         const size_t bytes_per_elem)
-{
-  if (is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).x)
-  {
-	//TP: we pad the y dimension by one to avoid bank conflicts
-	return bytes_per_elem*(tpb.y+1)*tpb.z*(x_ray_shared_mem_block_size+2)*num_fields_ray_accessed_read_and_written(kernel);
-  }
-  if (is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).z && SHARED_MEM_Z_RAYS)
-  {
-	return bytes_per_elem*(tpb.x+2)*(tpb.y+2)*(z_ray_shared_mem_block_size+2)*num_fields_ray_accessed_read_and_written(kernel);
-  }
-  switch (IMPLEMENTATION) {
-  case IMPLICIT_CACHING: {
-    return 0;
-  }
-  case EXPLICIT_CACHING: {
-    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
-           bytes_per_elem;
-  }
-  case EXPLICIT_CACHING_3D_BLOCKING: {
-    return (tpb.x + stencil_order) * (tpb.y + stencil_order) *
-           (tpb.z + stencil_order) * bytes_per_elem;
-  }
-  case EXPLICIT_CACHING_4D_BLOCKING: {
-    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
-           (NUM_FIELDS)*bytes_per_elem;
-  }
-  case EXPLICIT_PINGPONG_txw: {
-    return 2 * (tpb.x + stencil_order) * NUM_FIELDS * bytes_per_elem;
-  }
-  case EXPLICIT_PINGPONG_txy: {
-    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) *
-           bytes_per_elem;
-  }
-  case EXPLICIT_PINGPONG_txyblocked: {
-    const size_t block_size = 7;
-    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) * block_size *
-           bytes_per_elem;
-  }
-  case EXPLICIT_PINGPONG_txyz: {
-    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) *
-           (tpb.z + stencil_order) * bytes_per_elem;
-  }
-  case EXPLICIT_ROLLING_PINGPONG: {
-    // tpbxy slices with halos
-    // tpbz depth + 1 rolling cache slab
-    return EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE * (tpb.x + stencil_order) *
-           (tpb.y + stencil_order) * (tpb.z + 1) * bytes_per_elem;
-  }
-  default: {
-    ERROR("Invalid IMPLEMENTATION in get_smem");
-    return (size_t)-1;
-  }
-  }
-}
-
-/*
-// Device info (TODO GENERIC)
-// Use the maximum available reg count per thread
-#define REGISTERS_PER_THREAD (255)
-#define MAX_REGISTERS_PER_BLOCK (65536)
-#if AC_DOUBLE_PRECISION
-#define MAX_THREADS_PER_BLOCK                                                  \
-  (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD / 2)
-#else
-#define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD)
-#endif
-*/
-
-__device__ __constant__ AcMeshInfoScalars d_mesh_info;
-//TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
-#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
-#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
-#define DECLARE_DCONST_ARRAY(DATATYPE,DEFINE_NAME,ARR_NAME,LEN) static UNUSED __device__ __constant__ DATATYPE AC_INTERNAL_d_##DEFINE_NAME##_arrays_##ARR_NAME[LEN];
-#include "dconst_arrays_decl.h"
-#include "gmem_arrays_decl.h"
-
-typedef struct {
-  AcKernel kernel;
-  int3 dims;
-  dim3 tpb;
-} TBConfig;
-
-static std::vector<TBConfig> tbconfigs;
-
-static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
-
-#include "reduce_helpers.h"
-
-void
-ac_resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
-{
-	ac_resize_reals_to_fit(n_elems,vba,kernel);
-	ac_resize_ints_to_fit(n_elems,vba,kernel);
-#if AC_DOUBLE_PRECISION
-	ac_resize_floats_to_fit(n_elems,vba,kernel);
-#endif
-}
-
-size_t
-acGetRealScratchpadSize(const size_t i)
-{
-	return d_reduce_scratchpads_size_real[i];
-}
-
-//The macros above generate d arrays like these:
-
-// Astaroth 2.0 backwards compatibility START
-#define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
-
-#include "dconst_decl.h"
-#include "output_value_decl.h"
-#include "get_address.h"
-#include "load_dconst_arrays.h"
-#include "store_dconst_arrays.h"
-
-#define PROFILE_X_Y_OR_Z_INDEX(i,j) \
-  ((i) + (j)*VAL(AC_mlocal).x)
-
-#define PROFILE_Y_X_OR_Z_INDEX(i,j) \
-  ((i) + (j)*VAL(AC_mlocal).y)
-
-#define PROFILE_Z_X_OR_Y_INDEX(i,j) \
-  ((i) + (j)*VAL(AC_mlocal).z)
-
-#define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j)*VAL(AC_mlocal).x + (k)*VAL(AC_mlocal_products).xy)
-
-#define DEVICE_VARIABLE_VTXBUF_IDX(i, j, k,dims)                                             \
-  ((i) + dims.x*((j) + (k)*dims.y))
-
-#define LOCAL_COMPDOMAIN_IDX(coord) \
-	((coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy)
-
-#define print(...) {if (!DCONST(AC_autotuning_at_work)) printf(__VA_ARGS__);} //TODO is this a good idea?
-// passes an array into a device function and then calls len (need to modify
-// the compiler to always pass arrays to functions as references before
-// re-enabling)
-
-#define suppress_unused_warning(X) (void)X
-#define longlong long long
-#define size(arr) (int)(sizeof(arr) / sizeof(arr[0])) // Leads to bugs if the user
-#define error_message(error,message) 
-#define fatal_error_message(error,message) 
-#define ac_dummy_write(field,x,y,z) 
-
-__device__
-AcReal
-safe_access(const AcReal* arr, const int dims, const int index, const char* name)
-{
-	if (arr == NULL)
-	{
-		printf("Trying to access %s which is NULL!\n",name);
-		//TP: assert is not defined on Mahti :(
-		//assert(false);
-		return 0.0;
-	}
-	else if (index < 0 || index >= dims)
-	{
-		printf("Trying to access %s out of bounds!: %d\n",name,index);
-		//TP: assert is not defined on Mahti :(
-		//assert(false);
-		return 0.0;
-	}
-	return arr[index];
-}
-__device__ UNUSED
-AcReal
-safe_access(const AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
-{
-	return safe_access(arr,dims,index,real_array_names__device__[param]);
-}
-
-#include "device_fields_info.h"
-#include "device_output_info.h"
-
-static __device__ UNUSED
-int3
-ac_get_field_halos(const Field& field)
-{
-	if (vtxbuf_compile_time_device_halos[field] != (int3){-1,-1,-1})
-	{
-		return vtxbuf_compile_time_device_halos[field];
-	}
-	return VAL(vtxbuf_run_time_device_halos[field]);
-}
-
-static __device__ UNUSED
-bool
-ac_field_has_default_dims(const Field& field)
-{
-	return vtxbuf_device_dims[field] == AC_mlocal;
-}
-
-static __device__ UNUSED 
-bool
-ac_is_global(const AcRealOutputParam& param)
-{
-	return real_output_is_global_device[param];
-}
-
-#define postprocess_reduce_result(DST,OP)
-
-#include "user_kernels.h"
-#undef size
-#undef longlong
 
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"
@@ -725,6 +671,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
   KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba.on_device);
   ERRCHK_CUDA(acEventRecord(tstop)); // Timing stop
   ERRCHK_CUDA(acEventSynchronize(tstop));
+  ERRCHK_CUDA_KERNEL();
   float milliseconds = 0;
   ERRCHK_CUDA(acEventElapsedTime(&milliseconds, tstart, tstop));
 
@@ -854,8 +801,8 @@ acLoadUniform(const P param, const V value)
   	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
-#include "memcpy_to_gmem_arrays.h"
-#include "memcpy_from_gmem_arrays.h"
+#include "memcpy_to_gmem_arrays_decls.h"
+#include "memcpy_from_gmem_arrays_decls.h"
 
 template <typename P, typename V>
 AcResult

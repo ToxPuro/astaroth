@@ -24,12 +24,8 @@
 #include <math.h>
 
 #include "acreal.h"
-#include "builtin_enums.h"
 #include "astaroth_device_headers.h"
-
-#define VOLUME_DEFINED
-#define COMPLEX_DEFINED
-#define REAL3_DEFINED
+#include "builtin_enums.h"
 #include "host_datatypes.h"
 
 #ifdef __cplusplus
@@ -51,20 +47,6 @@
 #define TOVEC3(type,arr) ((type){arr[0],arr[1],arr[2]})
 #define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 #define AcVector AcReal3
-
-#if AC_CPU_BUILD
-#ifndef INT3_DEFINED
-typedef struct
-{
-	int x,y,z;
-} int3;
-typedef struct
-{
-        int x,y,z,w;
-} int4;
-#define INT3_DEFINED
-#endif
-#endif
 
 #ifdef __cplusplus
 
@@ -109,15 +91,3 @@ operator==(const int3& a, const size3_t& b)
 }
 
 #endif
-static HOST_INLINE int3
-to_int3(const Volume a)
-{
-	return 
-	(int3)
-	{
-		(int)a.x,
-		(int)a.y,
-		(int)a.z
-	};
-}
-

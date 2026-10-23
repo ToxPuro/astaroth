@@ -7,8 +7,8 @@
 
 #include "acc_runtime.h"
 #include "acreal.h"
-#include "astaroth.h"
 #include "astaroth_analysis.h"
+#include "astaroth_helpers.h"
 #include "builtin_enums.h"
 #include "errchk.h"
 #include "host_datatypes.h"

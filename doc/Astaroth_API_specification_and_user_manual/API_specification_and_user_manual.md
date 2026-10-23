@@ -1,6 +1,6 @@
 # Astaroth Specification and User Manual
 
-Copyright (C) 2014-2022, Johannes Pekkila, Miikka Vaisala.
+Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
 	   Astaroth is free software: you can redistribute it and/or modify
 	   it under the terms of the GNU General Public License as published by

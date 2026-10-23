@@ -1,15 +1,19 @@
 %{
 //#define _GNU_SOURCE
+#include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <hash.h>
-#include <libgen.h>  // dirname
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <wordexp.h>
 
 #include "ast.h"
@@ -17,9 +21,15 @@
 #include "create_node.h"
 #include "create_node_decl.h"
 #include "expr.h"
+#include "source_manager.h"
 
 extern struct hashmap_s string_intern_hashmap;
 extern const char* binary_op_val;
+
+//Id counter for Ast. 
+//Declared here to make all compilation objects share a common counter.
+int id_counter = 0;
+ast_arena* current_ast_arena = NULL;
 
 const char* INT_STR = NULL;
 const char* TEN_STR = NULL;
@@ -116,8 +126,9 @@ int yylex();
 int yyparse();
 int yyerror(const char* str);
 int yyget_lineno();
-#define AC_INCLUDE "PREPROCESSOR_AC_INCLUDE" 
 
+#define AC_INCLUDE                         "PREPROCESSOR_AC_INCLUDE"
+#define AC_DEFAULT_NUM_OUTPUT_KERNEL_FILES 1
 
 //These are used to generate better error messages in case of errors
 FILE* yyin_backup;
@@ -130,6 +141,11 @@ string_vec const_int_values;
 
 string_vec run_const_ints;
 string_vec run_const_int_values;
+
+string_vec const_int_arrays;
+string_vec const_int_array_elems;
+string_vec const_int_array_elem_values;
+
 
 
 void
@@ -164,6 +180,8 @@ astnode_hostdefine(const char* buffer, const int token)
 
 static void process_global_assignment(ASTNode* node, ASTNode* variable_definition,ASTNode* declaration_list);
 static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier);
+static void process_global_const_int_array(ASTNode* node, const ASTNode* type_specifier);
+static void process_global_const_int3(ASTNode* node);
 static void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
@@ -419,6 +437,21 @@ make_dir(const char* dirname)
 		exit(EXIT_FAILURE);
 	}
 }
+
+static void
+reset_sources_manager_source(const char* filename)
+{
+  char stripped_filename[BUFFER_SIZE] = {0};
+
+  strcpy(stripped_filename, filename);
+  // Find the first dot in the filename and end the string there.
+  char* dot_p = NULL;
+  if ((dot_p = strchr(stripped_filename, '.')) != NULL)
+    *dot_p = '\0';
+
+  acc_sources_manager_invalidate_source(acc_sources_manager_singleton(), stripped_filename);
+}
+
 void
 reset_diff_files()
 {
@@ -434,6 +467,8 @@ reset_diff_files()
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
     FILE* fp = fopen(files[i], "w");
     fclose(fp);
+
+    reset_sources_manager_source(files[i]);
   }
 }
 void
@@ -444,6 +479,8 @@ reset_extra_files()
     ACC_GEN_PATH "/extra_dfuncs.h",
   };
   for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
+    reset_sources_manager_source(files[i]);
+
     if (!file_exists(files[i]))
       continue;
     FILE* fp = fopen(files[i], "w");
@@ -550,6 +587,7 @@ reset_all_files()
     "taskgraph_kernel_bcs.h",
     "taskgraph_kernels.h",
     "to_str_funcs.h",
+    "user_analysis_kernel_declarations.h",
     "user_builtin_non_scalar_constants.h",
     "user_built-in_constants",
     "user_constants.h",
@@ -559,11 +597,9 @@ reset_all_files()
     "user_field_has_stencil_op.bin",
     "user_input_typedefs.h",
     "user_kernel_declarations.h",
-    "user_analysis_kernel_declarations.h",
     "user_kernel_ifs.h",
-    "user_kernels.h",
-    "user_kernels.h.raw",
-    //,"user_kernels_ifs.h",
+    "user_kernels.cu",
+    "user_kernels.cu.raw",
     "user_loader_impls.h",
     "user_loaders.h",
     "user_read_fields.bin",
@@ -577,6 +613,8 @@ reset_all_files()
     FILE* fp = fopen(files[i], "w");
     check_file(fp, "was not able to create file", files[i]);
     fclose(fp);
+
+    reset_sources_manager_source(files[i]);
   }
   reset_diff_files();
 }
@@ -656,7 +694,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
 	
 	//TP: I lex the code now twice as a very hacky way to enable out of order struct definitions.
-	//    A better way would to take away the the struct logic out of the lexer and to a separate pass,
+	//    A better way would to take away the the struct logic out of the lexer into a separate pass,
 	//    but this works for now.
 
 	const int save_line_num = yylineno;
@@ -677,6 +715,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 		FILE* fp = fopen(ACC_GEN_PATH"/extra_dfuncs.h","w");
 		gen_extra_funcs(root, fp);
 		fclose(fp);
+		destroy_ast(root);
+		root = NULL;
 		return EXIT_SUCCESS;
 	}
 	if(gen_bc_kernels)
@@ -684,6 +724,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 		FILE* fp = fopen(ACC_GEN_PATH"/boundcond_kernels.h","w");
 		gen_boundcond_kernels(root, fp);
 		fclose(fp);
+		destroy_ast(root);
+		root = NULL;
 		return EXIT_SUCCESS;
 	}
 
@@ -691,6 +733,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
 	ASTNode* new_root = astnode_dup(root,NULL);
+	destroy_ast(root);
+	root = NULL;
 	preprocess(new_root, optimize_input_params);
 
 	reset_all_files();
@@ -699,7 +743,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	//TP: this is fine to do but we safe time by not doing it
 	if(!RUNTIME_COMPILATION)
 	{
-        	FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
+        	FILE* fp_cpu = fopen("user_kernels.cu.raw", "w");
         	assert(fp_cpu);
         	generate(new_root, fp_cpu, true,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 		fclose(fp_cpu);
@@ -707,9 +751,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	
 	//TP: do this here for safety in case OPTIMIZE_MEM_ACCESSES=OFF
 	{
-  		format_source("user_kernels.h.raw","user_kernels.h");
-		copy_file("user_kernels.h","user_kernels_backup.h");
-		copy_file("user_kernels.h","user_analysis_kernels.h");
+		format_source("user_kernels.cu.raw","user_kernels.cu");
+		copy_file("user_kernels.cu","user_kernels_backup.cu");
+		copy_file("user_kernels.cu","user_analysis_kernels.cpp");
 	}
 
 	if(OPTIMIZE_MEM_ACCESSES)
@@ -722,25 +766,23 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 			reset_all_files();
 			gen_output_files(new_root);
 
-			FILE* fp_cpu = fopen("user_kernels.h.raw","w");
+			FILE* fp_cpu = fopen("user_kernels.cu.raw","w");
 			generate(new_root,fp_cpu,true,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 			fclose(fp_cpu);
 			generate_mem_accesses();
 		}
 	}
 	reset_diff_files();
-        FILE* fp = fopen("user_kernels.h.raw", "w");
+        FILE* fp = fopen("user_kernels.cu.raw", "w");
         assert(fp);
         generate(new_root, fp, gen_mem_accesses,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 
-	astnode_destroy(root);
-	root = NULL;
+	destroy_ast(new_root);
 	
         fclose(fp);
 
-
         // Stage 4: Format
-        format_source("user_kernels.h.raw", "user_kernels.h");
+        format_source("user_kernels.cu.raw", "user_kernels.cu");
 
 
         return EXIT_SUCCESS;
@@ -838,12 +880,361 @@ populate_global_strings()
 	DIV_STR = intern("/");
 }
 
+//TP: the kernels include the non-scalar constants once per kernel (see gen_kernel_block_loops in stencilgen.c),
+//    i.e. all DSL constants are parsed again for each kernel, which made up a large part (e.g. 50%) of the code the compiler has to parse.
+//    Hence when splitting the kernels into their files the includes are replaced by only the constants the kernel references
+//    (transitively, since constants can be defined in terms of other constants).
+//    Each constant is a single declaration or #define line, possibly guarded by #ifdef __cplusplus.
+//    Removing the declaration of a constant the kernel does not reference can not change the meaning of the kernel.
+#define KERNEL_CONSTANTS_INCLUDES \
+	"#include \"kernel_user_non_scalar_constants.h\"\n" \
+	"#include \"kernel_user_builtin_non_scalar_constants.h\"\n"
+typedef struct
+{
+	char* name;
+	char* text;
+	int*  deps;
+	int   num_deps;
+} kernel_constant;
+typedef struct
+{
+	kernel_constant* constants;
+	int num_constants;
+	struct hashmap_s names;
+	bool* needed;
+	int*  stack;
+} kernel_constants_info;
+
+static bool
+is_ident_start(const char c) { return isalpha((unsigned char)c) || c == '_'; }
+static bool
+is_ident_char(const char c) { return isalnum((unsigned char)c) || c == '_'; }
+
+//TP: calls func(info,index) for each identifier in [start,end) that is the name of a constant
+static void
+for_each_constant_in(const kernel_constants_info* info, const char* start, const char* end, void (*func)(const kernel_constants_info*, const int, void*), void* data)
+{
+	const char* c = start;
+	while(c < end)
+	{
+		if(is_ident_start(*c))
+		{
+			const char* ident = c;
+			while(c < end && is_ident_char(*c)) ++c;
+			const void* index = hashmap_get(&info->names,ident,(unsigned)(c-ident));
+			if(index) func(info,(int)(intptr_t)index-1,data);
+		}
+		else if(isdigit((unsigned char)*c))
+			while(c < end && (is_ident_char(*c) || *c == '.')) ++c;
+		else
+			++c;
+	}
+}
+static void
+add_dep(const kernel_constants_info* info, const int index, void* data)
+{
+	(void)info;
+	kernel_constant* constant = (kernel_constant*)data;
+	constant->deps = realloc(constant->deps,sizeof(int)*(constant->num_deps+1));
+	constant->deps[constant->num_deps++] = index;
+}
+//TP: returns false if the line is not of a known form
+static bool
+add_kernel_constant(kernel_constants_info* info, const char* line, const size_t len, const bool cplusplus_only, const char** value_start)
+{
+	const char* end = line + len;
+	const char* name = NULL;
+	size_t name_len = 0;
+	const char* c = line;
+	while(c < end && isspace((unsigned char)*c)) ++c;
+	if(!strncmp(c,"#define",strlen("#define")))
+	{
+		c += strlen("#define");
+		while(c < end && isspace((unsigned char)*c)) ++c;
+		name = c;
+		while(c < end && is_ident_char(*c)) ++c;
+		name_len = c-name;
+		*value_start = c;
+	}
+	else
+	{
+		const char* eq = memchr(c,'=',end-c);
+		if(!eq) return false;
+		if(!strncmp(c,"[[maybe_unused]]",strlen("[[maybe_unused]]"))) c += strlen("[[maybe_unused]]");
+		const char* lhs_end = memchr(c,'[',eq-c);
+		if(!lhs_end) lhs_end = eq;
+		//TP: the name is the last identifier of the lhs
+		for(const char* i = c; i < lhs_end;)
+		{
+			if(is_ident_start(*i))
+			{
+				const char* ident = i;
+				while(i < lhs_end && is_ident_char(*i)) ++i;
+				name = ident;
+				name_len = i-ident;
+			}
+			else ++i;
+		}
+		*value_start = eq+1;
+	}
+	if(!name || !name_len) return false;
+	//TP: duplicate names are not expected, bail out to be safe
+	if(hashmap_get(&info->names,name,(unsigned)name_len)) return false;
+	info->constants = realloc(info->constants,sizeof(kernel_constant)*(info->num_constants+1));
+	kernel_constant* constant = &info->constants[info->num_constants];
+	constant->name = strndup(name,name_len);
+	constant->deps = NULL;
+	constant->num_deps = 0;
+	const char* fmt = cplusplus_only ? "#ifdef __cplusplus\n%.*s\n#endif\n" : "%.*s\n";
+	const int text_len = snprintf(NULL,0,fmt,(int)len,line);
+	constant->text = malloc(text_len+1);
+	snprintf(constant->text,text_len+1,fmt,(int)len,line);
+	++info->num_constants;
+	hashmap_put(&info->names,constant->name,(unsigned)name_len,(void*)(intptr_t)info->num_constants);
+	return true;
+}
+static char*
+read_file(const char* filename, size_t* size)
+{
+	FILE* fp = fopen(filename,"r");
+	if(!fp) return NULL;
+	fseek(fp,0,SEEK_END);
+	*size = ftell(fp);
+	fseek(fp,0,SEEK_SET);
+	char* res = malloc(*size+1);
+	if(fread(res,1,*size,fp) != *size) { free(res); fclose(fp); return NULL; }
+	res[*size] = '\0';
+	fclose(fp);
+	return res;
+}
+//TP: returns false if the constants could not be read, in which case the includes are kept as is
+static bool
+read_kernel_constants(kernel_constants_info* info)
+{
+	memset(info,0,sizeof(*info));
+	hashmap_create(4096,&info->names);
+	const char* files[] = {"kernel_user_non_scalar_constants.h","kernel_user_builtin_non_scalar_constants.h"};
+	//TP: the values are stored here to resolve the dependencies after all names are known
+	const char** values = NULL;
+	const char** value_ends = NULL;
+	char* contents[2] = {NULL,NULL};
+	bool success = true;
+	for(int file = 0; file < 2 && success; ++file)
+	{
+		size_t size = 0;
+		contents[file] = read_file(files[file],&size);
+		if(!contents[file]) { success = false; break; }
+		bool cplusplus_only = false;
+		for(const char* line = contents[file]; line < contents[file] + size;)
+		{
+			const char* line_end = strchr(line,'\n');
+			if(!line_end) line_end = contents[file] + size;
+			const char* s = line;
+			while(s < line_end && isspace((unsigned char)*s)) ++s;
+			const size_t len = line_end - s;
+			if(len == 0 || (len == strlen("#pragma once") && !strncmp(s,"#pragma once",len))) {}
+			else if(len == strlen("#ifdef __cplusplus") && !strncmp(s,"#ifdef __cplusplus",len)) cplusplus_only = true;
+			else if(len == strlen("#endif") && !strncmp(s,"#endif",len)) cplusplus_only = false;
+			else
+			{
+				const char* value = NULL;
+				if(!add_kernel_constant(info,line,line_end-line,cplusplus_only,&value)) { success = false; break; }
+				values = realloc(values,sizeof(char*)*info->num_constants);
+				value_ends = realloc(value_ends,sizeof(char*)*info->num_constants);
+				values[info->num_constants-1] = value;
+				value_ends[info->num_constants-1] = line_end;
+			}
+			line = line_end + 1;
+		}
+	}
+	if(success)
+	{
+		for(int i = 0; i < info->num_constants; ++i)
+			for_each_constant_in(info,values[i],value_ends[i],add_dep,&info->constants[i]);
+		info->needed = calloc(info->num_constants+1,sizeof(bool));
+		info->stack  = malloc(sizeof(int)*(info->num_constants+1));
+	}
+	free(values);
+	free(value_ends);
+	free(contents[0]);
+	free(contents[1]);
+	return success;
+}
+static void
+mark_needed(const kernel_constants_info* info, const int index, void* data)
+{
+	int* stack_size = (int*)data;
+	if(info->needed[index]) return;
+	info->needed[index] = true;
+	info->stack[(*stack_size)++] = index;
+}
+//TP: writes the kernel in [start,end) replacing the includes of all constants with the constants it references
+static void
+write_kernel_with_needed_constants(FILE* stream, const kernel_constants_info* info, const char* start, const char* end)
+{
+	const char* includes = strstr(start,KERNEL_CONSTANTS_INCLUDES);
+	if(!includes || includes >= end)
+	{
+		fprintf(stream, "%.*s\n", (int)(end-start), start);
+		return;
+	}
+	const char* rest = includes + strlen(KERNEL_CONSTANTS_INCLUDES);
+	memset(info->needed,0,sizeof(bool)*info->num_constants);
+	int stack_size = 0;
+	for_each_constant_in(info,start,includes,mark_needed,&stack_size);
+	for_each_constant_in(info,rest,end,mark_needed,&stack_size);
+	while(stack_size > 0)
+	{
+		const kernel_constant* constant = &info->constants[info->stack[--stack_size]];
+		for(int i = 0; i < constant->num_deps; ++i) mark_needed(info,constant->deps[i],&stack_size);
+	}
+	fprintf(stream, "%.*s", (int)(includes-start), start);
+	//TP: in the order of the headers since constants can only refer to the ones declared before
+	for(int i = 0; i < info->num_constants; ++i)
+		if(info->needed[i]) fputs(info->constants[i].text,stream);
+	fprintf(stream, "%.*s\n", (int)(end-rest), rest);
+}
+static void
+free_kernel_constants(kernel_constants_info* info)
+{
+	hashmap_destroy(&info->names);
+	for(int i = 0; i < info->num_constants; ++i)
+	{
+		free(info->constants[i].name);
+		free(info->constants[i].text);
+		free(info->constants[i].deps);
+	}
+	free(info->constants);
+	free(info->needed);
+	free(info->stack);
+}
+
+static void
+split_user_kernels(int num_output_kernel_files)
+{
+  // We want to use this only when more than 1 output file is requested.
+  assert(num_output_kernel_files > 1);
+
+  DIR *ac_kernels_dir = opendir("ac_kernels");
+  if (errno == ENOENT) {
+    mkdir("ac_kernels", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+    ac_kernels_dir = opendir("ac_kernels");
+  }
+
+  int fd = open("user_kernels.cu", O_RDONLY);
+  assert(fd >= 0);
+
+  struct stat st;
+  fstat(fd, &st);
+
+  if (st.st_size == 0)
+  return;
+  char *user_kernels_cu = mmap(NULL, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+  assert(user_kernels_cu != MAP_FAILED);
+
+  char *kernel_start = strstr(user_kernels_cu, "__global__ void");
+  kernel_constants_info constants_info;
+  const bool prune_constants = read_kernel_constants(&constants_info);
+  if(!prune_constants)
+    fprintf(stderr,"AC WARNING: could not parse the constant headers, all constants are included in each kernel\n");
+  for(int file = 0; file < num_output_kernel_files; ++file)
+  {
+    char filename[BUFFER_SIZE] = {0};
+    snprintf(filename,BUFFER_SIZE,"kernel_%d.cu",file % num_output_kernel_files);
+    FILE *stream = fdopen(
+      openat(
+        dirfd(ac_kernels_dir),
+        filename,
+        O_WRONLY | O_CREAT | O_TRUNC ,
+        S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+      ),
+      "w"
+    );
+    assert(stream != NULL);
+    fprintf(stream, "#include \"user_kernel.h\"\n\n");
+    fclose(stream);
+  }
+  //TP: assign the kernels to the files by their size (largest first to the currently smallest file) instead of round-robin.
+  //    The files are compiled in parallel, so the largest file determines the compilation time,
+  //    and round-robin could e.g. put the two largest kernels in the same file.
+  //    Within a file the kernels are kept in their original order.
+  int num_kernels_found = 0;
+  char** kernel_starts = NULL;
+  for (char* k = kernel_start; k != NULL; k = strstr(k + 1, "__global__ void")) {
+    kernel_starts = realloc(kernel_starts, sizeof(char*) * (num_kernels_found + 2));
+    kernel_starts[num_kernels_found++] = k;
+  }
+  if (num_kernels_found) kernel_starts[num_kernels_found] = kernel_starts[num_kernels_found-1] + strlen(kernel_starts[num_kernels_found-1]);
+  int* file_of_kernel = malloc(sizeof(int) * (num_kernels_found + 1));
+  int* kernels_by_size = malloc(sizeof(int) * (num_kernels_found + 1));
+  size_t* file_size = calloc(num_output_kernel_files, sizeof(size_t));
+  for (int i = 0; i < num_kernels_found; ++i) kernels_by_size[i] = i;
+  //TP: stable insertion sort, the number of kernels is small
+  for (int i = 1; i < num_kernels_found; ++i) {
+    const int k = kernels_by_size[i];
+    const size_t size = kernel_starts[k+1] - kernel_starts[k];
+    int j = i;
+    for (; j > 0 && (size_t)(kernel_starts[kernels_by_size[j-1]+1] - kernel_starts[kernels_by_size[j-1]]) < size; --j)
+      kernels_by_size[j] = kernels_by_size[j-1];
+    kernels_by_size[j] = k;
+  }
+  for (int i = 0; i < num_kernels_found; ++i) {
+    const int k = kernels_by_size[i];
+    int smallest = 0;
+    for (int file = 1; file < num_output_kernel_files; ++file)
+      if (file_size[file] < file_size[smallest]) smallest = file;
+    file_of_kernel[k] = smallest;
+    file_size[smallest] += kernel_starts[k+1] - kernel_starts[k];
+  }
+  for (int k = 0; k < num_kernels_found; ++k) {
+    char filename[BUFFER_SIZE] = {0};
+    snprintf(filename,BUFFER_SIZE,"kernel_%d.cu",file_of_kernel[k]);
+
+    FILE *stream = fdopen(
+      openat(
+        dirfd(ac_kernels_dir),
+        filename,
+        O_WRONLY | O_CREAT,
+        S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+      ),
+      "a"
+    );
+    assert(stream != NULL);
+
+    char *kernel_end = kernel_starts[k+1];
+    const char backup = *kernel_end;
+    *kernel_end = '\0';
+
+    if (prune_constants)
+      write_kernel_with_needed_constants(stream, &constants_info, kernel_starts[k], kernel_end);
+    else
+      fprintf(stream, "%s\n", kernel_starts[k]);
+    *kernel_end = backup;
+
+    fclose(stream);
+  }
+  free(kernel_starts);
+  free(file_of_kernel);
+  free(kernels_by_size);
+  free(file_size);
+
+  free_kernel_constants(&constants_info);
+  unlink("user_kernels.cu");
+
+  munmap(user_kernels_cu, st.st_size);
+  close(fd);
+  closedir(ac_kernels_dir);
+}
+
 int
 main(int argc, char** argv)
 {
+    const char* usage_str = "Usage: ./acc [source file]\n"
+    "Usage: ./acc [source_file] [base_include_dir] [eliminate_conditionals] [read_overrides] [runtime_compilation] [acc_overrides_path] [num_output_kernel_files]\n";
+
     if(argc == 1)
     {
-        puts("Usage: ./acc [source file]");
+        fprintf(stderr, "%s", usage_str);
         return EXIT_FAILURE;
     }
 
@@ -855,23 +1246,31 @@ main(int argc, char** argv)
 
     atexit(&cleanup);
     char* file = NULL;
-    ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-1]);
-    RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-2]),"1"); 
-    READ_OVERRIDES          = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-3]),"1"); 
-    ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-4]),"1"); 
+    long num_output_kernel_files = AC_DEFAULT_NUM_OUTPUT_KERNEL_FILES;
+    if (argc != 2) {
+      num_output_kernel_files = strtol(argv[argc-1], NULL, 10);
+      if(errno == ERANGE && (num_output_kernel_files == LONG_MAX || num_output_kernel_files == LONG_MIN))
+      {
+        fprintf(stderr, "Error: Overflow or underflow happened for num_output_kernel_files parameter.\n%s", usage_str);
+        return EXIT_FAILURE;
+      }
+      if (num_output_kernel_files < 1) {
+        fprintf(stderr, "Error: The num_output_kernel_files parameter needs to be a non-zero positive integer.\n%s", usage_str);
+        return EXIT_FAILURE;
+      }
+    }
+    ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-2]);
+    RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-3]),"1"); 
+    READ_OVERRIDES          = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-4]),"1"); 
+    ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-5]),"1"); 
+    const char* dir         = argc == 2 ? false : argv[argc-6];
 
-
-    if(argc == 2 || argc == 6)
+    if(argc == 2 || argc == 8)
     {
 	file = argv[1];
     }
-    else if(argc > 6)
-    {
-	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[argc-5])));
-	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[argc-5]);
-    }
     else {
-        puts("Usage: ./acc [source file]");
+        fprintf(stderr, "%s", usage_str);
         return EXIT_FAILURE;
     }
     //HACK to find if multiple .ac files without DSL_MODULE_FILE
@@ -885,8 +1284,8 @@ main(int argc, char** argv)
     strcpy(stage0, file);
     const char* stage1 = "user_kernels.ac.pp_stage1";
     const char* stage2 = "user_kernels.ac.pp_stage2";
-    const char* dir = dirname(file); // WARNING: dirname has side effects!
     dir_backup = dir;
+    acc_num_analysis_source_files = num_output_kernel_files;
     
     reset_extra_files();
 
@@ -896,7 +1295,11 @@ main(int argc, char** argv)
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_INPUT_PARAMS, false,false);
+
+    // Writes all the source files managed by the sources manager onto disk.
+    acc_sources_manager_flush(acc_sources_manager_singleton());
     
+    split_user_kernels(num_output_kernel_files);
 
     return EXIT_SUCCESS;
 }
@@ -911,7 +1314,7 @@ main(int argc, char** argv)
 %token  ASSIGNOP QUESTION UNARY_OP
 %token  SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
 %token  BOOL INTRINSIC LONG_LONG LONG 
-%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION NO_SWAP UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED HALF_PRECISION PRECISION SINGLE_PRECISION AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION NO_SWAP UTILITY SUM MAX EXP_SUM PAIR_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED HALF_PRECISION PRECISION SINGLE_PRECISION AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token  FIXED_BOUNDARY
 %token  PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
 %token  HOSTDEFINE
@@ -988,7 +1391,10 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
 	    else if(are_arrays)
+	    {
 		process_global_array_declaration(variable_definition,declaration_list, type_specifier);
+                process_global_const_int_array($$, type_specifier);
+	    }
 	    else if (assignment)
 		process_global_assignment($$,variable_definition,declaration_list);
 
@@ -1136,6 +1542,7 @@ profile: PROFILE       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
 exp_sum: EXP_SUM { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("exp_sum", $$); $$->token = 255 + yytoken; };
+pair_sum: PAIR_SUM { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("pair_sum", $$); $$->token = 255 + yytoken; };
 struct_type: STRUCT_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 enum_type: ENUM_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 hostdefine: HOSTDEFINE { $$ = astnode_hostdefine(yytext,yytoken);};
@@ -1249,6 +1656,7 @@ type_specifiers: type_specifiers ',' type_specifier {$$ = astnode_create(NODE_UN
 type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | exp_sum      { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | pair_sum     { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | device_only  { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dims '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
@@ -2129,6 +2537,77 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			exit(EXIT_FAILURE);
 		}
 }
+
+//TP: record the values of const int arrays with an initializer e.g. const int arr = [1,2,3], to make them usable in compile-time int expressions e.g. field_order(arr[2]-1)
+static void process_global_const_int_array(ASTNode* node, const ASTNode* type_specifier)
+{
+       if(!has_qualifier(node->rhs,CONST_STR)) return;
+       if(!type_specifier || !type_specifier->lhs || !type_specifier->lhs->buffer) return;
+       if(strcmp(type_specifier->lhs->buffer,"int*") && strcmp(type_specifier->lhs->buffer,"int")) return;
+       const ASTNode* assign_list = get_node(NODE_ASSIGN_LIST,node->rhs);
+       if(!assign_list) return;
+       node_vec vars = get_nodes_in_list(assign_list->rhs);
+       for(size_t i = 0; i < vars.size; ++i)
+       {
+               const ASTNode* elem = (ASTNode*) vars.data[i];
+               const ASTNode* initializer = get_node(NODE_ARRAY_INITIALIZER,elem->rhs);
+               if(!initializer) continue;
+               const char* name = get_node_by_token(IDENTIFIER,elem->lhs)->buffer;
+               if(str_vec_get_index(const_int_arrays,name) != -1) continue;
+               push(&const_int_arrays,name);
+               node_vec values = get_nodes_in_list(initializer->lhs);
+               for(size_t j = 0; j < values.size; ++j)
+               {
+                       if(!values.data[j]) continue;
+                       //TP: evaluate a copy since eval_int modifies the tree
+                       ASTNode* value = astnode_dup(values.data[j],NULL);
+                       int err = 0;
+                       const int val = eval_int(value, const_int_values, const_ints, (string_vec)VEC_INITIALIZER, (string_vec)VEC_INITIALIZER, false, &err);
+                       if(err) continue;
+                       push(&const_int_array_elems,sprintf_intern("%s[%zu]",name,j));
+                       push(&const_int_array_elem_values,intern(itoa(val)));
+               }
+               free_node_vec(&values);
+       }
+       free_node_vec(&vars);
+}
+
+//TP: record the members of const int3s with an initializer e.g. const int3 vec = {1,2,3} as "vec.x" etc., to make them usable in compile-time int expressions e.g. field_order(vec.x-1)
+static void process_global_const_int3(ASTNode* node)
+{
+       const ASTNode* assign_list = get_node(NODE_ASSIGN_LIST,node->rhs);
+       if(!assign_list) return;
+       node_vec vars = get_nodes_in_list(assign_list->rhs);
+       for(size_t i = 0; i < vars.size; ++i)
+       {
+               const ASTNode* elem = (ASTNode*) vars.data[i];
+               const ASTNode* initializer = get_node(NODE_STRUCT_INITIALIZER,elem->rhs);
+               if(!initializer || !initializer->lhs) continue;
+               const char* name = get_node_by_token(IDENTIFIER,elem->lhs)->buffer;
+               if(str_vec_get_index(const_int_arrays,name) != -1) continue;
+               node_vec values = get_nodes_in_list(initializer->lhs);
+               if(values.size == 3)
+               {
+                       push(&const_int_arrays,name);
+                       const char* members[] = {"x","y","z"};
+                       for(size_t j = 0; j < 3; ++j)
+                       {
+                               if(!values.data[j]) continue;
+                               //TP: evaluate a copy since eval_int modifies the tree
+                               ASTNode* value = astnode_dup(values.data[j],NULL);
+                               int err = 0;
+                               const int val = eval_int(value, const_int_values, const_ints, (string_vec)VEC_INITIALIZER, (string_vec)VEC_INITIALIZER, false, &err);
+                               if(err) continue;
+                               push(&const_int_array_elems,sprintf_intern("%s.%s",name,members[j]));
+                               push(&const_int_array_elem_values,intern(itoa(val)));
+                       }
+               }
+               free_node_vec(&values);
+       }
+       free_node_vec(&vars);
+}
+
+
 static void process_global_assignment(ASTNode* node,ASTNode* variable_definition, ASTNode* declaration_list)
 	    {
                 variable_definition->type |= NODE_VARIABLE;

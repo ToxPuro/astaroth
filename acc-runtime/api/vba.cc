@@ -19,57 +19,8 @@
 
 // clang-format off
 #include "user_defines.h"
+#include "reduce_helpers_decls.h"
 // clang-format on
-
-static inline AcMeshDims
-acGetMeshDims(const AcMeshInfo info)
-{
-   const Volume n0 = to_volume(info[AC_nmin]);
-   const Volume n1 = to_volume(info[AC_nlocal_max]);
-   const Volume m0 = (Volume){0, 0, 0};
-   const Volume m1 = to_volume(info[AC_mlocal]);
-   const Volume nn = to_volume(info[AC_nlocal]);
-   const Volume reduction_tile = (Volume)
-   {
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
-   };
-
-   return (AcMeshDims){
-       .n0 = n0,
-       .n1 = n1,
-       .m0 = m0,
-       .m1 = m1,
-       .nn = nn,
-       .reduction_tile = reduction_tile,
-   };
-}
-
-static inline AcMeshDims
-acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
-{
-   const Volume n0 = to_volume(acGetFieldHalos(info,vtxbuf));
-   const Volume m1 = to_volume(info[vtxbuf_dims[vtxbuf]]);
-   const Volume n1 = m1-n0;
-   const Volume m0 = (Volume){0, 0, 0};
-   const Volume nn = (m1 <= n0*2) ? m1 : m1-n0*2;
-   const Volume reduction_tile = (Volume)
-   {
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
-   };
-
-   return (AcMeshDims){
-       .n0 = n0,
-       .n1 = n1,
-       .m0 = m0,
-       .m1 = m1,
-       .nn = nn,
-       .reduction_tile = reduction_tile,
-   };
-}
 
 AcResult
 acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const AcMeshDims* dims)
@@ -88,7 +39,7 @@ acPBACreate(const AcMeshDims* dims)
 {
   ProfileBufferArray pba{};
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    const size_t bytes = prof_size(Profile(i),dims[i].m1)*sizeof(AcReal);
+    const size_t bytes = prof_size(Profile(i),dims[i].m1);
     acDeviceMalloc((void**)&pba.in[i],  bytes);
     acDeviceMalloc((void**)&pba.out[i], bytes);
     //pba.out[i] = pba.in[i];
@@ -275,25 +226,21 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
 
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    ERRCHK_ALWAYS(vba->on_device.in[i]);
+    ERRCHK_ALWAYS(vba->on_device.out[i]);
     if(vtxbuf_precision[i] == AC_SINGLE_PRECISION)
     {
-    	ERRCHK_ALWAYS(vba->on_device.single_in[i]);
-    	ERRCHK_ALWAYS(vba->on_device.single_out[i]);
-    	acKernelFlush(stream, vba->on_device.single_in[i], vba->counts[i], (float)0.0);
-    	acKernelFlush(stream, vba->on_device.single_out[i], vba->counts[i], (float)0.0);
+    	acKernelFlush(stream, (float*)vba->on_device.in[i], vba->counts[i], (float)0.0);
+    	acKernelFlush(stream, (float*)vba->on_device.out[i], vba->counts[i], (float)0.0);
     }
     else if(vtxbuf_precision[i] == AC_HALF_PRECISION)
     {
-    	ERRCHK_ALWAYS(vba->on_device.half_in[i]);
-    	ERRCHK_ALWAYS(vba->on_device.half_out[i]);
-	//TP: not flushing since not sure have would propagate half values from host
+	//TP: not flushing since not sure how to propagate half values from host
     }
     else
     {
-    	ERRCHK_ALWAYS(vba->on_device.in[i]);
-    	ERRCHK_ALWAYS(vba->on_device.out[i]);
-    	acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)0.0);
-    	acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
+    	acKernelFlush(stream, (AcReal*)vba->on_device.in[i], vba->counts[i], (AcReal)0.0);
+    	acKernelFlush(stream, (AcReal*)vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
     }
   }
 
@@ -328,9 +275,9 @@ acVBACreate(const AcMeshInfo config)
   	vba.dims[i]    = acGetMeshDims(config,Field(i));
   	size_t count = vba.dims[i].m1.x*vba.dims[i].m1.y*vba.dims[i].m1.z;
   	size_t bytes = count*(
-		       	vtxbuf_precision[i] == AC_SINGLE_PRECISION  ? sizeof(vba.on_device.single_in[0][0]) :
-		       	vtxbuf_precision[i] == AC_HALF_PRECISION    ? sizeof(vba.on_device.half_in[0][0])   :
-				                                      sizeof(vba.on_device.in[0][0])
+		       	vtxbuf_precision[i] == AC_SINGLE_PRECISION  ? sizeof(float) :
+		       	vtxbuf_precision[i] == AC_HALF_PRECISION    ? sizeof(__half)   :
+				                                      sizeof(AcReal)
 			);
   	vba.counts[i]         = count;
   	vba.bytes[i]          = bytes;
@@ -423,37 +370,37 @@ acVBACreate(const AcMeshInfo config)
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     if(vtxbuf_precision[i] == AC_SINGLE_PRECISION)
     {
-      vba.on_device.single_in[i] = vba_single_in_buff + single_in_offset;
-      ERRCHK_ALWAYS(vba.on_device.single_in[i] != NULL);
+      vba.on_device.in[i] = vba_single_in_buff + single_in_offset;
+      ERRCHK_ALWAYS(vba.on_device.in[i] != NULL);
       single_in_offset += vba.counts[i];
       if (vtxbuf_is_auxiliary[i])
       {
-        vba.on_device.single_out[i] = vba.on_device.single_in[i];
-        ERRCHK_ALWAYS(vba.on_device.single_out[i] != NULL);
+        vba.on_device.out[i] = vba.on_device.in[i];
+        ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
       }else{
-        vba.on_device.single_out[i] = (vba_single_out_buff + single_out_offset);
+        vba.on_device.out[i] = (vba_single_out_buff + single_out_offset);
         single_out_offset += vba.counts[i];
-        if(vba.on_device.single_out[i] == NULL)
+        if(vba.on_device.out[i] == NULL)
         {
-         	 ERRCHK_ALWAYS(vba.on_device.single_out[i] != NULL);
+         	 ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
         }
       }
     }
     else if(vtxbuf_precision[i] == AC_HALF_PRECISION)
     {
-      vba.on_device.half_in[i] = vba_half_in_buff + half_in_offset;
-      ERRCHK_ALWAYS(vba.on_device.half_in[i] != NULL);
+      vba.on_device.in[i] = vba_half_in_buff + half_in_offset;
+      ERRCHK_ALWAYS(vba.on_device.in[i] != NULL);
       half_in_offset += vba.counts[i];
       if (vtxbuf_is_auxiliary[i])
       {
-        vba.on_device.half_out[i] = vba.on_device.half_in[i];
-        ERRCHK_ALWAYS(vba.on_device.half_out[i] != NULL);
+        vba.on_device.out[i] = vba.on_device.in[i];
+        ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
       }else{
-        vba.on_device.half_out[i] = (vba_half_out_buff + half_out_offset);
+        vba.on_device.out[i] = (vba_half_out_buff + half_out_offset);
         half_out_offset += vba.counts[i];
-        if(vba.on_device.half_out[i] == NULL)
+        if(vba.on_device.out[i] == NULL)
         {
-         	 ERRCHK_ALWAYS(vba.on_device.half_out[i] != NULL);
+         	 ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
         }
       }
     }
@@ -551,7 +498,7 @@ void
 acPBADestroy(ProfileBufferArray* pba, const AcMeshDims* dims)
 {
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    const size_t bytes = prof_size(Profile(i),dims[i].m1)*sizeof(AcReal);
+    const size_t bytes = prof_size(Profile(i),dims[i].m1);
     acDeviceFree(&pba->in[i],  bytes);
     acDeviceFree(&pba->out[i], bytes);
     pba->in[i]  = NULL;
@@ -582,7 +529,7 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 void
 acVBASwapBuffer(const Field field, VertexBufferArray* vba)
 {
-  AcReal* tmp     = vba->on_device.in[field];
+  void* tmp     = vba->on_device.in[field];
   vba->on_device.in[field]  = vba->on_device.out[field];
   vba->on_device.out[field] = tmp;
 }

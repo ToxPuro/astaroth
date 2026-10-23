@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -973,12 +973,6 @@ __attribute__((unused)) static inline bool
 is_valid_vec(const Vector a)
 {
     return is_valid(a.x) && is_valid(a.y) && is_valid(a.z);
-}
-
-__attribute__((unused)) static inline bool
-is_valid(const AcReal a)
-{
-    return !isnan(a) && !isinf(a);
 }
 
 __attribute__((unused)) static inline bool

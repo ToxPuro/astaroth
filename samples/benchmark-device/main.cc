@@ -63,8 +63,8 @@ main(int argc, char** argv)
     const char* build_str = "-DOPTIMIZE_FIELDS=ON -DOPTIMIZE_INPUT_PARAMS=ON -DELIMINATE_CONDITIONALS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
     info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
-    acLoadLibrary(stdout,info);
-    acLoadUtils(stdout,info);
+    acLoadLibrary(info);
+    acLoadUtils(info);
 #endif
     acPrintMeshInfo(info);
 
@@ -88,7 +88,7 @@ main(int argc, char** argv)
     const size_t pid   = 0;
     const size_t count = acVertexBufferCompdomainSize(info);
     acRandInitAlt(seed, count, pid);
-    srand(seed);
+    acSrand(seed);
 
     // Verify
     if (verify) {

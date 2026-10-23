@@ -5,6 +5,8 @@
 
 #include <cstdlib>
 #include <unordered_map>
+#include <map>
+#include <array>
 
 #include "ac_fft.h"
 #include "ac_helpers.h"
@@ -13,8 +15,10 @@
 #include "common_kernels.h"
 #include "errchk.h"
 #include "host_datatypes.h"
+#include "math_utils.h"
 
-static MPI_Comm communicator{};
+static MPI_Comm communicator = MPI_COMM_NULL;
+static MPI_Comm xy_plane_communicator = MPI_COMM_NULL;
 [[maybe_unused]] static Volume global_offset = (Volume){0,0,0};
 
 static AcComplex*
@@ -50,9 +54,29 @@ typedef struct
 	AcComplexFloat* out;
 } AcComplexFloatInAndOut;
 
-static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans{};
-static std::unordered_map<size_t,heffte::fft3d<heffte::backend::rocfft>> plans_single{};
-static std::unordered_map<size_t,heffte::fft3d_r2c<heffte::backend::rocfft>> plans_r2c{};
+#if AC_USE_HIP
+#define fft_backend heffte::backend::rocfft
+#else
+#define fft_backend heffte::backend::cufft
+#endif
+//Plans are cached by the shape of the local subdomain, not only by its element count:
+//different shapes with the same count need different plans
+typedef std::array<int,3> PlanKey;
+static std::map<PlanKey,heffte::fft3d<fft_backend>> plans{};
+static std::map<PlanKey,heffte::fft3d<fft_backend>> plans_single{};
+static std::map<PlanKey,heffte::fft3d_r2c<fft_backend>> plans_r2c{};
+
+static PlanKey
+get_plan_key(const Volume domain_size)
+{
+	return (PlanKey){(int)domain_size.x,(int)domain_size.y,(int)domain_size.z};
+}
+
+static MPI_Comm
+get_communicator(const Volume domain_size)
+{
+	return domain_size.z == 1 ? xy_plane_communicator : communicator;
+}
 
 
 AcResult
@@ -70,7 +94,6 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 		  const bool inverse, const int batch_size)
 {
     static std::unordered_map<size_t,AcComplex*> work_buffers{};
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
     //HeFFTe is surprisingly inclusive in the domain
     const int3 lower = (int3)
     {
@@ -84,7 +107,12 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 	    (int)domain_size.y,
 	    (int)domain_size.z
     };
-    const int3 upper = lower+dims-(int3){1,1,1};
+    const int3 upper = 
+    {
+	    lower.x+dims.x-1,
+	    lower.y+dims.y-1,
+	    lower.z+dims.z-1
+    };
     const int3 output_lower = (int3)
     {
 	    (int)global_offset.x,
@@ -98,11 +126,13 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 	    (int)domain_size.z/2
     };
     const int3 output_upper = output_lower+output_dims-(int3){1,1,1};
-    if(plans_r2c.find(count) == plans_r2c.end())
+    const PlanKey key = get_plan_key(domain_size);
+    if(plans_r2c.find(key) == plans_r2c.end())
     {
+	ERRCHK_ALWAYS(communicator != MPI_COMM_NULL);
         heffte::box3d<> const input_box  = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
         heffte::box3d<> const output_box = {{output_lower.x,output_lower.y,output_lower.z},{output_upper.x,output_upper.y,output_upper.z}};
-	heffte::plan_options options = heffte::default_options<heffte::backend::rocfft>();
+	heffte::plan_options options = heffte::default_options<fft_backend>();
         options.algorithm = heffte::reshape_algorithm::p2p_plined;
         //options.algorithm = heffte::reshape_algorithm::alltoall;
         //options.algorithm = heffte::reshape_algorithm::p2p;
@@ -110,18 +140,22 @@ acFFTTransformR2CBase(cudaStream_t stream, const AcReal* src, const Volume domai
 	options.use_reorder = true;
         //options.algorithm = heffte::reshape_algorithm::alltoallv;
 	//options.use_gpu_aware = false;
-        heffte::fft3d_r2c<heffte::backend::rocfft> fft(stream, input_box, output_box, 2,communicator, options);
-	plans_r2c.emplace(count,std::move(fft));
-	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
+        heffte::fft3d_r2c<fft_backend> fft(stream, input_box, output_box, 2,communicator, options);
+	plans_r2c.emplace(key,std::move(fft));
     }
-    AcComplex* workspace = work_buffers[count];
+    const size_t work_buf_size = plans_r2c.at(key).size_workspace()*batch_size;
+    if(work_buffers.find(work_buf_size) == work_buffers.end())
+    {
+	work_buffers[work_buf_size] = get_fresh_complex_buffer(work_buf_size);
+    }
+    AcComplex* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
-    	;//plans_r2c.at(count).backward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
+    	;//plans_r2c.at(key).backward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
     }
     else
     {
-    	plans_r2c.at(count).forward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    	plans_r2c.at(key).forward(batch_size,src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
     }
     return AC_SUCCESS;
 }
@@ -133,7 +167,6 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
 		  const bool inverse, const int batch_size)
 {
     static std::unordered_map<size_t,AcComplexFloat*> work_buffers{};
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
     //HeFFTe is surprisingly inclusive in the domain
     const int3 lower = (int3)
     {
@@ -147,22 +180,35 @@ acFFTTransformCF2CFBase(const AcComplexFloat* src, const Volume domain_size, AcC
 	    (int)domain_size.y,
 	    (int)domain_size.z
     };
-    const int3 upper = lower+dims-(int3){1,1,1};
-    if(plans_single.find(count) == plans_single.end())
+    const int3 upper = 
     {
+	    lower.x+dims.x-1,
+	    lower.y+dims.y-1,
+	    lower.z+dims.z-1
+    };
+    const PlanKey key = get_plan_key(domain_size);
+    if(plans_single.find(key) == plans_single.end())
+    {
+	ERRCHK_ALWAYS(get_communicator(domain_size) != MPI_COMM_NULL);
+	heffte::plan_options options = heffte::default_options<fft_backend>();
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
-	plans_single.emplace(count,std::move(fft));
-	work_buffers[count] = get_fresh_complex_float_buffer(batch_size*fft.size_workspace());
+        heffte::fft3d<fft_backend> fft(my_box, my_box, get_communicator(domain_size), options);
+	plans_single.emplace(key,std::move(fft));
     }
-    AcComplexFloat* workspace = work_buffers[count];
+    const auto& plan = plans_single.at(key);
+    const size_t work_buf_size = plan.size_workspace()*batch_size;
+    if(work_buffers.find(work_buf_size) == work_buffers.end())
+    {
+	work_buffers[work_buf_size] = get_fresh_complex_float_buffer(work_buf_size);
+    }
+    AcComplexFloat* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
-    	plans_single.at(count).backward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::none);
+    	plan.backward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::none);
     }
     else
     {
-    	plans_single.at(count).forward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::full);
+    	plan.forward(batch_size,(std::complex<float>*)src, (std::complex<float>*)dst, (std::complex<float>*)workspace, heffte::scale::full);
     }
     return AC_SUCCESS;
 }
@@ -172,7 +218,6 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
 		  const bool inverse, const int batch_size)
 {
     static std::unordered_map<size_t,AcComplex*> work_buffers{};
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
     //HeFFTe is surprisingly inclusive in the domain
     const int3 lower = (int3)
     {
@@ -186,22 +231,34 @@ acFFTTransformC2CBase(const AcComplex* src, const Volume domain_size, AcComplex*
 	    (int)domain_size.y,
 	    (int)domain_size.z
     };
-    const int3 upper = lower+dims-(int3){1,1,1};
-    if(plans.find(count) == plans.end())
+    const int3 upper = 
     {
+	    lower.x+dims.x-1,
+	    lower.y+dims.y-1,
+	    lower.z+dims.z-1
+    };
+    const PlanKey key = get_plan_key(domain_size);
+    if(plans.find(key) == plans.end())
+    {
+	ERRCHK_ALWAYS(get_communicator(domain_size) != MPI_COMM_NULL);
         heffte::box3d<> const my_box = {{lower.x,lower.y,lower.z},{upper.x,upper.y,upper.z}};
-        heffte::fft3d<heffte::backend::rocfft> fft(my_box, my_box, communicator);
-	plans.emplace(count,std::move(fft));
-	work_buffers[count] = get_fresh_complex_buffer(batch_size*fft.size_workspace());
+        heffte::fft3d<fft_backend> fft(my_box, my_box, get_communicator(domain_size));
+	plans.emplace(key,std::move(fft));
     }
-    AcComplex* workspace = work_buffers[count];
+    const auto& plan = plans.at(key);
+    const size_t work_buf_size = plan.size_workspace()*batch_size;
+    if(work_buffers.find(work_buf_size) == work_buffers.end())
+    {
+	work_buffers[work_buf_size] = get_fresh_complex_buffer(work_buf_size);
+    }
+    AcComplex* workspace = work_buffers[work_buf_size];
     if(inverse)
     {
-    	plans.at(count).backward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
+    	plan.backward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::none);
     }
     else
     {
-    	plans.at(count).forward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
+    	plan.forward(batch_size,(std::complex<AcReal>*)src, (std::complex<AcReal>*)dst, (std::complex<AcReal>*)workspace, heffte::scale::full);
     }
     return AC_SUCCESS;
 }
@@ -335,7 +392,6 @@ acFFTForwardTransformR2HermitianPlanarBatched(const AcReal* src, const Volume do
     AcComplex* tmp_in  = tmp_buffers[count].in;
     AcComplex* tmp_out = tmp_buffers[count].out;
     acKernelVolumeCopyRealToComplexBatched(stream,src,starting_point,domain_size,tmp_in,(Volume){0,0,0},subdomain_size,batch_size);
-
     acFFTTransformR2CBase(stream,src,subdomain_size,tmp_out,false,batch_size);
     acKernelVolumeCopyComplexToPlanarBatched(stream,tmp_out,(Volume){0,0,0},subdomain_size,real_dst,imag_dst,starting_point,domain_size,batch_size);
 
@@ -458,15 +514,22 @@ AcResult
 acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* dst)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp  = get_fresh_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_complex_buffer(count);
+    static std::unordered_map<size_t,AcComplexInAndOut> tmp_buffers{};
+    if (tmp_buffers.find(count) == tmp_buffers.end())
+    {
+    	AcComplex* tmp  = get_fresh_complex_buffer(count);
+    	AcComplex* tmp2 = get_fresh_complex_buffer(count);
+	tmp_buffers[count].in  = tmp;
+	tmp_buffers[count].out = tmp2;
+    }
+
+    AcComplex* tmp  = tmp_buffers[count].in;
+    AcComplex* tmp2 = tmp_buffers[count].out;
 
     acPlanarToComplex(real_src,imag_src,count,tmp);
     acFFTBackwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
     acKernelVolumeCopyComplexToReal(0,tmp2,starting_point,subdomain_size,domain_size,dst,starting_point,subdomain_size,domain_size);
 
-    acDeviceFree(&tmp,0);
-    acDeviceFree(&tmp2,0);
     return AC_SUCCESS;
 }
 
@@ -475,6 +538,10 @@ acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
 {
 	communicator = astaroth_comm->handle;
 	global_offset = (Volume){(size_t)global_offset_[0],(size_t)global_offset_[1],(size_t)global_offset_[2]};
+	int rank{};
+	MPI_Comm_rank(communicator,&rank);
+	if(xy_plane_communicator != MPI_COMM_NULL) MPI_Comm_free(&xy_plane_communicator);
+	MPI_Comm_split(communicator,(int)global_offset.z,rank,&xy_plane_communicator);
 	return AC_SUCCESS;
 
 }
@@ -483,6 +550,8 @@ AcResult
 acFFTQuit()
 {
 	plans.clear();
+	plans_single.clear();
 	plans_r2c.clear();
+	if(xy_plane_communicator != MPI_COMM_NULL) MPI_Comm_free(&xy_plane_communicator);
 	return AC_SUCCESS;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ac_mpi.h"
 #include "acc_runtime.h"
 #include "astaroth_analysis.h"
 #include "astaroth_base.h"
@@ -11,6 +12,20 @@
 #endif
 
 AC_BEGIN_C_DECLARATIONS
+
+/*
+ * =============================================================================
+ * Helper functions
+ * =============================================================================
+ */
+
+AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
+AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
+AcBuffer acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order);
+void acBufferDestroy(AcBuffer* buffer);
+AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
+AcBuffer acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaStream_t stream);
+AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cudaStream_t stream);
 
 int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
                           const AcMeshInfo info);
@@ -26,11 +41,7 @@ acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealPara
     };
 }
 
-/*
- * =============================================================================
- * Helper functions
- * =============================================================================
- */
+const char* acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm);
 
 FUNC_DEFINE(Volume, acGetLocalNN, (const AcMeshInfo info));
 FUNC_DEFINE(Volume, acGetLocalMM, (const AcMeshInfo info));
@@ -40,6 +51,11 @@ FUNC_DEFINE(Volume, acGetMinNN, (const AcMeshInfo info));
 FUNC_DEFINE(Volume, acGetMaxNN, (const AcMeshInfo info));
 FUNC_DEFINE(Volume, acGetGridMaxNN, (const AcMeshInfo info));
 FUNC_DEFINE(AcReal3, acGetLengths, (const AcMeshInfo info));
+
+int acMemUsage();
+AcResult acSrand(const size_t seed);
+AcReal   acRand();
+int      acRandInt(const int min, const int max);
 
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info)
@@ -197,7 +213,8 @@ FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
 
 FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 
-FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
+void acStoreConfig(const AcMeshInfo info, const char* filename);
+void acStoreRunConsts(const AcMeshInfo info, const char* filename);
 
 //TP: this is done for perf optim since if acVertexBufferIdx is called often
 //Making it an external function call is quite expensive
@@ -297,18 +314,18 @@ acHostUpdateParams(AcMeshInfo* config);
 AcResult
 acHostUpdateCompParams(AcMeshInfo* config);
 
-OVERLOADED_FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
-FUNC_DEFINE(AcReal*, acHostCreateVertexBufferVariable,(const AcMeshInfo info, const VertexBufferHandle vtxbuf));
-FUNC_DEFINE(AcResult, acHostMeshCreateProfiles,(AcMesh* mesh));
-FUNC_DEFINE(AcResult, acHostMeshDestroyVertexBuffer,(AcReal** vtxbuf));
+AcReal* acHostCreateVertexBuffer (const AcMeshInfo info);
+AcReal* acHostCreateVertexBufferVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf);
+AcResult acHostMeshCreateProfiles(AcMesh* mesh);
+AcResult acHostMeshDestroyVertexBuffer(AcReal** vtxbuf);
 /** Creates a mesh stored in host memory */
-FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+AcResult acHostMeshCreate(const AcMeshInfo mesh_info, AcMesh* mesh);
 /** Copies the VertexBuffers from src to dst*/
-FUNC_DEFINE(AcResult, acHostMeshCopyVertexBuffers,(const AcMesh src, AcMesh dst));
+AcResult acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst);
 /** Copies a host mesh to a new host mesh */
-FUNC_DEFINE(AcResult, acHostMeshCopy,(const AcMesh src, AcMesh* dst));
+AcResult acHostMeshCopy(const AcMesh src, AcMesh* dst);
 /** Creates a mesh stored in host memory (size of the whole grid) */
-FUNC_DEFINE(AcResult, acHostGridMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+AcResult acHostGridMeshCreate(const AcMeshInfo mesh_info, AcMesh* mesh);
 
 /** Checks that the loaded dynamic Astaroth is binary compatible with the loader */
 FUNC_DEFINE(AcResult, acVerifyCompatibility, (const size_t mesh_size, const size_t mesh_info_size, const size_t comp_info_size, const int num_reals, const int num_ints, const int num_bools, const int num_real_arrays, const int num_int_arrays, const int num_bool_arrays));
@@ -330,14 +347,98 @@ AcResult acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, Ac
 
 AcResult acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
+FUNC_DEFINE(const char*,acGetFieldName,(const Field field));
+/** Returns the number of fields (vertexbuffer handles). */
+FUNC_DEFINE(size_t, acGetNumFields,(void));
+
+FUNC_DEFINE(bool,acFieldIsAuxiliary,(const Field field));
+
 AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
 
+static inline AcReal*
+acHostCreateVertexBuffer(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return acHostCreateVertexBufferVariable(info, vtxbuf);
+}
+
+static inline AcMeshDims
+acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const int3 halos = acGetFieldHalos(info, vtxbuf);
+    const Volume n0  = (Volume){
+        as_size_t(halos.x),
+        as_size_t(halos.y),
+        as_size_t(halos.z),
+    };
+    const Volume m0 = (Volume){0, 0, 0};
+    const Volume m1 = (Volume){
+        as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].x),
+        as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].y),
+        as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].z),
+    };
+    const Volume n1 = (Volume){
+        m1.x - n0.x,
+        m1.y - n0.y,
+        m1.z - n0.z,
+    };
+    const Volume nn = (Volume){
+        m1.x - 2 * n0.x,
+        m1.y - 2 * n0.y,
+        m1.z - 2 * n0.z,
+    };
+    const Volume reduction_tile = (Volume){
+        as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+        as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+        as_size_t(info.int3_params[AC_reduction_tile_dimensions].z),
+    };
+
+    return (AcMeshDims){
+        .n0             = n0,
+        .n1             = n1,
+        .m0             = m0,
+        .m1             = m1,
+        .nn             = nn,
+        .reduction_tile = reduction_tile,
+    };
+}
+
+static inline size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return acVertexBufferCompdomainSizeVariable(info, vtxbuf);
+}
+
+static inline size_t
+acVertexBufferCompdomainSizeBytes(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return acVertexBufferCompdomainSizeBytesVariable(info, vtxbuf);
+}
+
+static inline Volume
+acVertexBufferDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return acVertexBufferDimsVariable(info, vtxbuf);
+}
+
+static inline size_t
+acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info,
+                  const VertexBufferHandle vtxbuf)
+{
+    return acVertexBufferIdxVariable(i, j, k, info, vtxbuf);
+}
+
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
-    return acVertexBufferVariableSize(info,vtxbuf);
+    return acVertexBufferVariableSize(info, vtxbuf);
+}
+
+static inline size_t
+acVertexBufferSizeBytes(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return acVertexBufferSizeBytesVariable(info, vtxbuf);
 }
 
 #endif

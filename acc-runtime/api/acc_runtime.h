@@ -21,10 +21,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "ac_helpers.h"
+#include "ac_mpi.h"
+#include "astaroth_device_headers.h"
 #include "builtin_enums.h"
 #include "datatypes.h"
-#include "astaroth_device_headers.h"
 #include "errchk.h"
 #include "func_define.h"
 
@@ -183,17 +183,8 @@ typedef struct {
 } ProfileBufferArray;
 
 typedef struct {
-    AcReal* in[NUM_VTXBUF_HANDLES];
-    AcReal* out[NUM_VTXBUF_HANDLES];
-    float*  single_in[NUM_VTXBUF_HANDLES];
-    float*  single_out[NUM_VTXBUF_HANDLES];
-//At least on CUDA __half is not defined for C-sources.
-//At the same time they never have to worry themselves about these internal
-//buffers so all good.
-#ifdef __cplusplus
-    __half*   half_in[NUM_VTXBUF_HANDLES];
-    __half*   half_out[NUM_VTXBUF_HANDLES];
-#endif
+    void* in[NUM_VTXBUF_HANDLES];
+    void* out[NUM_VTXBUF_HANDLES];
     AcComplex* complex_in[NUM_COMPLEX_FIELDS+1];
     acKernelInputParams kernel_input_params;
     int reduce_offset;
@@ -208,6 +199,19 @@ typedef struct {
   	AcReduceOp floats[NUM_FLOAT_OUTPUTS+1];	
 #endif
 } AcScratchpadStates;
+
+// FIXME(OM): The API for this lives in astaroth_helpers.h even though it
+// should probably live in the ACC runtime layer. For now this works but it is
+// quite intuitive.
+typedef struct AcBuffer{
+    AcReal* data;
+    size_t count;
+    bool on_device;
+    AcShape shape;
+    #ifdef __cplusplus
+    const AcReal& operator[](const int index) {return data[index];}
+    #endif
+} AcBuffer;
 
 typedef struct {
 	  AcBuffer src;
@@ -291,7 +295,7 @@ AC_BEGIN_C_DECLARATIONS
 
   FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const Volume start, const Volume end, VertexBufferArray));
   FUNC_DEFINE(AcResult, acLaunchKernelWithTPB,(AcKernel kernel, const cudaStream_t stream, const Volume start_volume, const Volume end_volume, VertexBufferArray vba, const dim3 tpb));
-  FUNC_DEFINE(AcResult, acLaunchKernelBase,(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream));
+  FUNC_DEFINE(AcResult, acLaunchKernelBase,(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, bool perform_error_check));
 
 
   FUNC_DEFINE(AcResult, acSetReduceOffset,(AcKernel func, const Volume start, const Volume end, VertexBufferArray));
@@ -344,30 +348,6 @@ prof_size(const Profile prof, const size3_t counts)
     return prof_count(prof,counts)*sizeof(AcReal);
 }
 
-AcReal**
-ac_allocate_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
-int**
-ac_allocate_scratchpad_int(const size_t i, const size_t new_bytes, const AcReduceOp state);
-float**
-ac_allocate_scratchpad_float(const size_t i, const size_t new_bytes, const AcReduceOp state);
-
-void
-ac_free_scratchpad_real(const size_t i);
-void
-ac_free_scratchpad_int(const size_t i);
-void
-ac_free_scratchpad_float(const size_t i);
-
-const size_t*
-ac_get_scratchpad_size_real(const size_t i);
-const size_t*
-ac_get_scratchpad_size_int(const size_t i);
-const size_t*
-ac_get_scratchpad_size_float(const size_t i);
-
-void
-ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
-
 AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
@@ -393,6 +373,9 @@ acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
 #ifndef AC_RUNTIME_SOURCE
 #include "load_comp_info.h"
 
+
+AC_BEGIN_C_DECLARATIONS
+
 void acVBASwapBuffer(const Field field, VertexBufferArray* vba);
 
 void acVBASwapBuffers(VertexBufferArray* vba);
@@ -402,10 +385,6 @@ void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
 void acPBASwapBuffers(VertexBufferArray* vba);
 
 AcResult acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
-
-
-
-
 
 FUNC_DEFINE(AcResult, acLoadRealReduceRes,(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value));
 FUNC_DEFINE(AcResult, acLoadIntReduceRes,(cudaStream_t stream, const AcIntOutputParam param, const int* value));
@@ -425,6 +404,8 @@ FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba, const AcMeshDims* dims)
  * Returns 0 on succes and -1 on failure.
  */
 FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
+
+AC_END_C_DECLARATIONS
 
 #ifdef __cplusplus
 

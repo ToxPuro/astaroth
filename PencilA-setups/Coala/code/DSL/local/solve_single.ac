@@ -1,0 +1,7 @@
+#include "../prerequisites.h"
+
+Kernel singlepass_solve(PC_SUB_STEP_NUMBER step_num, real dt) {
+  write( RHO, rk3(previous(RHO), value(RHO), dlnrho_dt(step_num), step_num, dt) )
+  write( ND, rk3(previous(ND), value(ND), dndmd_dt(step_num), step_num, dt) )
+  write( CONST, rk3(previous(CONST), value(CONST), duud_dt(step_num), step_num, dt) )
+}

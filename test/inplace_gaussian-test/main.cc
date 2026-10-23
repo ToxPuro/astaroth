@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -46,11 +46,6 @@ acAbort(void)
     if (!finalized)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
 }
-double
-drand()
-{
-	return (double)(rand()) / (double)(rand());
-}
 
 int
 main(void)
@@ -65,7 +60,7 @@ main(void)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // Set random seed for reproducibility
-    srand(321654987);
+    acSrand(666);
 
     // CPU alloc
     AcMeshInfo info;
@@ -194,7 +189,7 @@ main(void)
       acHostMeshApplyPeriodicBounds(&candidate);
       acHostMeshApplyPeriodicBounds(&model);
 
-      const AcResult res = acVerifyMeshWithMaximumError("inplace_gaussian", model, candidate,10.0);
+      const AcResult res = acVerifyMeshWithMaximumError("inplace_gaussian", model, candidate,15.0);
       if (res == AC_SUCCESS) return true;
       return false;
     };

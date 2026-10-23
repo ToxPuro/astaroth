@@ -45,9 +45,9 @@
 #include <vector>
 
 #include "ac_helpers.h"
-#include "astaroth.h"
 #include "astaroth_analysis_helpers.h"
 #include "astaroth_cuda_wrappers.h"
+#include "astaroth_logging.h"
 #include "errchk.h"
 #include "grid_detail.h"
 #include "internal_device_funcs.h"
@@ -95,6 +95,42 @@ make_unique(Args&&... args)
 #else
 using std::make_unique;
 #endif
+
+//TP: debugging aid for CUDA-aware MPI. With the environment variable AC_DEBUG_MPI set every MPI call given device memory
+//    is logged and, with HIP, checked to lie inside a single device allocation
+static bool
+mpi_debug_enabled()
+{
+	static const bool enabled = getenv("AC_DEBUG_MPI") != NULL;
+	return enabled;
+}
+
+static void
+check_mpi_device_buffer(const char* call, const std::string& task, const void* ptr, const size_t bytes, const int peer, const int tag)
+{
+	if(!mpi_debug_enabled()) return;
+	const int rank = ac_pid();
+	fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: [%p,%p) %zu bytes, peer %d, tag %d\n",
+		rank,call,task.c_str(),ptr,(const void*)((const char*)ptr+bytes),bytes,peer,tag);
+#if AC_USE_HIP && !AC_CPU_BUILD
+	hipDeviceptr_t base{};
+	size_t size{};
+	if(hipMemGetAddressRange(&base,&size,(hipDeviceptr_t)ptr) != hipSuccess)
+	{
+		(void)hipGetLastError();
+		fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: %p is not in any device allocation!\n",rank,call,task.c_str(),ptr);
+		fflush(stderr);
+		abort();
+	}
+	if((const char*)ptr + bytes > (const char*)base + size)
+	{
+		fprintf(stderr,"[AC_DEBUG_MPI %d] %s %s: [%p,%p) exceeds its device allocation [%p,%p)!\n",
+			rank,call,task.c_str(),ptr,(const void*)((const char*)ptr+bytes),base,(const void*)((const char*)base+size));
+		fflush(stderr);
+		abort();
+	}
+#endif
+}
 
 
 template <typename T>
@@ -144,6 +180,8 @@ get_max_halo_size(const Field fields[], const size_t num_fields)
     }
     return max_halo_size;
 }
+
+
 
 AcTaskDefinition
 acRayUpdate(const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
@@ -259,7 +297,9 @@ acPeriodicRay(Field fields[], const size_t num_fields, const int3 direction)
     task_def.num_fields_in  = num_fields;
     task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
-    task_def.halo_sizes = get_max_halo_size(fields,num_fields);
+    //Only the single layer at the downstream end of the ray (input) and the single upstream ghost layer
+    //the revision reads (output) take part: sum_periodic_rays indexes the packed data as one layer per process
+    task_def.halo_sizes = (Volume){1,1,1};
     task_def.ray_direction = direction;
     task_def.sending   = true;
     task_def.receiving = true;
@@ -1013,18 +1053,10 @@ Task::syncVBA()
         if (swap_offset[i]) {
             vba.on_device.in[i]  = device_vba.on_device.out[i];
             vba.on_device.out[i] = device_vba.on_device.in[i];
-            vba.on_device.single_in[i]  = device_vba.on_device.single_out[i];
-            vba.on_device.single_out[i] = device_vba.on_device.single_in[i];
-            vba.on_device.half_in[i]  = device_vba.on_device.half_out[i];
-            vba.on_device.half_out[i] = device_vba.on_device.half_in[i];
         }
         else {
             vba.on_device.in[i]  = device_vba.on_device.in[i];
             vba.on_device.out[i] = device_vba.on_device.out[i];
-            vba.on_device.single_in[i]  = device_vba.on_device.single_in[i];
-            vba.on_device.single_out[i] = device_vba.on_device.single_out[i];
-            vba.on_device.half_in[i]  = device_vba.on_device.half_in[i];
-            vba.on_device.half_out[i] = device_vba.on_device.half_out[i];
         }
     }
     for (int i = 0; i < NUM_PROFILES; ++i) {
@@ -1045,17 +1077,9 @@ Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 
         if (device_swaps[i]) {
-            AcReal* tmp = vba.on_device.in[i];
+            void* tmp = vba.on_device.in[i];
             vba.on_device.in[i]   = vba.on_device.out[i];
             vba.on_device.out[i]  = tmp;
-
-            float* sg_tmp = vba.on_device.single_in[i];
-            vba.on_device.single_in[i]   = vba.on_device.single_out[i];
-            vba.on_device.single_out[i]  = sg_tmp;
-
-            __half* hf_tmp = vba.on_device.half_in[i];
-            vba.on_device.half_in[i]   = vba.on_device.half_out[i];
-            vba.on_device.half_out[i]  = hf_tmp;
         }
     }
     for(int i = 0; i < NUM_PROFILES; ++i)
@@ -1105,8 +1129,45 @@ get_grid_nn()
 	return acGetGridNN(acDeviceGetLocalConfig(acGridGetDevice()));
 }
 
+typedef struct TaskGraphBuildScope
+{
+	size_t streams_in_use{};
+	std::vector<bool> buffer_taken{};
+} TaskGraphBuildScope;
+
+static struct
+{
+	std::vector<cudaStream_t> streams;
+	std::vector<std::unique_ptr<PooledBuffer>> buffers;
+	// The task graphs currently being built. A stack in case a build ever triggers another build
+	std::vector<TaskGraphBuildScope> building;
+} taskgraph_resources;
+
+void
+taskgraph_resources_begin_graph()
+{
+	taskgraph_resources.building.push_back({});
+}
+
+void
+taskgraph_resources_end_graph()
+{
+	ERRCHK_ALWAYS(!taskgraph_resources.building.empty());
+	taskgraph_resources.building.pop_back();
+}
 cudaStream_t
-get_stream(Device device)
+create_high_priority_stream(Device device)
+{
+  cudaStream_t stream;
+  set_device(device);
+  int low_prio, high_prio;
+  acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+  acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+  return stream;
+}
+
+cudaStream_t
+acquire_stream(Device device)
 {
 	//TP: using only the default stream saves memory which is useful on
 	//    low-level hardware test environments
@@ -1114,12 +1175,80 @@ get_stream(Device device)
 	{
 		return cudaStream_t(0);
 	}
-	cudaStream_t stream;
-	set_device(device);
-        int low_prio, high_prio;
-        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-	return stream;
+	auto& pool = taskgraph_resources;
+	ERRCHK_ALWAYS(!pool.building.empty());
+	auto& scope = pool.building.back();
+	if(scope.streams_in_use == pool.streams.size())
+	{
+		pool.streams.push_back(create_high_priority_stream(device));
+	}
+	return pool.streams[scope.streams_in_use++];
+}
+
+static void
+release_from_previous_user(PooledBuffer* buffer)
+{
+	if(buffer->user == NULL) return;
+	auto& requests = buffer->user->requests;
+	MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
+	buffer->user = NULL;
+}
+
+// Returns the smallest pooled buffer that fits and is not yet used by the task graph being built.
+// If there is none, a new buffer is added to the pool: existing buffers are never reallocated (see PooledBuffer).
+static PooledBuffer*
+acquire_buffer(const size_t bytes, const bool pinned)
+{
+	auto& pool = taskgraph_resources;
+	ERRCHK_ALWAYS(!pool.building.empty());
+	auto& taken = pool.building.back().buffer_taken;
+	taken.resize(pool.buffers.size(),false);
+
+	int best = -1;
+	for(size_t i = 0; i < pool.buffers.size(); ++i)
+	{
+		const PooledBuffer& candidate = *pool.buffers[i];
+		const bool fits = candidate.bytes >= bytes && (!pinned || candidate.data_pinned != NULL);
+		if(taken[i] || !fits) continue;
+		if(best == -1 || candidate.bytes < pool.buffers[best]->bytes) best = i;
+	}
+	if(best == -1)
+	{
+		auto buffer = std::make_unique<PooledBuffer>();
+		ERRCHK_CUDA_ALWAYS(acMalloc((void**)&buffer->data, bytes));
+		if(pinned) ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&buffer->data_pinned, bytes));
+		buffer->bytes = bytes;
+		if(mpi_debug_enabled())
+			fprintf(stderr,"[AC_DEBUG_MPI %d] pooled message buffer %zu: [%p,%p) %zu bytes\n",ac_pid(),pool.buffers.size(),
+				(void*)buffer->data,(void*)(buffer->data+bytes),bytes);
+		pool.buffers.push_back(std::move(buffer));
+		taken.push_back(false);
+		best = pool.buffers.size()-1;
+	}
+	taken[best] = true;
+	return pool.buffers[best].get();
+}
+
+void
+taskgraph_resources_release()
+{
+	auto& pool = taskgraph_resources;
+	ERRCHK_ALWAYS(pool.building.empty());
+	//TP: the buffer structs are kept since messages of still existing task graphs point to them
+	for(auto& buffer : pool.buffers)
+	{
+		release_from_previous_user(buffer.get());
+		if(buffer->data)        acFree(buffer->data);
+		if(buffer->data_pinned) acFreeHost(buffer->data_pinned);
+		buffer->data         = NULL;
+		buffer->data_pinned  = NULL;
+		buffer->bytes        = 0;
+	}
+	for(auto& stream : pool.streams)
+	{
+		acStreamDestroy(stream);
+	}
+	pool.streams.clear();
 }
 
 
@@ -1136,7 +1265,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 		   op.outputs_out, op.num_outputs_out},max_facet_class,op.red_black_state),
            op, device_, swap_offset_)
 {
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     auto& input_region = input_regions[0];
     const auto dimension_inactive = ac_get_info()[AC_dimension_inactive];
     if(kernel_only_writes_profile(PROFILE_X,op.analysis_info))
@@ -1225,7 +1354,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, std::vector<Region> in
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     (void)fields_already_depend_on_boundaries;
-    stream = get_stream(device);
+    stream = acquire_stream(device);
 
     syncVBA();
 
@@ -1248,7 +1377,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     (void)fields_already_depend_on_boundaries;
-    stream = get_stream(device);
+    stream = acquire_stream(device);
 
     syncVBA();
 
@@ -1261,6 +1390,14 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
     task_type = TASKTYPE_COMPUTE;
 }
 
+//Thickness of the boundary layer handled by a ray update: one point, but none along inactive dimensions (no ghost zone there)
+static Volume
+get_ray_layer_width()
+{
+       const Volume min_nn = get_min_nn();
+       return (Volume){std::min(min_nn.x,(size_t)1),std::min(min_nn.y,(size_t)1),std::min(min_nn.z,(size_t)1)};
+}
+
 std::shared_ptr<ComputeTask>
 ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,const int3 ray_direction, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
 	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
@@ -1268,7 +1405,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 
     const auto get_input_region = [&](const int3 id)
     {
-	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
+	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), get_ray_layer_width(), {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
     };
 
     const int ndir = abs(ray_direction.x) + abs(ray_direction.y) + abs(ray_direction.z);
@@ -1321,7 +1458,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 	    }
     }
 
-    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
+    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), get_ray_layer_width(), {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
     //TP: avoid computing on corner points twice
     if(boundary_id.x != 0)
     {
@@ -1364,18 +1501,8 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 bool
 ComputeTask::isComputeTask() { return true; }
 
-void
-destroy_stream(cudaStream_t stream)
-{
-    (void)stream;
-    if(ac_get_info()[AC_only_default_stream_for_taskgraphs]) return;
-    acStreamDestroy(stream);
-}
-
-ComputeTask::~ComputeTask()
-{
-    destroy_stream(stream);
-}
+//TP: the stream belongs to the task graph resource pool
+ComputeTask::~ComputeTask() {}
 
 
 AcKernel
@@ -1455,19 +1582,28 @@ HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_leng
     {
 	    all_bytes_per_process /= counterpart_ranks.size();
     }
-    ERRCHK_CUDA_ALWAYS(acMalloc((void**)&all_data, all_bytes));
-    if(!ac_get_info()[AC_use_cuda_aware_mpi])
+    all_data        = NULL;
+    all_data_pinned = NULL;
+    real_data   = NULL; real_data_pinned   = NULL;
+    single_data = NULL; single_data_pinned = NULL;
+    half_data   = NULL; half_data_pinned   = NULL;
+    //TP: the memory comes from the pool shared by all task graphs. It is never reallocated so the pointers can be set here
+    if(all_bytes > 0)
     {
-    	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&all_data_pinned, all_bytes));
+    	buffer = acquire_buffer(all_bytes, !ac_get_info()[AC_use_cuda_aware_mpi]);
+
+    	all_data        = buffer->data;
+    	all_data_pinned = buffer->data_pinned;
+
+    	real_data        = (AcReal*)all_data;
+    	real_data_pinned = (AcReal*)all_data_pinned;
+
+    	single_data        = (float*)(all_data + real_bytes);
+    	single_data_pinned = all_data_pinned ? (float*)(all_data_pinned + real_bytes) : NULL;
+
+    	half_data        = (__half*)(all_data + real_bytes + single_bytes);
+    	half_data_pinned = all_data_pinned ? (__half*)(all_data_pinned + real_bytes + single_bytes) : NULL;
     }
-    real_data        = (AcReal*)all_data;
-    real_data_pinned = (AcReal*)all_data_pinned;
-
-    single_data        = (float*)(all_data + real_bytes);
-    single_data_pinned = (float*)(all_data_pinned + real_bytes);
-
-    half_data        = (__half*)(all_data + real_bytes + single_bytes);
-    half_data_pinned = (__half*)(all_data_pinned + real_bytes + single_bytes);
 
     for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
     {
@@ -1475,23 +1611,29 @@ HaloMessage::HaloMessage(size_t length_, size_t single_length_, size_t half_leng
     }
 }
 
+// Takes the pooled buffer into use: waits for the MPI requests of a message of another task graph that used it before
+void
+HaloMessage::bind()
+{
+    if(buffer == NULL || buffer->user == this) return;
+    release_from_previous_user(buffer);
+    buffer->user = this;
+}
+
 HaloMessage::~HaloMessage()
 {
     MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
     real_length = -1;
-    acFree(all_data);
-    if(!ac_get_info()[AC_use_cuda_aware_mpi])
-    {
-    	acFreeHost(all_data_pinned);
-	all_data_pinned    = NULL;
-	real_data_pinned   = NULL;
-	single_data_pinned = NULL;
-	half_data_pinned   = NULL;
-    }
+    if(buffer && buffer->user == this) buffer->user = NULL;
+    buffer       = NULL;
     all_data     = NULL;
     real_data    = NULL;
     single_data  = NULL;
     half_data    = NULL;
+    all_data_pinned    = NULL;
+    real_data_pinned   = NULL;
+    single_data_pinned = NULL;
+    half_data_pinned   = NULL;
 }
 
 void
@@ -1550,6 +1692,7 @@ HaloMessageSwapChain::update_counterpart_ranks(const std::vector<int> counterpar
 HaloMessage*
 HaloMessageSwapChain::get_current_buffer()
 {
+    buffers[buf_idx].bind();
     return &buffers[buf_idx];
 }
 
@@ -1558,6 +1701,7 @@ HaloMessageSwapChain::get_fresh_buffer()
 {
     buf_idx         = (buf_idx + 1) % SWAP_CHAIN_LENGTH;
     MPI_Waitall(buffers[buf_idx].requests.size(), buffers[buf_idx].requests.data(), MPI_STATUSES_IGNORE);
+    buffers[buf_idx].bind();
     return &buffers[buf_idx];
 }
 
@@ -1745,7 +1889,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
     auto& input_region = input_regions[0];
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done creating CUDA stream\n");
 
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: syncing VBA\n");
@@ -1796,7 +1940,6 @@ HaloExchangeTask::~HaloExchangeTask()
 
     set_device(device);
     // dependents.clear();
-    destroy_stream(stream);
 }
 int3
 get_red_black_offset(const Volume pos, const AcRedBlackState state)
@@ -1935,6 +2078,8 @@ HaloExchangeTask::receiveDevice()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
+	check_mpi_device_buffer("MPI_Irecv",name,msg->all_data + i*msg->all_bytes_per_process,msg->all_bytes_per_process,
+			        msg->counterpart_ranks[i],msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG);
     	ERRCHK_ALWAYS(MPI_Irecv(msg->all_data + i*msg->all_bytes_per_process, msg->all_bytes_per_process, MPI_BYTE, msg->counterpart_ranks[i],
     	          msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
@@ -1951,6 +2096,8 @@ HaloExchangeTask::sendDevice()
 
     for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
     {
+	check_mpi_device_buffer("MPI_Isend",name,msg->all_data,msg->all_bytes,
+			        msg->counterpart_ranks[i],msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG);
     	ERRCHK_ALWAYS(MPI_Isend(msg->all_data, msg->all_bytes, MPI_BYTE, msg->counterpart_ranks[i],
               msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
@@ -2209,39 +2356,31 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
 	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3,op.red_black_state)},
            Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_),
-      buffers(input_regions[0].dims, get_nprocs(op.ray_direction),0,0,tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
+      //Room for all fields of all processes along the ray (the gathered data), the packed data uses the first nfields*volume entries
+      buffers(input_regions[0].dims, get_nprocs(op.ray_direction)*input_regions[0].memory.fields.size(),0,0,tag_0, input_regions[0].tag, get_ints_up_to(input_regions[0].memory.fields.size()), HaloMessageType::Receive)
 {
     const auto sub_comms = acGridMPISubComms();
     gather_comm = MPI_COMM_NULL;
     ray_direction = op.ray_direction;
+
     kernel = op.kernel_enum;
-    if(op.ray_direction == (int3){1,0,0})
+    //The orientation of the ray is handled in summing the rays (sum_periodic_rays)
+    //so no need to take it into account here
+    if(std::abs(op.ray_direction.x) == 1)
     {
 	    gather_comm = sub_comms.x;
     }
-    if(op.ray_direction == (int3){-1,0,0})
-    {
-	    gather_comm = sub_comms.reverse_x;
-    }
-    if(op.ray_direction == (int3){0,1,0})
+    if(std::abs(op.ray_direction.y) == 1)
     {
 	    gather_comm = sub_comms.y;
     }
-    if(op.ray_direction == (int3){0,-1,0})
-    {
-	    gather_comm = sub_comms.reverse_y;
-    }
-    if(op.ray_direction == (int3){0,0,1})
+    if(std::abs(op.ray_direction.z) == 1)
     {
 	    gather_comm = sub_comms.z;
     }
-    if(op.ray_direction == (int3){0,0,-1})
-    {
-	    gather_comm = sub_comms.reverse_z;
-    }
     // Create stream for packing/unpacking
     (void)grid_info;
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     nprocs = get_nprocs(op.ray_direction);
 }
 
@@ -2256,7 +2395,6 @@ PeriodicRayTask::~PeriodicRayTask()
     }
 
     set_device(device);
-    destroy_stream(stream);
 }
 
 bool
@@ -2288,15 +2426,15 @@ PeriodicRayTask::compute()
 {
    //TP: this can be polished but at the moment assume we use the kernel coming from stdlib
 #if AC_RADIATION_RAY_INCLUDED
-   auto packed_data = buffers.get_current_buffer();
-   auto dst         = buffers.get_fresh_buffer();
-   //const size_t nvars = input_regions[0].memory.fields.size();
-   //const size_t buffer_length = (packed_data->length/nprocs)*nvars;
-   const size_t variable_len = (packed_data->real_length/nprocs);
+   //Gathered data (see communicate): field i of process iproc starts at (i*nprocs + iproc)*volume
+   auto gathered_data = buffers.get_current_buffer();
+   auto dst           = buffers.get_fresh_buffer();
+   const size_t nvars = input_regions[0].memory.fields.size();
+   const size_t volume = gathered_data->real_length/(nvars*nprocs);
    vba.on_device.kernel_input_params.sum_periodic_rays.ray_direction = ray_direction;
-   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_src = &packed_data->real_data[0];
+   vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_src = &gathered_data->real_data[0];
    vba.on_device.kernel_input_params.sum_periodic_rays.Qrad_dst = &dst->real_data[0];
-   vba.on_device.kernel_input_params.sum_periodic_rays.tau_src = &packed_data->real_data[variable_len];
+   vba.on_device.kernel_input_params.sum_periodic_rays.tau_src = &gathered_data->real_data[volume*nprocs];
    const Volume start{0,0,0};
    const Volume end = input_regions[0].dims;
    acLaunchKernel(sum_periodic_rays,stream,start,end,vba);
@@ -2370,16 +2508,18 @@ PeriodicRayTask::unpack()
 void
 PeriodicRayTask::communicate()
 {
+   //The packed data has field i at i*volume; field i of process iproc is gathered to (i*nprocs + iproc)*volume
    auto packed_data = buffers.get_current_buffer();
    auto dst          = buffers.get_fresh_buffer();
    const size_t nvars = input_regions[0].memory.fields.size();
-   const size_t buffer_length = (packed_data->real_length/nprocs)*nvars;
-   const size_t variable_len = (packed_data->real_length/nprocs);
+   const size_t volume = packed_data->real_length/(nvars*nprocs);
 
    for(size_t i = 0; i < nvars; ++i)
    {
-	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->real_data[0]+i*variable_len,variable_len,AC_REAL_MPI_TYPE,
-				        &dst->real_data[0]+i*buffer_length,variable_len,AC_REAL_MPI_TYPE,
+	   check_mpi_device_buffer("MPI_Iallgather (send)",name,&packed_data->real_data[0]+i*volume,volume*sizeof(AcReal),-1,-1);
+	   check_mpi_device_buffer("MPI_Iallgather (recv)",name,&dst->real_data[0]+i*volume*nprocs,volume*nprocs*sizeof(AcReal),-1,-1);
+	   ERRCHK_ALWAYS(MPI_Iallgather(&packed_data->real_data[0]+i*volume,volume,AC_REAL_MPI_TYPE,
+				        &dst->real_data[0]+i*volume*nprocs,volume,AC_REAL_MPI_TYPE,
 					gather_comm
 					,&dst->requests[i]
 				   ) == MPI_SUCCESS);
@@ -2428,7 +2568,7 @@ MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, co
     }
     // Create stream for packing/unpacking
     (void)grid_info;
-    stream = get_stream(device);
+    stream = acquire_stream(device);
 }
 
 MPIScanTask::~MPIScanTask()
@@ -2443,7 +2583,6 @@ MPIScanTask::~MPIScanTask()
 
     set_device(device);
     // dependents.clear();
-    destroy_stream(stream);
 }
 
 bool
@@ -2526,6 +2665,7 @@ void
 MPIScanTask::communicate()
 {
    auto msg = reduce_buffers.get_current_buffer();
+   check_mpi_device_buffer("MPI_Iexscan",name,&msg->real_data[0],msg->real_length*sizeof(AcReal),-1,-1);
    ERRCHK_ALWAYS(MPI_Iexscan(MPI_IN_PLACE,&msg->real_data[0],msg->real_length,AC_REAL_MPI_TYPE,MPI_SUM,scan_comm,&msg->requests[0]) == MPI_SUCCESS);
 }
 
@@ -2551,7 +2691,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
            Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_)
 {
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     ERRCHK_ALWAYS(!(op.num_profiles_in  == 0 && op.num_outputs_in  == 0));
     ERRCHK_ALWAYS(!(op.num_profiles_reduce_out == 0 && op.num_outputs_out == 0));
     ERRCHK_ALWAYS(op.num_profiles_reduce_out == op.num_profiles_in);
@@ -2587,14 +2727,12 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
    for(const auto& prof: input_regions[0].memory.profiles)
    {
 	   reduces_profiles = true;
+	   //TP: with CUDA-aware MPI the device profile buffer is used directly. It is looked up in communicate()
+	   //    since the profile buffers are swapped and a pointer cached here could point to the wrong buffer
 	   if(!cuda_aware_mpi_for_profiles)
 	   {
-           	const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+           	const size_t bytes = prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
 		ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&profile_comm_buffers[prof],bytes));
-	   }
-	   else
-	   {
-	   	profile_comm_buffers[prof] = acDeviceGetProfileBuffer(device,prof);
 	   }
    }
 
@@ -2644,7 +2782,7 @@ ReduceTask::reduce()
 		   auto dst        = acDeviceGetProfileBuffer(device,prof);
 		   if(AC_CPU_BUILD)
 		   {
-           		const size_t bytes = sizeof(AcReal)*prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
+           		const size_t bytes = prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal]));
 		        memcpy(dst,reduce_buf.src.data,bytes);
 			continue;
 		   }
@@ -2767,7 +2905,7 @@ ReduceTask::transfer_to_host()
 			src += NGHOST+n_size;
 		}
 	}
-   	const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 			       id == 0 ? n_size : NGHOST;
         const size_t bytes = sizeof(AcReal)*as_size_t(data_size);
         ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
@@ -2821,7 +2959,7 @@ ReduceTask::transfer_to_device()
 			src += NGHOST+n_size;
 		}
 	}
-   	const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 			       id == 0 ? n_size : NGHOST;
         const size_t bytes = sizeof(AcReal)*as_size_t(data_size);
         ERRCHK_CUDA(acMemcpyAsync(dst, src, bytes, cudaMemcpyDefault, stream));
@@ -2854,14 +2992,15 @@ ReduceTask::communicate()
    	                reduces_only_prof == PROFILE_Y ? nn.y :
    	                reduces_only_prof == PROFILE_Z ? nn.z :
    	                0;
-		AcReal* buffer = profile_comm_buffers[prof];
+		AcReal* buffer = cuda_aware_mpi_for_profiles ? acDeviceGetProfileBuffer(device,prof) : profile_comm_buffers[prof];
 		if(on_halos())
 		{
 			if (id == 0) buffer += NGHOST;
 			if (id == 1) buffer += NGHOST+n_size;
 		}
-   	        const int data_size = !on_halos() ? prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
+   	        const int data_size = !on_halos() ? prof_count(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])) :
 				id == 0 ? n_size  : NGHOST;
+		if(cuda_aware_mpi_for_profiles) check_mpi_device_buffer("MPI_Iallreduce (profile)",name,buffer,data_size*sizeof(AcReal),-1,-1);
    	        MPI_Iallreduce(MPI_IN_PLACE,
    	     		buffer,
    	     		data_size,
@@ -2876,10 +3015,10 @@ ReduceTask::communicate()
   for(size_t i = 0; i < reduce_outputs.size(); ++i)
   {
 	  const int var = reduce_outputs[i].variable;
-	  if(real_output_is_global[var]  && reduce_outputs[i].type == AC_REAL_TYPE)   MPI_Iallreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm,&requests[i]);
-	  if(int_output_is_global[var]   && reduce_outputs[i].type == AC_INT_TYPE)    MPI_Iallreduce(MPI_IN_PLACE, &local_res_int[i],1,MPI_INT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
+	  if(reduce_outputs[i].type == AC_REAL_TYPE  && real_output_is_global[var])   MPI_Iallreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm,&requests[i]);
+	  if(reduce_outputs[i].type == AC_INT_TYPE   && int_output_is_global[var])    MPI_Iallreduce(MPI_IN_PLACE, &local_res_int[i],1,MPI_INT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
 #if AC_DOUBLE_PRECISION
-	  if(float_output_is_global[var] && reduce_outputs[i].type == AC_FLOAT_TYPE)  MPI_Iallreduce(MPI_IN_PLACE, &local_res_float[i],1,MPI_FLOAT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
+	  if(reduce_outputs[i].type == AC_FLOAT_TYPE && float_output_is_global[var])  MPI_Iallreduce(MPI_IN_PLACE, &local_res_float[i],1,MPI_FLOAT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
 #endif
     }
 }
@@ -2896,7 +3035,7 @@ ReduceTask::load_outputs()
 		auto val = local_res_real[i];
 		if(reduce_outputs[i].postprocess_op == AC_RMS)
 		{
-			const auto nn = (real_output_is_global[i]) ? get_grid_nn() : get_local_nn();
+			const auto nn = (real_output_is_global[var]) ? get_grid_nn() : get_local_nn();
 			const int N = nn.x*nn.y*nn.z;
 			val = sqrt(val/N);
 		}
@@ -2919,7 +3058,7 @@ ReduceTask::load_outputs()
 		auto val = local_res_float[i];
 		if(reduce_outputs[i].postprocess_op == AC_RMS)
 		{
-			const auto nn = (int_output_is_global[i]) ? get_grid_nn() : get_local_nn();
+			const auto nn = (float_output_is_global[var]) ? get_grid_nn() : get_local_nn();
 			const float N = float(nn.x*nn.y*nn.z);
 			val = sqrt(val/N);
 		}
@@ -3016,7 +3155,7 @@ BoundaryConditionTask::BoundaryConditionTask(
        fieldwise(op.fieldwise)
 {
     // Create stream for boundary condition task
-    stream = get_stream(device);
+    stream = acquire_stream(device);
     syncVBA();
 
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "errchk.h"
+#include "astaroth_helpers.h"
 
 #if AC_DOUBLE_PRECISION
 #define DOUBLE_PRECISION (1)
@@ -56,7 +57,7 @@ arrayDestroy(Array* a)
 static real
 randd(void)
 {
-    return (real)rand() / RAND_MAX;
+   return acRand();
 }
 
 static void

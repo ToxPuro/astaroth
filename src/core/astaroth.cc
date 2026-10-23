@@ -24,7 +24,6 @@
 #include "astaroth_cuda_wrappers.h"
 #include "astaroth_legacy.h"
 #include "astaroth_node.h"
-#include "config_helpers.h"
 #include "datatypes.h"
 #include "math_utils_base.h"
 
@@ -40,73 +39,8 @@ acCallocHostReal(const size_t n_cells)
     return res;
 }
 
-AcReal*
-acHostCreateVertexBufferVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
-{
-    const size_t n_cells = acVertexBufferSize(info,vtxbuf);
-    return acCallocHostReal(n_cells);
-}
 
-AcReal*
-acHostCreateVertexBuffer(const AcMeshInfo info)
-{
-    const size_t n_cells = acVertexBufferSize(info);
-    return acCallocHostReal(n_cells);
-}
 
-AcResult
-acHostMeshCreateProfiles(AcMesh* mesh)
-{
-    const auto mm = acGetLocalMM(mesh->info);
-    const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
-    for(int p = 0; p < NUM_PROFILES; ++p)
-    {
-	    mesh->profile[p] = acCallocHostReal(prof_size(Profile(p),counts));
-            ERRCHK_ALWAYS(mesh->profile[p]);
-    }
-    return AC_SUCCESS;
-}
-
-AcResult
-acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
-{
-    mesh->info = info;
-    acHostUpdateParams(&mesh->info);
-    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) 
-	mesh->vertex_buffer[w] = acHostCreateVertexBuffer(mesh->info,VertexBufferHandle(w));
-    return acHostMeshCreateProfiles(mesh);
-}
-AcResult
-acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
-{
-    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        if(src.vertex_buffer[w] == NULL) continue;
-	if(dst.vertex_buffer[w] == NULL) continue;
-	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info,VertexBufferHandle(w)));
-    }
-    return AC_SUCCESS;
-}
-
-AcResult
-acHostMeshCopy(const AcMesh src, AcMesh* dst)
-{
-    ERRCHK_ALWAYS(acHostMeshCreate(src.info,dst) == AC_SUCCESS);
-    ERRCHK_ALWAYS(acHostMeshCopyVertexBuffers(src,*dst) == AC_SUCCESS);
-    return AC_SUCCESS;
-}
-
-AcResult
-acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
-{
-    mesh->info = info;
-    const size_t n_cells = acGridVertexBufferSize(mesh->info);
-    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        mesh->vertex_buffer[w] = acCallocHostReal(n_cells);
-        ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
-    }
-
-    return AC_SUCCESS;
-}
 AcResult
 acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const size_t comp_info, const int num_reals, 
 		      const int num_ints, const int num_bools, const int num_real_arrays,
@@ -155,12 +89,6 @@ acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const
 	return res;
 }
 
-static AcReal
-randf(void)
-{
-    // TODO: rand() considered harmful, replace
-    return (AcReal)rand() / (AcReal)RAND_MAX;
-}
 
 AcResult
 acHostMeshRandomize(AcMesh* mesh)
@@ -169,7 +97,7 @@ acHostMeshRandomize(AcMesh* mesh)
 	if(mesh->vertex_buffer[w] == NULL) continue;
         const size_t n = acVertexBufferSize(mesh->info,VertexBufferHandle(w));
         for (size_t i = 0; i < n; ++i) {
-            mesh->vertex_buffer[w][i] = randf();
+            mesh->vertex_buffer[w][i] = acRand();
         }
     }
 
@@ -181,7 +109,7 @@ acHostGridMeshRandomize(AcMesh* mesh)
     const size_t n = acGridVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         for (size_t i = 0; i < n; ++i) {
-            mesh->vertex_buffer[w][i] = randf();
+            mesh->vertex_buffer[w][i] = acRand();
         }
     }
 
@@ -275,18 +203,24 @@ acGetLengths(const AcMeshInfo info)
 	return info[AC_len];
 }
 
+const char*
+acGetFieldName(const Field field)
+{
+	return field_names[field];
+}
+
+bool
+acFieldIsAuxiliary(const Field field)
+{
+	return vtxbuf_is_auxiliary[field];
+}
+
+size_t
+acGetNumFields(void)
+{
+    return NUM_VTXBUF_HANDLES;
+}
+
 
 #include "get_vtxbufs_funcs.h"
 #include "stencil_accesses.h"
-void
-acStoreConfig(const AcMeshInfo info, const char* filename)
-{
-	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
-	AcScalarTypes::run<load_scalars>(info, fp, "", false);
-	AcArrayTypes::run<load_arrays>(info,fp, "", false);
-
-	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
-	AcArrayCompTypes::run<load_comp_arrays>(info,    fp, "", false);
-	if(filename != NULL) fclose(fp);
-}
-

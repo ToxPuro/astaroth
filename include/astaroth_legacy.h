@@ -39,14 +39,10 @@ FUNC_DEFINE(AcResult, acCheckDeviceAvailability,(void));
  *  */
 FUNC_DEFINE(AcResult, acGetFieldHandle,(const char* field, size_t* handle));
 
-FUNC_DEFINE(const char*,acGetFieldName,(const Field field));
 
 FUNC_DEFINE(Node, acGetNode,(void));
 
 FUNC_DEFINE(int, acGetNumDevicesPerNode,(void));
-
-/** Returns the number of fields (vertexbuffer handles). */
-FUNC_DEFINE(size_t, acGetNumFields,(void));
 
 /** Allocates all memory and initializes the devices visible to the caller. Should be
  * called before any other function in this interface. */
