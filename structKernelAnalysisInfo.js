@@ -3,6 +3,7 @@ var structKernelAnalysisInfo =
     [ "field_has_stencil_op", "structKernelAnalysisInfo.html#a53f1be77bcb02dd6a6b7819b0e13748a", null ],
     [ "n_reduce_inputs", "structKernelAnalysisInfo.html#ab0702a43e0b53fbbaffb855ee583d6c6", null ],
     [ "n_reduce_outputs", "structKernelAnalysisInfo.html#a5536d59c7d94f94af084acd8ab52c399", null ],
+    [ "pair_stencils_accessed", "structKernelAnalysisInfo.html#a29c53b596a36aec8c19a8ca303243f38", null ],
     [ "profile_has_stencil_op", "structKernelAnalysisInfo.html#a931a2bd5f190bec748291ba38417521d", null ],
     [ "rand_uniform_called", "structKernelAnalysisInfo.html#aed70b89eb6be654eb07838cb746cdff4", null ],
     [ "ray_accessed", "structKernelAnalysisInfo.html#a45d0b96abee16af67bb6ffc5ba12b41d", null ],

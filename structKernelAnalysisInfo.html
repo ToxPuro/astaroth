@@ -146,6 +146,7 @@ Data Fields</h2></td></tr>
 <tr class="memitem:a53f1be77bcb02dd6a6b7819b0e13748a" id="r_a53f1be77bcb02dd6a6b7819b0e13748a"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a53f1be77bcb02dd6a6b7819b0e13748a">field_has_stencil_op</a> [NUM_ALL_FIELDS]</td></tr>
 <tr class="memitem:ab0702a43e0b53fbbaffb855ee583d6c6" id="r_ab0702a43e0b53fbbaffb855ee583d6c6"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab0702a43e0b53fbbaffb855ee583d6c6">n_reduce_inputs</a></td></tr>
 <tr class="memitem:a5536d59c7d94f94af084acd8ab52c399" id="r_a5536d59c7d94f94af084acd8ab52c399"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5536d59c7d94f94af084acd8ab52c399">n_reduce_outputs</a></td></tr>
+<tr class="memitem:a29c53b596a36aec8c19a8ca303243f38" id="r_a29c53b596a36aec8c19a8ca303243f38"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a29c53b596a36aec8c19a8ca303243f38">pair_stencils_accessed</a> [NUM_PAIR_STENCILS+1][NUM_ALL_FIELDS][NUM_ALL_FIELDS]</td></tr>
 <tr class="memitem:a931a2bd5f190bec748291ba38417521d" id="r_a931a2bd5f190bec748291ba38417521d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a931a2bd5f190bec748291ba38417521d">profile_has_stencil_op</a> [NUM_PROFILES+1]</td></tr>
 <tr class="memitem:aed70b89eb6be654eb07838cb746cdff4" id="r_aed70b89eb6be654eb07838cb746cdff4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aed70b89eb6be654eb07838cb746cdff4">rand_uniform_called</a></td></tr>
 <tr class="memitem:a45d0b96abee16af67bb6ffc5ba12b41d" id="r_a45d0b96abee16af67bb6ffc5ba12b41d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a45d0b96abee16af67bb6ffc5ba12b41d">ray_accessed</a> [NUM_ALL_FIELDS][NUM_RAYS+1]</td></tr>
@@ -195,6 +196,20 @@ Data Fields</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">size_t KernelAnalysisInfo::n_reduce_outputs</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a29c53b596a36aec8c19a8ca303243f38" name="a29c53b596a36aec8c19a8ca303243f38"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a29c53b596a36aec8c19a8ca303243f38">&#9670;&#160;</a></span>pair_stencils_accessed</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool KernelAnalysisInfo::pair_stencils_accessed[NUM_PAIR_STENCILS+1][NUM_ALL_FIELDS][NUM_ALL_FIELDS]</td>
         </tr>
       </table>
 </div><div class="memdoc">
