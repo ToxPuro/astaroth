@@ -181,6 +181,8 @@ get_max_halo_size(const Field fields[], const size_t num_fields)
     return max_halo_size;
 }
 
+
+
 AcTaskDefinition
 acRayUpdate(const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
 		Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
@@ -1388,6 +1390,14 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
     task_type = TASKTYPE_COMPUTE;
 }
 
+//Thickness of the boundary layer handled by a ray update: one point, but none along inactive dimensions (no ghost zone there)
+static Volume
+get_ray_layer_width()
+{
+       const Volume min_nn = get_min_nn();
+       return (Volume){std::min(min_nn.x,(size_t)1),std::min(min_nn.y,(size_t)1),std::min(min_nn.z,(size_t)1)};
+}
+
 std::shared_ptr<ComputeTask>
 ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,const int3 ray_direction, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
 	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
@@ -1395,7 +1405,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 
     const auto get_input_region = [&](const int3 id)
     {
-	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
+	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), get_ray_layer_width(), {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
     };
 
     const int ndir = abs(ray_direction.x) + abs(ray_direction.y) + abs(ray_direction.z);
@@ -1448,7 +1458,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 	    }
     }
 
-    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
+    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), get_ray_layer_width(), {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3,op.red_black_state);
     //TP: avoid computing on corner points twice
     if(boundary_id.x != 0)
     {
@@ -2352,30 +2362,21 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
     const auto sub_comms = acGridMPISubComms();
     gather_comm = MPI_COMM_NULL;
     ray_direction = op.ray_direction;
+
     kernel = op.kernel_enum;
-    if(op.ray_direction == (int3){1,0,0})
+    //The orientation of the ray is handled in summing the rays (sum_periodic_rays)
+    //so no need to take it into account here
+    if(std::abs(op.ray_direction.x) == 1)
     {
 	    gather_comm = sub_comms.x;
     }
-    if(op.ray_direction == (int3){-1,0,0})
-    {
-	    gather_comm = sub_comms.reverse_x;
-    }
-    if(op.ray_direction == (int3){0,1,0})
+    if(std::abs(op.ray_direction.y) == 1)
     {
 	    gather_comm = sub_comms.y;
     }
-    if(op.ray_direction == (int3){0,-1,0})
-    {
-	    gather_comm = sub_comms.reverse_y;
-    }
-    if(op.ray_direction == (int3){0,0,1})
+    if(std::abs(op.ray_direction.z) == 1)
     {
 	    gather_comm = sub_comms.z;
-    }
-    if(op.ray_direction == (int3){0,0,-1})
-    {
-	    gather_comm = sub_comms.reverse_z;
     }
     // Create stream for packing/unpacking
     (void)grid_info;
