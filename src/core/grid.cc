@@ -667,6 +667,55 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 
 #include "stencil_accesses.h"
 
+// The precomputed PairSum stencils (pair_stencil_calls of stencil_accesses.h) have to cover the pairs called at runtime
+static void
+check_pair_stencil_calls_match(const int kernel, const KernelAnalysisInfo& info)
+{
+	// The products commute so the order of the fields does not matter
+	auto comp_time = [&](const int stencil, const int field_a, const int field_b)
+	{
+		// in case some fields are dead and Fields are re-ordered because of that
+		const int a_old = field_remappings[field_a];
+		const int b_old = field_remappings[field_b];
+		for(int i = 0; i < num_pair_stencil_calls; ++i)
+		{
+			if(pair_stencil_calls[i][0] != kernel || pair_stencil_calls[i][1] != stencil) continue;
+			if((pair_stencil_calls[i][2] == a_old && pair_stencil_calls[i][3] == b_old) ||
+			   (pair_stencil_calls[i][2] == b_old && pair_stencil_calls[i][3] == a_old)) return true;
+		}
+		return false;
+	};
+	auto run_time = [&](const int stencil, const int field_a, const int field_b)
+	{
+		const int pair_stencil = stencil_to_pair_stencil[stencil];
+		return info.pair_stencils_accessed[pair_stencil][field_a][field_b] || info.pair_stencils_accessed[pair_stencil][field_b][field_a];
+	};
+	for(int pair_stencil = 0; pair_stencil < NUM_PAIR_STENCILS; ++pair_stencil)
+	{
+		const int stencil = pair_stencil_to_stencil[pair_stencil];
+		for(int field_a = 0; field_a < NUM_ALL_FIELDS; ++field_a)
+		{
+			for(int field_b = field_a; field_b < NUM_ALL_FIELDS; ++field_b)
+			{
+				const bool used      = run_time(stencil,field_a,field_b);
+				const bool generated = comp_time(stencil,field_a,field_b);
+				if(used && !generated)
+					fatal("In Kernel %s Stencil %s used for the pair (%s,%s) at runtime but not generated!\n"
+					      "Most likely that stencil is executed in a control-flow path that was not taken.\n"
+					      "Consider either runtime-compilation or rewriting the kernel to avoid the conditional stencil call\n"
+					      ,kernel_names[kernel], stencil_names[stencil], field_names[field_a], field_names[field_b]
+					      );
+				if(!used && generated)
+					acLogFromRootProc(ac_pid(), "PERF WARNING: In Kernel %s Stencil %s generated for the pair (%s,%s) but not accessed at runtime!\n"
+							            "Most likely because the stencil call is performed inside conditional control-flow.\n"
+								    "Consider refactoring the code and/or using runtime-compilation to skip the unnecessary Stencil computation\n"
+					     ,kernel_names[kernel], stencil_names[stencil], field_names[field_a], field_names[field_b]
+					      );
+			}
+		}
+	}
+}
+
 static void
 check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> info)
 {
@@ -711,6 +760,7 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 				}
 			}
 		}
+		check_pair_stencil_calls_match(k,info[k]);
 		for(size_t j= 0; j< info[k].n_reduce_outputs; ++j)
 		{
 			const int var = info[k].reduce_outputs[j].variable;

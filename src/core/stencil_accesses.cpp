@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <initializer_list>
 #include <vector>
+#include <array>
 
 #include "acc_runtime.h"
 #include "acreal.h"
@@ -675,6 +676,29 @@ AC_ANALYSIS_SHARED AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need 
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_READ      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_READ  = (1 << 1);
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
+
+// which pairs of fields PairSum stencils are called on, used by stencilgen to precompute the pair stencils
+struct AcPairStencilCall
+{
+	int stencil;
+	int field_a;
+	int field_b;
+};
+AC_ANALYSIS_SHARED std::vector<AcPairStencilCall> pair_stencil_calls{};
+
+AC_ANALYSIS_SHARED void
+mark_pair_stencil_call(const int stencil, const Field& field_a, const Field& field_b)
+{
+	// for the rest of the analysis a pair stencil looks like the stencil was called on both fields
+	stencils_accessed[field_a][stencil] |= (1 | AC_STENCIL_CALL);
+	stencils_accessed[field_b][stencil] |= (1 | AC_STENCIL_CALL);
+	// the products commute so (a,b) and (b,a) are the same pair
+	const int a = std::min((int)field_a,(int)field_b);
+	const int b = std::max((int)field_a,(int)field_b);
+	for(const auto& call : pair_stencil_calls)
+		if(call.stencil == stencil && call.field_a == a && call.field_b == b) return;
+	pair_stencil_calls.push_back({stencil,a,b});
+}
 #include "analysis_stencils.h"
 
 
@@ -1008,6 +1032,7 @@ void
 reset_info_arrays()
 {
     memset(stencils_accessed, 0,sizeof(stencils_accessed));
+    pair_stencil_calls.clear();
     memset(read_fields,0, sizeof(read_fields));
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
     memset(field_has_ray_op,0, sizeof(field_has_ray_op));
@@ -1189,6 +1214,8 @@ acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel)
     		for (int j = 0; j < NUM_PROFILES; ++j)
     		  for (size_t i = 0; i < NUM_STENCILS; ++i)
 		    res.stencils_accessed[j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
+		for(const auto& call : pair_stencil_calls)
+			res.pair_stencils_accessed[stencil_to_pair_stencil[call.stencil]][call.field_a][call.field_b] = true;
 		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
 		{
 			res.read_fields[i]    = read_fields[i];
@@ -1335,6 +1362,7 @@ main(int argc, char* argv[])
   static int  output_reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1]{};
 #endif
   static int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
+  std::vector<std::array<int,4>> output_pair_stencil_calls{};
 
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
@@ -1385,6 +1413,8 @@ main(int argc, char* argv[])
     for (size_t j = 0; j < NUM_ALL_FIELDS+NUM_PROFILES; ++j)
       print_trimmed_row(fp,stencils_accessed[j],NUM_STENCILS);
     fprintf(fp,"},");
+    for (const auto& call : pair_stencil_calls)
+      output_pair_stencil_calls.push_back({(int)k,call.stencil,call.field_a,call.field_b});
 
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
     fwrite(field_has_stencil_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_stencil_op);
@@ -1402,6 +1432,13 @@ main(int argc, char* argv[])
 
 
   fprintf(fp, "};\n");
+
+  // {kernel, stencil, field_a, field_b} with field_a <= field_b, terminated by a sentinel to avoid an empty array
+  fprintf(fp,"static const int pair_stencil_calls[][4] __attribute__((unused)) = {");
+  for (const auto& call : output_pair_stencil_calls)
+    fprintf(fp,"{%d,%d,%d,%d},",call[0],call[1],call[2],call[3]);
+  fprintf(fp,"{-1,-1,-1,-1}};\n");
+  fprintf(fp,"static const int num_pair_stencil_calls __attribute__((unused)) = %zu;\n",output_pair_stencil_calls.size());
 
   fclose(fp_written_fields);
   fclose(fp_fields_read);

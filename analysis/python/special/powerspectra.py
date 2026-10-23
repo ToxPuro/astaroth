@@ -1,5 +1,5 @@
 """
-Copyright (C) 2014-2023, Johannes Pekkilae, Miikka Vaeisalae.
+Copyright (C) 2014-2026, Johannes Pekkila, Touko Puro, Miikka Vaisala.
 
 This file is part of Astaroth.
 
