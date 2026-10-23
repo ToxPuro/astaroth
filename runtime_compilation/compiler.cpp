@@ -541,6 +541,7 @@ acLoadLibrary(const AcMeshInfo info)
     LOAD_DSYM(acGridReadVarfileToMesh);
     LOAD_DSYM(acHaloExchangeBoundary);
     LOAD_DSYM(acPeriodicRay);
+    LOAD_DSYM(acHaloExchangeWithBounds);
     *(void**)(&BASE_FUNC_NAME(acRayUpdate))          = dlsym(handle, "acRayUpdate");
     *(void**)(&BASE_FUNC_NAME(acComputeWithParams))  = dlsym(handle, "acComputeWithParams");
     *(void**)(&BASE_FUNC_NAME(acCompute))            = dlsym(handle, "acCompute");
