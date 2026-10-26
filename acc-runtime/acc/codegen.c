@@ -4682,42 +4682,50 @@ gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations,
 	head->rhs = declarations;
 	append_to_tail_node(tail_node,head);
 }
+//TP: representatives maps the combination i of a kernel to the index of the optimized kernel launched for it (see dedup_optimized_kernels).
+//    If NULL every combination is launched with its own optimized kernel
 void
-gen_kernel_ifs_base(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params,string_vec* const user_kernel_combinatorial_params)
+gen_kernel_ifs_base(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params,string_vec* const user_kernel_combinatorial_params, const int* representatives)
 {
 	if(node->lhs)
-		gen_kernel_ifs_base(node->lhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
+		gen_kernel_ifs_base(node->lhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params,representatives);
 	if(node->rhs)
-		gen_kernel_ifs_base(node->rhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
+		gen_kernel_ifs_base(node->rhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params,representatives);
 	if(!(node->type & NODE_KFUNCTION))
 		return;
-	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,get_node(NODE_FUNCTION_ID,node)->buffer);
+	const char* kernel_name = get_node(NODE_FUNCTION_ID,node)->buffer;
+	//TP: in generate the optimized and monomorphized kernels exist, they are not dispatched to further
+	if(strstr(kernel_name,"___optimized_") || strstr(kernel_name,"MONOMORPHIZED")) return;
+	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
 	if(kernel_index == -1)
 		return;
 	string_vec combination_params = user_kernel_combinatorial_params[kernel_index];
 	if(combination_params.size == 0)
 		return;
 	FILE* fp = fopen("user_kernels_ifs.h","a");
-	FILE* fp_defs = fopen("user_defines.h","a");
+	FILE* fp_defs = representatives ? NULL : fopen("user_defines.h","a");
 	for(int i = 0; i < combinations.nums[kernel_index]; ++i)
 	{
 		string_vec combination_vals = combinations.vals[kernel_index + MAX_KERNELS*i];
-		fprintf(fp,"if(kernel_enum == %s ",get_node(NODE_FUNCTION_ID,node)->buffer);
+		fprintf(fp,"if(kernel_enum == %s ",kernel_name);
 		for(size_t j = 0; j < combination_vals.size; ++j)
 		{
-			fprintf(fp, " && kernel_input_params.%s.%s ==  %s ",get_node(NODE_FUNCTION_ID,node)->buffer,combination_params.data[j],combination_vals.data[j]);
+			fprintf(fp, " && kernel_input_params.%s.%s ==  %s ",kernel_name,combination_params.data[j],combination_vals.data[j]);
 		}
 
 		fprintf(fp,
 				")\n{\n"
 				"\treturn %s___optimized_%d;\n}\n"
-		,get_node(NODE_FUNCTION_ID,node)->buffer,i);
-		fprintf(fp_defs,"%s___optimized_%d,",get_node(NODE_FUNCTION_ID,node)->buffer,i);
+		,kernel_name,representatives ? representatives[kernel_index + MAX_KERNELS*i] : i);
+		if(fp_defs) fprintf(fp_defs,"%s___optimized_%d,",kernel_name,i);
 	}
 	
 	fclose(fp);
-	fprintf(fp_defs,"}\n");
-	fclose(fp_defs);
+	if(fp_defs)
+	{
+		fprintf(fp_defs,"}\n");
+		fclose(fp_defs);
+	}
 }
 
 typedef struct
@@ -4757,7 +4765,7 @@ gen_kernel_ifs(ASTNode* root, const bool optimize_input_params)
 	if(!optimize_input_params) return;
 	//TP: should be in reset_all_files but does not work for some reason
         combinatorial_params_info info = get_combinatorial_params_info(root);
- 	gen_kernel_ifs_base(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
+ 	gen_kernel_ifs_base(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params,NULL);
         free_combinatorial_params_info(&info);
 }
 
@@ -12092,8 +12100,97 @@ gen_array_infos(const ASTNode* root, const bool gen_mem_accesses)
 		copy_file("gmem_arrays_decl.h","cpu_gmem_arrays_decl.h");
 	  }
 }
+static bool
+nullable_str_eq(const char* a, const char* b)
+{
+	if(a == b) return true;
+	if(!a || !b) return false;
+	return !strcmp(a,b);
+}
+//TP: structural equality: if true the nodes generate the same code
+static bool
+ast_equal(const ASTNode* a, const ASTNode* b)
+{
+	if(a == b) return true;
+	if(!a || !b) return false;
+	if(a->token != b->token || a->type != b->type || a->is_constexpr != b->is_constexpr || a->no_auto != b->no_auto) return false;
+	if(!nullable_str_eq(a->buffer,b->buffer) || !nullable_str_eq(a->prefix,b->prefix) || !nullable_str_eq(a->infix,b->infix) || !nullable_str_eq(a->postfix,b->postfix)) return false;
+	if(!nullable_str_eq(a->expr_type,b->expr_type)) return false;
+	return ast_equal(a->lhs,b->lhs) && ast_equal(a->rhs,b->rhs);
+}
+static void
+get_optimized_kernels(ASTNode* node, node_vec* dst)
+{
+	if(node->type & NODE_KFUNCTION)
+	{
+		if(strstr(get_node(NODE_FUNCTION_ID,node)->buffer,"___optimized_")) push_node(dst,node);
+		return;
+	}
+	if(node->lhs) get_optimized_kernels(node->lhs,dst);
+	if(node->rhs) get_optimized_kernels(node->rhs,dst);
+}
+//TP: after code elimination many of the kernels generated for the combinations of the input params are identical,
+//    e.g. if a bool input param affects only code that was eliminated as not executed.
+//    For each set of identical optimized kernels of a kernel only the first one is kept: the bodies of the others are emptied
+//    and user_kernels_ifs.h dispatches all of the combinations of the set to the kept kernel.
+//    The empty kernels stay in the kernel enums since those are already generated, but are never launched.
+static void
+dedup_optimized_kernels(ASTNode* root, const combinatorial_params_info* info)
+{
+	node_vec kernels = VEC_INITIALIZER;
+	get_optimized_kernels(root,&kernels);
+	if(kernels.size == 0)
+	{
+		free_node_vec(&kernels);
+		return;
+	}
+	int* representatives = malloc(sizeof(int)*MAX_KERNELS*MAX_COMBINATIONS);
+	for(int i = 0; i < MAX_KERNELS*MAX_COMBINATIONS; ++i) representatives[i] = i/MAX_KERNELS;
+	ASTNode** kept = calloc(MAX_KERNELS*MAX_COMBINATIONS,sizeof(ASTNode*));
+	int num_removed = 0;
+	for(size_t k = 0; k < kernels.size; ++k)
+	{
+		ASTNode* kernel = (ASTNode*)kernels.data[k];
+		const char* name = get_node(NODE_FUNCTION_ID,kernel)->buffer;
+		const int combination_index = get_suffix_int(name,"___optimized_");
+		const int kernel_index = str_vec_get_index(info->kernels_with_input_params,remove_suffix_intern(name,"___optimized_"));
+		if(kernel_index < 0 || combination_index < 0 || combination_index >= info->params.nums[kernel_index]) continue;
+		kept[kernel_index + MAX_KERNELS*combination_index] = kernel;
+	}
+	for(size_t kernel_index = 0; kernel_index < info->kernels_with_input_params.size; ++kernel_index)
+	{
+		const char* kernel_name = info->kernels_with_input_params.data[kernel_index];
+		if(strstr(kernel_name,"___optimized_") || strstr(kernel_name,"MONOMORPHIZED")) continue;
+		for(int i = 0; i < info->params.nums[kernel_index]; ++i)
+		{
+			ASTNode* kernel = kept[kernel_index + MAX_KERNELS*i];
+			if(!kernel) continue;
+			for(int j = 0; j < i; ++j)
+			{
+				const ASTNode* candidate = kept[kernel_index + MAX_KERNELS*j];
+				if(!candidate || representatives[kernel_index + MAX_KERNELS*j] != j) continue;
+				if(!ast_equal(kernel->rhs,candidate->rhs)) continue;
+				representatives[kernel_index + MAX_KERNELS*i] = j;
+				//TP: the body is not needed anymore since the kernel is never launched
+				kernel->rhs->rhs->lhs = NULL;
+				++num_removed;
+				break;
+			}
+		}
+	}
+	if(num_removed > 0)
+	{
+		FILE* fp = fopen("user_kernels_ifs.h","w");
+		fclose(fp);
+		gen_kernel_ifs_base(root,info->params,info->kernels_with_input_params,info->kernel_combinatorial_params,representatives);
+	}
+	printf("Removed %d duplicate optimized kernels out of %zu\n",num_removed,kernels.size);
+	free(kept);
+	free(representatives);
+	free_node_vec(&kernels);
+}
 void
-generate_minimized_code(ASTNode* root, const bool gen_mem_accesses)
+generate_minimized_code(ASTNode* root, const bool gen_mem_accesses, const combinatorial_params_info* info)
 {
 		//TP: known to break code TODO: fix it!
 		//Breaks cosmicray sample in PC
@@ -12106,6 +12203,7 @@ generate_minimized_code(ASTNode* root, const bool gen_mem_accesses)
   	        	remove_dead_writes(root);
   	      		gen_constexpr_info(root,gen_mem_accesses);
   	        }
+		dedup_optimized_kernels(root,info);
 
   	        FILE* fp = fopen("ac_minimized_code.ac.raw","w");
   	        symboltable_reset();
@@ -12242,7 +12340,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   //
   ///If we are only using the optimized kernels we might as well empty the bodies of the original functions to speedup the compilation
   if(USE_ONLY_OPTIMIZED_KERNELS) empty_non_optimized_kernels(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
-  free_combinatorial_params_info(&info);
   gen_array_reads(root,root,primitive_datatypes);
 
 
@@ -12252,7 +12349,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   {
   	if(!gen_mem_accesses && executed_nodes.size > 0 && optimize_mem_accesses && ELIMINATE_CONDITIONALS)
   	{
-		generate_minimized_code(root,gen_mem_accesses);
+		generate_minimized_code(root,gen_mem_accesses,&info);
   	}
 
 	//TP: done after possible code elimination to have the most accurate static information
@@ -12299,6 +12396,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   //fuse_kernels(intern("reduce_aa_x"),intern("reduce_aa_y"),root);
   //fuse_kernels(intern("remove_aa_x"),intern("remove_aa_y"),root);
   memset(reduce_infos,0,sizeof(node_vec)*MAX_FUNCS);
+  free_combinatorial_params_info(&info);
   end_arena_pass(&pass,root);
 }
 

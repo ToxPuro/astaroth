@@ -2611,6 +2611,14 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
    	       );
    }
 }
+//TP: stencils_accessed comes from the analysis of the kernels before code elimination, while stencils_called is computed from the final code.
+//    The preloaded stencil values are only read by the stencil functions which are generated only for the called stencils (gen_stencil_functions),
+//    so the stencils not called anymore, e.g. in kernels emptied as duplicates (dedup_optimized_kernels in codegen.c), need not be preloaded
+static bool
+stencil_preload_needed(const int curr_kernel, const int field_or_profile, const int stencil)
+{
+	return (stencils_accessed[curr_kernel][field_or_profile][stencil] & AC_STENCIL_CALL) && stencils_called[curr_kernel][stencil];
+}
 static bool
 stencil_reads_use_base_pointer(const int curr_kernel)
 {
@@ -2625,7 +2633,7 @@ printf_stencil_base_pointers(const int curr_kernel)
    for (int field = 0; field < NUM_ALL_FIELDS; ++field) {
 	bool accessed = false;
 	for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
-		accessed |= (stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL) != 0;
+		accessed |= stencil_preload_needed(curr_kernel,field,stencil);
 	if(!accessed) continue;
 	const int original_field = get_original_index(field_remappings,field);
 	printf("const %s const f%s_base_ptr = ((const %s)vba.in[%s])"
@@ -2753,7 +2761,7 @@ gen_kernel_body(const int curr_kernel)
                     break;
 
                   // Skip if the stencil is not used
-                  if (!(stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL))
+                  if (!stencil_preload_needed(curr_kernel,field,stencil))
                     continue;
                   // Pair stencils are computed in gen_stencil_functions
                   if (stencil_is_pair[stencil])
@@ -2901,8 +2909,7 @@ gen_kernel_body(const int curr_kernel)
                   break;
 
                 // Skip if the stencil is not used
-                if (!(stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile]
-                                      [stencil] & AC_STENCIL_CALL))
+                if (!stencil_preload_needed(curr_kernel,NUM_ALL_FIELDS + profile,stencil))
                   continue;
 
                 // Skip if the stencil is invalid for profiles
