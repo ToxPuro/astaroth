@@ -546,7 +546,7 @@ der6x_ignore_spacing(Field f)
 }
 der6y_ignore_spacing(Field f)
 {
-	return AC_ds_6.x*der6y(f)
+	return AC_ds_6.y*der6y(f)
 }
 der6z_ignore_spacing(Field f)
 {
