@@ -133,22 +133,52 @@ check_mpi_device_buffer(const char* call, const std::string& task, const void* p
 }
 
 
+//Task definitions are plain structs which callers may copy and use to build any number of task graphs,
+//so the memory they point to is kept until acGridQuit
+static std::vector<void*> task_definition_arrays{};
+static std::vector<LoadKernelParamsFunc*> task_definition_loaders{};
+
 template <typename T>
 T*
-ptr_copy(const T* src, const int n)
+new_task_definition_array(const size_t n)
 {
 	T* res = (T*)malloc(sizeof(T)*n);
-	memcpy(res,src,sizeof(T)*n);
+	task_definition_arrays.push_back(res);
 	return res;
 }
 
 template <typename T>
 T*
+ptr_copy(const T* src, const int n)
+{
+	T* res = new_task_definition_array<T>(n);
+	memcpy(res,src,sizeof(T)*n);
+	return res;
+}
+
+static LoadKernelParamsFunc*
+new_load_kernel_params_func(const std::function<void(ParamLoadingInfo)> loader)
+{
+	LoadKernelParamsFunc* res = new LoadKernelParamsFunc({loader});
+	task_definition_loaders.push_back(res);
+	return res;
+}
+
+void
+acFreeTaskDefinitions()
+{
+	for(void* array : task_definition_arrays) free(array);
+	for(LoadKernelParamsFunc* loader : task_definition_loaders) delete loader;
+	task_definition_arrays.clear();
+	task_definition_loaders.clear();
+}
+
+template <typename T>
+std::vector<T>
 merge_ptrs(const T* a, const T* b, const size_t a_n, const size_t b_n)
 {
-	T* res = (T*)malloc(sizeof(T)*(a_n+b_n));
-	memcpy(res,a,sizeof(T)*a_n);
-	memcpy(res+a_n,b,sizeof(T)*b_n);
+	std::vector<T> res(a,a+a_n);
+	res.insert(res.end(),b,b+b_n);
 	return res;
 }
 
@@ -199,7 +229,7 @@ acRayUpdate(const AcKernel kernel, const AcBoundary boundary, const int3 ray_dir
     task_def.num_fields_out = num_fields_out;
     task_def.ray_direction = ray_direction;
     task_def.boundary      = boundary;
-    task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    task_def.load_kernel_params_func = new_load_kernel_params_func(load_func);
     return task_def;
 }
 
@@ -230,7 +260,7 @@ acCompute(const AcKernel kernel,
     task_def.profiles_reduce_out     = ptr_copy(profiles_out,num_profiles_out);
     task_def.num_profiles_reduce_out = num_profiles_out;
 
-    task_def.load_kernel_params_func = new LoadKernelParamsFunc{[](ParamLoadingInfo){;}};
+    task_def.load_kernel_params_func = new_load_kernel_params_func([](ParamLoadingInfo){;});
     task_def.analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel);
     return task_def;
 }
@@ -283,7 +313,7 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
     task_def.outputs_out     = ptr_copy(outputs_out,num_outputs_out);
     task_def.num_outputs_out = num_outputs_out;
 
-    task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    task_def.load_kernel_params_func = new_load_kernel_params_func(load_func);
     task_def.analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel);
     return task_def;
 }
@@ -339,7 +369,7 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.receiving = true;
     task_def.boundary      = BOUNDARY_XYZ;
     task_def.include_boundaries = false;
-    facet_class_range* halo_types = (facet_class_range*)malloc(sizeof(facet_class_range)*num_fields);
+    facet_class_range* halo_types = new_task_definition_array<facet_class_range>(num_fields);
     for(size_t i = 0; i < num_fields; ++i) halo_types[i].min = 1;
     for(size_t i = 0; i < num_fields; ++i) halo_types[i].max = 3;
     task_def.halo_types = halo_types;
@@ -358,10 +388,7 @@ acHaloExchangeBoundary(Field fields[], const size_t num_fields, const AcBoundary
 	AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
 	task_def.include_boundaries = true;
 	task_def.communicates_boundary = boundary;
-        facet_class_range* halo_types = (facet_class_range*)malloc(sizeof(facet_class_range)*num_fields);
-        for(size_t i = 0; i < num_fields; ++i) halo_types[i].min = 1;
-        for(size_t i = 0; i < num_fields; ++i) halo_types[i].max = 3;
-        task_def.halo_types = halo_types;
+	//acHaloExchange already sets halo_types to [1,3]
 	return task_def;
 }
 
@@ -418,7 +445,7 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
 	    			    };
     task_def.halo_sizes = max_halo;
 
-    facet_class_range* halo_types = (facet_class_range*)malloc(sizeof(facet_class_range)*num_fields_out);
+    facet_class_range* halo_types = new_task_definition_array<facet_class_range>(num_fields_out);
     for(size_t i = 0; i < num_fields_out; ++i) halo_types[i].min = 1;
     for(size_t i = 0; i < num_fields_out; ++i) halo_types[i].max = 2;
     task_def.halo_types = halo_types;
@@ -428,10 +455,10 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     	{
     	        acLoadKernelParams(*p.params,p.kernel,p.vtxbuf);
     	};
-	task_def.load_kernel_params_func = new LoadKernelParamsFunc({default_loader});
+	task_def.load_kernel_params_func = new_load_kernel_params_func(default_loader);
     }
     else
-    	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    	task_def.load_kernel_params_func = new_load_kernel_params_func(load_func);
     if(!acDeviceGetLocalConfig(acGridGetDevice())[AC_allow_non_periodic_bcs_with_periodic_grid])
     {
     	if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].x && boundary & BOUNDARY_X)
@@ -1260,7 +1287,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
     : Task(order_,
            {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class, op.red_black_state)},
            Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
-		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
+		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out).data(),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out},max_facet_class,op.red_black_state),
            op, device_, swap_offset_)

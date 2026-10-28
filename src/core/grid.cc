@@ -1101,6 +1101,7 @@ acGridQuit(void)
     grid.halo_exchange_tasks    = nullptr;
     grid.periodic_bc_tasks = nullptr;
     taskgraph_resources_release();
+    acFreeTaskDefinitions();
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
