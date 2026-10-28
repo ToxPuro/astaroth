@@ -442,6 +442,10 @@ destroy_profiles(VertexBufferArray* vba)
         //TP: will break if allocated with compressed memory but too lazy to fix now: :(
         acDeviceFree((void**)&(vba->profile_reduce_buffers[i].transposed),0);
         ac_free_scratchpad_real(i+NUM_REAL_OUTPUTS);
+
+        ERRCHK_CUDA_ALWAYS(acFree(*vba->profile_reduce_buffers[i].cub_tmp));
+	free(vba->profile_reduce_buffers[i].cub_tmp);
+	free(vba->profile_reduce_buffers[i].cub_tmp_size);
     }
 }
 
@@ -492,6 +496,8 @@ destroy_scratchpads(VertexBufferArray* vba)
 	free(vba->reduce_buffer_float[j].cub_tmp_size);
     }
 #endif
+    free(vba->scratchpad_states);
+    vba->scratchpad_states = NULL;
 }
 
 void
