@@ -1801,12 +1801,13 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
                 acc_source_function_add_impl(
                     func,
                     // clang-format off
+                    "if(d_reduce_scratchpads_%s[i]) ERRCHK_CUDA_ALWAYS(acFree(d_reduce_scratchpads_%s[i]));\n"
                     "d_reduce_scratchpads_%s[i] = NULL;\n"
                     "ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*), sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
                     "d_reduce_scratchpads_size_%s[i] = 0;\n",
                     // clang-format on
-                    define_name, define_name, define_name, datatype_scalar,
-                    datatype_scalar, define_name);
+                    define_name, define_name, define_name, define_name,
+                    define_name, datatype_scalar, datatype_scalar, define_name);
 
                 func = acc_source_get_function(reduce_helpers, 0,
                                                "ac_resize_scratchpad_%s",
