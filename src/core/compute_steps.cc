@@ -317,9 +317,9 @@ get_optimized_kernel(const AcDSLTaskGraph graph, const bool filter_unnecessary_o
     	loader(p);
 
 	const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],params);
-	const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),optimized_kernel,params);
 	if(filter_unnecessary_ones)
 	{
+		const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),optimized_kernel,params);
 		auto outputs = get_kernel_outputs(optimized_kernel,info);
 		if(outputs.fields.out.size() == 0 && outputs.profiles.write_out.size() == 0 && outputs.profiles.reduce_out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
 		{
@@ -342,14 +342,15 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 	return res;
 }
 
-std::vector<KernelAnalysisInfo>
-get_dynamic_info(const AcDSLTaskGraph graph)
+static void
+get_dynamic_info(const AcDSLTaskGraph graph, std::vector<KernelAnalysisInfo>& info)
 {
 	//TP: The point of this function is that e.g. which fields are written out of the kernels can depend on the inputs given to the kernels.
 	//    Take for example test/inplace_gaussian-test. There a user specified Field in an array of Fields is smoothed based on a *input* int
 	//    If we would get the info normally then the right field would not be seen as the output ---> wrong swapping of input and output buffers
-	const auto kernel_calls = DSLTaskGraphKernels[graph];
-	std::vector<KernelAnalysisInfo> info{};
+	const auto& kernel_calls = DSLTaskGraphKernels[graph];
+	const AcMeshInfo mesh_info = acGridGetLocalMeshInfo();
+	info.resize(kernel_calls.size());
 	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
 	{
 		const AcKernel kernel = get_optimized_kernel(graph,false,call_index);
@@ -359,8 +360,15 @@ get_dynamic_info(const AcDSLTaskGraph graph)
 		ParamLoadingInfo p = {&params, acGridGetDevice(), {}, {}, {}, kernel};
     		loader(p);
 		vba.on_device.kernel_input_params = params;
-		info.push_back(get_kernel_analysis_info(acGridGetLocalMeshInfo(),kernel,vba.on_device.kernel_input_params));
+		get_kernel_analysis_info(mesh_info,kernel,vba.on_device.kernel_input_params,&info[call_index]);
 	}
+}
+
+std::vector<KernelAnalysisInfo>
+get_dynamic_info(const AcDSLTaskGraph graph)
+{
+	std::vector<KernelAnalysisInfo> info{};
+	get_dynamic_info(graph,info);
 	return info;
 }
 
@@ -1143,7 +1151,7 @@ void hash_combine(std::size_t &seed, const T& value) {
 }
 
 void
-hash_kernel_analysis_info(std::size_t &seed, const KernelAnalysisInfo info)
+hash_kernel_analysis_info(std::size_t &seed, const KernelAnalysisInfo& info)
 {
 	for(int field = 0; field < NUM_FIELDS; ++field)
 	{
@@ -1868,11 +1876,17 @@ get_optimized_dsl_taskgraph(const AcDSLTaskGraph graph, const Volume start, cons
 	ERRCHK_ALWAYS(to_int3(end) >= to_int3(start));
 	auto optimized_kernels = get_optimized_kernels(graph,false);
 	auto optimized_bcs      = get_optimized_kernels(bc_graph,false);
-	const auto info = get_dynamic_info(graph);
+	//Reused between the calls since the infos are large and the key is usually found
+	static std::vector<KernelAnalysisInfo> info{};
+	get_dynamic_info(graph,info);
 	const AcHaloSyncState incoming = use_incoming_halo_sync ? get_incoming_halo_sync_state(optimized_kernels,info,bcs_everywhere,bc_graph) : AcHaloSyncState{};
-	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end,bcs_everywhere,info,incoming);
-	if(task_graphs.find(key) != task_graphs.end())
-		return task_graphs[key];
+	KeyType key = std::make_tuple(std::move(optimized_kernels),std::move(optimized_bcs),start,end,bcs_everywhere,std::move(info),incoming);
+	const auto cached = task_graphs.find(key);
+	if(cached != task_graphs.end())
+	{
+		info = std::move(std::get<5>(key));
+		return cached->second;
+	}
 
 	HaloSyncInfo halo_sync_info{};
 	auto ops = get_dsl_taskgraph_ops(graph,true,bcs_everywhere,bc_graph,incoming,&halo_sync_info);

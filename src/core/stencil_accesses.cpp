@@ -560,6 +560,7 @@ void acAnalysisCheckForDSLErrors(const AcMeshInfo info);
 AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
 KernelAnalysisInfo acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel);
 KernelAnalysisInfo acAnalysisGetKernelInfoSingleWithInputParams(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params);
+void acAnalysisGetKernelInfoSingleTo(const AcMeshInfo* info, const AcKernel kernel, const acKernelInputParams* input_params, KernelAnalysisInfo* dst);
 acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary);
 
 AC_END_C_DECLARATIONS
@@ -1033,6 +1034,7 @@ reset_info_arrays()
 {
     memset(stencils_accessed, 0,sizeof(stencils_accessed));
     pair_stencil_calls.clear();
+    executed_nodes.clear();
     memset(read_fields,0, sizeof(read_fields));
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
     memset(field_has_ray_op,0, sizeof(field_has_ray_op));
@@ -1130,14 +1132,16 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 int
 get_executed_nodes()
 { 
-  executed_nodes= {};
+  //execute_kernel clears executed_nodes so collect the nodes of all kernels here
+  std::vector<int> all_executed_nodes{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
 	  execute_kernel(k);
+	  all_executed_nodes.insert(all_executed_nodes.end(),executed_nodes.begin(),executed_nodes.end());
   }
   FILE* fp_executed_nodes= fopen("executed_nodes.bin", "wb");
-  const int size = executed_nodes.size();
+  const int size = all_executed_nodes.size();
   fwrite(&size, sizeof(int), 1, fp_executed_nodes);
-  fwrite(executed_nodes.data(), sizeof(int), executed_nodes.size(), fp_executed_nodes);
+  fwrite(all_executed_nodes.data(), sizeof(int), all_executed_nodes.size(), fp_executed_nodes);
   fclose(fp_executed_nodes);
   return EXIT_SUCCESS;
 }	
@@ -1186,34 +1190,45 @@ acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary b
 KernelAnalysisInfo
 acAnalysisGetKernelInfoSingleWithInputParams(const AcMeshInfo info, const AcKernel kernel, const acKernelInputParams input_params)
 {
-	VBA.on_device.kernel_input_params = input_params;
-	return acAnalysisGetKernelInfoSingle(info,kernel);
+	KernelAnalysisInfo res;
+	acAnalysisGetKernelInfoSingleTo(&info,kernel,&input_params,&res);
+	return res;
 }
 
 KernelAnalysisInfo
 acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel)
 {
-	d_mesh_info = info;
-	KernelAnalysisInfo res{};
+	KernelAnalysisInfo res;
+	acAnalysisGetKernelInfoSingleTo(&info,kernel,NULL,&res);
+	return res;
+}
+
+//Writes the info to dst instead of returning it since KernelAnalysisInfo is large.
+//If input_params is NULL the previously loaded input params are used.
+void
+acAnalysisGetKernelInfoSingleTo(const AcMeshInfo* info, const AcKernel kernel, const acKernelInputParams* input_params, KernelAnalysisInfo* dst)
+{
+	if(input_params) VBA.on_device.kernel_input_params = *input_params;
+	d_mesh_info = *info;
+	KernelAnalysisInfo& res = *dst;
+	//stencils_accessed is copied as a whole below, so zero only the rest
+	const size_t stencils_begin = offsetof(KernelAnalysisInfo,stencils_accessed);
+	const size_t stencils_end   = stencils_begin + sizeof(res.stencils_accessed);
+	memset(dst,0,stencils_begin);
+	memset((char*)dst + stencils_end,0,sizeof(KernelAnalysisInfo) - stencils_end);
 	{
     		execute_kernel(kernel);
 		res.rand_uniform_called = rand_uniform_called;
     		for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
     		{
-    		  for (size_t i = 0; i < NUM_STENCILS; ++i)
-    		  {
-    		    if (stencils_accessed[j][i])
-    		    {
-    		      if(i == 0) read_fields[j] |= stencils_accessed[j][i];
-    		      field_has_stencil_op[j] |= (i != 0);
-    		    }
-		    res.stencils_accessed[j][i] |= stencils_accessed[j][i];
-    		    read_fields[j] |= previous_accessed[j];
-    		  }
+    		  //stencil 0 is the value stencil
+    		  read_fields[j] |= stencils_accessed[j][0];
+    		  for (size_t i = 1; i < NUM_STENCILS; ++i)
+    		    field_has_stencil_op[j] |= (stencils_accessed[j][i] != 0);
+    		  read_fields[j] |= previous_accessed[j];
     		}
-    		for (int j = 0; j < NUM_PROFILES; ++j)
-    		  for (size_t i = 0; i < NUM_STENCILS; ++i)
-		    res.stencils_accessed[j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
+		static_assert(sizeof(res.stencils_accessed) == sizeof(stencils_accessed));
+		memcpy(res.stencils_accessed,stencils_accessed,sizeof(stencils_accessed));
 		for(const auto& call : pair_stencil_calls)
 			res.pair_stencils_accessed[stencil_to_pair_stencil[call.stencil]][call.field_a][call.field_b] = true;
 		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
@@ -1255,7 +1270,6 @@ acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel)
 		for(size_t i = 0; i < unique_inputs.size(); ++i)
 			res.reduce_inputs[i] = unique_inputs[i];
 	}
-	return res;
 }
 AcResult
 acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
@@ -1265,7 +1279,7 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
 	memset(&VBA.on_device.kernel_input_params,0,sizeof(VBA.on_device.kernel_input_params));
 	for(size_t k = 0; k <NUM_KERNELS; ++k)
 	{
-		dst[k] = acAnalysisGetKernelInfoSingle(info,AcKernel(k));
+		acAnalysisGetKernelInfoSingleTo(&info,AcKernel(k),NULL,&dst[k]);
 	}
 	return AC_SUCCESS;
 }

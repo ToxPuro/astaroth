@@ -18,12 +18,13 @@
 // clang-format on
 
 AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst);
+extern "C" void acAnalysisGetKernelInfoSingleTo(const AcMeshInfo* info, const AcKernel kernel, const acKernelInputParams* input_params, KernelAnalysisInfo* dst);
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE  = (1 << 1);
 [[maybe_unused]] constexpr int AC_WRITE_TO_INPUT  = (1 << 2);
 
 std::vector<KernelAnalysisInfo>
-get_kernel_analysis_info(const AcMeshInfo info)
+get_kernel_analysis_info(const AcMeshInfo& info)
 {
 	std::vector<KernelAnalysisInfo> res(NUM_KERNELS,KernelAnalysisInfo{});
 	acAnalysisGetKernelInfo(info,res.data());
@@ -31,15 +32,25 @@ get_kernel_analysis_info(const AcMeshInfo info)
 }
 
 KernelAnalysisInfo
-get_kernel_analysis_info(const AcMeshInfo info, const AcKernel kernel)
+get_kernel_analysis_info(const AcMeshInfo& info, const AcKernel kernel)
 {
-	return acAnalysisGetKernelInfoSingle(info,kernel);
+	KernelAnalysisInfo res;
+	acAnalysisGetKernelInfoSingleTo(&info,kernel,NULL,&res);
+	return res;
 }
 
 KernelAnalysisInfo
-get_kernel_analysis_info(const AcMeshInfo info, const AcKernel kernel,const acKernelInputParams input_params)
+get_kernel_analysis_info(const AcMeshInfo& info, const AcKernel kernel,const acKernelInputParams& input_params)
 {
-       return acAnalysisGetKernelInfoSingleWithInputParams(info,kernel,input_params);
+	KernelAnalysisInfo res;
+	acAnalysisGetKernelInfoSingleTo(&info,kernel,&input_params,&res);
+	return res;
+}
+
+void
+get_kernel_analysis_info(const AcMeshInfo& info, const AcKernel kernel,const acKernelInputParams& input_params, KernelAnalysisInfo* dst)
+{
+	acAnalysisGetKernelInfoSingleTo(&info,kernel,&input_params,dst);
 }
 
 bool
