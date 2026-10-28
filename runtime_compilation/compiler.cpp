@@ -148,11 +148,11 @@ check_for_cmake()
    }
 }
 
-static const char*
+static std::string
 get_cmake_options(const char* user_cmake_options)
 {
     const char* command_line_options = RUNTIME_CMAKE_OPTIONS;
-    static char* options             = NULL;
+    char* options                    = NULL;
     asprintf(&options,
              "%s -DCMAKE_BUILD_TYPE=%s -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON "
              "-DOPENMP_ENABLED=OFF -DCPU_BUILD=%s -DDSL_MODULE_DIR=%s "
@@ -165,7 +165,9 @@ get_cmake_options(const char* user_cmake_options)
 #endif
              AC_CPU_BUILD ? "ON" : "OFF", DSL_MODULE_DIR, acc_compiler_path().c_str(),
              AC_STENCIL_ORDER, user_cmake_options);
-    return options;
+    const std::string res = options;
+    free(options);
+    return res;
 }
 
 static AcResult
@@ -173,8 +175,8 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
 {
   
   static char cmd[402000];
-  const char* options = get_cmake_options(user_cmake_options);
-  snprintf(cmd,sizeof(cmd),"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options);
+  const std::string options = get_cmake_options(user_cmake_options);
+  snprintf(cmd,sizeof(cmd),"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options.c_str());
 #if AC_USE_HIP
 #else
   //TP: needed to ensure nvcc does not write under /tmp which on compute nodes does not have enough memory
@@ -197,7 +199,7 @@ run_cmake(const char* user_cmake_options, const char* log_dst)
   	fflush(stderr);
 	return AC_FAILURE;
   }
-  snprintf(cmd,max_string_size,"echo %s > %s", get_cmake_options(user_cmake_options), previous_cmake_options_path().c_str());
+  snprintf(cmd,max_string_size,"echo %s > %s", get_cmake_options(user_cmake_options).c_str(), previous_cmake_options_path().c_str());
   const int echo_retval = system(cmd);
   if(echo_retval)
   {
@@ -238,7 +240,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 				? system(cmd) : true;
 	system("rm tmp_astaroth_run_consts.h");
 	const bool stored_cmake = file_exists(previous_cmake_options_path().c_str());
-	snprintf(cmd,max_string_size,"echo %s | diff - %s",get_cmake_options(user_cmake_options),previous_cmake_options_path().c_str());
+	snprintf(cmd,max_string_size,"echo %s | diff - %s",get_cmake_options(user_cmake_options).c_str(),previous_cmake_options_path().c_str());
 	const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
 	const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
 	static char logging_to_message[402000];
@@ -489,6 +491,7 @@ acLoadLibrary(const AcMeshInfo info)
     LOAD_DSYM(acAnalysisGetKernelInfo);
     LOAD_DSYM(acAnalysisCheckForDSLErrors);
     LOAD_DSYM(acDeviceSwapAllProfileBuffers);
+    LOAD_DSYM(acDeviceStoreProfile);
     LOAD_DSYM(acDeviceFFTR2C);
     LOAD_DSYM(acDeviceFFTC2R);
     LOAD_DSYM(acDeviceFFTR2Planar);
