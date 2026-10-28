@@ -746,8 +746,8 @@ acCloseLibrary()
 {
     for(size_t i = 0; i < handles.size(); ++i)
     {
-      const int success = (handles[i] != NULL) ? dlclose(handles[i]) : 0;
-      if(success) handles[i] = NULL;
+      const int err = (handles[i] != NULL) ? dlclose(handles[i]) : 0;
+      if(!err) handles[i] = NULL;
       else return AC_FAILURE;
     }
     handles = std::vector<AcLibHandle>{};
