@@ -3,13 +3,16 @@
 #include "astaroth_analysis.h"
 
 std::vector<KernelAnalysisInfo>
-get_kernel_analysis_info(const AcMeshInfo config);
+get_kernel_analysis_info(const AcMeshInfo& config);
 
 KernelAnalysisInfo
-get_kernel_analysis_info(const AcMeshInfo config, const AcKernel kernel);
+get_kernel_analysis_info(const AcMeshInfo& config, const AcKernel kernel);
 
 KernelAnalysisInfo
-get_kernel_analysis_info(const AcMeshInfo config, const AcKernel kernel, const acKernelInputParams input_params);
+get_kernel_analysis_info(const AcMeshInfo& config, const AcKernel kernel, const acKernelInputParams& input_params);
+
+void
+get_kernel_analysis_info(const AcMeshInfo& config, const AcKernel kernel, const acKernelInputParams& input_params, KernelAnalysisInfo* dst);
 
 bool
 kernel_has_profile_stencil_ops(const KernelAnalysisInfo info);
