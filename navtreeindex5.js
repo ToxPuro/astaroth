@@ -1,5 +1,6 @@
 var NAVTREEINDEX5 =
 {
+"structAcMeshInfoScalars.html":[4,0,15],
 "structAcReduceBuffer.html":[4,0,16],
 "structAcReduceBuffer.html#a8a10ca099bd09f31e28137de38454650":[4,0,16,2],
 "structAcReduceBuffer.html#a9f8eb812bca05b78fb8ee54a1734b0fa":[4,0,16,3],
@@ -248,6 +249,5 @@ var NAVTREEINDEX5 =
 "vecs_8h_source.html":[5,0,0,0,13],
 "warp__reduce_8h.html":[5,0,0,0,14],
 "warp__reduce_8h.html#a06f8db8d69443714aaa3b018cebd328c":[5,0,0,0,14,0],
-"warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b":[5,0,0,0,14,5],
-"warp__reduce_8h.html#a72cf3c99d99f585936adb7e3e7de5966":[5,0,0,0,14,1]
+"warp__reduce_8h.html#a433e04760a4c0df4327ab01c13bde02b":[5,0,0,0,14,5]
 };
