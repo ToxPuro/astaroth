@@ -4729,6 +4729,44 @@ derz_upwd(Field f)
 	}
 }
 
+elemental der4x_ignore_spacing(Field f)
+{
+	if (AC_dimension_inactive.x)
+	{
+		suppress_unused_warning(f)
+		return 0.0
+	}
+	else
+	{
+		return der4x_stencil(f)
+	}
+}
+elemental der4y_ignore_spacing(Field f)
+{
+	if (AC_dimension_inactive.y)
+	{
+		suppress_unused_warning(f)
+		return 0.0
+	}
+	else
+	{
+		return der4y_stencil(f)
+	}
+}
+elemental der4z_ignore_spacing(Field f)
+{
+	if (AC_dimension_inactive.z)
+	{
+		suppress_unused_warning(f)
+		return 0.0
+	}
+	else
+	{
+		return der4z_stencil(f)
+	}
+}
+
+
 elemental der6x_ignore_spacing(Field f)
 {
 	if (AC_dimension_inactive.x)
