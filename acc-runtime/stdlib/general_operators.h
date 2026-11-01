@@ -461,6 +461,13 @@ elemental del6(Field s) {
   return der6x(s) + der6y(s) + der6z(s)
 }
 
+/**
+ * Computes (∇^6)s (with unit spacing),
+ * where s is a scalar field. 
+ */
+elemental del6_ignore_spacing(Field s) {
+  return der6x_ignore_spacing(f) + der6y_ignore_spacing(f) + der6z_ignore_spacing(f)
+}
 
 //TP: old analytical expressions
 //    easier and most likely more performant to simply calculate the exponentials together with the stencil ops
