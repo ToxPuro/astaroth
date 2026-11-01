@@ -457,7 +457,7 @@ elemental del4(Field s) {
  * Computes (∇^4)s (with unit spacing),
  * where s is a scalar field. 
  */
-elemental del4_ignore_spacing(Field s) {
+elemental del4_ignore_spacing(Field f) {
   return der4x_ignore_spacing(f) + der4y_ignore_spacing(f) + der4z_ignore_spacing(f)
 }
 
@@ -473,7 +473,7 @@ elemental del6(Field s) {
  * Computes (∇^6)s (with unit spacing),
  * where s is a scalar field. 
  */
-elemental del6_ignore_spacing(Field s) {
+elemental del6_ignore_spacing(Field f) {
   return der6x_ignore_spacing(f) + der6y_ignore_spacing(f) + der6z_ignore_spacing(f)
 }
 
