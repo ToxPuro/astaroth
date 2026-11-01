@@ -72,7 +72,7 @@ minmod_alt(real a, real b)
 }
 precise_sqrt_dot2(real3 a)
 {
-	a_max = max(abs(a)) + AC_REAL_EPSILON
+	real a_max = max(abs(a)) + AC_REAL_EPSILON
 	a_scaled = a/a_max
 	b = dot(a_scaled,a_scaled)
 	return a_max*sqrt(b)
