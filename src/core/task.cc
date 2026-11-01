@@ -380,10 +380,10 @@ acHaloExchange(Field fields[], const size_t num_fields)
 AcTaskDefinition
 acHaloExchangeBoundary(Field fields[], const size_t num_fields, const AcBoundary boundary)
 {
-	//Does XY-exchange on the upper Z ghost zones
-	if(boundary != BOUNDARY_Z_TOP)
+	//Does XY-exchange on the upper (Z_TOP) or lower (Z_BOT) Z ghost zones
+	if(boundary != BOUNDARY_Z_TOP && boundary != BOUNDARY_Z_BOT)
 	{
-		fatal("%s","Only Z_TOP boundary implemented!\n");
+		fatal("%s","Only Z_TOP and Z_BOT boundaries implemented!\n");
 	}
 	AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
 	task_def.include_boundaries = true;
