@@ -41,7 +41,9 @@
 
 #include <cassert>
 #include <cstring>
+#include <cstddef>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 #include "ac_helpers.h"
@@ -135,16 +137,16 @@ check_mpi_device_buffer(const char* call, const std::string& task, const void* p
 
 //Task definitions are plain structs which callers may copy and use to build any number of task graphs,
 //so the memory they point to is kept until acGridQuit
-static std::vector<void*> task_definition_arrays{};
-static std::vector<LoadKernelParamsFunc*> task_definition_loaders{};
+static std::vector<std::unique_ptr<char[]>> task_definition_arrays{};
+static std::vector<std::unique_ptr<LoadKernelParamsFunc>> task_definition_loaders{};
 
 template <typename T>
 T*
 new_task_definition_array(const size_t n)
 {
-	T* res = (T*)malloc(sizeof(T)*n);
-	task_definition_arrays.push_back(res);
-	return res;
+	static_assert(std::is_trivially_copyable<T>::value && alignof(T) <= alignof(std::max_align_t));
+	task_definition_arrays.push_back(std::make_unique<char[]>(sizeof(T)*n));
+	return reinterpret_cast<T*>(task_definition_arrays.back().get());
 }
 
 template <typename T>
@@ -159,16 +161,13 @@ ptr_copy(const T* src, const int n)
 static LoadKernelParamsFunc*
 new_load_kernel_params_func(const std::function<void(ParamLoadingInfo)> loader)
 {
-	LoadKernelParamsFunc* res = new LoadKernelParamsFunc({loader});
-	task_definition_loaders.push_back(res);
-	return res;
+	task_definition_loaders.push_back(std::unique_ptr<LoadKernelParamsFunc>(new LoadKernelParamsFunc({loader})));
+	return task_definition_loaders.back().get();
 }
 
 void
 acFreeTaskDefinitions()
 {
-	for(void* array : task_definition_arrays) free(array);
-	for(LoadKernelParamsFunc* loader : task_definition_loaders) delete loader;
 	task_definition_arrays.clear();
 	task_definition_loaders.clear();
 }
