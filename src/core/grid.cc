@@ -800,18 +800,18 @@ static AcAutotuneMeasurement
 grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
 {
         ERRCHK_ALWAYS(grid.initialized);
-        float* time_buffer = (float*)malloc(sizeof(float)*ac_nprocs());
-        int* x_dim = (int*)malloc(sizeof(int)*ac_nprocs());
-        int* y_dim = (int*)malloc(sizeof(int)*ac_nprocs());
-        int* z_dim = (int*)malloc(sizeof(int)*ac_nprocs());
+        std::vector<float> time_buffer(ac_nprocs());
+        std::vector<int> x_dim(ac_nprocs());
+        std::vector<int> y_dim(ac_nprocs());
+        std::vector<int> z_dim(ac_nprocs());
 
         int tpb_x = local_best.tpb.x;
         int tpb_y = local_best.tpb.y;
         int tpb_z = local_best.tpb.z;
-        MPI_Gather(&tpb_x,1,MPI_INT,x_dim,1,MPI_INT,0,astaroth_comm);
-        MPI_Gather(&tpb_y,1,MPI_INT,y_dim,1,MPI_INT,0,astaroth_comm);
-        MPI_Gather(&tpb_z,1,MPI_INT,z_dim,1,MPI_INT,0,astaroth_comm);
-        MPI_Gather(&local_best.time,1,MPI_FLOAT,time_buffer,1,MPI_FLOAT,0,astaroth_comm);
+        MPI_Gather(&tpb_x,1,MPI_INT,x_dim.data(),1,MPI_INT,0,astaroth_comm);
+        MPI_Gather(&tpb_y,1,MPI_INT,y_dim.data(),1,MPI_INT,0,astaroth_comm);
+        MPI_Gather(&tpb_z,1,MPI_INT,z_dim.data(),1,MPI_INT,0,astaroth_comm);
+        MPI_Gather(&local_best.time,1,MPI_FLOAT,time_buffer.data(),1,MPI_FLOAT,0,astaroth_comm);
 
         dim3 first_tpb{(unsigned int)x_dim[0],(unsigned int)y_dim[0],(unsigned int)z_dim[0]};
         AcAutotuneMeasurement res{time_buffer[0], first_tpb};
@@ -845,10 +845,6 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
                 MPI_Bcast(&z_res, 1, MPI_INT, 0, astaroth_comm);
                 res.tpb = dim3{(unsigned int)x_res,(unsigned int)y_res,(unsigned int)z_res};
         }
-        free(time_buffer);
-        free(x_dim);
-        free(y_dim);
-        free(z_dim);
 	return res;
 }
 static void
@@ -3366,8 +3362,6 @@ acGridReduceXY(const Stream stream, const Field field, const Profile profile, co
 
         const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
         const int3 pid3d      = getPid3D(pid, decomp);
-        MPI_Comm xy_neighbors;
-        MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
         // 3) Allreduce
 	//
@@ -3377,7 +3371,7 @@ acGridReduceXY(const Stream stream, const Field field, const Profile profile, co
 				    static_cast<size_t>(grid.submesh.info[AC_mlocal].z)
 			           };
         MPI_Allreduce(MPI_IN_PLACE, acDeviceGetProfileBuffer(device,profile), prof_size(profile,m),
-                      AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+                      AC_REAL_MPI_TYPE, MPI_SUM, astaroth_sub_comms.xy);
 
         // 4) Optional: Test
         // AcReal arr[device->vba.profiles.count];
@@ -3413,14 +3407,12 @@ acGridReduceXYAverages(const Stream stream)
 
         const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
         const int3 pid3d      = getPid3D(pid, decomp);
-        MPI_Comm xy_neighbors;
-        MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
         // 3) Allreduce
 	const size_t count = static_cast<size_t>(grid.submesh.info[AC_mlocal].x*grid.submesh.info[AC_mlocal].y);
         MPI_Allreduce(MPI_IN_PLACE, acDeviceGetStartOfProfiles(grid.device),
                       NUM_PROFILES * count, AC_REAL_MPI_TYPE, MPI_SUM,
-                      xy_neighbors);
+                      astaroth_sub_comms.xy);
 
         // 4) Optional: Test
         // AcReal arr[device->vba.profiles.count];
