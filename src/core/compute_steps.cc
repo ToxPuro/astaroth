@@ -6,6 +6,7 @@
 #include <cstring>  //memcpy
 #include <queue>
 #include <stack>
+#include <memory>
 #include <vector>
 
 #include "ac_helpers.h"
@@ -1820,17 +1821,17 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	return get_dsl_taskgraph_ops(graph,optimized,no_communication,bc_graph,AcHaloSyncState{},NULL);
 }
 
-static std::unordered_map<KeyType, AcTaskGraph*, KeyHash, KeyEqual> task_graphs{};
+struct TaskGraphDeleter
+{
+	void operator()(AcTaskGraph* graph) const { acGridDestroyTaskGraph(graph); }
+};
+//Graphs are freed by acGridClearTaskGraphCache. The map is deliberately never destructed: a process which exits
+//without acGridQuit would otherwise destroy the tasks during static destruction, after MPI_Finalize
+static auto& task_graphs = *new std::unordered_map<KeyType, std::unique_ptr<AcTaskGraph,TaskGraphDeleter>, KeyHash, KeyEqual>{};
 
 AcResult
 acGridClearTaskGraphCache()
 {
-	const std::unordered_map<KeyType, AcTaskGraph*, KeyHash, KeyEqual> empty_graphs{};
-	for(auto [key,graph] : task_graphs)
-	{
-		(void)key;
-		acGridDestroyTaskGraph(graph);
-	}
 	task_graphs.clear();
 	return AC_SUCCESS;
 }
@@ -1885,7 +1886,7 @@ get_optimized_dsl_taskgraph(const AcDSLTaskGraph graph, const Volume start, cons
 	if(cached != task_graphs.end())
 	{
 		info = std::move(std::get<5>(key));
-		return cached->second;
+		return cached->second.get();
 	}
 
 	HaloSyncInfo halo_sync_info{};
@@ -1902,7 +1903,7 @@ get_optimized_dsl_taskgraph(const AcDSLTaskGraph graph, const Volume start, cons
 			return cold;
 		};
 	}
-	task_graphs[key] = res;
+	task_graphs[key].reset(res);
 	return res;
 }
 
