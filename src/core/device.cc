@@ -22,6 +22,8 @@
 #include <string.h>
 
 #include <cmath>
+#include <memory>
+#include <type_traits>
 #include <vector>
 
 #include "ac_fft.h"
@@ -305,17 +307,20 @@ acDeviceStoreUniform(const Device device, const Stream stream, const P param, V*
 	if constexpr (IsArrayParam(param))
 	{
 		const size_t len = get_array_length(param,device->local_config);
-		V* dst = device->local_config[AC_host_has_row_memory_order] ? (V*)malloc(sizeof(V)*len) : value;
-		ERRCHK_ALWAYS(acStoreUniform(param, dst, len) == AC_SUCCESS);
-		if(device->local_config[AC_host_has_row_memory_order])
+		if(!device->local_config[AC_host_has_row_memory_order])
 		{
-			const int n_dims       = get_array_n_dims(param);
-			const auto sizes_array = get_array_dim_sizes(param,device->local_config);
-			std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
-			auto index_range = generateIndexRange(sizes);
-			for(const auto& index : index_range)
-				dst[row_major_index(index,sizes)] = value[column_major_index(index,sizes)];
+			ERRCHK_ALWAYS(acStoreUniform(param, value, len) == AC_SUCCESS);
+			return AC_SUCCESS;
 		}
+		//The device holds column-major data: the inverse of the reordering in acDeviceLoadArray
+		const auto column_major_values = std::make_unique<V[]>(len);
+		ERRCHK_ALWAYS(acStoreUniform(param, column_major_values.get(), len) == AC_SUCCESS);
+		const int n_dims       = get_array_n_dims(param);
+		const auto sizes_array = get_array_dim_sizes(param,device->local_config);
+		std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
+		auto index_range = generateIndexRange(sizes);
+		for(const auto& index : index_range)
+			value[row_major_index(index,sizes)] = column_major_values[column_major_index(index,sizes)];
 		return AC_SUCCESS;
 	}
 	else
@@ -362,8 +367,9 @@ acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo hos
 	auto row_to_column_order = [&]()
 	{
 		auto* src = host_info[array];
+		using ValueType = std::remove_cv_t<std::remove_pointer_t<decltype(src)>>;
 		const size_t len = get_array_length(array,host_info);
-		auto* dst = (decltype(src)) malloc(sizeof(decltype(src))*len);
+		auto dst = std::make_unique<ValueType[]>(len);
 		const int n_dims       = get_array_n_dims(array);
 		const auto sizes_array = get_array_dim_sizes(array,host_info);
 		std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
@@ -376,10 +382,8 @@ acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo hos
 	ERRCHK_CUDA(acSetDevice(device->id));
 	if(device->local_config[AC_host_has_row_memory_order])
 	{
-		auto* values = row_to_column_order();
-		auto res= acLoadUniform(device->streams[stream],array,values,get_array_length(array,host_info));
-		free(values);
-		return res;
+		const auto values = row_to_column_order();
+		return acLoadUniform(device->streams[stream],array,values.get(),get_array_length(array,host_info));
 	}
 	return acLoadUniform(device->streams[stream],array,host_info[array], get_array_length(array,host_info));
 }
@@ -775,11 +779,8 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
     fields_written(device);
 
     const size_t count = acVertexBufferSize(device->local_config,handle);
-    AcReal* data       = (AcReal*)calloc(count, sizeof(AcReal));
-    ERRCHK_ALWAYS(data);
-
-    for (size_t i = 0; i < count; ++i)
-        data[i] = value;
+    const std::vector<AcReal> data_buffer(count, value);
+    const AcReal* data = data_buffer.data();
 
     // Set both in and out for safety (not strictly needed)
     ERRCHK_CUDA_ALWAYS(acMemcpyAsync(device->vba.on_device.in[handle], data, sizeof(data[0]) * count,
@@ -787,8 +788,7 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
     ERRCHK_CUDA_ALWAYS(acMemcpyAsync(device->vba.on_device.out[handle], data, sizeof(data[0]) * count,
                                        cudaMemcpyHostToDevice, device->streams[stream]));
 
-    acDeviceSynchronizeStream(device, stream); // Need to synchronize before free
-    free(data);
+    acDeviceSynchronizeStream(device, stream); // Need to synchronize before data_buffer is freed
     return AC_SUCCESS;
 }
 
@@ -1139,15 +1139,14 @@ acDevicePrintProfiles(const Device device)
     // printf("Num profiles: %zu\n", NUM_PROFILES);
     for (int i = 0; i < NUM_PROFILES; ++i) {
         const size_t count = device->vba.profile_count;
-        AcReal* host_profile = (AcReal*)malloc(sizeof(AcReal)*count);
-        acMemcpy(host_profile, device->vba.on_device.profiles.in[i], sizeof(AcReal) * count,
+        std::vector<AcReal> host_profile(count);
+        acMemcpy(host_profile.data(), device->vba.on_device.profiles.in[i], sizeof(AcReal) * count,
                    cudaMemcpyDeviceToHost);
         printf("Profile %s (%d)-----------------\n", profile_names[i], i);
         for (size_t j = 0; j < count; ++j) {
             printf("%g (%zu), ", (double)host_profile[j], j);
         }
         printf("\n");
-	free(host_profile);
     }
     return AC_SUCCESS;
 }
