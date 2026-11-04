@@ -17,6 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <vector>
 #include "astaroth_node.h"
 
 #include <math.h>
@@ -971,14 +972,13 @@ acNodeReduceScal(const Node node, const Stream stream, const AcReduction reducti
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
+    std::vector<AcReal> results(node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         acDeviceReduceScal(node->devices[i], stream, reduction, vtxbuf_handle, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
-    free(results);
+    *result = simple_final_reduce_scal(node, reduction, results.data(), node->num_devices);
     return AC_SUCCESS;
 }
 
@@ -989,14 +989,13 @@ acNodeReduceVec(const Node node, const Stream stream, const AcReduction reductio
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
+    std::vector<AcReal> results(node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         acDeviceReduceVec(node->devices[i], stream, reduction, a, b, c, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
-    free(results);
+    *result = simple_final_reduce_scal(node, reduction, results.data(), node->num_devices);
     return AC_SUCCESS;
 }
 
@@ -1007,13 +1006,12 @@ acNodeReduceVecScal(const Node node, const Stream stream, const AcReduction redu
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
+    std::vector<AcReal> results(node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         acDeviceReduceVecScal(node->devices[i], stream, reduction, a, b, c, d, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
-    free(results);
+    *result = simple_final_reduce_scal(node, reduction, results.data(), node->num_devices);
     return AC_SUCCESS;
 }
