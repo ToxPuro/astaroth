@@ -1157,13 +1157,15 @@ get_grid_nn()
 
 typedef struct TaskGraphBuildScope
 {
-	size_t streams_in_use{};
+	size_t high_priority_streams_in_use{};
+	size_t low_priority_streams_in_use{};
 	std::vector<bool> buffer_taken{};
 } TaskGraphBuildScope;
 
 static struct
 {
-	std::vector<cudaStream_t> streams;
+	std::vector<cudaStream_t> high_priority_streams;
+	std::vector<cudaStream_t> low_priority_streams;
 	std::vector<std::unique_ptr<PooledBuffer>> buffers;
 	// The task graphs currently being built. A stack in case a build ever triggers another build
 	std::vector<TaskGraphBuildScope> building;
@@ -1181,19 +1183,19 @@ taskgraph_resources_end_graph()
 	ERRCHK_ALWAYS(!taskgraph_resources.building.empty());
 	taskgraph_resources.building.pop_back();
 }
-cudaStream_t
-create_high_priority_stream(Device device)
+static cudaStream_t
+create_stream(Device device, const bool high_priority)
 {
   cudaStream_t stream;
   set_device(device);
   int low_prio, high_prio;
   acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-  acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+  acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_priority ? high_prio : low_prio);
   return stream;
 }
 
 cudaStream_t
-acquire_stream(Device device)
+acquire_stream(Device device, const bool high_priority)
 {
 	//TP: using only the default stream saves memory which is useful on
 	//    low-level hardware test environments
@@ -1203,12 +1205,14 @@ acquire_stream(Device device)
 	}
 	auto& pool = taskgraph_resources;
 	ERRCHK_ALWAYS(!pool.building.empty());
-	auto& scope = pool.building.back();
-	if(scope.streams_in_use == pool.streams.size())
+	auto& scope   = pool.building.back();
+	auto& streams = high_priority ? pool.high_priority_streams        : pool.low_priority_streams;
+	auto& in_use  = high_priority ? scope.high_priority_streams_in_use : scope.low_priority_streams_in_use;
+	if(in_use == streams.size())
 	{
-		pool.streams.push_back(create_high_priority_stream(device));
+		streams.push_back(create_stream(device,high_priority));
 	}
-	return pool.streams[scope.streams_in_use++];
+	return streams[in_use++];
 }
 
 static void
@@ -1270,11 +1274,14 @@ taskgraph_resources_release()
 		buffer->data_pinned  = NULL;
 		buffer->bytes        = 0;
 	}
-	for(auto& stream : pool.streams)
+	for(auto* streams : {&pool.high_priority_streams, &pool.low_priority_streams})
 	{
-		acStreamDestroy(stream);
+		for(auto& stream : *streams)
+		{
+			acStreamDestroy(stream);
+		}
+		streams->clear();
 	}
-	pool.streams.clear();
 }
 
 
@@ -1291,7 +1298,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 		   op.outputs_out, op.num_outputs_out},max_facet_class,op.red_black_state),
            op, device_, swap_offset_)
 {
-    stream = acquire_stream(device);
+    stream = acquire_stream(device, output_region.facet_class != 0);
     auto& input_region = input_regions[0];
     const auto dimension_inactive = ac_get_info()[AC_dimension_inactive];
     if(kernel_only_writes_profile(PROFILE_X,op.analysis_info))
@@ -1380,7 +1387,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, std::vector<Region> in
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     (void)fields_already_depend_on_boundaries;
-    stream = acquire_stream(device);
+    stream = acquire_stream(device, output_region.facet_class != 0);
 
     syncVBA();
 
@@ -1403,7 +1410,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     (void)fields_already_depend_on_boundaries;
-    stream = acquire_stream(device);
+    stream = acquire_stream(device, output_region.facet_class != 0);
 
     syncVBA();
 
@@ -1915,7 +1922,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
     auto& input_region = input_regions[0];
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
-    stream = acquire_stream(device);
+    stream = acquire_stream(device, true);
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done creating CUDA stream\n");
 
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: syncing VBA\n");
@@ -2406,7 +2413,7 @@ PeriodicRayTask::PeriodicRayTask(AcTaskDefinition op, int order_, const Volume s
     }
     // Create stream for packing/unpacking
     (void)grid_info;
-    stream = acquire_stream(device);
+    stream = acquire_stream(device, true);
     nprocs = get_nprocs(op.ray_direction);
 }
 
@@ -2594,7 +2601,7 @@ MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, co
     }
     // Create stream for packing/unpacking
     (void)grid_info;
-    stream = acquire_stream(device);
+    stream = acquire_stream(device, true);
 }
 
 MPIScanTask::~MPIScanTask()
@@ -2717,7 +2724,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
            Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out},3,op.red_black_state),
            op, device_, swap_offset_)
 {
-    stream = acquire_stream(device);
+    stream = acquire_stream(device, true);
     ERRCHK_ALWAYS(!(op.num_profiles_in  == 0 && op.num_outputs_in  == 0));
     ERRCHK_ALWAYS(!(op.num_profiles_reduce_out == 0 && op.num_outputs_out == 0));
     ERRCHK_ALWAYS(op.num_profiles_reduce_out == op.num_profiles_in);
@@ -3181,7 +3188,7 @@ BoundaryConditionTask::BoundaryConditionTask(
        fieldwise(op.fieldwise)
 {
     // Create stream for boundary condition task
-    stream = acquire_stream(device);
+    stream = acquire_stream(device, true);
     syncVBA();
 
 

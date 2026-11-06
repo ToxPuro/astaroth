@@ -2748,16 +2748,16 @@ sort_tasks(AcTaskGraph* graph)
         auto dim2 = t2->output_region.dims;
 
         auto key1 = std::make_tuple(
-            -vol1,                // larger volumes first
             comp1,                 // comm first (false < true)
+            -vol1,                // larger volumes first
             dim1.x, dim1.y, dim1.z,
             t1->order,
             t1->output_region.tag
         );
 
         auto key2 = std::make_tuple(
-            -vol2,
             comp2,
+            -vol2,
             dim2.x, dim2.y, dim2.z,
             t2->order,
             t2->output_region.tag
@@ -2935,7 +2935,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in_array[], const size
     // In order to reduce redundant dependencies, we keep track of which tasks are connected
     calculate_dependencies(graph,ops,op_indices);
 
-    // Finally sort according to a priority. Larger volumes first and comm before comp
+    // Finally sort according to a priority. Comm before comp and larger volumes first
     sort_tasks(graph);
     return graph;
 }
