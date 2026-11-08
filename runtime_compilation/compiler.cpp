@@ -640,6 +640,7 @@ acLoadLibrary(const AcMeshInfo info)
     LOAD_DSYM(acDeviceLoadBoolUniform);
     LOAD_DSYM(acDeviceLoadInt3Uniform);
     LOAD_DSYM(acDeviceStoreScalarUniform);
+    LOAD_DSYM(acDeviceStoreRealArray);
     LOAD_DSYM(acDeviceStoreVectorUniform);
     LOAD_DSYM(acDeviceStoreIntUniform);
     LOAD_DSYM(acDeviceStoreBoolUniform);
