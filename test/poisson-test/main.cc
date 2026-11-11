@@ -266,7 +266,8 @@ main(void)
     const auto sor_graph    = acGetOptimizedDSLTaskGraph(sor_red_black_step);
     const auto residual_graph = acGetOptimizedDSLTaskGraph(get_residual);
     const size_t NUM_SOLVING_STEPS = info[AC_n_solving_steps];
-    FILE* fp = fopen("residual.dat","w");
+    //TP: AC_residual2 is global so every process has the same value: only the root writes it
+    FILE* fp = pid == 0 ? fopen("residual.dat","w") : NULL;
     for (size_t i = 0; i < NUM_SOLVING_STEPS; ++i)
     {
 	if(i == 0)
@@ -274,7 +275,7 @@ main(void)
     		acGridExecuteTaskGraph(residual_graph,1);
 		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-		printf("Initial residual: %zu,%7e\n",i,residual_norm);
+		if(pid == 0) printf("Initial residual: %zu,%7e\n",i,residual_norm);
 		acGridExecuteTaskGraph(reinit_bicgstab_graph,1);
 	}
     	acGridExecuteTaskGraph(bicgstab_graph,1);
@@ -285,7 +286,7 @@ main(void)
     		acGridExecuteTaskGraph(residual_graph,1);
 		const int N = info[AC_ngrid].x*info[AC_ngrid].y*info[AC_ngrid].z;
 		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-		printf("Residual: %zu,%7e\n",i,residual_norm);
+		if(pid == 0) printf("Residual: %zu,%7e\n",i,residual_norm);
 		fflush(stdout);
 		fflush(stderr);
 		//printf("||S||^2: %.14e\n",acDeviceGetOutput(acGridGetDevice(),DIAGNOS_BICGSTAB_S));
@@ -304,13 +305,13 @@ main(void)
 	{
     		acGridExecuteTaskGraph(residual_graph,1);
 		AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-		fprintf(fp,"%.14e,",residual_norm);
+		if(fp) fprintf(fp,"%.14e,",residual_norm);
 	}
     }
-    fclose(fp);
+    if(fp) fclose(fp);
     acGridExecuteTaskGraph(residual_graph,1);
     AcReal residual_norm = sqrt(acDeviceGetOutput(acGridGetDevice(),AC_residual2));
-    printf("Final residual: %7e\n",residual_norm);
+    if(pid == 0) printf("Final residual: %7e\n",residual_norm);
 
     acGridExecuteTaskGraph(acGetDSLTaskGraph(get_potential_with_sph),1);
     AcReal M_00 = ((4*AC_REAL_PI*R*R*R)/3.0)*sqrt(4*AC_REAL_PI);
@@ -339,7 +340,7 @@ main(void)
     int retval = AC_SUCCESS;
     if(residual_norm > 4e-8)
     {
-	    fprintf(stderr,"Residual is too large: %.14e\n",residual_norm);
+	    if(pid == 0) fprintf(stderr,"Residual is too large: %.14e\n",residual_norm);
 	    retval = AC_FAILURE;
     }
     acGridQuit();

@@ -52,7 +52,7 @@ fixed_boundary Kernel sor_black(real omega)
 	poisson_sor_red_black(SOR_BLACK,DENSITY,POTENTIAL,omega)
 }
 
-output real AC_residual2
+global output real AC_residual2
 Kernel residual_kernel()
 {
 	r = laplace(POTENTIAL)-DENSITY
