@@ -1,8 +1,12 @@
 #include <rocfft/rocfft.h>
 #include <stdio.h>
 
+#include <array>
 #include <cstdlib>
+#include <map>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "ac_fft.h"
 #include "ac_helpers.h"
@@ -11,14 +15,13 @@
 #include "common_kernels.h"
 #include "errchk.h"
 #include "host_datatypes.h"
+#include "distributed_fft_device.h"
 
 #if AC_DOUBLE_PRECISION
 #define AC_FFT_PRECISION rocfft_precision_double
 #else
 #define AC_FFT_PRECISION rocfft_precision_single
 #endif
-
-[[maybe_unused]] static Volume global_offset = (Volume){0,0,0};
 
 static  bool
 operator==(const Volume& a, const Volume& b)
@@ -32,25 +35,13 @@ struct VolumeHash {
     }
 };
 
+struct VolumePairHash {
+    std::size_t operator()(const std::pair<Volume,Volume>& v) const {
+        return VolumeHash()(v.first) ^ VolumeHash()(v.second) << 3;
+    }
+};
+
 #define check_rocfft_status(expression) { const auto _status_ = expression; print_rocfft_error(_status_); ERRCHK_ALWAYS(_status_ == rocfft_status_success); }
-
-#if AC_MPI_ENABLED
-static MPI_Comm communicator{};
-#endif
-
-void
-check_if_distributed()
-{
-#if AC_MPI_ENABLED
-        int nprocs{};
-        MPI_Comm_size(communicator,&nprocs);
-        if(nprocs > 1) 
-        {
-                fprintf(stderr,"RocFFT integration not yet working for multiple processes!\n");
-                exit(EXIT_FAILURE);
-        }
-#endif
-}
 
 void
 print_rocfft_error(rocfft_status status)
@@ -94,13 +85,111 @@ print_rocfft_error(rocfft_status status)
             fflush(stderr);
     }
 }
+//TP: Multi-GPU support for the C2C transforms, see distributed_fft.h and distributed_fft_device.h.
+//The rocFFT plans of the batched 1D transforms along each axis (forward and inverse) and the device buffers for the pencils of a layout.
+class RocFFTPencilPlans
+{
+public:
+	RocFFTPencilPlans(const DistributedLayout& layout)
+	{
+		size_t max_count = 0;
+		size_t work_buf_size = 0;
+		for(int axis = 0; axis < 3; ++axis)
+		{
+			const Box& box = layout.pencil_boxes[axis][layout.rank];
+			max_count = std::max(max_count,box_count(box));
+			if(layout.global_dims[axis] == 1 || box_count(box) == 0) continue;
+			batch_layouts[axis] = get_pencil_batch_layout(box,axis);
+			const PencilBatchLayout& bl = batch_layouts[axis];
+			size_t stride[] = {bl.stride};
+			rocfft_plan_description desc = nullptr;
+			check_rocfft_status(rocfft_plan_description_create(&desc));
+			check_rocfft_status(rocfft_plan_description_set_data_layout(
+				desc,
+				rocfft_array_type_complex_interleaved,
+				rocfft_array_type_complex_interleaved,
+				nullptr,
+				nullptr,
+				1,
+				stride,
+				bl.dist,
+				1,
+				stride,
+				bl.dist
+				));
+			size_t lengths[] = {bl.n};
+			for(int inverse = 0; inverse < 2; ++inverse)
+			{
+				const auto rocfft_type = inverse ? rocfft_transform_type_complex_inverse : rocfft_transform_type_complex_forward;
+				check_rocfft_status(rocfft_plan_create(
+					&plans[axis][inverse],
+					rocfft_placement_inplace,
+					rocfft_type,
+					AC_FFT_PRECISION,
+					1,
+					lengths,
+					bl.batch,
+					desc));
+				size_t size = 0;
+				check_rocfft_status(rocfft_plan_get_work_buffer_size(plans[axis][inverse],&size));
+				work_buf_size = std::max(work_buf_size,size);
+			}
+			check_rocfft_status(rocfft_plan_description_destroy(desc));
+		}
+		if(max_count) acDeviceMalloc((void**)&d_buf,sizeof(AcComplex)*max_count);
+		check_rocfft_status(rocfft_execution_info_create(&exec_info));
+		if(work_buf_size)
+		{
+			ERRCHK_CUDA_ALWAYS(acMalloc(&work_buf,work_buf_size));
+			check_rocfft_status(rocfft_execution_info_set_work_buffer(exec_info,work_buf,work_buf_size));
+		}
+	}
+	~RocFFTPencilPlans()
+	{
+		for(int axis = 0; axis < 3; ++axis)
+			for(int inverse = 0; inverse < 2; ++inverse)
+				if(plans[axis][inverse]) rocfft_plan_destroy(plans[axis][inverse]);
+		if(exec_info) rocfft_execution_info_destroy(exec_info);
+		if(work_buf) acFree(work_buf);
+		if(d_buf) acDeviceFree(&d_buf,0);
+	}
+	RocFFTPencilPlans(const RocFFTPencilPlans&) = delete;
+	RocFFTPencilPlans& operator=(const RocFFTPencilPlans&) = delete;
+
+	void
+	transform_axis(std::vector<AcComplex>& data, const int axis, const bool inverse)
+	{
+		const rocfft_plan plan = plans[axis][inverse];
+		if(!plan) return;
+		const size_t bytes = sizeof(AcComplex)*data.size();
+		ERRCHK_CUDA_ALWAYS(acMemcpy(d_buf,data.data(),bytes,cudaMemcpyHostToDevice));
+		for(size_t i = 0; i < batch_layouts[axis].loops; ++i)
+		{
+			void* buffer[] = {reinterpret_cast<void*>(d_buf + i*batch_layouts[axis].loop_offset)};
+			check_rocfft_status(rocfft_execute(plan, buffer, nullptr, exec_info));
+		}
+		ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
+		ERRCHK_CUDA_ALWAYS(acMemcpy(data.data(),d_buf,bytes,cudaMemcpyDeviceToHost));
+	}
+private:
+	std::array<std::array<rocfft_plan,2>,3> plans{};
+	std::array<PencilBatchLayout,3> batch_layouts{};
+	rocfft_execution_info exec_info = nullptr;
+	void* work_buf = nullptr;
+	AcComplex* d_buf = NULL;
+};
+
+static DeviceDistributedFFT<RocFFTPencilPlans> distributed_fft("RocFFT");
+
 rocfft_field
 get_rocfft_field(const Volume domain_size, const Volume subdomain_size)
 {
     rocfft_field field_layout = nullptr;
     check_rocfft_status(rocfft_field_create(&field_layout));
 
-    size_t lower[3] = {global_offset.x,global_offset.y,global_offset.z};
+    //Only used for single-process transforms (multi-process ones go through distributed_fft),
+    //so the single brick spans the whole transform
+    size_t lower[3] = {0,0,0};
     size_t dims[3] = {
             subdomain_size.x,
             subdomain_size.y,
@@ -136,13 +225,15 @@ get_rocfft_field(const Volume domain_size, const Volume subdomain_size)
 }
 
 
-std::unordered_map<Volume,rocfft_plan_description,VolumeHash> data_layouts{};
+//The strides depend on domain_size, so cache by both domain_size and subdomain_size
+std::unordered_map<std::pair<Volume,Volume>,rocfft_plan_description,VolumePairHash> data_layouts{};
 static rocfft_plan_description 
 get_data_layout(const Volume domain_size, const Volume subdomain_size)
 {
-    if(data_layouts.find(subdomain_size) != data_layouts.end())
+    const auto key = std::make_pair(domain_size,subdomain_size);
+    if(data_layouts.find(key) != data_layouts.end())
     {
-	    return data_layouts[subdomain_size];
+	    return data_layouts[key];
     }
     // Create plan description
     rocfft_plan_description desc = nullptr;
@@ -171,7 +262,7 @@ get_data_layout(const Volume domain_size, const Volume subdomain_size)
     //rocfft_plan_description_set_comm(desc,rocfft_comm_mpi,&communicator);
 #endif
 
-    data_layouts[subdomain_size] = desc;
+    data_layouts[key] = desc;
     return desc;
 }
 
@@ -232,7 +323,6 @@ static std::unordered_map<KeyType, rocfft_plan, KeyHash, KeyEqual> rocfft_plans{
 static rocfft_plan
 get_plan(const Volume domain_size, const Volume subdomain_size, const bool inverse)
 {
-    check_if_distributed();
     const KeyType key = (KeyType){domain_size,subdomain_size,inverse};
     if(rocfft_plans.find(key) != rocfft_plans.end())
     {
@@ -261,6 +351,8 @@ static AcResult
 acFFTTransformC2C(const AcComplex* src, const Volume domain_size,
                                 const Volume subdomain_size, const Volume starting_point,
                                 AcComplex* dst, const bool inverse) {
+    if(distributed_fft.is_distributed(subdomain_size))
+	    return distributed_fft.transform_c2c(src,domain_size,subdomain_size,starting_point,dst,inverse);
     const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
     const auto plan = get_plan(domain_size,subdomain_size,inverse);
     const auto exec_info = get_execution_info(subdomain_size,plan);
@@ -301,19 +393,22 @@ acFFTBackwardTransformSymmetricC2R(const AcComplex*,const Volume, const Volume,c
 	return AC_FAILURE;
 }
 
-std::unordered_map<size_t,AcComplex*> tmp_buffers{};
+//Cached by the element count and a slot so that the temporary buffers used together in a function
+//(slots 0 and 1) are distinct: the transforms are out-of-place and require the input and output not to alias
+std::map<std::pair<size_t,int>,AcComplex*> tmp_buffers{};
 static AcComplex*
-get_fresh_tmp_complex_buffer(const size_t count)
+get_fresh_tmp_complex_buffer(const size_t count, const int slot = 0)
 {
-    if(tmp_buffers.find(count) != tmp_buffers.end())
+    const auto key = std::make_pair(count,slot);
+    if(tmp_buffers.find(key) != tmp_buffers.end())
     {
-	return tmp_buffers[count];
+	return tmp_buffers[key];
     }
     const size_t bytes = sizeof(AcComplex)*count;
     AcComplex* res = NULL;
     acDeviceMalloc((void**)&res,bytes);
     acMultiplyInplaceComplex(AcReal(0.0),count,res);
-    tmp_buffers[count] = res;
+    tmp_buffers[key] = res;
     return res;
 }
 
@@ -341,7 +436,7 @@ acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
     AcComplex* tmp  = get_fresh_tmp_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_tmp_complex_buffer(count);
+    AcComplex* tmp2 = get_fresh_tmp_complex_buffer(count,1);
 
     acRealToComplex(src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
@@ -389,7 +484,7 @@ acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,cons
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
     AcComplex* tmp  = get_fresh_tmp_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_tmp_complex_buffer(count);
+    AcComplex* tmp2 = get_fresh_tmp_complex_buffer(count,1);
 
     acPlanarToComplex(real_src,imag_src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
@@ -403,7 +498,7 @@ acFFTBackwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,con
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
     AcComplex* tmp  = get_fresh_tmp_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_tmp_complex_buffer(count);
+    AcComplex* tmp2 = get_fresh_tmp_complex_buffer(count,1);
 
     acPlanarToComplex(real_src,imag_src,count,tmp);
     acFFTBackwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
@@ -417,7 +512,7 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
     AcComplex* tmp  = get_fresh_tmp_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_tmp_complex_buffer(count);
+    AcComplex* tmp2 = get_fresh_tmp_complex_buffer(count,1);
 
     acPlanarToComplex(real_src,imag_src,count,tmp);
     acFFTBackwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
@@ -428,17 +523,16 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
 
 
 AcResult
-acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset_)
+acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset)
 {
 	check_rocfft_status(rocfft_setup());
-	communicator = astaroth_comm->handle;
-	global_offset = (Volume){(size_t)global_offset_[0],(size_t)global_offset_[1],(size_t)global_offset_[2]};
-
+	distributed_fft.init(astaroth_comm,global_offset);
 	return AC_SUCCESS;
 }
 
 AcResult
 acFFTQuit()
 {
+	distributed_fft.quit();
 	return AC_SUCCESS;
 }

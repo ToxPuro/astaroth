@@ -2,7 +2,9 @@
 #include <cufftXt.h>
 #include <stdio.h>
 
+#include <array>
 #include <cstdlib>
+#include <vector>
 
 #include "ac_fft.h"
 #include "ac_helpers.h"
@@ -11,6 +13,7 @@
 #include "common_kernels.h"
 #include "errchk.h"
 #include "host_datatypes.h"
+#include "distributed_fft_device.h"
 
 #if AC_DOUBLE_PRECISION
 using  cuFFTPrecision = cuDoubleComplex;
@@ -19,24 +22,6 @@ using  cuFFTPrecision = cuDoubleComplex;
 #define CUFFT_COMPLEX2COMPLEX CUFFT_C2C
 using  cuFFTPrecision = cuFloatComplex;
 #endif
-
-#if AC_MPI_ENABLED
-static MPI_Comm communicator{};
-#endif
-
-void
-check_if_distributed()
-{
-#if AC_MPI_ENABLED
-        int nprocs{};
-        MPI_Comm_size(communicator,&nprocs);
-        if(nprocs > 1) 
-        {
-                fprintf(stderr,"CuFFT integration not yet working for multiple processes!\n");
-                exit(EXIT_FAILURE);
-        }
-#endif
-}
 
 // cufft API error chekcing
 #ifndef CUFFT_CALL
@@ -57,6 +42,77 @@ check_if_distributed()
 	    }                                                                                                          \
     }
 #endif  // CUFFT_CALL
+
+//TP: Multi-GPU support for the C2C transforms, see distributed_fft.h and distributed_fft_device.h.
+//The cuFFT plans of the batched 1D transforms along each axis and the device buffer for the pencils of a layout.
+class CuFFTPencilPlans
+{
+public:
+	CuFFTPencilPlans(const DistributedLayout& layout)
+	{
+		size_t max_count = 0;
+		for(int axis = 0; axis < 3; ++axis)
+		{
+			const Box& box = layout.pencil_boxes[axis][layout.rank];
+			max_count = std::max(max_count,box_count(box));
+			if(layout.global_dims[axis] == 1 || box_count(box) == 0) continue;
+			batch_layouts[axis] = get_pencil_batch_layout(box,axis);
+			const PencilBatchLayout& bl = batch_layouts[axis];
+			int n       = (int)bl.n;
+			int embed[] = {n};
+			CUFFT_CALL(cufftCreate(&plans[axis]));
+			has_plan[axis] = true;
+			size_t workspace_size;
+			CUFFT_CALL(cufftMakePlanMany(plans[axis], 1, &n,
+				embed, (int)bl.stride, (int)bl.dist,
+				embed, (int)bl.stride, (int)bl.dist,
+				CUFFT_COMPLEX2COMPLEX, (int)bl.batch, &workspace_size));
+		}
+		if(max_count) acDeviceMalloc((void**)&d_buf,sizeof(AcComplex)*max_count);
+	}
+	~CuFFTPencilPlans()
+	{
+		for(int axis = 0; axis < 3; ++axis)
+			if(has_plan[axis]) cufftDestroy(plans[axis]);
+		if(d_buf) acDeviceFree(&d_buf,0);
+	}
+	CuFFTPencilPlans(const CuFFTPencilPlans&) = delete;
+	CuFFTPencilPlans& operator=(const CuFFTPencilPlans&) = delete;
+
+	void
+	transform_axis(std::vector<AcComplex>& data, const int axis, const bool inverse)
+	{
+		if(!has_plan[axis]) return;
+		const size_t bytes = sizeof(AcComplex)*data.size();
+		ERRCHK_CUDA_ALWAYS(acMemcpy(d_buf,data.data(),bytes,cudaMemcpyHostToDevice));
+		const auto direction = inverse ? CUFFT_INVERSE : CUFFT_FORWARD;
+		for(size_t i = 0; i < batch_layouts[axis].loops; ++i)
+		{
+			cuFFTPrecision* ptr = reinterpret_cast<cuFFTPrecision*>(d_buf + i*batch_layouts[axis].loop_offset);
+			CUFFT_CALL(cufftXtExec(plans[axis], ptr, ptr, direction));
+		}
+		ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
+		ERRCHK_CUDA_ALWAYS(acMemcpy(data.data(),d_buf,bytes,cudaMemcpyDeviceToHost));
+	}
+private:
+	std::array<cufftHandle,3> plans{};
+	std::array<bool,3> has_plan{false,false,false};
+	std::array<PencilBatchLayout,3> batch_layouts{};
+	AcComplex* d_buf = NULL;
+};
+
+static DeviceDistributedFFT<CuFFTPencilPlans> distributed_fft("CuFFT");
+
+void
+check_if_distributed()
+{
+        if(distributed_fft.nprocs() > 1)
+        {
+                fprintf(stderr,"CuFFT integration of symmetric R2C/C2R transforms not yet working for multiple processes!\n");
+                exit(EXIT_FAILURE);
+        }
+}
+
 // TODO: if the buffer on GPU would be properly padded:
 // https://docs.nvidia.com/cuda/cufft/index.html#data-layout
 // we could use in-place transformation and save one buffer allocation
@@ -109,6 +165,8 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
     ERRCHK_ALWAYS(starting_point.x  + subdomain_size.x<= domain_size.x);
     ERRCHK_ALWAYS(starting_point.y  + subdomain_size.y<= domain_size.y);
     ERRCHK_ALWAYS(starting_point.z  + subdomain_size.z<= domain_size.z);
+    if(distributed_fft.is_distributed(subdomain_size))
+	    return distributed_fft.transform_c2c(src,domain_size,subdomain_size,starting_point,dst,inverse);
     const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
     src = src + starting_offset;
     // Number of elements in each dimension to use
@@ -147,6 +205,7 @@ acFFTForwardTransformC2C(const AcComplex* src, const Volume domain_size, const V
 
 AcResult
 acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
+    check_if_distributed();
     buffer = buffer + (starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z));
     // Number of elements in each dimension to use
     int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
@@ -306,16 +365,15 @@ acFFTBackwardTransformPlanar2R(const AcReal* real_src, const AcReal* imag_src ,c
 }
 
 AcResult
-acFFTInit(const AcCommunicator* astaroth_comm, const int*)
+acFFTInit(const AcCommunicator* astaroth_comm, const int* global_offset)
 {
-#if AC_MPI_ENABLED
-	communicator = astaroth_comm->handle;
-#endif
+	distributed_fft.init(astaroth_comm,global_offset);
 	return AC_SUCCESS;
 }
 
 AcResult
 acFFTQuit()
 {
+	distributed_fft.quit();
 	return AC_SUCCESS;
 }
