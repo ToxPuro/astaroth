@@ -1,7 +1,7 @@
 var searchData=
 [
   ['candidate_0',['candidate',['../structError.html#ac1f865370f93cfe097175a98015b4f3e',1,'Error']]],
-  ['capacity_1',['capacity',['../structnode__vec.html#a2e934adddb32b254caec46134218f5e8',1,'node_vec::capacity'],['../structstring__vec.html#aec09d69eba5353ab27801d2f72089d86',1,'string_vec::capacity'],['../structint__vec.html#ade201138f89452df1dde5972e8e5a70f',1,'int_vec::capacity'],['../structop__vec.html#ae4a40d90f22f20b170c51a582d61a110',1,'op_vec::capacity']]],
+  ['capacity_1',['capacity',['../structnode__vec.html#a2e934adddb32b254caec46134218f5e8',1,'node_vec::capacity'],['../structParticleSet.html#ad3032568d6ed7c2a8b105531be3ea1a5',1,'ParticleSet::capacity'],['../structstring__vec.html#aec09d69eba5353ab27801d2f72089d86',1,'string_vec::capacity'],['../structint__vec.html#ade201138f89452df1dde5972e8e5a70f',1,'int_vec::capacity'],['../structop__vec.html#ae4a40d90f22f20b170c51a582d61a110',1,'op_vec::capacity']]],
   ['casting_2',['Casting',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md63',1,'']]],
   ['choosing_20a_20branch_3',['Choosing a branch',['../index.html#autotoc_md3',1,'']]],
   ['circumvention_20law_4',['3. Protecting Users&apos; Legal Rights From Anti-Circumvention Law.',['../md_LICENCE.html#autotoc_md30',1,'']]],

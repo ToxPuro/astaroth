@@ -40,6 +40,8 @@ var annotated_dup =
     [ "node_vec", "structnode__vec.html", "structnode__vec" ],
     [ "op_vec", "structop__vec.html", "structop__vec" ],
     [ "ParamLoadingInfo", "structParamLoadingInfo.html", "structParamLoadingInfo" ],
+    [ "ParticleMember", "structParticleMember.html", "structParticleMember" ],
+    [ "ParticleSet", "structParticleSet.html", "structParticleSet" ],
     [ "ProfileBufferArray", "structProfileBufferArray.html", "structProfileBufferArray" ],
     [ "SOAVector", "structSOAVector.html", "structSOAVector" ],
     [ "string_vec", "structstring__vec.html", "structstring__vec" ],

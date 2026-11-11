@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['user_5fkernel_2eh_0',['user_kernel.h',['../user__kernel_8h.html',1,'']]]
+  ['timer_5fhires_2eh_0',['timer_hires.h',['../timer__hires_8h.html',1,'']]],
+  ['tinyexpr_2eh_1',['tinyexpr.h',['../tinyexpr_8h.html',1,'']]]
 ];

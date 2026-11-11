@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['random_2ecuh_0',['random.cuh',['../random_8cuh.html',1,'']]],
-  ['readme_2emd_1',['README.md',['../acc-runtime_2README_8md.html',1,'(Global Namespace)'],['../README_8md.html',1,'(Global Namespace)']]]
+  ['particle_5fsets_2eh_0',['particle_sets.h',['../particle__sets_8h.html',1,'']]]
 ];

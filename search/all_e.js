@@ -31,7 +31,7 @@ var searchData=
   ['devices_28',['Devices',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md82',1,'']]],
   ['devices_29',['devices',['../structDeviceConfiguration.html#a47b9dd90c247de8566916230dfdb7681',1,'DeviceConfiguration']]],
   ['devicevertexbufferarray_30',['DeviceVertexBufferArray',['../structDeviceVertexBufferArray.html',1,'']]],
-  ['dims_31',['dims',['../structVertexBufferArray.html#a39fa9c3ceedfab36ef281682fbfed2e8',1,'VertexBufferArray::dims'],['../user__kernel_8h.html#a5d8f31ceb442db9fba625396b61bad42',1,'dims:&#160;user_kernel.h']]],
+  ['dims_31',['dims',['../structParticleMember.html#acce8cc2001d4a8d589b2341c55b34366',1,'ParticleMember::dims'],['../structVertexBufferArray.html#a39fa9c3ceedfab36ef281682fbfed2e8',1,'VertexBufferArray::dims'],['../user__kernel_8h.html#a5d8f31ceb442db9fba625396b61bad42',1,'dims:&#160;user_kernel.h']]],
   ['directives_32',['Comments and preprocessor directives',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md49',1,'']]],
   ['disclaimer_20of_20warranty_33',['15. Disclaimer of Warranty.',['../md_LICENCE.html#autotoc_md42',1,'']]],
   ['distributed_20snapshots_34',['Restarting from distributed snapshots',['../index.html#autotoc_md10',1,'']]],
