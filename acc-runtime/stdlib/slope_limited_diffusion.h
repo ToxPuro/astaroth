@@ -11,6 +11,10 @@
  */
 
 #include "$AC_HOME/acc-runtime/stdlib/general_grid/vars.h"
+
+// If true the slope ratio is rfac = |f_R-f_L|/(|f_i-f_{i-1}|+tini) without the sign
+// check and fdiff_limit (variant of the former Pencil Code special/solar_corona.f90)
+run_const bool AC_sld_rfac_abs = false
 struct sld_interface_values
 {
 	real left_left;
@@ -592,50 +596,66 @@ get_z_interpolated_characteristic_speeds(Field characteristic_speed)
                     )
 }
 
+// Grid spacing between the points offset-1 and offset. The limited slopes are taken
+// per unit length and extrapolated over half the actual spacing, so the reconstruction
+// is exact for linear profiles also on non-equidistant grids. In equidistant directions
+// the spacing is 1, which keeps the results bit-identical to plain index differences.
+sld_hx(int offset)
+{
+	return AC_nonequidistant_grid.x ? AC_x[vertexIdx.x+offset]-AC_x[vertexIdx.x+offset-1] : 1.0
+}
+sld_hy(int offset)
+{
+	return AC_nonequidistant_grid.y ? AC_y[vertexIdx.y+offset]-AC_y[vertexIdx.y+offset-1] : 1.0
+}
+sld_hz(int offset)
+{
+	return AC_nonequidistant_grid.z ? AC_z[vertexIdx.z+offset]-AC_z[vertexIdx.z+offset-1] : 1.0
+}
 get_left_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_left_left_exp(f),sld_diff_left_exp(f))
-	return minmod_alt(sld_diff_left_left(f),sld_diff_left(f))
+	if (ln_field) return minmod_alt(sld_diff_left_left_exp(f)/sld_hx(-1),sld_diff_left_exp(f)/sld_hx(0))
+	return minmod_alt(sld_diff_left_left(f)/sld_hx(-1),sld_diff_left(f)/sld_hx(0))
 }
 get_x_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_left_exp(f),sld_diff_right_exp(f))
-	return minmod_alt(sld_diff_left(f),sld_diff_right(f))
+	if (ln_field) return minmod_alt(sld_diff_left_exp(f)/sld_hx(0),sld_diff_right_exp(f)/sld_hx(1))
+	return minmod_alt(sld_diff_left(f)/sld_hx(0),sld_diff_right(f)/sld_hx(1))
 }
 get_right_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_right_exp(f),sld_diff_right_right_exp(f))
-	return minmod_alt(sld_diff_right(f),sld_diff_right_right(f))
+	if (ln_field) return minmod_alt(sld_diff_right_exp(f)/sld_hx(1),sld_diff_right_right_exp(f)/sld_hx(2))
+	return minmod_alt(sld_diff_right(f)/sld_hx(1),sld_diff_right_right(f)/sld_hx(2))
 }
 get_down_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_down_down_exp(f),sld_diff_down_exp(f))
-	return minmod_alt(sld_diff_down_down(f),sld_diff_down(f))
+	if (ln_field) return minmod_alt(sld_diff_down_down_exp(f)/sld_hy(-1),sld_diff_down_exp(f)/sld_hy(0))
+	return minmod_alt(sld_diff_down_down(f)/sld_hy(-1),sld_diff_down(f)/sld_hy(0))
 }
 get_y_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_down_exp(f),sld_diff_up_exp(f))
-	return minmod_alt(sld_diff_down(f),sld_diff_up(f))
+	if (ln_field) return minmod_alt(sld_diff_down_exp(f)/sld_hy(0),sld_diff_up_exp(f)/sld_hy(1))
+	return minmod_alt(sld_diff_down(f)/sld_hy(0),sld_diff_up(f)/sld_hy(1))
 }
 get_up_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_up_exp(f),sld_diff_up_up_exp(f))
-	return minmod_alt(sld_diff_up(f),sld_diff_up_up(f))
+	if (ln_field) return minmod_alt(sld_diff_up_exp(f)/sld_hy(1),sld_diff_up_up_exp(f)/sld_hy(2))
+	return minmod_alt(sld_diff_up(f)/sld_hy(1),sld_diff_up_up(f)/sld_hy(2))
 }
 get_back_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_back_back_exp(f),sld_diff_back_exp(f))
-	return minmod_alt(sld_diff_back_back(f),sld_diff_back(f))
+	if (ln_field) return minmod_alt(sld_diff_back_back_exp(f)/sld_hz(-1),sld_diff_back_exp(f)/sld_hz(0))
+	return minmod_alt(sld_diff_back_back(f)/sld_hz(-1),sld_diff_back(f)/sld_hz(0))
 }
 get_z_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_back_exp(f),sld_diff_front_exp(f))
-	return minmod_alt(sld_diff_back(f),sld_diff_front(f))
+	if (ln_field) return minmod_alt(sld_diff_back_exp(f)/sld_hz(0),sld_diff_front_exp(f)/sld_hz(1))
+	return minmod_alt(sld_diff_back(f)/sld_hz(0),sld_diff_front(f)/sld_hz(1))
 }
 get_front_slope(Field f, bool ln_field)
 {
-	if (ln_field) return minmod_alt(sld_diff_front_exp(f),sld_diff_front_front_exp(f))
-	return minmod_alt(sld_diff_front(f),sld_diff_front_front(f))
+	if (ln_field) return minmod_alt(sld_diff_front_exp(f)/sld_hz(1),sld_diff_front_front_exp(f)/sld_hz(2))
+	return minmod_alt(sld_diff_front(f)/sld_hz(1),sld_diff_front_front(f)/sld_hz(2))
 }
 get_x_interface_values(Field f, bool ln_field)
 {
@@ -644,10 +664,10 @@ get_x_interface_values(Field f, bool ln_field)
 	right_slope = get_right_slope(f,ln_field)
 	return sld_interface_values(
 
-			ln_field ? sld_get_left_exp(f)+left_slope : sld_get_left(f) + left_slope,
-			ln_field ? exp(f)-slope : f-slope,
-			ln_field ? exp(f)+slope : f+slope,
-			ln_field ? sld_get_right_exp(f)-right_slope : sld_get_right(f)-right_slope
+			ln_field ? sld_get_left_exp(f)+left_slope*sld_hx(0) : sld_get_left(f) + left_slope*sld_hx(0),
+			ln_field ? exp(f)-slope*sld_hx(0) : f-slope*sld_hx(0),
+			ln_field ? exp(f)+slope*sld_hx(1) : f+slope*sld_hx(1),
+			ln_field ? sld_get_right_exp(f)-right_slope*sld_hx(1) : sld_get_right(f)-right_slope*sld_hx(1)
 		    )
 }
 get_y_interface_values(Field f, bool ln_field)
@@ -657,10 +677,10 @@ get_y_interface_values(Field f, bool ln_field)
 	up_slope    = get_up_slope(f,ln_field)
 	return sld_interface_values(
 
-			ln_field ? sld_get_down_exp(f)+down_slope : sld_get_down(f)+down_slope,
-			ln_field ? exp(f)-slope : f-slope,
-			ln_field ? exp(f)+slope : f+slope,
-			ln_field ? sld_get_up_exp(f)-up_slope : sld_get_up(f)-up_slope
+			ln_field ? sld_get_down_exp(f)+down_slope*sld_hy(0) : sld_get_down(f)+down_slope*sld_hy(0),
+			ln_field ? exp(f)-slope*sld_hy(0) : f-slope*sld_hy(0),
+			ln_field ? exp(f)+slope*sld_hy(1) : f+slope*sld_hy(1),
+			ln_field ? sld_get_up_exp(f)-up_slope*sld_hy(1) : sld_get_up(f)-up_slope*sld_hy(1)
 		    )
 }
 get_z_interface_values(Field f, bool ln_field)
@@ -669,10 +689,10 @@ get_z_interface_values(Field f, bool ln_field)
 	slope       = get_z_slope(f,ln_field)
 	front_slope = get_front_slope(f,ln_field)
 	return sld_interface_values(
-			ln_field ? sld_get_back_exp(f)+back_slope : sld_get_back(f)+back_slope,
-			ln_field ? exp(f)-slope : f-slope,
-			ln_field ? exp(f)+slope : f+slope,
-			ln_field ? sld_get_front_exp(f)-front_slope : sld_get_front(f)-front_slope
+			ln_field ? sld_get_back_exp(f)+back_slope*sld_hz(0) : sld_get_back(f)+back_slope*sld_hz(0),
+			ln_field ? exp(f)-slope*sld_hz(0) : f-slope*sld_hz(0),
+			ln_field ? exp(f)+slope*sld_hz(1) : f+slope*sld_hz(1),
+			ln_field ? sld_get_front_exp(f)-front_slope*sld_hz(1) : sld_get_front(f)-front_slope*sld_hz(1)
 		    )
 }
 get_x_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf, bool ln_field)
@@ -687,9 +707,10 @@ get_x_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  left_interface_diff = interface_values.left - interface_values.left_left
 
 	  int tmp = (((left_interface_diff)*left_diff) > 0.0)
-	  left_slope_ratio = tmp ? (left_interface_diff)/left_diff : 0.0
-	  tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
-	  left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
+	  int left_cap = tmp*(abs(left_add/left_diff) > fdiff_limit)
+	  left_capped_diff = left_cap ? sign(left_add,left_diff)/fdiff_limit : left_diff
+	  left_slope_ratio = AC_sld_rfac_abs ? abs(left_interface_diff)/(abs(left_diff)+5.0*AC_REAL_MIN)
+	                                     : (tmp ? (left_interface_diff)/left_capped_diff : 0.0)
 	  
 	  left_Q = pow(min(1.0,h_slope_limited*left_slope_ratio),nlf)
 	  left_flux = 0.5*cs.left*left_Q*(left_interface_diff)
@@ -700,9 +721,10 @@ get_x_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  right_interface_diff = interface_values.right_right - interface_values.right
 
 	  tmp = (((right_interface_diff)*right_diff) > 0.0)
-	  right_slope_ratio = tmp ? (right_interface_diff)/right_diff : 0.0
-	  tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
-	  right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
+	  int right_cap = tmp*(abs(right_add/right_diff) > fdiff_limit)
+	  right_capped_diff = right_cap ? sign(right_add,right_diff)/fdiff_limit : right_diff
+	  right_slope_ratio = AC_sld_rfac_abs ? abs(right_interface_diff)/(abs(right_diff)+5.0*AC_REAL_MIN)
+	                                      : (tmp ? (right_interface_diff)/right_capped_diff : 0.0)
 
 	  right_Q = pow(min(1.0,h_slope_limited*right_slope_ratio),nlf)
 	  right_flux = 0.5*cs.right*right_Q*(right_interface_diff)
@@ -723,9 +745,10 @@ get_y_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  left_interface_diff = interface_values.left - interface_values.left_left
 
 	  int tmp = (((left_interface_diff)*left_diff) > 0.0)
-	  left_slope_ratio = tmp ? (left_interface_diff)/left_diff : 0.0
-	  tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
-	  left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
+	  int left_cap = tmp*(abs(left_add/left_diff) > fdiff_limit)
+	  left_capped_diff = left_cap ? sign(left_add,left_diff)/fdiff_limit : left_diff
+	  left_slope_ratio = AC_sld_rfac_abs ? abs(left_interface_diff)/(abs(left_diff)+5.0*AC_REAL_MIN)
+	                                     : (tmp ? (left_interface_diff)/left_capped_diff : 0.0)
 
 	  left_Q = pow(min(1.0,h_slope_limited*left_slope_ratio),nlf)
 	  left_flux = 0.5*cs.left*left_Q*(left_interface_diff)
@@ -735,9 +758,10 @@ get_y_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  right_interface_diff = interface_values.right_right - interface_values.right
 
 	  tmp = (((right_interface_diff)*right_diff) > 0.0)
-	  right_slope_ratio = tmp ? (right_interface_diff)/right_diff : 0.0
-	  tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
-	  right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
+	  int right_cap = tmp*(abs(right_add/right_diff) > fdiff_limit)
+	  right_capped_diff = right_cap ? sign(right_add,right_diff)/fdiff_limit : right_diff
+	  right_slope_ratio = AC_sld_rfac_abs ? abs(right_interface_diff)/(abs(right_diff)+5.0*AC_REAL_MIN)
+	                                      : (tmp ? (right_interface_diff)/right_capped_diff : 0.0)
 
 	  right_Q = pow(min(1.0,h_slope_limited*right_slope_ratio),nlf)
 	  right_flux = 0.5*cs.right*right_Q*(right_interface_diff)
@@ -758,9 +782,10 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  left_interface_diff = interface_values.left - interface_values.left_left
 
 	  int tmp = (((left_interface_diff)*left_diff) > 0.0)
-	  left_slope_ratio = tmp ? (left_interface_diff)/left_diff : 0.0
-	  tmp = tmp*(abs(left_add/left_diff) > fdiff_limit)
-	  left_diff = (1-tmp)*left_diff + tmp*sign(left_add,left_diff)/fdiff_limit
+	  int left_cap = tmp*(abs(left_add/left_diff) > fdiff_limit)
+	  left_capped_diff = left_cap ? sign(left_add,left_diff)/fdiff_limit : left_diff
+	  left_slope_ratio = AC_sld_rfac_abs ? abs(left_interface_diff)/(abs(left_diff)+5.0*AC_REAL_MIN)
+	                                     : (tmp ? (left_interface_diff)/left_capped_diff : 0.0)
 
 	  left_Q = pow(min(1.0,h_slope_limited*left_slope_ratio),nlf)
 	  left_flux = 0.5*cs.left*left_Q*(left_interface_diff)
@@ -770,9 +795,10 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	  right_interface_diff = interface_values.right_right - interface_values.right
 
 	  tmp = (((right_interface_diff)*right_diff) > 0.0)
-	  right_slope_ratio = tmp ? (right_interface_diff)/right_diff : 0.0
-	  tmp = tmp*(abs(right_add/right_diff) > fdiff_limit)
-	  right_diff = (1-tmp)*right_diff + tmp*sign(right_add,right_diff)/fdiff_limit
+	  int right_cap = tmp*(abs(right_add/right_diff) > fdiff_limit)
+	  right_capped_diff = right_cap ? sign(right_add,right_diff)/fdiff_limit : right_diff
+	  right_slope_ratio = AC_sld_rfac_abs ? abs(right_interface_diff)/(abs(right_diff)+5.0*AC_REAL_MIN)
+	                                      : (tmp ? (right_interface_diff)/right_capped_diff : 0.0)
 
 	  right_Q = pow(min(1.0,h_slope_limited*right_slope_ratio),nlf)
 	  right_flux = 0.5*cs.right*right_Q*(right_interface_diff)
