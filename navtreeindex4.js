@@ -1,15 +1,16 @@
 var NAVTREEINDEX4 =
 {
+"hip_8h.html#ada7138d224fa0521c84ffa6f5420e42c":[5,0,0,1,10,51],
 "hip_8h.html#ae1411b5f96c19b759240a08ff5ba6b50":[5,0,0,1,10,25],
-"hip_8h.html#ae63ecf4f4d7a12ce44d6a72e6a9017c2":[5,0,0,1,10,57],
-"hip_8h.html#aecacfcc80c89a863f60beb5efccc0cea":[5,0,0,1,10,61],
+"hip_8h.html#ae63ecf4f4d7a12ce44d6a72e6a9017c2":[5,0,0,1,10,58],
+"hip_8h.html#aecacfcc80c89a863f60beb5efccc0cea":[5,0,0,1,10,62],
 "hip_8h.html#aecf2575483cc5a1d45f6c9f821ecc502":[5,0,0,1,10,7],
-"hip_8h.html#aed097d4f30fabb68c6aa01a545eef49d":[5,0,0,1,10,65],
-"hip_8h.html#af20c9c34d6f54254a6c6c30d18d7ff87":[5,0,0,1,10,77],
-"hip_8h.html#af319507e914f356729654a2251ed7843":[5,0,0,1,10,48],
+"hip_8h.html#aed097d4f30fabb68c6aa01a545eef49d":[5,0,0,1,10,66],
+"hip_8h.html#af20c9c34d6f54254a6c6c30d18d7ff87":[5,0,0,1,10,78],
+"hip_8h.html#af319507e914f356729654a2251ed7843":[5,0,0,1,10,49],
 "hip_8h.html#af47e582d1110438a837fc3394f6791ab":[5,0,0,1,10,14],
 "hip_8h.html#af92b2f62fb7b9f604f3d3a90b35a9af1":[5,0,0,1,10,20],
-"hip_8h.html#afe3a2a06ed6140d2f41c4a5d41d392f9":[5,0,0,1,10,63],
+"hip_8h.html#afe3a2a06ed6140d2f41c4a5d41d392f9":[5,0,0,1,10,64],
 "hip_8h.html#afe8c41d4b71a220f0080dede2d3ba17a":[5,0,0,1,10,33],
 "hip_8h_source.html":[5,0,0,1,10],
 "host__datatypes_8h.html":[5,0,2,23],
@@ -248,6 +249,5 @@ var NAVTREEINDEX4 =
 "structAcMeshInfo.html#a959603532564950b86e55db5df44c2d1":[4,0,13,1],
 "structAcMeshInfo.html#a9935de019a6d487e00d46089c14b1c5b":[4,0,13,0],
 "structAcMeshInfo.html#abd7fc33a74349fa320000f6a84740015":[4,0,13,2],
-"structAcMeshInfo.html#ace9034660847ff1a3ae0fd4710b6ea76":[4,0,13,8],
-"structAcMeshInfoLoadedInfo.html":[4,0,14]
+"structAcMeshInfo.html#ace9034660847ff1a3ae0fd4710b6ea76":[4,0,13,8]
 };

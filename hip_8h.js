@@ -39,6 +39,7 @@ var hip_8h =
     [ "cudaMalloc", "hip_8h.html#ad6daf0f08e51860d93bed23baaaab6e7", null ],
     [ "cudaMallocHost", "hip_8h.html#a33617c801be71c10412c55826db2660b", null ],
     [ "cudaMemcpy", "hip_8h.html#a003dbfc6e0d6d52d5e8b4f40d9a989a0", null ],
+    [ "cudaMemcpy2D", "hip_8h.html#aba02cda643c825bf8882d0672794fae6", null ],
     [ "cudaMemcpy2DAsync", "hip_8h.html#a14a4174d7263c3d9253f41d4f1b1858f", null ],
     [ "cudaMemcpyAsync", "hip_8h.html#a06ddf2af6fa78b2d581bf47528a9d193", null ],
     [ "cudaMemcpyDefault", "hip_8h.html#a762687de01b44737b132fea24a45959e", null ],
