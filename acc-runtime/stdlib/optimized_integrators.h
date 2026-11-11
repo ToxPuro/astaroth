@@ -508,6 +508,19 @@ rk_final_update(Field3 f, int step_num,real dt)
 	write(f,rk_final(f,step_num,dt))
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
+rk_alpha(int substep)
+{
+	if(AC_rk_order == 1)
+	{
+	  return rk1_alpha[substep] 
+	}
+	else if(AC_rk_order == 2)
+	{
+	  return rk2_alpha[substep] 
+	}
+	return rk3_alpha[substep] 
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
 rk_beta(int substep)
 {
 	if(AC_rk_order == 1)
