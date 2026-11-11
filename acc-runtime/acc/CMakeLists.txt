@@ -47,7 +47,7 @@ else()
 	include_directories(${PROJECT_BINARY_DIR})
 	
 	## Executable
-	add_executable(acc codegen.c source_manager.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
+	add_executable(acc codegen.c source_manager.c particle_sets.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
 	target_include_directories(acc PUBLIC "${AC_BASE_PATH}/acc-runtime/api")
 	#TP: acc is on the critical path of the (runtime) compilation so always optimize it,
 	#    independent of the build type and of the flags given by the caller (target options come after them so take precedence)

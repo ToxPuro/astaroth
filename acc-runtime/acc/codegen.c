@@ -1217,6 +1217,125 @@ output_array_info(FILE* fp, array_info info, const ASTNode* root)
         fprintf(fp, "%s,",info.accessed ? "true" : "false");
 	fprintf(fp,"%s","},");
 }
+/*
+ * gmem arrays accessed outside of any conditional in the code reachable from the kernels.
+ * The kernel analysis only records the accesses it executes, and it runs every kernel once with zero kernel parameters
+ * and zero array contents: an access in a loop that is empty there (e.g. a loop up to a count read from an array or
+ * passed as a kernel parameter) is not seen and the array would be removed as dead. An access that is not inside an if or
+ * a ternary is executed whenever its loop runs, so such arrays are kept alive. Accesses inside conditionals are still left
+ * to the analysis, which is what allows removing arrays used only in branches that are never taken.
+ * When the code is minimized (generate_minimized_code), the accesses are looked for in the code after the elimination of the
+ * known conditionals: a branch known to be taken is no longer a conditional there, and a branch known not to be taken is gone.
+ * The elimination is done on a copy since the arrays have to be known before the actual elimination later in generate.
+ */
+void gen_constexpr_info(ASTNode* root, const bool gen_mem_accesses);
+bool eliminate_conditionals(ASTNode* node, const bool gen_mem_accesses);
+void remove_dead_writes(ASTNode* node);
+static bool eliminate_conditionals_before_array_check = false; //set by generate: will the code be minimized
+static string_vec unconditional_gmem_accesses = VEC_INITIALIZER;
+static string_vec unconditional_visited_functions = VEC_INITIALIZER;
+
+static void
+collect_dfunctions(const ASTNode* node, node_vec* dst)
+{
+	if(!node) return;
+	if(node->type & NODE_DFUNCTION)
+	{
+		push_node(dst,node);
+		return;
+	}
+	collect_dfunctions(node->lhs,dst);
+	collect_dfunctions(node->rhs,dst);
+}
+
+static void
+gather_unconditional_array_accesses(const ASTNode* node, const node_vec* dfuncs)
+{
+	if(!node) return;
+	//Only the condition is evaluated unconditionally
+	if(node->type & (NODE_IF | NODE_TERNARY))
+	{
+		gather_unconditional_array_accesses(node->lhs,dfuncs);
+		return;
+	}
+	if((node->type & NODE_ARRAY_ACCESS) && node->lhs)
+	{
+		const ASTNode* base = get_node_by_token(IDENTIFIER,node->lhs);
+		if(base && base->buffer)
+		{
+			const char* name = intern(base->buffer);
+			if(!str_vec_contains(unconditional_gmem_accesses,name)) push(&unconditional_gmem_accesses,name);
+		}
+	}
+	if((node->type & NODE_FUNCTION_CALL) && node->lhs)
+	{
+		const ASTNode* callee = get_node_by_token(IDENTIFIER,node->lhs);
+		if(callee && callee->buffer)
+		{
+			const char* name = intern(callee->buffer);
+			if(!str_vec_contains(unconditional_visited_functions,name))
+			{
+				push(&unconditional_visited_functions,name);
+				for(size_t i = 0; i < dfuncs->size; ++i)
+				{
+					const ASTNode* fn_name = get_node_by_token(IDENTIFIER,dfuncs->data[i]->lhs);
+					if(fn_name && fn_name->buffer && intern(fn_name->buffer) == name)
+						gather_unconditional_array_accesses(dfuncs->data[i]->rhs,dfuncs);
+				}
+			}
+		}
+	}
+	gather_unconditional_array_accesses(node->lhs,dfuncs);
+	gather_unconditional_array_accesses(node->rhs,dfuncs);
+}
+
+static void
+gather_unconditional_kernel_accesses(const ASTNode* node, const node_vec* dfuncs)
+{
+	if(!node) return;
+	if(node->type & NODE_KFUNCTION)
+	{
+		gather_unconditional_array_accesses(node->rhs,dfuncs);
+		return;
+	}
+	gather_unconditional_kernel_accesses(node->lhs,dfuncs);
+	gather_unconditional_kernel_accesses(node->rhs,dfuncs);
+}
+
+static void
+gen_unconditional_gmem_accesses(const ASTNode* root)
+{
+	free_str_vec(&unconditional_gmem_accesses);
+	free_str_vec(&unconditional_visited_functions);
+	const ASTNode* tree = root;
+	if(eliminate_conditionals_before_array_check)
+	{
+		//The same steps as in generate_minimized_code (the nodes are allocated from the arena of the pass)
+		ASTNode* copy = astnode_dup(root,NULL);
+		gen_constexpr_info(copy,false);
+		bool eliminated_something = true;
+		while(eliminated_something)
+		{
+			eliminated_something = eliminate_conditionals(copy,false);
+			remove_dead_writes(copy);
+			gen_constexpr_info(copy,false);
+		}
+		tree = copy;
+	}
+	node_vec dfuncs = VEC_INITIALIZER;
+	collect_dfunctions(tree,&dfuncs);
+	gather_unconditional_kernel_accesses(tree,&dfuncs);
+	free_node_vec(&dfuncs);
+}
+
+//Accessed according to the kernel analysis, or a gmem array accessed outside of conditionals (see above)
+static bool
+array_is_accessed(const Symbol* sym, const int analysis_accessed)
+{
+	if(analysis_accessed) return true;
+	return str_vec_contains(sym->tqualifiers,GLOBAL_MEM_STR) && str_vec_contains(unconditional_gmem_accesses,sym->identifier);
+}
+
 void
 gen_array_qualifiers_for_datatype(const char* datatype_scalar, const ASTNode* root)
 {
@@ -1232,7 +1351,7 @@ gen_array_qualifiers_for_datatype(const char* datatype_scalar, const ASTNode* ro
     {
 
   	if(str_vec_contains(symbol_table[i].tqualifiers,CONST_STR, RUN_CONST_STR)) continue;
-	propagate_array_info(&symbol_table[i],accesses[counter],root);
+	propagate_array_info(&symbol_table[i],array_is_accessed(&symbol_table[i],accesses[counter]),root);
 	counter++;
     }
   }
@@ -1254,6 +1373,7 @@ gen_array_qualifiers_for_datatype(const char* datatype_scalar, const ASTNode* ro
 void
 gen_array_qualifiers(const ASTNode* root)
 {
+	gen_unconditional_gmem_accesses(root);
 	string_vec datatypes = get_all_datatypes();
 	for(size_t i = 0; i < datatypes.size; ++i)
 	{
@@ -1282,7 +1402,7 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 
   	if(str_vec_contains(symbol_table[i].tqualifiers,CONST_STR, RUN_CONST_STR)) continue;
 	output_array_info(fp,
-		get_array_info(&symbol_table[i],accesses[counter],root),root
+		get_array_info(&symbol_table[i],array_is_accessed(&symbol_table[i],accesses[counter]),root),root
 		);
 	counter++;
     }
@@ -12303,6 +12423,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   generate_fields_info(root);
   symboltable_reset();
   traverse(root, NODE_NO_OUT, NULL);
+  //Same condition as for generate_minimized_code below
+  eliminate_conditionals_before_array_check = !runtime_compilation && !gen_mem_accesses && executed_nodes.size > 0 &&
+                                              OPTIMIZE_MEM_ACCESSES && ELIMINATE_CONDITIONALS;
   gen_array_infos(root,gen_mem_accesses);
 
   // Stencils

@@ -22,6 +22,7 @@
 #include "create_node_decl.h"
 #include "expr.h"
 #include "source_manager.h"
+#include "particle_sets.h"
 
 extern struct hashmap_s string_intern_hashmap;
 extern const char* binary_op_val;
@@ -682,6 +683,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 		}
 	  }
           fclose(f_check);
+          //Particles declarations -> gmem arrays, after the preprocessor so that members can be conditional
+          lower_particle_sets(stage2);
         }
 
         // Generate code
