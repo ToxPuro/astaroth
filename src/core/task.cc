@@ -70,6 +70,14 @@ ac_get_info()
         return acDeviceGetLocalConfig(acGridGetDevice());
 }
 
+static bool
+mpi_finalized()
+{
+	int res;
+	MPI_Finalized(&res);
+	return res; 
+}
+
 AcRedBlackState
 get_red_black_state()
 {
@@ -1220,7 +1228,7 @@ release_from_previous_user(PooledBuffer* buffer)
 {
 	if(buffer->user == NULL) return;
 	auto& requests = buffer->user->requests;
-	MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
+	if(!mpi_finalized()) MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
 	buffer->user = NULL;
 }
 
@@ -1653,9 +1661,10 @@ HaloMessage::bind()
     buffer->user = this;
 }
 
+
 HaloMessage::~HaloMessage()
 {
-    MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
+    if(!mpi_finalized()) MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
     real_length = -1;
     if(buffer && buffer->user == this) buffer->user = NULL;
     buffer       = NULL;
@@ -1733,7 +1742,7 @@ HaloMessage*
 HaloMessageSwapChain::get_fresh_buffer()
 {
     buf_idx         = (buf_idx + 1) % SWAP_CHAIN_LENGTH;
-    MPI_Waitall(buffers[buf_idx].requests.size(), buffers[buf_idx].requests.data(), MPI_STATUSES_IGNORE);
+    if(!mpi_finalized()) MPI_Waitall(buffers[buf_idx].requests.size(), buffers[buf_idx].requests.data(), MPI_STATUSES_IGNORE);
     buffers[buf_idx].bind();
     return &buffers[buf_idx];
 }
