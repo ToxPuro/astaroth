@@ -243,15 +243,15 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 	snprintf(cmd,max_string_size,"echo %s | diff - %s",get_cmake_options(user_cmake_options).c_str(),previous_cmake_options_path().c_str());
 	const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
 	const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
-	static char logging_to_message[402000];
 	if(mesh_info.runtime_compilation_skip_autotuning)
 	{
 		static char autotune_csv_filename[402000];
 		snprintf(autotune_csv_filename,max_string_size, "%s/acc-runtime/api/autotune.csv",runtime_astaroth_build_path().c_str());
 		if(file_exists(autotune_csv_filename))
 		{
-			snprintf(cmd,max_string_size+1000,"mv %s .",autotune_csv_filename);
-			int retval = system(cmd);
+			const int len = snprintf(cmd,sizeof(cmd),"mv %s .",autotune_csv_filename);
+			const bool truncated = len < 0 || (size_t)len >= sizeof(cmd);
+			int retval = truncated ? -1 : system(cmd);
 			if(previous_build_exists && retval)
 			{
 				fflush(stdout);
@@ -260,21 +260,20 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 			}
 		}
 	}
-	if(log_dst) snprintf(logging_to_message,max_string_size+1000," logging to %s",log_dst);
-	else        snprintf(logging_to_message,max_string_size,"%s","");
+	const std::string logging_to_message = log_dst ? std::string(" logging to ") + log_dst : std::string();
 	if(!previous_build_exists)
 	{
-		fprintf(stderr,"acCompile: Compiling Astaroth;%s\n",logging_to_message);
+		fprintf(stderr,"acCompile: Compiling Astaroth;%s\n",logging_to_message.c_str());
 	}
 	if(compile)
 	{
 		if(loaded_different && previous_build_exists)  
 		{
-			fprintf(stderr,"acCompile: Loaded different run_const values; recompiling;%s\n",logging_to_message);
+			fprintf(stderr,"acCompile: Loaded different run_const values; recompiling;%s\n",logging_to_message.c_str());
 		}
 		else if(previous_build_exists && different_cmake_string && stored_cmake) 
 		{
-			fprintf(stderr,"acCompile: Gave different cmake options; recompiling;%s\n",logging_to_message);
+			fprintf(stderr,"acCompile: Gave different cmake options; recompiling;%s\n",logging_to_message.c_str());
 		}
 		snprintf(cmd,max_string_size,"rm -rf %s",runtime_astaroth_build_path().c_str());
 		int retval = system(cmd);
@@ -305,7 +304,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 		        fprintf(stderr,"acCompile: No changes in input; Skipping compilation;\n");
 			return AC_SUCCESS;
 		}
-		fprintf(stderr,"acCompile: No changes in input; running make in case DSL code has changed;%s\n",logging_to_message);
+		fprintf(stderr,"acCompile: No changes in input; running make in case DSL code has changed;%s\n",logging_to_message.c_str());
 	}
 	snprintf(cmd,max_string_size,"cd %s",
 	       runtime_astaroth_build_path().c_str());
@@ -320,7 +319,7 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 
         // Chaining this many %s parameters is quite gnarly but this way we can avoid even more
         // conditionals or allocations on the heap.
-        snprintf(cmd, max_string_size,
+        const int build_cmd_len = snprintf(cmd, sizeof(cmd),
 		"cd %s && cmake --build . -j%s%s%s%s%s",
 		runtime_astaroth_build_path().c_str(),
 		strcmp(target, "") != 0 ? " -t " : "",
@@ -328,6 +327,13 @@ acCompileFromRootProc(const char* user_cmake_options, const char* target, AcMesh
 		log_dst ? " >>" : "",
 		log_dst ? log_dst : "",
 		log_dst ? " 2>&1" : "");
+	if(build_cmd_len < 0 || (size_t)build_cmd_len >= sizeof(cmd))
+	{
+		fprintf(stderr,"%s","Fatal error: build command too long\n");
+		fflush(stdout);
+		fflush(stderr);
+		return AC_FAILURE;
+	}
 
 	retval = system(cmd);
 	if(retval)
