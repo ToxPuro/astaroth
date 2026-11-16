@@ -657,11 +657,13 @@ write_host_header(void)
 		}
 		fprintf(out, "\n");
 		if (!set->migrated_via[0]) continue;
+		//Not macros: user_constants.h declares the same names and the host also includes it inside functions
 		RecordEntry entries[2*MAX_PARTICLE_MEMBERS];
 		const size_t n = record_entries(set, entries);
-		fprintf(out, "#define PARTICLES_%s_NREC (%zu)\n", set->name, n);
+		fprintf(out, "enum {PARTICLES_%s_NREC = %zu", set->name, n);
 		for (size_t i = 0; i < n; ++i)
-			fprintf(out, "#define PARTICLES_%s_REC_%s%s (%zu)\n", set->name, entries[i].accumulator ? "d" : "", entries[i].member->name, i);
+			fprintf(out, ", PARTICLES_%s_REC_%s%s = %zu", set->name, entries[i].accumulator ? "d" : "", entries[i].member->name, i);
+		fprintf(out, "};\n");
 	}
 	fclose(out);
 }
