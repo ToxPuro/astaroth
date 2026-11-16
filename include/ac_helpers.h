@@ -16,6 +16,12 @@ ac_unset_floating_point_exceptions();
 void
 ac_restore_floating_point_exceptions();
 
+int 
+ac_mpi_rank(const AcMeshInfo info);
+
+bool
+ac_mpi_root(const AcMeshInfo info);
+
 size_t
 acShapeCount(const AcShape shape);
 

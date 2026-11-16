@@ -263,6 +263,7 @@ acQueryKernels(void)
 void
 acStoreConfig(const AcMeshInfo info, const char* filename)
 {
+	if(!ac_mpi_root(info)) return;
         ac_unset_floating_point_exceptions();
 	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
 	AcScalarTypes::run<load_scalars>(info, fp, "", false);
