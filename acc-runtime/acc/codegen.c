@@ -12073,7 +12073,10 @@ unroll_constant_loops(ASTNode* node)
 	if(is_number(start) && is_number(end))
 	{
 		const ASTNode* iterated_body = node->rhs;
-                if(iterated_body->type & NODE_BEGIN_SCOPE && iterated_body->lhs) iterated_body = iterated_body->lhs;
+		//TP: a compound body has to stay a scope also for the DSL: with only the {} emitted for the C++ compiler
+		//the declarations of the later iterations are generated as assignments to variables
+		//that the C++ compiler sees declared only inside the {} of the first iteration
+                //if(iterated_body->type & NODE_BEGIN_SCOPE && iterated_body->lhs) iterated_body = iterated_body->lhs;
 
 		const int start_value = atoi(start);
 		const int end_value   = atoi(end);
