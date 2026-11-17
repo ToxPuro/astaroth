@@ -173,10 +173,18 @@ init_scratchpads(VertexBufferArray* vba)
 			    (AcShape) { dims.x,dims.y,dims.z,1}
 		    };
 	    	    check_if_free_memory_for_profile_reductions(dims.x*dims.y*dims.z*sizeof(AcReal));
-		    vba->profile_reduce_buffers[prof].transposed = acBufferCreateTransposed(
-				vba->profile_reduce_buffers[prof].src, 
-				acGetMeshOrderForProfile(prof_types[prof])
-				  );
+		    if(profile_is_reduced(prof))
+		    {
+		    	vba->profile_reduce_buffers[prof].transposed = acBufferCreateTransposed(
+		    			vba->profile_reduce_buffers[prof].src,
+		    			acGetMeshOrderForProfile(prof_types[prof])
+		    			  );
+		    }
+		    else
+		    {
+		    	const AcShape shape = acGetTransposeBufferShape(acGetMeshOrderForProfile(prof_types[prof]),acGetVolumeFromShape(vba->profile_reduce_buffers[prof].src.shape));
+		    	vba->profile_reduce_buffers[prof].transposed = (AcBuffer){NULL,acShapeSize(shape),true,shape};
+		    }
 		    vba->profile_reduce_buffers[prof].mem_order = acGetMeshOrderForProfile(prof_types[prof]);
 
 	    	    vba->profile_reduce_buffers[prof].cub_tmp = (AcReal**)malloc(sizeof(AcReal*));

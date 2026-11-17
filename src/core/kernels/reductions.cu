@@ -388,6 +388,7 @@ acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     if(buffer.src.data == NULL)      return AC_NOT_ALLOCATED;
+    if(buffer.transposed.data == NULL) return AC_NOT_ALLOCATED;
     const AcProfileType type = prof_types[prof];
     const AcMeshOrder order    = acGetMeshOrderForProfile(type);
 
