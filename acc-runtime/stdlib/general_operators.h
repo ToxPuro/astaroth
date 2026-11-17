@@ -331,6 +331,25 @@ hessian(Field v)
 }
 
 /**
+ * Computes the Laplacian D^iD_i s of the scalar field s in a curved metric:
+ * g^ij ∂_i∂_j s - g^ij Γ_j ∂_i s,
+ * where g_upper holds the inverse metric as a symmetric tensor in the order
+ * (11,22,33,12,23,13) and contracted_gamma is the contracted connection Γ_j.
+ */
+laplace_metric(Field s, real[] g_upper, real3 contracted_gamma)
+{
+	grad_s = gradient(s)
+	g_dot_gamma = real3(
+			g_upper[0]*contracted_gamma.x + g_upper[3]*contracted_gamma.y + g_upper[5]*contracted_gamma.z,
+			g_upper[3]*contracted_gamma.x + g_upper[1]*contracted_gamma.y + g_upper[4]*contracted_gamma.z,
+			g_upper[5]*contracted_gamma.x + g_upper[4]*contracted_gamma.y + g_upper[2]*contracted_gamma.z
+			)
+	return    g_upper[0]*derxx(s) + g_upper[1]*deryy(s) + g_upper[2]*derzz(s)
+		+ 2.0*(g_upper[3]*derxy(s) + g_upper[4]*deryz(s) + g_upper[5]*derxz(s))
+		- dot(g_dot_gamma,grad_s)
+}
+
+/**
  * Computes a 3x3x3 tensor T,
  * where T_ijk = (∂^2/∂_j∂_k)v_i and v is a vector field.
  */
