@@ -7076,6 +7076,36 @@ get_ray_directions(const ASTNode* node)
 
 #define MAX_FIELDS (10000)
 
+//TP: Communicated_fields[i] is the i'th field (in Field enum order) for which vtxbuf_is_communicated is true.
+//    gen_field_info writes it out and stores the same list here. In the DSL Communicated_fields can be indexed with
+//    an integer literal (f.ex. in BoundConds written by Pencil Code's bc2ast) and generate replaces those with the field names.
+static string_vec communicated_fields_generated = VEC_INITIALIZER;
+static string_vec all_fields_generated          = VEC_INITIALIZER;
+static const char* COMMUNICATED_FIELDS_NAME = "Communicated_fields";
+
+static void
+replace_communicated_field_accesses(ASTNode* node)
+{
+  if(node->lhs) replace_communicated_field_accesses(node->lhs);
+  if(node->rhs) replace_communicated_field_accesses(node->rhs);
+  if(node->type != NODE_ARRAY_ACCESS || !node->lhs || !node->rhs) return;
+  if(node->lhs->type != NODE_PRIMARY_EXPRESSION) return;
+  const ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
+  if(!identifier || !identifier->buffer || strcmp(identifier->buffer,COMMUNICATED_FIELDS_NAME)) return;
+  const char* index_str = combine_all_new(node->rhs);
+  char* end = NULL;
+  const long index = strtol(index_str,&end,10);
+  while(end && isspace((unsigned char)*end)) ++end;
+  if(end == index_str || (end && *end != '\0'))
+	  fatal("%s has to be indexed with an integer literal, got: %s\n",COMMUNICATED_FIELDS_NAME,index_str);
+  //TP: before the analysis no field is communicated yet, then behave like Field(index)
+  const string_vec fields = has_optimization_info() ? communicated_fields_generated : all_fields_generated;
+  if(index < 0 || index >= (long)fields.size)
+	  fatal("%s[%ld] used but there are only %zu communicated fields!\n",COMMUNICATED_FIELDS_NAME,index,fields.size);
+  ASTNode* new_identifier = create_identifier_node(fields.data[index]);
+  new_identifier->type = identifier->type;
+  replace_node(node,astnode_create(NODE_PRIMARY_EXPRESSION,new_identifier,NULL));
+}
 static void
 gen_field_info(FILE* fp)
 {
@@ -7223,6 +7253,18 @@ gen_field_info(FILE* fp)
 	fprintf(fp_enums, "#define NUM_ALL_FIELDS (%ld)\n",num_of_fields);
   	fprintf(fp_enums, "#define NUM_DEAD_FIELDS (%ld)\n", num_of_fields-num_of_alive_fields);
   	fprintf(fp_enums, "#define NUM_COMMUNICATED_FIELDS (%d)\n", num_of_communicated_fields);
+  	//Communicated_fields[i] is the i'th field (in Field enum order) for which vtxbuf_is_communicated is true
+  	fprintf(fp_enums, "static const Field Communicated_fields[NUM_COMMUNICATED_FIELDS+1] __attribute__((unused)) = {");
+  	for(size_t i = 0; i < num_of_fields; ++i)
+  	        if(field_is_communicated[i]) fprintf(fp_enums,"%s,",field_names.data[i]);
+  	fprintf(fp_enums, "(Field)-1};\n");
+  	free_str_vec(&communicated_fields_generated);
+  	free_str_vec(&all_fields_generated);
+  	for(size_t i = 0; i < num_of_fields; ++i)
+  	{
+  	        if(field_is_communicated[i]) push(&communicated_fields_generated,field_names.data[i]);
+  	        push(&all_fields_generated,field_names.data[i]);
+  	}
 
   	fprintf(fp_enums, "typedef enum {");
   	for(size_t i = 0; i < num_complex_fields; ++i)
@@ -12424,6 +12466,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   generate_error_messages();
 
   generate_fields_info(root);
+  replace_communicated_field_accesses(root);
   symboltable_reset();
   traverse(root, NODE_NO_OUT, NULL);
   //Same condition as for generate_minimized_code below
