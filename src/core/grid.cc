@@ -3360,10 +3360,7 @@ acGridReduceXY(const Stream stream, const Field field, const Profile profile, co
         MPI_Comm_size(astaroth_comm, &nprocs);
         MPI_Comm_rank(astaroth_comm, &pid);
 
-        const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
-
         // 3) Allreduce
-	//
 	const size3_t m = (size3_t){
 		   		    static_cast<size_t>(grid.submesh.info[AC_mlocal].x),
 				    static_cast<size_t>(grid.submesh.info[AC_mlocal].y),
@@ -3403,8 +3400,6 @@ acGridReduceXYAverages(const Stream stream)
         int nprocs, pid;
         MPI_Comm_size(astaroth_comm, &nprocs);
         MPI_Comm_rank(astaroth_comm, &pid);
-
-        const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
 
         // 3) Allreduce
 	const size_t count = static_cast<size_t>(grid.submesh.info[AC_mlocal].x*grid.submesh.info[AC_mlocal].y);
