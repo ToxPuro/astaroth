@@ -11368,7 +11368,7 @@ gen_analysis_stencils(FILE* stream)
       continue;
     }
     fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s(const Field& field_in)"
-           "{stencils_accessed[field_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
+           "{if((int)field_in < 0 || (int)field_in >= NUM_ALL_FIELDS) return AcReal(1.0); ac_mark_stencil_call(stencils_accessed[field_in][stencil_%s]);return AcReal(1.0);};\n",
            stencil_names.data[i], stencil_names.data[i]);
     fprintf(stream,"AC_ANALYSIS_SHARED AcReal %s_profile(const Profile& profile_in)"
            "{stencils_accessed[NUM_ALL_FIELDS+profile_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
@@ -12097,46 +12097,7 @@ fold_const_int_addition(ASTNode* node)
 	ASTNode* res = create_primary_expression(sum);
 	replace_node(node,res);
 }
-void
-unroll_constant_loops(ASTNode* node)
-{
-	TRAVERSE_PREAMBLE(unroll_constant_loops);
-	if(!is_for_iteration_statement(node)) return;
-	const ASTNode* for_expr = node->lhs->rhs;
-	if(for_expr->rhs->token != RANGE) return;
-	const char* loop_variable = for_expr->lhs->buffer;
-	const char* start = intern(combine_buffers_new(for_expr->rhs->lhs->lhs));
-	const char* end   = intern(combine_buffers_new(for_expr->rhs->rhs->lhs));
-	if(is_number(start) && is_number(end))
-	{
-		const ASTNode* iterated_body = node->rhs;
-		//TP: a compound body has to stay a scope also for the DSL: with only the {} emitted for the C++ compiler
-		//the declarations of the later iterations are generated as assignments to variables
-		//that the C++ compiler sees declared only inside the {} of the first iteration
-                //if(iterated_body->type & NODE_BEGIN_SCOPE && iterated_body->lhs) iterated_body = iterated_body->lhs;
-
-		const int start_value = atoi(start);
-		const int end_value   = atoi(end);
-		node_vec nodes = VEC_INITIALIZER;
-		for(int i = start_value; i < end_value; ++i)
-		{
-			const char* replacement = intern(itoa(i));
-			ASTNode* res = astnode_dup(iterated_body,NULL);
-			replace_variable_with_constant_int(res,loop_variable,replacement);
-			push_node(&nodes,res);
-
-		}
-		ASTNode* res = build_list_node(nodes,"");
-		//res is null if we have 0:0 loop then no need to replace
-		//or if we have some other error we should skip unrolling since it is optional and thus return
-		if(res == NULL) return;
-		free_node_vec(&nodes);
-	    	replace_node(node,res);
-		if(node->parent->type == NODE_BEGIN_SCOPE)
-			node->parent->type = NODE_UNKNOWN;
-
-	}
-}
+#include "loop_hoisting.h"
 void
 generate_fields_info(const ASTNode* root)
 {

@@ -677,6 +677,20 @@ AC_ANALYSIS_SHARED AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need 
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_READ      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_READ  = (1 << 1);
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
+//TP: set together with AC_STENCIL_CALL if the stencil is called on the field only in the hoisted iteration-specific calls
+//    of long rolled loops (see loop_hoisting.h in acc), then stencilgen computes it on demand instead of preloading it.
+//    A call outside those clears it.
+[[maybe_unused]] constexpr int AC_STENCIL_DYNAMIC_CALL = (1 << 3);
+AC_ANALYSIS_SHARED_STATIC int ac_dynamic_stencils_depth = 0;
+AC_ANALYSIS_SHARED void ac_dynamic_stencils_begin() { ++ac_dynamic_stencils_depth; }
+AC_ANALYSIS_SHARED void ac_dynamic_stencils_end()   { --ac_dynamic_stencils_depth; }
+static inline void
+ac_mark_stencil_call(int& accessed)
+{
+	if(ac_dynamic_stencils_depth == 0)            accessed &= ~AC_STENCIL_DYNAMIC_CALL;
+	else if(!(accessed & AC_STENCIL_CALL))        accessed |=  AC_STENCIL_DYNAMIC_CALL;
+	accessed |= (1 | AC_STENCIL_CALL);
+}
 
 // which pairs of fields PairSum stencils are called on, used by stencilgen to precompute the pair stencils
 struct AcPairStencilCall

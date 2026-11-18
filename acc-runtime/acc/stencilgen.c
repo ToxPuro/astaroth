@@ -95,6 +95,24 @@ typedef enum {
 #include "stencilgen_calling_info.h"
 
 static const int AC_STENCIL_CALL = (1 << 2);
+//TP: set together with AC_STENCIL_CALL if the stencil is called on the field only in the hoisted iteration-specific calls of long rolled loops (see loop_hoisting.h)
+static const int AC_STENCIL_DYNAMIC_CALL = (1 << 3);
+static bool stencil_reads_use_base_pointer(const int curr_kernel);
+bool has_buffered_writes(const char* kernel_name);
+
+//TP: a stencil called on a field only in the hoisted calls of long rolled loops is computed on demand at the call
+//    instead of being preloaded at the start of the kernel, so that the working set is that of one iteration.
+//    Not done if the stencil is read from shared memory or if it is the value stencil of a written field
+//    since the preloaded value doubles as the buffer for buffered writes.
+static bool
+stencil_computed_on_demand(const int curr_kernel, const int field, const int stencil)
+{
+	if(field >= NUM_ALL_FIELDS) return false;
+	if(!(stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_DYNAMIC_CALL)) return false;
+	if(stencil_is_pair[stencil]) return false;
+	if(stencil == 0 && write_called[curr_kernel][field] && has_buffered_writes(kernel_names[curr_kernel])) return false;
+	return stencil_reads_use_base_pointer(curr_kernel);
+}
 
 void
 print_warp_reduce_func(const char* datatype, const char* define_name, const ReduceOp op);
@@ -2418,6 +2436,33 @@ gen_pair_stencil_functions(const int curr_kernel)
   free(calls.data);
 }
 
+void printf_stencil_point(const int stencil, const int depth, const int height, const int width);
+//TP: the same sum over the stencil points as the preloads in gen_kernel_body but read through a pointer of its own
+static void
+printf_on_demand_stencil(const int curr_kernel, const int original_field, const int stencil)
+{
+  (void)curr_kernel;
+  printf("const %s const ac_on_demand_ptr = ((const %s)vba.in[%s])"
+         " + DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s));",
+         get_ptr_type(original_field), get_ptr_type(original_field), field_names[original_field], vtxbuf_dims_str[original_field]);
+  bool initialized = false;
+  for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+    for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+      for (int width = 0; width < STENCIL_WIDTH; ++width) {
+        if (!stencils[stencil][depth][height][width]) continue;
+        if (!initialized) printf("auto ac_on_demand_res = ");
+        else              printf("ac_on_demand_res = %s(ac_on_demand_res, ", stencil_binary_ops[stencil]);
+        printf_stencil_point(stencil,depth,height,width);
+        printf("%s((AcReal)AC_READ_ONLY_LOAD(ac_on_demand_ptr[DEVICE_VARIABLE_VTXBUF_IDX((%d),(%d),(%d),VAL(%s))]))%s;",
+               stencil_unary_ops[stencil],
+               -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth,
+               vtxbuf_dims_str[original_field], initialized ? ")" : "");
+        initialized = true;
+      }
+    }
+  }
+  printf("return ac_on_demand_res;");
+}
 static void
 gen_stencil_functions(const int curr_kernel)
 {
@@ -2437,7 +2482,14 @@ gen_stencil_functions(const int curr_kernel)
     printf("switch (field) {");
     for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
     {
-      if ((stencils_accessed[curr_kernel][original_field][stencil] & AC_STENCIL_CALL))
+      if (stencil_computed_on_demand(curr_kernel,original_field,stencil))
+      {
+        const int field = get_original_index(field_remappings,original_field);
+        printf("case %s: {", field_names[field]);
+        printf_on_demand_stencil(curr_kernel,field,stencil);
+        printf("}");
+      }
+      else if ((stencils_accessed[curr_kernel][original_field][stencil] & AC_STENCIL_CALL))
       {
         const int field = get_original_index(field_remappings,original_field);
         printf("case %s: return f%s_s%s;", field_names[field], field_names[field], stencil_names[stencil]);
@@ -2617,7 +2669,8 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
 static bool
 stencil_preload_needed(const int curr_kernel, const int field_or_profile, const int stencil)
 {
-	return (stencils_accessed[curr_kernel][field_or_profile][stencil] & AC_STENCIL_CALL) && stencils_called[curr_kernel][stencil];
+	return (stencils_accessed[curr_kernel][field_or_profile][stencil] & AC_STENCIL_CALL) && stencils_called[curr_kernel][stencil]
+		&& !stencil_computed_on_demand(curr_kernel,field_or_profile,stencil);
 }
 static bool
 stencil_reads_use_base_pointer(const int curr_kernel)

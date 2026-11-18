@@ -108,6 +108,8 @@ bool intrinsic ac_field_has_default_dims(Field)
 intrinsic copy_arr
 intrinsic postprocess_reduce_result
 intrinsic ac_dummy_write
+intrinsic ac_dynamic_stencils_begin
+intrinsic ac_dynamic_stencils_end
 intrinsic safe_access
 bool intrinsic ac_is_global
 

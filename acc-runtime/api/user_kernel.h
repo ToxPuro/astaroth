@@ -75,6 +75,9 @@ extern __device__ AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][S
 #define error_message(error, message)
 #define fatal_error_message(error, message)
 #define ac_dummy_write(field, x, y, z)
+//TP: markers of the iteration-specific stencil calls hoisted in long rolled loops (see unroll_constant_loops), only used by the analysis
+#define ac_dynamic_stencils_begin()
+#define ac_dynamic_stencils_end()
 #define postprocess_reduce_result(DST,OP)
 
 #include "device_fields_info.h"
