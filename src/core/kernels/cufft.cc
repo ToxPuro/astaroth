@@ -103,10 +103,11 @@ private:
 
 static DeviceDistributedFFT<CuFFTPencilPlans> distributed_fft("CuFFT");
 
-void
-check_if_distributed()
+//TP: only the C2C transforms are distributed, see acFFTTransformC2C
+static void
+check_if_distributed(const Volume subdomain_size)
 {
-        if(distributed_fft.nprocs() > 1)
+        if(distributed_fft.is_distributed(subdomain_size))
         {
                 fprintf(stderr,"CuFFT integration of symmetric R2C/C2R transforms not yet working for multiple processes!\n");
                 exit(EXIT_FAILURE);
@@ -119,7 +120,7 @@ check_if_distributed()
 // Padding as mentioned in the link: padded to (n/2 + 1) in the least significant dimension.
 AcResult
 acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
-    check_if_distributed();
+    check_if_distributed(subdomain_size);
     buffer = buffer + (starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z));
     // Number of elements in each dimension to use
     int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
@@ -153,7 +154,6 @@ AcResult
 acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst,
 		  const bool inverse)
 {
-    check_if_distributed();
     ERRCHK_ALWAYS(src != NULL);
     ERRCHK_ALWAYS(dst != NULL);
     ERRCHK_ALWAYS(subdomain_size.x <= domain_size.x);
@@ -205,7 +205,7 @@ acFFTForwardTransformC2C(const AcComplex* src, const Volume domain_size, const V
 
 AcResult
 acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
-    check_if_distributed();
+    check_if_distributed(subdomain_size);
     buffer = buffer + (starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z));
     // Number of elements in each dimension to use
     int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
