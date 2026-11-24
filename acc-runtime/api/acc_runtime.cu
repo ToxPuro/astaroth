@@ -742,7 +742,7 @@ AcResult
 acLoadRealReduceRes(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value)
 {
   	const size_t offset =   (size_t)(&d_reduce_real_res_symbol[param]) - (size_t)&d_reduce_real_res_symbol;
-	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_real_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_real_res_symbol, value, sizeof(*value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 
@@ -750,7 +750,7 @@ AcResult
 acLoadIntReduceRes(cudaStream_t stream, const AcIntOutputParam param, const int* value)
 {
   	const size_t offset =   (size_t)(&d_reduce_int_res_symbol[param]) - (size_t)&d_reduce_int_res_symbol;
-	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_int_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_int_res_symbol, value, sizeof(*value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 
@@ -759,7 +759,7 @@ AcResult
 acLoadFloatReduceRes(cudaStream_t stream, const AcFloatOutputParam param, const float* value)
 {
   	const size_t offset =   (size_t)&d_reduce_float_res_symbol[param]- (size_t)&d_reduce_float_res_symbol;
-	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(*value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 #endif
