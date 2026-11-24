@@ -27,7 +27,13 @@ var searchData=
   ['loadkernelparamsfunc_24',['LoadKernelParamsFunc',['../astaroth__grid_8h.html#ac2944870a54d36393fe59fc62e8ad19f',1,'astaroth_grid.h']]],
   ['local_5fcompdomain_5fidx_25',['LOCAL_COMPDOMAIN_IDX',['../user__kernel_8h.html#ad8692c7f802633cb0f769dc39b06efcb',1,'user_kernel.h']]],
   ['log2_5fcapacity_26',['log2_capacity',['../structhashmap__t.html#aa2f30705f95eaa6a6c5cefcbc8fd8341',1,'hashmap_t']]],
-  ['longlong_27',['longlong',['../user__kernel_8h.html#af25d1911ed951caf594252e1a419b4f3',1,'user_kernel.h']]],
-  ['looping_28',['Looping',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md64',1,'']]],
-  ['lower_5fparticle_5fsets_29',['lower_particle_sets',['../particle__sets_8h.html#a224b97192653d780d705aa9a8de2641c',1,'particle_sets.h']]]
+  ['long_5floop_5faction_27',['long_loop_action',['../loop__hoisting_8h.html#a7ef7dba0dec0938dd0119d7f81dd0222',1,'loop_hoisting.h']]],
+  ['longlong_28',['longlong',['../user__kernel_8h.html#af25d1911ed951caf594252e1a419b4f3',1,'user_kernel.h']]],
+  ['loop_5fhoist_5finfo_29',['loop_hoist_info',['../structloop__hoist__info.html',1,'']]],
+  ['loop_5fhoisted_30',['LOOP_HOISTED',['../loop__hoisting_8h.html#a7ef7dba0dec0938dd0119d7f81dd0222aea51ffc6b2d89ed1b2423f70e74da8ec',1,'loop_hoisting.h']]],
+  ['loop_5fhoisting_2eh_31',['loop_hoisting.h',['../loop__hoisting_8h.html',1,'']]],
+  ['loop_5fkeep_5frolled_32',['LOOP_KEEP_ROLLED',['../loop__hoisting_8h.html#a7ef7dba0dec0938dd0119d7f81dd0222a98af1aaef6f861bd30242fe9269f63f8',1,'loop_hoisting.h']]],
+  ['loop_5funroll_33',['LOOP_UNROLL',['../loop__hoisting_8h.html#a7ef7dba0dec0938dd0119d7f81dd0222abf301e65d585ccadc4c05c655ff0ee85',1,'loop_hoisting.h']]],
+  ['looping_34',['Looping',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md64',1,'']]],
+  ['lower_5fparticle_5fsets_35',['lower_particle_sets',['../particle__sets_8h.html#a224b97192653d780d705aa9a8de2641c',1,'particle_sets.h']]]
 ];

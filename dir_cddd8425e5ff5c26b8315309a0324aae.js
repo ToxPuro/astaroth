@@ -9,6 +9,7 @@ var dir_cddd8425e5ff5c26b8315309a0324aae =
     [ "hash.h", "hash_8h.html", "hash_8h" ],
     [ "hashtable.h", "hashtable_8h.html", "hashtable_8h" ],
     [ "implementation.h", "implementation_8h.html", "implementation_8h" ],
+    [ "loop_hoisting.h", "loop__hoisting_8h.html", "loop__hoisting_8h" ],
     [ "mem_access_helper_funcs.h", "mem__access__helper__funcs_8h.html", null ],
     [ "particle_sets.h", "particle__sets_8h.html", "particle__sets_8h" ],
     [ "source_manager.h", "source__manager_8h.html", "source__manager_8h" ],

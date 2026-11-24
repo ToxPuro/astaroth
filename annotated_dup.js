@@ -37,6 +37,7 @@ var annotated_dup =
     [ "int_vec", "structint__vec.html", "structint__vec" ],
     [ "KernelAnalysisInfo", "structKernelAnalysisInfo.html", "structKernelAnalysisInfo" ],
     [ "KernelReduceOutput", "structKernelReduceOutput.html", "structKernelReduceOutput" ],
+    [ "loop_hoist_info", "structloop__hoist__info.html", "structloop__hoist__info" ],
     [ "node_vec", "structnode__vec.html", "structnode__vec" ],
     [ "op_vec", "structop__vec.html", "structop__vec" ],
     [ "ParamLoadingInfo", "structParamLoadingInfo.html", "structParamLoadingInfo" ],

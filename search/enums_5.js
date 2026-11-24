@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['stream_0',['Stream',['../astaroth__base_8h.html#a0b8b584f5fb32277059bc4e6b9bcd6f0',1,'astaroth_base.h']]]
+  ['reduceop_0',['ReduceOp',['../vecs_8h.html#a1c3bc08749070d6f6b4702e44752d11f',1,'vecs.h']]]
 ];

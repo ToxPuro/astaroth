@@ -8,5 +8,8 @@ var searchData=
   ['fieldwise_5',['fieldwise',['../structAcTaskDefinition.html#a7f9ca058118256c5381511284be813dc',1,'AcTaskDefinition']]],
   ['file_6',['file',['../string__vec_8h.html#a21e15f8aeaee9432808967b358dc2c49',1,'string_vec.h']]],
   ['fmt_7',['fmt',['../vecs_8h.html#a381d684d94e6e91dee650357e8f02fa8',1,'vecs.h']]],
-  ['function_8',['function',['../structte__expr.html#a5a6f2a2ae8e7878515d8cf19342a98c8',1,'te_expr']]]
+  ['func_5fcallees_8',['func_callees',['../structloop__hoist__info.html#a6dae3184b2082892c32d45f649fa614b',1,'loop_hoist_info']]],
+  ['func_5fstencils_9',['func_stencils',['../structloop__hoist__info.html#ae0f6cef8ed76815cd8f7af39e59bb7d7',1,'loop_hoist_info']]],
+  ['funcs_10',['funcs',['../structloop__hoist__info.html#a73a38e074cbb3b46e15c929bee16f608',1,'loop_hoist_info']]],
+  ['function_11',['function',['../structte__expr.html#a5a6f2a2ae8e7878515d8cf19342a98c8',1,'te_expr']]]
 ];

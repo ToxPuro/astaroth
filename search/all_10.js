@@ -28,9 +28,12 @@ var searchData=
   ['from_20anti_20circumvention_20law_25',['3. Protecting Users&apos; Legal Rights From Anti-Circumvention Law.',['../md_LICENCE.html#autotoc_md30',1,'']]],
   ['from_20distributed_20snapshots_26',['Restarting from distributed snapshots',['../index.html#autotoc_md10',1,'']]],
   ['func_5fattributes_2eh_27',['func_attributes.h',['../func__attributes_8h.html',1,'']]],
-  ['func_5fdefine_28',['FUNC_DEFINE',['../func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4',1,'func_define.h']]],
-  ['func_5fdefine_2eh_29',['func_define.h',['../func__define_8h.html',1,'']]],
-  ['function_30',['function',['../structte__expr.html#a5a6f2a2ae8e7878515d8cf19342a98c8',1,'te_expr']]],
-  ['functions_31',['Functions',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md92',1,'Device Functions'],['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md65',1,'Functions'],['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md76',1,'Initialization, Quitting and Helper Functions'],['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md75',1,'List of Astaroth API Functions'],['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md91',1,'Preprocessed Functions']]],
-  ['functions_32',['Additional physics-specific API functions',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md69',1,'']]]
+  ['func_5fcallees_28',['func_callees',['../structloop__hoist__info.html#a6dae3184b2082892c32d45f649fa614b',1,'loop_hoist_info']]],
+  ['func_5fdefine_29',['FUNC_DEFINE',['../func__define_8h.html#add738453ca233fa9a21ec46f6b3380b4',1,'func_define.h']]],
+  ['func_5fdefine_2eh_30',['func_define.h',['../func__define_8h.html',1,'']]],
+  ['func_5fstencils_31',['func_stencils',['../structloop__hoist__info.html#ae0f6cef8ed76815cd8f7af39e59bb7d7',1,'loop_hoist_info']]],
+  ['funcs_32',['funcs',['../structloop__hoist__info.html#a73a38e074cbb3b46e15c929bee16f608',1,'loop_hoist_info']]],
+  ['function_33',['function',['../structte__expr.html#a5a6f2a2ae8e7878515d8cf19342a98c8',1,'te_expr']]],
+  ['functions_34',['Functions',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md92',1,'Device Functions'],['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md65',1,'Functions'],['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md76',1,'Initialization, Quitting and Helper Functions'],['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md75',1,'List of Astaroth API Functions'],['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md91',1,'Preprocessed Functions']]],
+  ['functions_35',['Additional physics-specific API functions',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md69',1,'']]]
 ];

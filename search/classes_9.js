@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['node_5fvec_0',['node_vec',['../structnode__vec.html',1,'']]]
+  ['loop_5fhoist_5finfo_0',['loop_hoist_info',['../structloop__hoist__info.html',1,'']]]
 ];

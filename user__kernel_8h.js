@@ -1,6 +1,8 @@
 var user__kernel_8h =
 [
     [ "ac_dummy_write", "user__kernel_8h.html#acd0ca30d79fdc8e3109df5bc7ccf7b68", null ],
+    [ "ac_dynamic_stencils_begin", "user__kernel_8h.html#a904ac6a04bd913376683984c732bc636", null ],
+    [ "ac_dynamic_stencils_end", "user__kernel_8h.html#a037258491a1e87182ee970c47ce597cb", null ],
     [ "d_multigpu_offset", "user__kernel_8h.html#adb11b936e6ba7fb80d89da9df6ef6b5b", null ],
     [ "DEVICE_VARIABLE_VTXBUF_IDX", "user__kernel_8h.html#aa3d647afc858cee909da3f17d6835ece", null ],
     [ "DEVICE_VTXBUF_IDX", "user__kernel_8h.html#acfeb2710ecd0f04792ba00d19a1aa986", null ],

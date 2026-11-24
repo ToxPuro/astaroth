@@ -36,7 +36,7 @@ var searchData=
   ['stencil_20computations_33',['Astaroth - A Scalable Multi-GPU Library for Stencil Computations',['../index.html',1,'']]],
   ['stencil_20order_34',['Stencil order',['../dir_2dc8787002676dc565357b7cfa0121df.html#autotoc_md70',1,'']]],
   ['stencil_5faccesses_5fboundaries_35',['stencil_accesses_boundaries',['../astaroth__analysis__helpers_8h.html#ad7aa223b4863268e86047b7f9c06a0e8',1,'astaroth_analysis_helpers.h']]],
-  ['stencils_36',['stencils',['../user__kernel_8h.html#a5517971e5e5a73fadb592210363575d6',1,'user_kernel.h']]],
+  ['stencils_36',['stencils',['../structloop__hoist__info.html#afc2ed422dc3450a042f2c84f9f0d512a',1,'loop_hoist_info::stencils'],['../user__kernel_8h.html#a5517971e5e5a73fadb592210363575d6',1,'stencils:&#160;user_kernel.h']]],
   ['stencils_5faccessed_37',['stencils_accessed',['../structKernelAnalysisInfo.html#a2bc20690403e6324f4272cfa222afb4a',1,'KernelAnalysisInfo']]],
   ['step_5fnumber_38',['step_number',['../structParamLoadingInfo.html#a712ba48d0e28fa382c7264a1c4a6f401',1,'ParamLoadingInfo']]],
   ['storing_39',['Loading and Storing',['../md_doc_2Astaroth__API__specification__and__user__manual_2API__specification__and__user__manual.html#autotoc_md77',1,'']]],

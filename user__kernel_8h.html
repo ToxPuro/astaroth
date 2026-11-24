@@ -163,6 +163,8 @@ $(function(){initNavTree('user__kernel_8h.html','',''); });
 <tr class="heading"><td colspan="2"><h2 id="header-define-members" class="groupheader"><a id="define-members" name="define-members"></a>
 Macros</h2></td></tr>
 <tr class="memitem:acd0ca30d79fdc8e3109df5bc7ccf7b68" id="r_acd0ca30d79fdc8e3109df5bc7ccf7b68"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acd0ca30d79fdc8e3109df5bc7ccf7b68">ac_dummy_write</a>(field,  x,  y,  z)</td></tr>
+<tr class="memitem:a904ac6a04bd913376683984c732bc636" id="r_a904ac6a04bd913376683984c732bc636"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a904ac6a04bd913376683984c732bc636">ac_dynamic_stencils_begin</a>()</td></tr>
+<tr class="memitem:a037258491a1e87182ee970c47ce597cb" id="r_a037258491a1e87182ee970c47ce597cb"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a037258491a1e87182ee970c47ce597cb">ac_dynamic_stencils_end</a>()</td></tr>
 <tr class="memitem:adb11b936e6ba7fb80d89da9df6ef6b5b" id="r_adb11b936e6ba7fb80d89da9df6ef6b5b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#adb11b936e6ba7fb80d89da9df6ef6b5b">d_multigpu_offset</a>&#160;&#160;&#160;(d_mesh_info.int3_params[AC_multigpu_offset])</td></tr>
 <tr class="memitem:aa3d647afc858cee909da3f17d6835ece" id="r_aa3d647afc858cee909da3f17d6835ece"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa3d647afc858cee909da3f17d6835ece">DEVICE_VARIABLE_VTXBUF_IDX</a>(i,  j,  k,  <a class="el" href="#a5d8f31ceb442db9fba625396b61bad42">dims</a>)</td></tr>
 <tr class="memitem:acfeb2710ecd0f04792ba00d19a1aa986" id="r_acfeb2710ecd0f04792ba00d19a1aa986"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acfeb2710ecd0f04792ba00d19a1aa986">DEVICE_VTXBUF_IDX</a>(i,  j,  k)</td></tr>
@@ -222,6 +224,40 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a id="a904ac6a04bd913376683984c732bc636" name="a904ac6a04bd913376683984c732bc636"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a904ac6a04bd913376683984c732bc636">&#9670;&#160;</a></span>ac_dynamic_stencils_begin</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ac_dynamic_stencils_begin</td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a037258491a1e87182ee970c47ce597cb" name="a037258491a1e87182ee970c47ce597cb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a037258491a1e87182ee970c47ce597cb">&#9670;&#160;</a></span>ac_dynamic_stencils_end</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ac_dynamic_stencils_end</td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="adb11b936e6ba7fb80d89da9df6ef6b5b" name="adb11b936e6ba7fb80d89da9df6ef6b5b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#adb11b936e6ba7fb80d89da9df6ef6b5b">&#9670;&#160;</a></span>d_multigpu_offset</h2>
 
@@ -265,7 +301,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <b>Value:</b><div class="fragment"><div class="line">  ((i) + <a class="code hl_variable" href="#a5d8f31ceb442db9fba625396b61bad42">dims</a>.x * ((j) + (k) * <a class="code hl_variable" href="#a5d8f31ceb442db9fba625396b61bad42">dims</a>.y))</div>
-<div class="ttc" id="auser__kernel_8h_html_a5d8f31ceb442db9fba625396b61bad42"><div class="ttname"><a href="#a5d8f31ceb442db9fba625396b61bad42">dims</a></div><div class="ttdeci">static __device__ const int dims</div><div class="ttdef"><b>Definition</b> user_kernel.h:125</div></div>
+<div class="ttc" id="auser__kernel_8h_html_a5d8f31ceb442db9fba625396b61bad42"><div class="ttname"><a href="#a5d8f31ceb442db9fba625396b61bad42">dims</a></div><div class="ttdeci">static __device__ const int dims</div><div class="ttdef"><b>Definition</b> user_kernel.h:128</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -594,8 +630,8 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">{</div>
 <div class="line">    <span class="keywordflow">return</span> safe_access(arr, <a class="code hl_variable" href="#a5d8f31ceb442db9fba625396b61bad42">dims</a>, <a class="code hl_variable" href="#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a>,real_array_names__device__[<a class="code hl_variable" href="#ad82553547ece231dc67964b8389f3d6f">param</a>])</div>
-<div class="ttc" id="auser__kernel_8h_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">static __device__ const int const int index</div><div class="ttdef"><b>Definition</b> user_kernel.h:125</div></div>
-<div class="ttc" id="auser__kernel_8h_html_ad82553547ece231dc67964b8389f3d6f"><div class="ttname"><a href="#ad82553547ece231dc67964b8389f3d6f">param</a></div><div class="ttdeci">static __device__ const int const int const AcRealArrayParam param</div><div class="ttdef"><b>Definition</b> user_kernel.h:126</div></div>
+<div class="ttc" id="auser__kernel_8h_html_ab6e9e0ce0bd2c6664dc941509bcef12c"><div class="ttname"><a href="#ab6e9e0ce0bd2c6664dc941509bcef12c">index</a></div><div class="ttdeci">static __device__ const int const int index</div><div class="ttdef"><b>Definition</b> user_kernel.h:128</div></div>
+<div class="ttc" id="auser__kernel_8h_html_ad82553547ece231dc67964b8389f3d6f"><div class="ttname"><a href="#ad82553547ece231dc67964b8389f3d6f">param</a></div><div class="ttdeci">static __device__ const int const int const AcRealArrayParam param</div><div class="ttdef"><b>Definition</b> user_kernel.h:129</div></div>
 </div><!-- fragment -->
 </div>
 </div>
