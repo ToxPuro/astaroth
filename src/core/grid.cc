@@ -105,9 +105,8 @@ static Grid grid = {};
 static constexpr int astaroth_comm_split_key = 666;
 
 // In case some old programs still  use MPI_Init or MPI_Init_thread, we don't want to break them
-static MPI_Comm astaroth_comm;
+static MPI_Comm astaroth_comm=MPI_COMM_NULL;
 static AcSubCommunicators astaroth_sub_comms;
-
 
 static int
 ac_pid()
@@ -116,8 +115,6 @@ ac_pid()
     MPI_Comm_rank(astaroth_comm, &pid);
     return pid;
 }
-
-
 
 static AcProcMappingStrategy
 ac_proc_mapping_strategy()
@@ -130,7 +127,6 @@ acGridInitialized()
 {
 	return grid.initialized;
 }
-
 
 AcMeshInfo
 acGridGetLocalMeshInfo(void)
@@ -165,8 +161,6 @@ ac_nprocs()
     return get_comm_size(astaroth_comm);
 }
 
-
-
 static uint3_64
 get_decomp(const AcMeshInfo global_config)
 {
@@ -178,7 +172,6 @@ getPid3D(const AcMeshInfo config)
     return getPid3D(ac_pid(), get_decomp(config), 
                    config[AC_proc_mapping_strategy]);
 }
-
 
 static int3
 getPid3D(const int pid, const uint3_64 decomp)
@@ -274,7 +267,6 @@ acGridMPISubComms()
 	return astaroth_sub_comms;
 }
 
-
 int
 ac_MPI_Comm_rank()
 {
@@ -346,7 +338,6 @@ set_info_val(AcMeshInfo& , const int , const int ){}
 static inline void UNUSED
 set_info_val(AcMeshInfo& , const int3 , const int3 ){}
 
-
 AcMeshInfo
 acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 {
@@ -381,6 +372,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     acHostUpdateParams(&submesh_config);
     return submesh_config;
 }
+
 static Volume
 get_global_nn()
 {
@@ -388,7 +380,6 @@ get_global_nn()
     const AcMeshInfo info = acDeviceGetLocalConfig(device);
     return to_volume(info[AC_ngrid]);
 }
-
 
 static void
 check_that_decomp_valid(const AcMeshInfo info)
@@ -406,6 +397,7 @@ check_that_decomp_valid(const AcMeshInfo info)
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
     }
 }
+
 static AcBoundary
 get_full_boundary()
 {
@@ -577,8 +569,9 @@ create_astaroth_sub_communicators()
 static void
 create_astaroth_comm(const AcMeshInfo info)
 {
+      if (astaroth_comm != MPI_COMM_NULL) MPI_Comm_free(&astaroth_comm); // avoid to hide already duplicated comms
       switch(info[AC_MPI_comm_strategy])
-      {
+      { 
 	case AC_MPI_COMM_STRATEGY_DUP_WORLD:
       		ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
 		break;
@@ -592,7 +585,6 @@ create_astaroth_comm(const AcMeshInfo info)
 		fatal("%s","Unknown MPICommStrategy\n");
       }
       MPI_Barrier(astaroth_comm);
-      
 
       grid.mpi_initialized = true;
 }
@@ -1615,7 +1607,6 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
     return acDeviceLoadMesh(grid.device, stream, grid.submesh);
 }
 
-
 // Working with ghost zone
 AcResult
 acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
@@ -1680,7 +1671,6 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 
     return AC_SUCCESS;
 }
-
 
 AcResult
 acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
@@ -2127,7 +2117,6 @@ get_spacings()
 	return acGridGetLocalMeshInfo()[AC_ds];
 }
 
-
 static int
 id_to_arr_index(const int x,const int y,const int z) {return (x+1)+3*((y+1)+3*(z+1));}
 static int
@@ -2242,7 +2231,6 @@ get_new_taskgraph(const size_t n_ops)
     return graph;
 }
 		
-
 int3
 boundary_normal(const int tag, const AcBoundary boundary)
 {
@@ -2947,7 +2935,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	return acGridBuildTaskGraphWithBounds(ops_in,n_ops,ghost,grid.nn+ghost,false);
 }
 
-
 AcResult
 acGridDestroyTaskGraph(AcTaskGraph* graph)
 {
@@ -3146,7 +3133,6 @@ halo_sync_state_after(const AcTaskGraph* graph, const AcHaloSyncState before)
 	}
 	return res;
 }
-
 
 AcResult
 acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool include_inactive)
@@ -4616,7 +4602,6 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     }
     fclose(fp);
 
-
 #else // Collective IO
     MPI_Datatype subarray;
     const int3 nn = get_global_nn(); // TODO recheck whether this is correct
@@ -4951,8 +4936,6 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
     }
     return AC_SUCCESS;
 }
-
-
 
 AcResult
 acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
