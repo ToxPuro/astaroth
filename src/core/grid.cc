@@ -249,7 +249,6 @@ ac_MPI_Finalize()
 {
     if (astaroth_comm != MPI_COMM_WORLD && astaroth_comm != MPI_COMM_NULL) {
         MPI_Comm_free(&astaroth_comm);
-        astaroth_comm = MPI_COMM_NULL;
     }
     MPI_Finalize();
 }
@@ -1105,6 +1104,9 @@ acGridQuit(void)
     acQuitDecomposition(grid.submesh.info[AC_decompose_strategy]);
     acKernelsClean();
     acRuntimeQuit();
+    if (astaroth_comm != MPI_COMM_WORLD && astaroth_comm != MPI_COMM_NULL) {
+        MPI_Comm_free(&astaroth_comm);
+    }
     // acDecompositionInfoDestroy(&grid.decomposition_info);
 
     return AC_SUCCESS;
@@ -4332,9 +4334,8 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 MPI_Type_free(&subdomain);
-
-                MPI_Comm_free(&slice_communicator);
             }
+            MPI_Comm_free(&slice_communicator);
         };
 
         write_sync(host_buffer, count); // Synchronous, non-threaded
