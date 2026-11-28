@@ -130,6 +130,19 @@ main(void)
     AcReal threeD_real_arr THREE_D_ARR(mx,my,mz);
     float  fourD_float_arr FOUR_D_ARR(mx,my,mz,3);
     AcReal fiveD_real_arr FIVE_D_ARR(mx,my,mz,3,3);
+    //complex gmem arrays
+    auto crand = [](){ return AcComplex{(AcReal)(2.0*rand()/RAND_MAX-1.0),(AcReal)(2.0*rand()/RAND_MAX-1.0)}; };
+    static AcComplex complex_x[mx];
+    static AcComplex complex_y[my];
+    static AcComplex complex_const[nx];
+    static AcComplex complex_3d THREE_D_ARR(mx,my,mz);
+    for(int i = 0; i < mx; ++i) complex_x[i] = crand();
+    for(int j = 0; j < my; ++j) complex_y[j] = crand();
+    for(int i = 0; i < nx; ++i) complex_const[i] = crand();
+    for(int k = 0; k < mz; ++k)
+    	for(int j = 0; j < my; ++j)
+    		for(int i = 0; i < mx; ++i)
+			complex_3d THREE_D_ARR(i,j,k) = crand();
 
     for(int i = 0; i < nx; ++i)
     {
@@ -148,9 +161,9 @@ main(void)
 			for(int l = 0; l < 3; ++l)
 			{
 				fourD_float_arr FOUR_D_ARR(i,j,k,l) = (float)(1.0*rand())/(float)RAND_MAX;
-				for(int i = 0; i < 3; ++i)
+				for(int h = 0; h < 3; ++h)
 				{
-					fiveD_real_arr FIVE_D_ARR(i,j,k,l,i) = (AcReal)(1.0*rand())/(AcReal)RAND_MAX;
+					fiveD_real_arr FIVE_D_ARR(i,j,k,l,h) = (AcReal)(1.0*rand())/(AcReal)RAND_MAX;
 				}
 			}
 		}
@@ -163,6 +176,10 @@ main(void)
     info[AC_5d_real_arr]  = &fiveD_real_arr[0][0][0][0][0];
     info[AC_dconst_int] = nx-1-info[AC_nmin].x;
     info[AC_4d_float_arr_out]  = &fourD_float_arr[0][0][0][0];
+    info[AC_complex_x]     = complex_x;
+    info[AC_complex_y]     = complex_y;
+    info[AC_complex_const] = complex_const;
+    info[AC_complex_3d]    = &complex_3d[0][0][0];
     acGridInit(info);
 
     Field all_fields[NUM_VTXBUF_HANDLES];
@@ -183,6 +200,8 @@ main(void)
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_DEFAULT);
     acDeviceLoad(acGridGetDevice(), STREAM_DEFAULT,info,AC_4d_float_arr_out);
+    for(int i = 0; i < mx; ++i) complex_x[i] = crand();
+    acDeviceLoad(acGridGetDevice(), STREAM_DEFAULT,info,AC_complex_x);
 
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
     	acGridExecuteTaskGraph(graph,1);
@@ -219,7 +238,17 @@ main(void)
 			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr TWO_D_ARR(info[AC_dconst_int],comp_y) + threeD_real_arr THREE_D_ARR(i,j,k));
 			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,0) + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,1)  + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,2));
 
-			fourD_float_arr FOUR_D_ARR(i,j,k,0) = (float)( fourD_float_arr FOUR_D_ARR(i,j,k,0) * test_arr[1]
+			{
+				const AcComplex a = complex_x[i], b = complex_y[j], c = complex_const[i-ghosts.x];
+				const AcComplex ab  = {a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x};
+				const AcComplex abc = {ab.x*c.x - ab.y*c.y, ab.x*c.y + ab.y*c.x};
+				model.vertex_buffer[CFIELD_X][IDX(i,j,k)] = abc.x;
+				model.vertex_buffer[CFIELD_Y][IDX(i,j,k)] = abc.y;
+				const AcComplex d = complex_3d THREE_D_ARR(i,j,k);
+				model.vertex_buffer[CFIELD_Z][IDX(i,j,k)] = d.x - 2.0*d.y;
+			}
+
+			fourD_float_arr FOUR_D_ARR(i,j,k,0) = (float)( (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,0) * test_arr[1]
 							    +  fiveD_real_arr FIVE_D_ARR(i,j,k,0,0));
                 }
             }
