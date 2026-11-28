@@ -53,7 +53,7 @@ static void
 run_sequence(AcMeshInfo info, const bool carry_halo_sync, const AcMesh model, AcMesh* after_rounds, AcMesh* candidate)
 {
     acPushToConfig(info, AC_carry_halo_sync_between_compute_steps, carry_halo_sync);
-    acGridInit(info);
+    if(!acGridInitialized())  acGridInit(info);
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_ALL);
     for (int round = 0; round < 3; ++round) {
