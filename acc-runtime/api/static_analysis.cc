@@ -6,6 +6,8 @@
 
 // clang-format off
 #include "user_defines.h"
+//TP: the single definition of the stencils_accessed table (see stencil_accesses.cpp)
+#define AC_DEFINE_STENCIL_ACCESSES_TABLE
 #include "stencil_accesses.h"
 // clang-format on
 

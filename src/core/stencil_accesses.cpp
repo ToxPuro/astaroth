@@ -1392,9 +1392,14 @@ main(int argc, char* argv[])
   static int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
   std::vector<std::array<int,4>> output_pair_stencil_calls{};
 
-  fprintf(fp,
-          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
-          "__attribute__((unused)) =  {");
+  //Claude: stencils_accessed is large (tens of MB for big setups). Earlier it was a static array with an initializer
+  //    in this header so every C++ TU including it (grid.cc, astaroth.cc, static_analysis.cc, kernels.cu, reduce_helpers.cu, ...)
+  //    got its own copy, which bloated the objects, the shared library and the compiler temporaries.
+  //    Now the initializer is stored in a macro and in C++ the table is defined only in the TU defining AC_DEFINE_STENCIL_ACCESSES_TABLE
+  //    (static_analysis.cc), while the other TUs access it via a reference called stencils_accessed.
+  //    The reference has internal linkage so it does not clash with the stencils_accessed of the analysis code (stencil_accesses.cpp).
+  //    C code (stencilgen.c) is a single TU executable so keeps the static array.
+  fprintf(fp,"#define AC_STENCILS_ACCESSED_INIT {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     execute_kernel(k);
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
@@ -1459,7 +1464,20 @@ main(int argc, char* argv[])
   }
 
 
-  fprintf(fp, "};\n");
+  fprintf(fp, "}\n");
+  fprintf(fp,
+          "#ifdef __cplusplus\n"
+          "extern int ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];\n"
+          "#ifdef AC_DEFINE_STENCIL_ACCESSES_TABLE\n"
+          "int ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] = AC_STENCILS_ACCESSED_INIT;\n"
+          "#endif\n"
+          "static int (&stencils_accessed)[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
+          "__attribute__((unused)) = ac_stencils_accessed_table;\n"
+          "#else\n"
+          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
+          "__attribute__((unused)) = AC_STENCILS_ACCESSED_INIT;\n"
+          "#endif\n"
+          "#undef AC_STENCILS_ACCESSED_INIT\n");
 
   // {kernel, stencil, field_a, field_b} with field_a <= field_b, terminated by a sentinel to avoid an empty array
   fprintf(fp,"static const int pair_stencil_calls[][4] __attribute__((unused)) = {");
