@@ -621,6 +621,45 @@ reset_all_files()
 }
 
 
+//TP: intermediate files nothing reads after a successful acc run: the preprocessed DSL stages, the formatted
+//per-round kernel dumps and the stencil access analysis executable with its split objects (together ~10-20MB per build).
+//They are kept if acc fails, or always with AC_KEEP_INTERMEDIATE_FILES set, for debugging.
+static void
+remove_intermediate_files(void)
+{
+	if(getenv("AC_KEEP_INTERMEDIATE_FILES")) return;
+	const char* files[] = {"user_kernels.ac.pp_stage1","user_kernels.ac.pp_stage2","acc_stencil_accesses.o"};
+	for(size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) remove(files[i]);
+	DIR* dir = opendir(".");
+	if(dir)
+	{
+		struct dirent* entry;
+		while((entry = readdir(dir)) != NULL)
+		{
+			const char* prefix = "user_kernels_round_";
+			const size_t len = strlen(entry->d_name);
+			if(!strncmp(entry->d_name,prefix,strlen(prefix)) && len > 3 && !strcmp(entry->d_name+len-3,".cu"))
+				remove(entry->d_name);
+		}
+		closedir(dir);
+	}
+	dir = opendir("ac_analysis_kernels");
+	if(dir)
+	{
+		struct dirent* entry;
+		while((entry = readdir(dir)) != NULL)
+		{
+			const size_t len = strlen(entry->d_name);
+			if(len > 2 && !strcmp(entry->d_name+len-2,".o"))
+			{
+				char path[PATH_MAX];
+				snprintf(path,sizeof(path),"ac_analysis_kernels/%s",entry->d_name);
+				remove(path);
+			}
+		}
+		closedir(dir);
+	}
+}
 int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* dir, const bool gen_mem_accesses, const bool optimize_input_params, const bool gen_extra_dfuncs, bool gen_bc_kernels)
 {
 	init_str_vec(&const_ints);
@@ -1303,6 +1342,8 @@ main(int argc, char** argv)
     acc_sources_manager_flush(acc_sources_manager_singleton());
     
     split_user_kernels(num_output_kernel_files);
+
+    remove_intermediate_files();
 
     return EXIT_SUCCESS;
 }

@@ -3646,7 +3646,8 @@ gen_loader_definition(FILE* stream, const func_params_info params_info, const fu
 		++counter;
 		fprintf(stream,"void AC_INTERNAL_loader_%d(ParamLoadingInfo p) {\n",counter);
 		const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,0,0);
-		fprintf(stream,"#include \"user_constants.h\"\n");
+		//TP: user_constants.h is included once into ac_loader_constants in compute_steps.cc; including it in every loader emitted all ~2k constants per loader (tens of thousands of symbols at -O0 -g)
+		fprintf(stream,"using namespace ac_loader_constants;\n");
 		const int params_offset = 0;
 		{
 			if(params_info.types.size != call_info.types.size)

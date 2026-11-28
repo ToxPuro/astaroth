@@ -282,6 +282,10 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs,const std::vector<Ker
 	return false;
 }
 
+//TP: the DSL constants the generated loaders may use (see gen_loader_definition in codegen.c)
+namespace ac_loader_constants {
+#include "user_constants.h"
+}
 #include "user_loader_impls.h"
 
 void
