@@ -1,5 +1,7 @@
 var ac__helpers_8h =
 [
+    [ "ac_mpi_barrier", "ac__helpers_8h.html#ad0d4e6f760c49abf01bf1f4fea5cee3a", null ],
+    [ "ac_mpi_bcast", "ac__helpers_8h.html#ac8e0ea24e0c0b588bec3309acf075c64", null ],
     [ "ac_mpi_rank", "ac__helpers_8h.html#a43c3f40f998d01c627f16a5a5621c7a4", null ],
     [ "ac_mpi_root", "ac__helpers_8h.html#a7c6ab8b7e22881f7f10b36ba56ee50d7", null ],
     [ "ac_restore_floating_point_exceptions", "ac__helpers_8h.html#a19f3229f04326d2099866276eae57111", null ],
