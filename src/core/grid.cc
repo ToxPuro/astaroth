@@ -4297,7 +4297,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
 
             // Possible MPI bug: need to cudaSetDevice or otherwise invalid context
             // But also causes a deadlock for some reason
-            MPI_Comm slice_communicator;
+            MPI_Comm slice_communicator = MPI_COMM_NULL;
             MPI_Comm_split(astaroth_comm, color, 0, &slice_communicator);
             if (color != MPI_UNDEFINED) {
                 const Volume nn     = (Volume){global_nn.x, global_nn.y, 1};
@@ -4334,8 +4334,8 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 MPI_Type_free(&subdomain);
+                MPI_Comm_free(&slice_communicator);
             }
-            MPI_Comm_free(&slice_communicator);
         };
 
         write_sync(host_buffer, count); // Synchronous, non-threaded
