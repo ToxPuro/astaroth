@@ -1126,6 +1126,7 @@ acGridQuit(void)
     if (astaroth_comm != MPI_COMM_WORLD && astaroth_comm != MPI_COMM_NULL) {
         MPI_Comm_free(&astaroth_comm);
     }
+    grid.mpi_initialized = false;
     // acDecompositionInfoDestroy(&grid.decomposition_info);
 
     return AC_SUCCESS;
