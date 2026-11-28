@@ -544,6 +544,7 @@ get_reversed_comm(const MPI_Comm comm)
 	return res;
 }
 
+
 static void
 create_astaroth_sub_communicators()
 {
@@ -563,6 +564,22 @@ create_astaroth_sub_communicators()
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_xy_color(),ac_pid(),&astaroth_sub_comms.xy) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_xz_color(),ac_pid(),&astaroth_sub_comms.xz) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_yz_color(),ac_pid(),&astaroth_sub_comms.yz) == MPI_SUCCESS);
+}
+
+static void
+free_astaroth_sub_communicators()
+{
+	astaroth_sub_comms.all = MPI_COMM_NULL;
+	MPI_Comm* comms[] = {
+		&astaroth_sub_comms.x,         &astaroth_sub_comms.y,         &astaroth_sub_comms.z,
+		&astaroth_sub_comms.reverse_x, &astaroth_sub_comms.reverse_y, &astaroth_sub_comms.reverse_z,
+		&astaroth_sub_comms.xy,        &astaroth_sub_comms.xz,        &astaroth_sub_comms.yz,
+	};
+	for (MPI_Comm* comm : comms) {
+		// zero-initialized (never created) handles are not valid communicators either
+		if (*comm != MPI_COMM_NULL && *comm != MPI_Comm{})
+			ERRCHK_ALWAYS(MPI_Comm_free(comm) == MPI_SUCCESS); // sets *comm to MPI_COMM_NULL
+	}
 }
 
 static void
@@ -1083,6 +1100,7 @@ acGridQuit(void)
     acGridClearTaskGraphCache();
     // Random number generator
     acRandQuit();
+    acFFTQuit();
 
     grid.default_tasks = nullptr;
     grid.halo_exchange_tasks    = nullptr;
@@ -1104,6 +1122,7 @@ acGridQuit(void)
     acQuitDecomposition(grid.submesh.info[AC_decompose_strategy]);
     acKernelsClean();
     acRuntimeQuit();
+    free_astaroth_sub_communicators();
     if (astaroth_comm != MPI_COMM_WORLD && astaroth_comm != MPI_COMM_NULL) {
         MPI_Comm_free(&astaroth_comm);
     }

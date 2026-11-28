@@ -449,6 +449,10 @@ typedef class ReduceTask : public Task {
   public:
     ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+    ~ReduceTask();
+    // Owns MPI communicators: copying would lead to double frees
+    ReduceTask(const ReduceTask&)            = delete;
+    ReduceTask& operator=(const ReduceTask&) = delete;
     void reduce();
     void communicate();
     void load_outputs();

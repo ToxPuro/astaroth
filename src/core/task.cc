@@ -2726,6 +2726,19 @@ dup_sub_comms()
        return sub_comms;
 }
 
+static void
+free_dup_sub_comms(AcSubCommunicators& sub_comms)
+{
+       // Frees what dup_sub_comms created; the reverse_* members are never duplicated
+       // and stay zero-initialized, which the check below skips as well.
+       MPI_Comm* comms[] = {&sub_comms.all, &sub_comms.x,  &sub_comms.y, &sub_comms.z,
+                            &sub_comms.xy,  &sub_comms.xz, &sub_comms.yz};
+       for (MPI_Comm* comm : comms) {
+               if (*comm != MPI_COMM_NULL && *comm != MPI_Comm{})
+                       MPI_Comm_free(comm); // sets *comm to MPI_COMM_NULL
+       }
+}
+
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
@@ -2808,6 +2821,12 @@ ReduceTask::test()
         return false;
     }
     }
+}
+
+ReduceTask::~ReduceTask()
+{
+    if (mpi_finalized()) return;
+    for (auto& comms : sub_comms) free_dup_sub_comms(comms);
 }
 
 void
