@@ -1706,12 +1706,15 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("device_store_uniform_decl.h","DECL_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 	fprintf_filename("device_store_overloads.h","OVERLOAD_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 
-	if(is_primitive_datatype(datatype_scalar))
+	if(is_primitive_datatype(datatype_scalar) || datatype_scalar == COMPLEX_STR)
 	{
         	fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 		fprintf_filename("device_load_uniform_decl.h","DEVICE_LOAD_ARRAY_DECL(%sArrayParam, %s)\n",enum_name,upper_case_name);
 		fprintf_filename("device_load_uniform_overloads.h","OVERLOAD_DEVICE_LOAD_ARRAY(%sArrayParam, %s)\n",enum_name,upper_case_name);
 		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray);\n",upper_case_name);
+	}
+	if(is_primitive_datatype(datatype_scalar))
+	{
 
 
 		fprintf_filename("device_store_uniform.h","GEN_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
@@ -12466,7 +12469,12 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   //
   ///If we are only using the optimized kernels we might as well empty the bodies of the original functions to speedup the compilation
   if(USE_ONLY_OPTIMIZED_KERNELS) empty_non_optimized_kernels(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
-  gen_array_reads(root,root,primitive_datatypes);
+  {
+	  string_vec array_read_datatypes = str_vec_copy(primitive_datatypes);
+	  push(&array_read_datatypes,COMPLEX_STR);
+	  gen_array_reads(root,root,array_read_datatypes);
+	  free_str_vec(&array_read_datatypes);
+  }
 
 
 
