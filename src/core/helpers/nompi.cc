@@ -13,3 +13,13 @@ ac_mpi_root(const AcMeshInfo info)
 {
 	return ac_mpi_rank(info) == 0;
 }
+
+void
+ac_mpi_barrier(const AcMeshInfo info)
+{
+}
+
+void
+ac_mpi_bcast(int* res, const AcMeshInfo info)
+{
+}

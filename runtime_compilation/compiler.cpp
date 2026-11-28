@@ -416,19 +416,18 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
                 ERRCHK_ALWAYS(provided >= MPI_THREAD_MULTIPLE);
         }
 	ERRCHK_ALWAYS(mesh_info.comm != NULL && mesh_info.comm->handle != MPI_COMM_NULL);
-	int pid;
-	MPI_Comm_rank(mesh_info.comm->handle,&pid);
-	if(!mpi_has_been_initialized && pid == 0)
+	const bool root = ac_mpi_root(mesh_info);
+	if(!mpi_has_been_initialized && root)
 	{
           fprintf(stderr, "acCompile: MPI was not initialized so called MPI_Init_thread with MPI_THREAD_MULTIPLE\n");
 	}
 	decompose_info(mesh_info.comm->handle,mesh_info);
 #else
-	const int pid = 0;
+	const bool root = true;
 #endif
 	acHostUpdateParams(&mesh_info);
 	AcResult res = AC_SUCCESS;
-	if(pid == 0)
+	if(root)
 	{
 		//TP: the compilation (cmake, make -j, acc and the compilers) is run by child processes of this thread
 		//    which inherit its CPU affinity. If the caller has bound this thread to a single core,
@@ -439,10 +438,8 @@ acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_in
 		res = acCompileFromRootProc(user_cmake_options,target,mesh_info);
 		set_affinity(ORIGINAL);
 	}
-#if AC_MPI_ENABLED
-	MPI_Barrier(mesh_info.comm->handle);
-	MPI_Bcast(&res, 1, MPI_INT, 0, mesh_info.comm->handle);
-#endif
+	ac_mpi_barrier(mesh_info);
+	ac_mpi_bcast((int*)&res,mesh_info);
         ac_restore_floating_point_exceptions();
 	return res;
 }

@@ -22,6 +22,12 @@ ac_mpi_rank(const AcMeshInfo info);
 bool
 ac_mpi_root(const AcMeshInfo info);
 
+void
+ac_mpi_barrier(const AcMeshInfo info);
+
+void
+ac_mpi_bcast(int* res, const AcMeshInfo info);
+
 size_t
 acShapeCount(const AcShape shape);
 
