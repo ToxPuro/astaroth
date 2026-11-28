@@ -1399,6 +1399,7 @@ main(int argc, char* argv[])
   //    (static_analysis.cc), while the other TUs access it via a reference called stencils_accessed.
   //    The reference has internal linkage so it does not clash with the stencils_accessed of the analysis code (stencil_accesses.cpp).
   //    C code (stencilgen.c) is a single TU executable so keeps the static array.
+//    The entries are only read and are small bit flags (at most AC_STENCIL_DYNAMIC_CALL = 1<<3) so unsigned char suffices (4x smaller than int).
   fprintf(fp,"#define AC_STENCILS_ACCESSED_INIT {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     execute_kernel(k);
@@ -1467,14 +1468,14 @@ main(int argc, char* argv[])
   fprintf(fp, "}\n");
   fprintf(fp,
           "#ifdef __cplusplus\n"
-          "extern int ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];\n"
+          "extern const unsigned char ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];\n"
           "#ifdef AC_DEFINE_STENCIL_ACCESSES_TABLE\n"
-          "int ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] = AC_STENCILS_ACCESSED_INIT;\n"
+          "extern const unsigned char ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] = AC_STENCILS_ACCESSED_INIT;\n"
           "#endif\n"
-          "static int (&stencils_accessed)[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
+          "static const unsigned char (&stencils_accessed)[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "__attribute__((unused)) = ac_stencils_accessed_table;\n"
           "#else\n"
-          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
+          "static const unsigned char stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "__attribute__((unused)) = AC_STENCILS_ACCESSED_INIT;\n"
           "#endif\n"
           "#undef AC_STENCILS_ACCESSED_INIT\n");
