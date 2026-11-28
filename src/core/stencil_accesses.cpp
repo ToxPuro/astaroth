@@ -1392,15 +1392,19 @@ main(int argc, char* argv[])
   static int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
   std::vector<std::array<int,4>> output_pair_stencil_calls{};
 
-  //Claude: stencils_accessed is large (tens of MB for big setups). Earlier it was a static array with an initializer
-  //    in this header so every C++ TU including it (grid.cc, astaroth.cc, static_analysis.cc, kernels.cu, reduce_helpers.cu, ...)
-  //    got its own copy, which bloated the objects, the shared library and the compiler temporaries.
-  //    Now the initializer is stored in a macro and in C++ the table is defined only in the TU defining AC_DEFINE_STENCIL_ACCESSES_TABLE
-  //    (static_analysis.cc), while the other TUs access it via a reference called stencils_accessed.
-  //    The reference has internal linkage so it does not clash with the stencils_accessed of the analysis code (stencil_accesses.cpp).
-  //    C code (stencilgen.c) is a single TU executable so keeps the static array.
-//    The entries are only read and are small bit flags (at most AC_STENCIL_DYNAMIC_CALL = 1<<3) so unsigned char suffices (4x smaller than int).
-  fprintf(fp,"#define AC_STENCILS_ACCESSED_INIT {");
+  //Claude: stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] is large (tens of MB as int) but almost all zeros
+  //    (e.g. 249 non-zeros out of 11M entries in streaming-instability-sink).
+  //    Earlier it was a static array with an initializer in this header, so every TU including it
+  //    (grid.cc, astaroth.cc, static_analysis.cc, kernels.cu, reduce_helpers.cu, stencilgen.c) carried a full copy in .data,
+  //    which bloated the objects, the shared library and the compiler temporaries.
+  //    Now only the non-zero entries are written ({kernel,field,stencil,value}) and the table is a zero-initialized (.bss) array
+  //    that a constructor fills from that list when the program/library is loaded.
+  //    In C++ the table is defined only in the TU defining AC_DEFINE_STENCIL_ACCESSES_TABLE (static_analysis.cc);
+  //    the other TUs read it via a const reference called stencils_accessed.
+  //    The reference has internal linkage so it does not clash with the stencils_accessed of the analysis code (this file).
+  //    C code (stencilgen.c) is a single TU executable so gets its own static table and constructor.
+  //    The entries are small bit flags (at most AC_STENCIL_DYNAMIC_CALL = 1<<3) so unsigned char suffices.
+  std::vector<std::array<int,4>> output_stencils_accessed_nonzeros{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     execute_kernel(k);
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
@@ -1443,10 +1447,17 @@ main(int argc, char* argv[])
 	output_reduced_floats[k][j] = reduced_floats[j];
 #endif
 
-    fprintf(fp,"{");
     for (size_t j = 0; j < NUM_ALL_FIELDS+NUM_PROFILES; ++j)
-      print_trimmed_row(fp,stencils_accessed[j],NUM_STENCILS);
-    fprintf(fp,"},");
+      for (size_t i = 0; i < NUM_STENCILS; ++i)
+        if (stencils_accessed[j][i])
+        {
+          if(stencils_accessed[j][i] < 0 || stencils_accessed[j][i] > 255)
+          {
+            fprintf(stderr,"stencils_accessed[%zu][%zu][%zu] = %d does not fit in unsigned char\n",k,j,i,stencils_accessed[j][i]);
+            return EXIT_FAILURE;
+          }
+          output_stencils_accessed_nonzeros.push_back({(int)k,(int)j,(int)i,stencils_accessed[j][i]});
+        }
     for (const auto& call : pair_stencil_calls)
       output_pair_stencil_calls.push_back({(int)k,call.stencil,call.field_a,call.field_b});
 
@@ -1465,20 +1476,31 @@ main(int argc, char* argv[])
   }
 
 
-  fprintf(fp, "}\n");
+  // {kernel, field, stencil, value} for the non-zero entries of stencils_accessed
+  fprintf(fp,"#define AC_STENCILS_ACCESSED_NONZEROS {");
+  for (const auto& e : output_stencils_accessed_nonzeros)
+    fprintf(fp,"{%d,%d,%d,%d},",e[0],e[1],e[2],e[3]);
+  fprintf(fp,"{-1,-1,-1,0}}\n");
   fprintf(fp,
+          "#define AC_STENCILS_ACCESSED_FILL(table) \\\n"
+          "  static const int ac_nonzeros[][4] = AC_STENCILS_ACCESSED_NONZEROS; \\\n"
+          "  for (int ac_n = 0; ac_nonzeros[ac_n][0] >= 0; ++ac_n) \\\n"
+          "    table[ac_nonzeros[ac_n][0]][ac_nonzeros[ac_n][1]][ac_nonzeros[ac_n][2]] = (unsigned char)ac_nonzeros[ac_n][3];\n"
           "#ifdef __cplusplus\n"
-          "extern const unsigned char ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];\n"
+          "extern unsigned char ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];\n"
           "#ifdef AC_DEFINE_STENCIL_ACCESSES_TABLE\n"
-          "extern const unsigned char ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] = AC_STENCILS_ACCESSED_INIT;\n"
+          "unsigned char ac_stencils_accessed_table[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]{};\n"
+          "//Priority 101 so that the table is filled before the C++ dynamic initializers of the library that might read it\n"
+          "__attribute__((constructor(101))) static void ac_fill_stencils_accessed_table(void) { AC_STENCILS_ACCESSED_FILL(ac_stencils_accessed_table) }\n"
           "#endif\n"
           "static const unsigned char (&stencils_accessed)[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "__attribute__((unused)) = ac_stencils_accessed_table;\n"
           "#else\n"
-          "static const unsigned char stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
-          "__attribute__((unused)) = AC_STENCILS_ACCESSED_INIT;\n"
+          "static unsigned char stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] __attribute__((unused));\n"
+          "__attribute__((constructor)) __attribute__((unused)) static void ac_fill_stencils_accessed(void) { AC_STENCILS_ACCESSED_FILL(stencils_accessed) }\n"
           "#endif\n"
-          "#undef AC_STENCILS_ACCESSED_INIT\n");
+          "#undef AC_STENCILS_ACCESSED_FILL\n"
+          "#undef AC_STENCILS_ACCESSED_NONZEROS\n");
 
   // {kernel, stencil, field_a, field_b} with field_a <= field_b, terminated by a sentinel to avoid an empty array
   fprintf(fp,"static const int pair_stencil_calls[][4] __attribute__((unused)) = {");
